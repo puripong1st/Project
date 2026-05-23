@@ -13,86 +13,86 @@ interface OfflineEntry {
 // ─── Minimalist Stroke SVG Icons ───
 const GraduationIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
   </svg>
 );
 
 const ClockIcon = ({ className = "" }) => (
   <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <polyline points="12 6 12 12 16 14"/>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
   </svg>
 );
 
 const SendIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13"/>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
   </svg>
 );
 
 const CheckIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
 const AlertIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-    <line x1="12" y1="9" x2="12" y2="13"/>
-    <line x1="12" y1="17" x2="12.01" y2="17"/>
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
   </svg>
 );
 
 const ShieldIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
   </svg>
 );
 
 const LockIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
 
 const LockBigIcon = () => (
   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
 
 const QRIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7" height="7"/>
-    <rect x="14" y="3" width="7" height="7"/>
-    <rect x="3" y="14" width="7" height="7"/>
-    <rect x="14" y="14" width="3" height="3"/>
-    <line x1="17" y1="14" x2="21" y2="14"/>
-    <line x1="21" y1="14" x2="21" y2="17"/>
-    <line x1="17" y1="20" x2="21" y2="20"/>
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <rect x="14" y="14" width="3" height="3" />
+    <line x1="17" y1="14" x2="21" y2="14" />
+    <line x1="21" y1="14" x2="21" y2="17" />
+    <line x1="17" y1="20" x2="21" y2="20" />
   </svg>
 );
 
 const TVIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
-    <polyline points="17 2 12 7 7 2"/>
+    <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+    <polyline points="17 2 12 7 7 2" />
   </svg>
 );
 
 const WifiOffIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
-    <line x1="1" y1="1" x2="23" y2="23"/>
-    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.5"/>
-    <path d="M5 12.5a10.94 10.94 0 0 1 5.83-2.84"/>
-    <path d="M9.34 6.14A17 17 0 0 1 12 6a16.82 16.82 0 0 1 8.5 2.3"/>
-    <path d="M2.69 8.56a16.81 16.81 0 0 1 3.54-1.63"/>
-    <path d="M12 18.5a3 3 0 0 1-1.73-2.63"/>
+    <line x1="1" y1="1" x2="23" y2="23" />
+    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.5" />
+    <path d="M5 12.5a10.94 10.94 0 0 1 5.83-2.84" />
+    <path d="M9.34 6.14A17 17 0 0 1 12 6a16.82 16.82 0 0 1 8.5 2.3" />
+    <path d="M2.69 8.56a16.81 16.81 0 0 1 3.54-1.63" />
+    <path d="M12 18.5a3 3 0 0 1-1.73-2.63" />
   </svg>
 );
 
@@ -384,7 +384,7 @@ function RegistrationPageInner() {
       const lastTime = new Date(session.timestamp).getTime();
       const now = new Date().getTime();
       const diffSeconds = (now - lastTime) / 1000;
-      
+
       if (diffSeconds <= 300) {
         // returning scan within 5 minutes! Trigger secure unlock bypass
         setTimeout(() => {
@@ -538,7 +538,7 @@ function RegistrationPageInner() {
         <div className="floating-blob blob-1" />
         <div className="floating-blob blob-2" />
         <div className="animate-fade-in" style={{ maxWidth: 440, width: "100%", textAlign: "center", zIndex: 10 }}>
-          <div 
+          <div
             style={{ width: 84, height: 84, borderRadius: "50%", background: "var(--rmutp-purple-pale)", border: "2px solid var(--rmutp-purple)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "var(--rmutp-purple)" }}
             className="animate-pulse-ring"
           >
@@ -572,15 +572,15 @@ function RegistrationPageInner() {
         sessionName = `${s.title}${s.first_name} ${s.last_name}`;
         sessionCode = s.student_id;
       }
-    } catch {}
+    } catch { }
 
     return (
       <div style={{ minHeight: "100vh", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
         <div className="floating-blob blob-1" />
         <div className="floating-blob blob-2" />
         <div className="animate-fade-in" style={{ maxWidth: 460, width: "100%", textAlign: "center", zIndex: 10 }}>
-          
-          <div 
+
+          <div
             style={{ width: 84, height: 84, borderRadius: "50%", background: "#ECFDF5", border: "3px solid #10B981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "#10B981", boxShadow: "0 8px 25px rgba(16,185,129,0.3)" }}
             className="animate-scale-in"
           >
@@ -612,9 +612,9 @@ function RegistrationPageInner() {
             </div>
           </div>
 
-          <button 
-            className="btn-secondary" 
-            style={{ width: "100%", borderRadius: 14, cursor: "pointer" }} 
+          <button
+            className="btn-secondary"
+            style={{ width: "100%", borderRadius: 14, cursor: "pointer" }}
             onClick={() => {
               localStorage.removeItem("rmutp_user_session");
               setBypassState("none");
@@ -632,16 +632,16 @@ function RegistrationPageInner() {
   if (success) {
     return (
       <div style={{ minHeight: "100vh", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-        
+
         {/* Dynamic Drifting Background Blobs to elevate UI */}
         <div className="floating-blob blob-1" />
         <div className="floating-blob blob-2" />
 
         <div className="animate-fade-in" style={{ maxWidth: 480, width: "100%", textAlign: "center", zIndex: 10 }}>
-          
+
           {/* Vector Status Icons instead of emojis */}
           {currentStatus === "pending" && (
-            <div 
+            <div
               style={{ width: 84, height: 84, borderRadius: "50%", background: "var(--edu-pink-pale)", border: "2px solid var(--edu-pink)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "var(--edu-pink)" }}
               className="animate-pulse-ring"
             >
@@ -650,7 +650,7 @@ function RegistrationPageInner() {
           )}
 
           {currentStatus === "approved" && (
-            <div 
+            <div
               style={{ width: 84, height: 84, borderRadius: "50%", background: "#ECFDF5", border: "3px solid #10B981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "#10B981", boxShadow: "0 8px 25px rgba(16,185,129,0.3)" }}
               className="animate-scale-in"
             >
@@ -659,7 +659,7 @@ function RegistrationPageInner() {
           )}
 
           {currentStatus === "rejected" && (
-            <div 
+            <div
               style={{ width: 84, height: 84, borderRadius: "50%", background: "#FEF2F2", border: "3px solid #EF4444", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "#EF4444", boxShadow: "0 8px 25px rgba(239,68,68,0.3)" }}
               className="animate-shake"
             >
@@ -673,13 +673,13 @@ function RegistrationPageInner() {
             {currentStatus === "approved" && "ได้รับสิทธิ์เข้าห้องแล้ว!"}
             {currentStatus === "rejected" && "ปฏิเสธการเข้าใช้ห้อง"}
           </h1>
-          
+
           <p style={{ color: "var(--text-secondary)", marginBottom: 24, fontSize: 14, lineHeight: 1.5 }}>
             {currentStatus === "pending" && "ระบบได้รับข้อมูลของคุณแล้ว กำลังประสานงานและตรวจสิทธิ์..."}
             {currentStatus === "approved" && "ยินดีด้วย! แอดมินได้ทำการอนุมัติข้อมูล และสั่งการปลดล็อคประตูให้คุณแล้ว"}
             {currentStatus === "rejected" && "ขออภัย คำขอใช้ห้องปฏิบัติการของคุณไม่ได้รับการอนุมัติ"}
           </p>
-          
+
           {/* Detailed Status Card */}
           <div className="premium-card animate-scale-in" style={{ padding: 24, textAlign: "left", marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
@@ -694,7 +694,7 @@ function RegistrationPageInner() {
                 {success.student_id}
               </span>
             </div>
-            
+
             {/* Real-Time Status Badge */}
             <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: rejectionReason ? "1px solid var(--border)" : "none" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13.5 }}>สถานะสิทธิ์</span>
@@ -737,9 +737,9 @@ function RegistrationPageInner() {
             )}
           </div>
 
-          <button 
-            className="btn-secondary" 
-            style={{ width: "100%", borderRadius: 14 }} 
+          <button
+            className="btn-secondary"
+            style={{ width: "100%", borderRadius: 14 }}
             onClick={() => {
               setSuccess(null);
               setForm({ title: "นาย", first_name: "", last_name: "", student_id: "", year: "", faculty: "", branch: "" });
@@ -756,7 +756,7 @@ function RegistrationPageInner() {
   // ─── Registration Form ─────────────────────────────────────
   return (
     <div style={{ minHeight: "100vh", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-      
+
       {/* Dynamic Drifting Background Blobs to elevate UI */}
       <div className="floating-blob blob-1" />
       <div className="floating-blob blob-2" />
@@ -773,7 +773,7 @@ function RegistrationPageInner() {
         {/* Header Section */}
         <div className="animate-fade-in" style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-            <div 
+            <div
               style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 8px 20px rgba(124,58,237,0.2)" }}
               className="animate-pulse-soft"
             >
@@ -812,7 +812,7 @@ function RegistrationPageInner() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 คำนำหน้าชื่อ และ ชื่อ - นามสกุล *
               </label>
-              
+
               <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr", gap: 10 }}>
                 {/* Title */}
                 <div>
@@ -887,10 +887,10 @@ function RegistrationPageInner() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 ชั้นปีที่ศึกษา *
               </label>
-              <select 
-                className="rmutp-input" 
+              <select
+                className="rmutp-input"
                 value={form.year}
-                onChange={e => setForm(f => ({ ...f, year: e.target.value }))} 
+                onChange={e => setForm(f => ({ ...f, year: e.target.value }))}
                 required
               >
                 <option value="">-- เลือกชั้นปีการศึกษา --</option>
@@ -905,10 +905,10 @@ function RegistrationPageInner() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 คณะ *
               </label>
-              <select 
-                className="rmutp-input" 
+              <select
+                className="rmutp-input"
                 value={form.faculty}
-                onChange={e => handleFacultyChange(e.target.value)} 
+                onChange={e => handleFacultyChange(e.target.value)}
                 required
               >
                 <option value="">-- เลือกคณะวิชา --</option>
@@ -923,11 +923,11 @@ function RegistrationPageInner() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 สาขาวิชา *
               </label>
-              <select 
-                className="rmutp-input" 
+              <select
+                className="rmutp-input"
                 value={form.branch}
                 onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
-                disabled={!form.faculty} 
+                disabled={!form.faculty}
                 required
               >
                 <option value="">{form.faculty ? "-- เลือกสาขาวิชา --" : "-- เลือกคณะวิชาของท่านก่อน --"}</option>
@@ -938,15 +938,15 @@ function RegistrationPageInner() {
             </div>
 
             {/* Submit Button */}
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              style={{ width: "100%", justifyContent: "center", fontSize: 15, borderRadius: 14, padding: "14px 20px" }} 
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: "100%", justifyContent: "center", fontSize: 15, borderRadius: 14, padding: "14px 20px" }}
               disabled={loading}
             >
               {loading ? (
                 <>
-                  <span className="animate-spin" style={{ display: "inline-block", width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} /> 
+                  <span className="animate-spin" style={{ display: "inline-block", width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} />
                   <span style={{ marginLeft: 8 }}>กำลังส่งข้อมูล...</span>
                 </>
               ) : (
