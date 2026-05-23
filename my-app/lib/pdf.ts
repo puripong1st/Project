@@ -32,8 +32,14 @@ function formatThaiDateString(dateStr: string | undefined): string {
   return `${day}/${month}/${year}`;
 }
 
+interface FontSetup {
+  regular: string;
+  bold: string;
+  isCustom: boolean;
+}
+
 // Setup Thai fonts from local project directory or fallback to local system fonts
-function setupFonts(doc: any) {
+function setupFonts(doc: PDFKit.PDFDocument): FontSetup {
   try {
     const localFontPath = path.join(process.cwd(), "public", "fonts", "tahoma.ttf");
     const localFontBoldPath = path.join(process.cwd(), "public", "fonts", "tahomabd.ttf");
@@ -66,7 +72,7 @@ function setupFonts(doc: any) {
 }
 
 // Helper to filter out Thai characters if fallback font is active to prevent PDFKit crashes
-function safeText(text: string, fonts: any): string {
+function safeText(text: string, fonts: FontSetup): string {
   if (fonts.isCustom) return text || "-";
   if (!text) return "-";
   return text.replace(/[^\x00-\x7F]/g, "?");

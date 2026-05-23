@@ -24,7 +24,7 @@ export async function GET() {
       "SELECT id, username, full_name, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC"
     );
     return NextResponse.json({ admins: rows });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ success: true, message: "สร้าง Admin สำเร็จ" }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }

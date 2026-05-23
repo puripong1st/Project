@@ -35,14 +35,24 @@ export async function getAdminFromCookie(): Promise<AdminPayload | null> {
   }
 }
 
-export function setAuthCookie(token: string): { name: string; value: string; httpOnly: boolean; maxAge: number; path: string; sameSite: "strict" } {
+export function setAuthCookie(token: string): {
+  name: string;
+  value: string;
+  httpOnly: boolean;
+  secure: boolean;
+  maxAge: number;
+  path: string;
+  sameSite: "lax" | "strict" | "none";
+} {
   return {
     name: COOKIE_NAME,
     value: token,
     httpOnly: true,
+    // Vulnerability 4 fix: only send cookie over HTTPS in production
+    secure: process.env.NODE_ENV === "production",
     maxAge: 8 * 60 * 60, // 8 hours
     path: "/",
-    sameSite: "strict",
+    sameSite: "lax",
   };
 }
 

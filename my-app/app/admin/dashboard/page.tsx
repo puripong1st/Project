@@ -289,7 +289,7 @@ export default function AdminDashboard() {
   } | null>(null);
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteType, setDeleteType] = useState<"expired" | "all">("expired");
+  const [, setDeleteType] = useState<"expired" | "all">("expired");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -363,14 +363,18 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchPending();
+    setTimeout(() => {
+      fetchPending();
+    }, 0);
     const interval = setInterval(fetchPending, 10000);
     return () => clearInterval(interval);
   }, [fetchPending]);
 
   // Polling System Status
   useEffect(() => {
-    fetchSystemStatus();
+    setTimeout(() => {
+      fetchSystemStatus();
+    }, 0);
     const interval = setInterval(fetchSystemStatus, 15000);
     return () => clearInterval(interval);
   }, [fetchSystemStatus]);
@@ -403,17 +407,23 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (tab === "all" && user?.role === "owner") {
-      fetchAll();
-      fetchLogs();
+      setTimeout(() => {
+        fetchAll();
+        fetchLogs();
+      }, 0);
     }
     if (tab === "admins" && user?.role === "owner") {
-      fetchAdmins();
+      setTimeout(() => {
+        fetchAdmins();
+      }, 0);
     }
   }, [tab, user, fetchAll, fetchLogs, fetchAdmins]);
 
   useEffect(() => {
     if (tab === "all") {
-      fetchAll();
+      setTimeout(() => {
+        fetchAll();
+      }, 0);
     }
   }, [filterStatus, searchQ, fetchAll, tab]);
 

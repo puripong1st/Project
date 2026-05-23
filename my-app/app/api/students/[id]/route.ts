@@ -12,7 +12,7 @@ async function ensureInit() {
 }
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -30,13 +30,13 @@ export async function GET(
       return NextResponse.json({ error: "ไม่พบข้อมูลนักศึกษา" }, { status: 404 });
     }
     return NextResponse.json({ student: students[0] });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -50,7 +50,7 @@ export async function DELETE(
     await pool.query("DELETE FROM access_logs WHERE student_id = ?", [parseInt(id)]);
     await pool.query("DELETE FROM students WHERE id = ?", [parseInt(id)]);
     return NextResponse.json({ success: true, message: "ลบข้อมูลสำเร็จ" });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }

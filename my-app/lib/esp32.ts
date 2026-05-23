@@ -11,7 +11,10 @@ export interface ESP32Response {
   timestamp?: string;
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 5000): Promise<Response> {
+// Pre-shared API key for authenticating Next.js → ESP32 calls (Vulnerability 1 fix)
+const ESP32_API_KEY = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2000): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -24,7 +27,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 async function retryFetch(url: string, options: RequestInit = {}, retries = 3): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
-      return await fetchWithTimeout(url, options, 5000);
+      return await fetchWithTimeout(url, options, 2000);
     } catch (error) {
       if (i === retries - 1) throw error;
       await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
@@ -51,7 +54,10 @@ export async function openDoor(studentId?: string): Promise<ESP32Response> {
   try {
     const response = await retryFetch(`${BASE_URL}/door/open`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": ESP32_API_KEY,
+      },
       body: JSON.stringify({ studentId, timestamp: new Date().toISOString() }),
     });
 
@@ -108,7 +114,10 @@ export async function updateESP32Display(payload: {
   try {
     const response = await fetchWithTimeout(`${BASE_URL}/display`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": ESP32_API_KEY,
+      },
       body: JSON.stringify(payload),
     });
     return response.ok;

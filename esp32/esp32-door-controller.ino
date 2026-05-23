@@ -26,6 +26,12 @@
 const char* ssid = "YOUR_WIFI_SSID";         // ใส่ชื่อ Wi-Fi ของคุณ
 const char* password = "YOUR_WIFI_PASSWORD"; // ใส่รหัสผ่าน Wi-Fi ของคุณ
 
+// ==========================================
+// API Key สำหรับยืนยันตัวตนจาก Next.js (Vulnerability 1 Fix)
+// ต้องตรงกับ ESP32_API_KEY ใน .env.local ของ Next.js
+// ==========================================
+const char* VALID_API_KEY = "rmutp_secure_door_unlock_token_2026";
+
 // ตั้งค่า Static IP (แนะนำสำหรับการใช้งานระดับองค์กร เพื่อป้องกัน IP เปลี่ยนแปลง)
 IPAddress local_IP(192, 168, 1, 100);       // IP ของบอร์ด ESP32 ที่ตั้งค่าใน .env
 IPAddress gateway(192, 168, 1, 1);
@@ -78,6 +84,25 @@ void toneError() {
 }
 
 // ==========================================
+// 3. ฟังก์ชันตรวจสอบ API Key (Vulnerability 1 Fix)
+// ==========================================
+bool validateApiKey() {
+  if (!server.hasHeader("X-API-Key")) {
+    Serial.println("[SECURITY] Rejected: Missing X-API-Key header!");
+    toneReject();
+    server.send(401, "application/json", "{\"success\":false,\"message\":\"Unauthorized: Missing API Key\"}");
+    return false;
+  }
+  if (server.header("X-API-Key") != String(VALID_API_KEY)) {
+    Serial.println("[SECURITY] Rejected: Invalid X-API-Key!");
+    toneReject();
+    server.send(401, "application/json", "{\"success\":false,\"message\":\"Unauthorized: Invalid API Key\"}");
+    return false;
+  }
+  return true;
+}
+
+// ==========================================
 // 4. API Endpoints Handlers
 // ==========================================
 
@@ -99,6 +124,9 @@ void handleGetStatus() {
 
 // POST /door/open — คำสั่งปลดล็อกประตูจากแอดมินหลังบ้าน
 void handlePostDoorOpen() {
+  // ตรวจสอบ API Key ก่อนทุกครั้ง (Vulnerability 1 Fix)
+  if (!validateApiKey()) return;
+
   if (server.hasArg("plain") == false) {
     server.send(400, "application/json", "{\"success\":false,\"message\":\"Body missing\"}");
     return;
@@ -140,6 +168,9 @@ void handlePostDoorOpen() {
 
 // POST /display — รับข้อมูลอัปเดตหน้าจอ LCD/TFT
 void handlePostDisplay() {
+  // ตรวจสอบ API Key ก่อนทุกครั้ง (Vulnerability 1 Fix)
+  if (!validateApiKey()) return;
+
   if (server.hasArg("plain") == false) {
     server.send(400, "application/json", "{\"success\":false,\"message\":\"Body missing\"}");
     return;
@@ -243,7 +274,12 @@ void setup() {
   server.on("/door/open", HTTP_POST, handlePostDoorOpen);
   server.on("/display", HTTP_POST, handlePostDisplay);
   server.onNotFound(handleNotFound);
-  
+
+  // กำหนดให้ WebServer ดักจับ Custom Header X-API-Key (Vulnerability 1 Fix)
+  const char* headerkeys[] = {"X-API-Key"};
+  size_t headerkeyssize = sizeof(headerkeys) / sizeof(char*);
+  server.collectHeaders(headerkeys, headerkeyssize);
+
   // เริ่มทำงาน HTTP Server
   server.begin();
   Serial.println("[HTTP] Web Server running on port 80.");

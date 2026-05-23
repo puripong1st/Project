@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       const cleanName = `${student.first_name}_${student.last_name}`.replace(/\s+/g, "_");
       const filename = `student_card_${student.student_id}_${cleanName}_${formattedDate}.pdf`;
 
-      return new NextResponse(pdfBuffer as any, {
+      return new NextResponse(pdfBuffer as unknown as BodyInit, {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN admin_users a ON s.approved_by = a.id
         WHERE 1=1
       `;
-      const params: any[] = [];
+      const params: string[] = [];
       
       if (filter !== "all") {
         query += " AND s.status = ?";
@@ -123,7 +123,7 @@ export async function GET(req: NextRequest) {
 
       const filename = `rmutp_students_report_${filter}_${formattedDate}.pdf`;
 
-      return new NextResponse(pdfBuffer as any, {
+      return new NextResponse(pdfBuffer as unknown as BodyInit, {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",

@@ -10,7 +10,7 @@ async function ensureInit() {
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     await ensureInit();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

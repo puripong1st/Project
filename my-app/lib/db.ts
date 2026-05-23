@@ -122,7 +122,7 @@ export async function initDatabase(): Promise<void> {
         `ALTER TABLE students ADD COLUMN bypass_token VARCHAR(64) DEFAULT NULL`
       );
       console.log("[DB] Migration: added bypass_token column to students");
-    } catch (e: unknown) {
+    } catch {
       // Ignore if column already exists
     }
 

@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { RMUTP_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
 
 interface OfflineEntry {
@@ -58,6 +59,25 @@ const LockIcon = () => (
   </svg>
 );
 
+const LockBigIcon = () => (
+  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+);
+
+const QRIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7"/>
+    <rect x="14" y="3" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/>
+    <rect x="14" y="14" width="3" height="3"/>
+    <line x1="17" y1="14" x2="21" y2="14"/>
+    <line x1="21" y1="14" x2="21" y2="17"/>
+    <line x1="17" y1="20" x2="21" y2="20"/>
+  </svg>
+);
+
 const TVIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
     <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
@@ -76,7 +96,175 @@ const WifiOffIcon = () => (
   </svg>
 );
 
-export default function UserRegistrationPage() {
+// ─── QR Access Blocked Screen ─────────────────────────
+function QRAccessBlockedScreen() {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      position: "relative",
+      overflow: "hidden",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px",
+      background: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
+    }}>
+      {/* Animated drifting blobs */}
+      <div style={{
+        position: "absolute", top: "-10%", left: "-5%",
+        width: 450, height: 450, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(124,58,237,0.35) 0%, transparent 70%)",
+        animation: "blob-drift 12s ease-in-out infinite alternate",
+        filter: "blur(40px)",
+      }} />
+      <div style={{
+        position: "absolute", bottom: "-10%", right: "-5%",
+        width: 400, height: 400, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(219,39,119,0.3) 0%, transparent 70%)",
+        animation: "blob-drift 15s ease-in-out infinite alternate-reverse",
+        filter: "blur(40px)",
+      }} />
+
+      <div className="animate-fade-in" style={{
+        maxWidth: 460,
+        width: "100%",
+        textAlign: "center",
+        zIndex: 10,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 28,
+        padding: "52px 40px",
+        backdropFilter: "blur(24px)",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+      }}>
+        {/* Lock icon with glowing ring */}
+        <div style={{
+          width: 110, height: 110,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, rgba(124,58,237,0.3), rgba(219,39,119,0.2))",
+          border: "2px solid rgba(124,58,237,0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 32px",
+          color: "rgba(167,139,250,1)",
+          boxShadow: "0 0 40px rgba(124,58,237,0.4), 0 0 80px rgba(124,58,237,0.15)",
+        }} className="animate-pulse-ring">
+          <LockBigIcon />
+        </div>
+
+        {/* Badge */}
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          background: "rgba(239,68,68,0.15)",
+          border: "1px solid rgba(239,68,68,0.35)",
+          borderRadius: 99,
+          padding: "4px 14px",
+          marginBottom: 20,
+          color: "#FCA5A5",
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: 1,
+          textTransform: "uppercase",
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444", display: "inline-block" }} />
+          การเข้าถึงถูกจำกัด
+        </div>
+
+        <h1 style={{
+          fontSize: 28,
+          fontWeight: 800,
+          color: "#FFFFFF",
+          marginBottom: 12,
+          letterSpacing: "-0.5px",
+          lineHeight: 1.3,
+        }}>
+          ไม่สามารถเข้าใช้งานได้
+        </h1>
+        <p style={{ color: "rgba(255,255,255,0.55)", marginBottom: 36, fontSize: 14, lineHeight: 1.7 }}>
+          หน้าลงทะเบียนนี้สามารถเข้าได้ผ่าน <strong style={{ color: "rgba(167,139,250,0.9)" }}>การสแกน QR Code</strong> เท่านั้น<br />
+          กรุณาสแกน QR Code ที่ติดตั้งอยู่หน้าห้องปฏิบัติการ
+        </p>
+
+        {/* How-to steps */}
+        <div style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 16,
+          padding: "20px 24px",
+          textAlign: "left",
+          marginBottom: 28,
+        }}>
+          {[
+            { step: "1", text: "เปิดกล้องโทรศัพท์มือถือ" },
+            { step: "2", text: "ชี้กล้องไปที่ QR Code หน้าห้อง" },
+            { step: "3", text: "กดลิงก์เพื่อเข้าสู่ระบบลงทะเบียน" },
+          ].map(({ step, text }) => (
+            <div key={step} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: step !== "3" ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: "50%",
+                background: "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(219,39,119,0.4))",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#E9D5FF", fontSize: 13, fontWeight: 800, flexShrink: 0,
+              }}>{step}</div>
+              <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 13.5 }}>{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* QR Icon hint */}
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          background: "rgba(124,58,237,0.12)",
+          border: "1px solid rgba(124,58,237,0.3)",
+          borderRadius: 12,
+          padding: "12px 20px",
+          color: "rgba(167,139,250,0.9)",
+        }}>
+          <QRIcon />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>สแกน QR Code หน้าห้องปฏิบัติการ</span>
+        </div>
+
+        {/* Admin link */}
+        <div style={{ marginTop: 28 }}>
+          <a
+            href="/admin/login"
+            style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textDecoration: "none", fontWeight: 500 }}
+          >
+            เจ้าหน้าที่ระบบ? เข้าสู่ Admin Panel
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RegistrationPageInner() {
+  // ─── QR Access Authorization ─────────────────────────
+  const searchParams = useSearchParams();
+  const [qrAuthorized, setQrAuthorized] = useState<boolean | null>(null); // null = loading
+  const authChecked = useRef(false);
+
+  useEffect(() => {
+    if (authChecked.current) return;
+    authChecked.current = true;
+
+    const scanParam = searchParams.get("scan");
+    if (scanParam === "rmutp_presence") {
+      // Valid QR scan — grant session access
+      sessionStorage.setItem("rmutp_qr_authorized", "true");
+      setQrAuthorized(true);
+    } else {
+      // Check session for returning authorized users
+      const cached = sessionStorage.getItem("rmutp_qr_authorized");
+      setQrAuthorized(cached === "true");
+    }
+  }, [searchParams]);
+
   const [form, setForm] = useState({
     title: "นาย",
     first_name: "",
@@ -111,9 +299,45 @@ export default function UserRegistrationPage() {
     return () => clearInterval(t);
   }, []);
 
+  function getOfflineQueue(): OfflineEntry[] {
+    try {
+      return JSON.parse(localStorage.getItem("rmutp_offline_queue") || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  const saveOfflineQueue = useCallback((q: OfflineEntry[]) => {
+    localStorage.setItem("rmutp_offline_queue", JSON.stringify(q));
+    setQueueCount(q.length);
+  }, []);
+
+  const flushOfflineQueue = useCallback(async () => {
+    const queue = getOfflineQueue();
+    if (queue.length === 0) return;
+    const remaining: OfflineEntry[] = [];
+    for (const entry of queue) {
+      try {
+        const res = await fetch("/api/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entry.data),
+        });
+        if (!res.ok && res.status !== 409) {
+          remaining.push({ ...entry, retries: entry.retries + 1 });
+        }
+      } catch {
+        remaining.push({ ...entry, retries: entry.retries + 1 });
+      }
+    }
+    saveOfflineQueue(remaining);
+  }, [saveOfflineQueue]);
+
   // Online/offline detection
   useEffect(() => {
-    setIsOnline(navigator.onLine);
+    setTimeout(() => {
+      setIsOnline(navigator.onLine);
+    }, 0);
     const onOnline = () => {
       setIsOnline(true);
       flushOfflineQueue();
@@ -125,41 +349,16 @@ export default function UserRegistrationPage() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, []);
+  }, [flushOfflineQueue]);
 
   useEffect(() => {
     const q = getOfflineQueue();
-    setQueueCount(q.length);
+    setTimeout(() => {
+      setQueueCount(q.length);
+    }, 0);
   }, []);
 
-  // Check bypass session on component mount
-  useEffect(() => {
-    const saved = localStorage.getItem("rmutp_user_session");
-    if (!saved) {
-      setBypassState("none");
-      return;
-    }
-    try {
-      const session = JSON.parse(saved);
-      const lastTime = new Date(session.timestamp).getTime();
-      const now = new Date().getTime();
-      const diffSeconds = (now - lastTime) / 1000;
-      
-      if (diffSeconds <= 300) {
-        // returning scan within 5 minutes! Trigger secure unlock bypass
-        triggerBypass(session);
-      } else {
-        // Expired
-        localStorage.removeItem("rmutp_user_session");
-        setBypassState("none");
-      }
-    } catch {
-      localStorage.removeItem("rmutp_user_session");
-      setBypassState("none");
-    }
-  }, []);
-
-  async function triggerBypass(session: any) {
+  async function triggerBypass(session: { id: number; student_id: string; bypass_token: string }) {
     setBypassState("checking");
     try {
       const res = await fetch("/api/students/bypass", {
@@ -187,15 +386,51 @@ export default function UserRegistrationPage() {
     }
   }
 
+  // Check bypass session on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem("rmutp_user_session");
+    if (!saved) {
+      setTimeout(() => {
+        setBypassState("none");
+      }, 0);
+      return;
+    }
+    try {
+      const session = JSON.parse(saved);
+      const lastTime = new Date(session.timestamp).getTime();
+      const now = new Date().getTime();
+      const diffSeconds = (now - lastTime) / 1000;
+      
+      if (diffSeconds <= 300) {
+        // returning scan within 5 minutes! Trigger secure unlock bypass
+        setTimeout(() => {
+          triggerBypass(session);
+        }, 0);
+      } else {
+        // Expired
+        localStorage.removeItem("rmutp_user_session");
+        setTimeout(() => {
+          setBypassState("none");
+        }, 0);
+      }
+    } catch {
+      localStorage.removeItem("rmutp_user_session");
+      setTimeout(() => {
+        setBypassState("none");
+      }, 0);
+    }
+  }, []);
+
+
   // Polling Status from API every 3 seconds when success registration card is shown
   useEffect(() => {
     if (!success) {
-      setCurrentStatus("pending");
-      setRejectionReason(null);
+      setTimeout(() => {
+        setCurrentStatus("pending");
+        setRejectionReason(null);
+      }, 0);
       return;
     }
-
-    let intervalId: NodeJS.Timeout;
 
     const checkStatus = async () => {
       try {
@@ -214,7 +449,7 @@ export default function UserRegistrationPage() {
 
     checkStatus();
 
-    intervalId = setInterval(checkStatus, 3000);
+    const intervalId = setInterval(checkStatus, 3000);
 
     return () => clearInterval(intervalId);
   }, [success]);
@@ -234,40 +469,6 @@ export default function UserRegistrationPage() {
       localStorage.setItem("rmutp_user_session", JSON.stringify(session));
     }
   }, [success, currentStatus]);
-
-  function getOfflineQueue(): OfflineEntry[] {
-    try {
-      return JSON.parse(localStorage.getItem("rmutp_offline_queue") || "[]");
-    } catch {
-      return [];
-    }
-  }
-
-  function saveOfflineQueue(q: OfflineEntry[]) {
-    localStorage.setItem("rmutp_offline_queue", JSON.stringify(q));
-    setQueueCount(q.length);
-  }
-
-  async function flushOfflineQueue() {
-    const queue = getOfflineQueue();
-    if (queue.length === 0) return;
-    const remaining: OfflineEntry[] = [];
-    for (const entry of queue) {
-      try {
-        const res = await fetch("/api/students", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry.data),
-        });
-        if (!res.ok && res.status !== 409) {
-          remaining.push({ ...entry, retries: entry.retries + 1 });
-        }
-      } catch {
-        remaining.push({ ...entry, retries: entry.retries + 1 });
-      }
-    }
-    saveOfflineQueue(remaining);
-  }
 
   // Cascade faculty → branch
   function handleFacultyChange(faculty: string) {
@@ -340,6 +541,11 @@ export default function UserRegistrationPage() {
       setLoading(false);
     }
   }
+
+  // ─── QR Lockdown Gate ───────────────────────────────────────
+  // While checking authorization, show nothing (prevents FOUC)
+  if (qrAuthorized === null) return null;
+  if (qrAuthorized === false) return <QRAccessBlockedScreen />;
 
   // ─── Bypass Loading / Verification Screen ──────────────────
   if (bypassState === "checking") {
@@ -783,5 +989,14 @@ export default function UserRegistrationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Suspense wrapper required by Next.js 16 for useSearchParams() during SSR
+export default function UserRegistrationPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegistrationPageInner />
+    </Suspense>
   );
 }

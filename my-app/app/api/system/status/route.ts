@@ -26,17 +26,17 @@ export async function GET() {
       // Only query counts if MySQL is online
       if (mysqlOnline && admin.role === "owner") {
         const [totalRes] = await pool.query("SELECT COUNT(*) as count FROM access_logs");
-        totalLogs = (totalRes as any[])[0]?.count || 0;
+        totalLogs = (totalRes as { count: number }[])[0]?.count || 0;
 
         const [expiredRes] = await pool.query(
           "SELECT COUNT(*) as count FROM access_logs WHERE timestamp < NOW() - INTERVAL 90 DAY"
         );
-        expiredLogs = (expiredRes as any[])[0]?.count || 0;
+        expiredLogs = (expiredRes as { count: number }[])[0]?.count || 0;
 
         activeLogs = totalLogs - expiredLogs;
       }
-    } catch (error: any) {
-      mysqlError = error?.message || "Database connection error";
+    } catch (error) {
+      mysqlError = error instanceof Error ? error.message : "Database connection error";
     }
 
     // 3. ESP32 Status
@@ -79,8 +79,9 @@ export async function GET() {
         retentionDays: 90,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[System Status GET Error]:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

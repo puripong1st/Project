@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface DisplayState {
   title: string;
@@ -67,7 +67,9 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
     const t = setInterval(() => {
       setTime(new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
     }, 1000);
-    setTime(new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+    setTimeout(() => {
+      setTime(new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+    }, 0);
     return () => clearInterval(t);
   }, []);
 
@@ -95,7 +97,10 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ width: 110, height: 110, background: "#FFF", padding: 3, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #4CAF50" }}>
               {qrDataUrl
-                ? <img src={qrDataUrl} alt="QR" style={{ width: 104, height: 104 }} />
+                ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={qrDataUrl} alt="QR" style={{ width: 104, height: 104 }} />
+                )
                 : <div style={{ width: 104, height: 104, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#999" }}>Loading...</div>
               }
             </div>
@@ -208,7 +213,9 @@ export default function ESP32PreviewPage() {
   };
 
   useEffect(() => {
-    fetchDisplay();
+    setTimeout(() => {
+      fetchDisplay();
+    }, 0);
     const i = setInterval(fetchDisplay, 5000);
     return () => clearInterval(i);
   }, []);
@@ -233,7 +240,7 @@ export default function ESP32PreviewPage() {
             <TVIcon />
             <span>ESP32 Display Preview</span>
           </h1>
-          <p style={{ color: "#9EA8A0", fontSize: 13 }}>จำลองหน้าจอ LAFVIN 4.0 TFT Display (3.2" — 320×240 px) · ILI9341</p>
+          <p style={{ color: "#9EA8A0", fontSize: 13 }}>จำลองหน้าจอ LAFVIN 4.0 TFT Display (3.2&quot; — 320×240 px) · ILI9341</p>
         </div>
         <a href="/admin/dashboard" style={{ color: "#4CAF50", fontSize: 13, textDecoration: "none" }}>← Admin Dashboard</a>
       </div>

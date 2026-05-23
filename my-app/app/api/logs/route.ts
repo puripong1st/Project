@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       [limit]
     );
     return NextResponse.json({ logs: rows });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }

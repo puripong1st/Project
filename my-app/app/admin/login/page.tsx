@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // ─── Minimalist Vector SVGs ───
 const KeyholeShieldIcon = () => (
@@ -203,10 +204,10 @@ export default function AdminLoginPage() {
         </div>
 
         <div style={{ textAlign: "center", marginTop: 24 }}>
-          <a href="/" style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/" style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             <ArrowLeftIcon />
             ย้อนกลับไปหน้าลงทะเบียน
-          </a>
+          </Link>
         </div>
       </div>
     </div>

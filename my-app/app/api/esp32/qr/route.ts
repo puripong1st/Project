@@ -6,13 +6,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    // Default: QR points to registration form
-    const target = searchParams.get("url") || `${appUrl}/`;
-    const size = parseInt(searchParams.get("size") || "240");
+    // Default: QR points to registration form with mandatory presence token
+    const target = searchParams.get("url") || `${appUrl}/?scan=rmutp_presence`;
 
     const buffer = await generateQRCodeBuffer(target);
 
-    return new NextResponse(buffer as any, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": "image/png",
