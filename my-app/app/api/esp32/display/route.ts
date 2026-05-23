@@ -36,7 +36,7 @@ export async function GET() {
         // Display info for ESP32
         title: "RMUTP Door Access",
         subtitle: "มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร",
-        qr_url: `${appUrl}/api/esp32/qr`,
+        qr_url: `${appUrl}/api/esp32/qr?_t=${Date.now()}`,
         register_url: `${appUrl}/`,
         pending_count: pendingCount,
         last_approved: lastStudent

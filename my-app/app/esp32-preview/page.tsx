@@ -12,6 +12,16 @@ interface DisplayState {
   status: string;
 }
 
+interface ESP32Status {
+  mode: "mock" | "wokwi" | "physical";
+  online: boolean;
+  ip: string;
+  url: string;
+  doorStatus?: string;
+  mock: boolean;
+  wokwi: boolean;
+}
+
 type ScreenMode = "idle" | "approved" | "rejected" | "scanning";
 
 // ─── Minimalist Stroke SVG Icons ───
@@ -74,11 +84,23 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
   }, []);
 
   useEffect(() => {
-    // Fetch QR code for display preview
-    fetch("/api/esp32/qr")
-      .then(r => r.blob())
-      .then(blob => setQrDataUrl(URL.createObjectURL(blob)))
-      .catch(() => {});
+    // Fetch QR code for display preview — refreshes every 5 minutes (token rotation)
+    const fetchQR = () => {
+      const cacheBuster = Date.now();
+      fetch(`/api/esp32/qr?_t=${cacheBuster}`)
+        .then(r => r.blob())
+        .then(blob => {
+          // Revoke old URL to prevent memory leak
+          if (qrDataUrl) URL.revokeObjectURL(qrDataUrl);
+          setQrDataUrl(URL.createObjectURL(blob));
+        })
+        .catch(() => {});
+    };
+    fetchQR();
+    // Refresh QR every 5 minutes to match token rotation
+    const qrInterval = setInterval(fetchQR, 5 * 60 * 1000);
+    return () => clearInterval(qrInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // IDLE screen — show QR
@@ -201,6 +223,7 @@ export default function ESP32PreviewPage() {
   const [displayData, setDisplayData] = useState<DisplayState | null>(null);
   const [isRefreshing, setRefreshing] = useState(false);
   const [scale, setScale] = useState(1.5);
+  const [esp32Status, setEsp32Status] = useState<ESP32Status | null>(null);
 
   const fetchDisplay = async () => {
     setRefreshing(true);
@@ -212,12 +235,18 @@ export default function ESP32PreviewPage() {
     setRefreshing(false);
   };
 
+  const fetchESP32Status = async () => {
+    try {
+      const r = await fetch("/api/esp32/status");
+      if (r.ok) setEsp32Status(await r.json());
+    } catch {}
+  };
+
   useEffect(() => {
-    setTimeout(() => {
-      fetchDisplay();
-    }, 0);
-    const i = setInterval(fetchDisplay, 5000);
-    return () => clearInterval(i);
+    setTimeout(() => { fetchDisplay(); fetchESP32Status(); }, 0);
+    const i1 = setInterval(fetchDisplay, 5000);
+    const i2 = setInterval(fetchESP32Status, 5000);
+    return () => { clearInterval(i1); clearInterval(i2); };
   }, []);
 
   function simulateApprove() {
@@ -294,6 +323,78 @@ export default function ESP32PreviewPage() {
 
         {/* Right: Controls + Info */}
         <div style={{ maxWidth: 500 }}>
+
+          {/* ─── Wokwi Connection Panel ─── */}
+          <div className="glass-card animate-fade-in" style={{ padding: 24, marginBottom: 20, borderColor: esp32Status?.mode === "wokwi" ? "rgba(139,92,246,0.4)" : undefined }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#A78BFA", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                  <line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+                Wokwi Simulator
+              </h3>
+              {/* Mode badge */}
+              <span style={{
+                padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                background: esp32Status?.mode === "wokwi" ? "rgba(139,92,246,0.2)" : esp32Status?.mode === "mock" ? "rgba(245,158,11,0.15)" : "rgba(76,175,80,0.15)",
+                color: esp32Status?.mode === "wokwi" ? "#A78BFA" : esp32Status?.mode === "mock" ? "#F59E0B" : "#4CAF50",
+                border: `1px solid ${esp32Status?.mode === "wokwi" ? "rgba(139,92,246,0.4)" : esp32Status?.mode === "mock" ? "rgba(245,158,11,0.3)" : "rgba(76,175,80,0.3)"}`,
+              }}>
+                {esp32Status?.mode === "wokwi" ? "🔵 Wokwi" : esp32Status?.mode === "mock" ? "🟡 Mock" : "🟢 Physical"}
+              </span>
+            </div>
+
+            {/* Live status row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+              <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: "10px 14px" }}>
+                <div style={{ color: "#6B7A70", fontSize: 11, marginBottom: 4 }}>สถานะการเชื่อมต่อ</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: esp32Status?.online ? "#4CAF50" : "#EF4444", flexShrink: 0 }} className={esp32Status?.online ? "animate-blink" : ""} />
+                  <span style={{ color: esp32Status?.online ? "#4CAF50" : "#EF4444", fontSize: 13, fontWeight: 700 }}>
+                    {esp32Status === null ? "กำลังตรวจสอบ..." : esp32Status.online ? "Online" : "Offline"}
+                  </span>
+                </div>
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: "10px 14px" }}>
+                <div style={{ color: "#6B7A70", fontSize: 11, marginBottom: 4 }}>URL ที่ใช้งาน</div>
+                <div style={{ color: "#F0F4F0", fontSize: 11, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {esp32Status?.url || "—"}
+                </div>
+              </div>
+            </div>
+
+            {/* Setup guide */}
+            <div style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 10, padding: "14px 16px" }}>
+              <div style={{ color: "#A78BFA", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>📋 วิธีเปิดใช้ Wokwi Simulator</div>
+              {[
+                { step: "1", text: "ติดตั้ง VS Code Extension: Wokwi Simulator", sub: "marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode" },
+                { step: "2", text: "เปิดไฟล์ esp32/diagram.json ใน VS Code", sub: "F1 → Wokwi: Start Simulator" },
+                { step: "3", text: "เพิ่มใน .env.local ของ Next.js", sub: "ESP32_WOKWI=true" },
+                { step: "4", text: "Restart Next.js dev server", sub: "npm run dev" },
+              ].map(({ step, text, sub }) => (
+                <div key={step} style={{ display: "flex", gap: 10, padding: "6px 0", borderBottom: step !== "4" ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(139,92,246,0.3)", display: "flex", alignItems: "center", justifyContent: "center", color: "#C4B5FD", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{step}</div>
+                  <div>
+                    <div style={{ color: "#E2E8F0", fontSize: 12, fontWeight: 600 }}>{text}</div>
+                    <div style={{ color: "#6B7A70", fontSize: 10, fontFamily: "monospace", marginTop: 2 }}>{sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Port forwarding info */}
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(0,0,0,0.25)", borderRadius: 8, display: "flex", gap: 8, alignItems: "center" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span style={{ color: "#9CA3AF", fontSize: 11 }}>
+                Port forwarding ใน <code style={{ color: "#A78BFA" }}>wokwi.toml</code>: <code style={{ color: "#4CAF50" }}>localhost:8180</code> → <code style={{ color: "#4CAF50" }}>ESP32:80</code>
+              </span>
+            </div>
+          </div>
           {/* Simulate Buttons */}
           <div className="glass-card animate-fade-in-delay" style={{ padding: 24, marginBottom: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: "#FFD700", display: "flex", alignItems: "center" }}>

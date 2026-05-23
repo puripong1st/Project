@@ -246,24 +246,8 @@ function QRAccessBlockedScreen() {
 function RegistrationPageInner() {
   // ─── QR Access Authorization ─────────────────────────
   const searchParams = useSearchParams();
-  const [qrAuthorized, setQrAuthorized] = useState<boolean | null>(null); // null = loading
-  const authChecked = useRef(false);
-
-  useEffect(() => {
-    if (authChecked.current) return;
-    authChecked.current = true;
-
-    const scanParam = searchParams.get("scan");
-    if (scanParam === "rmutp_presence") {
-      // Valid QR scan — grant session access
-      sessionStorage.setItem("rmutp_qr_authorized", "true");
-      setQrAuthorized(true);
-    } else {
-      // Check session for returning authorized users
-      const cached = sessionStorage.getItem("rmutp_qr_authorized");
-      setQrAuthorized(cached === "true");
-    }
-  }, [searchParams]);
+  const [qrAuthorized, setQrAuthorized] = useState<boolean>(true); // เสมอ เพื่อให้เข้าหน้าเว็บได้โดยไม่ต้องสแกน QR Code
+  const authChecked = useRef(true);
 
   const [form, setForm] = useState({
     title: "นาย",

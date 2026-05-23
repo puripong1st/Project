@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node --max-old-space-size=4096 --no-deprecation node_modules/next/dist/bin/next dev",
+    "dev:turbo": "node --max-old-space-size=4096 --no-deprecation node_modules/next/dist/bin/next dev --turbopack",
+    "build": "node --max-old-space-size=4096 node_modules/next/dist/bin/next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "clean": "powershell -Command \"Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; Write-Host 'Cache cleaned successfully'\""
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

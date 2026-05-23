@@ -1,20 +1,26 @@
 # Wokwi Project Configuration — RMUTP ESP32 Door Controller
-# ใช้กับ Wokwi for VS Code Extension (https://marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode)
+# ใช้กับ Wokwi for VS Code Extension
+# https://marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode
 #
 # วิธีใช้:
 # 1. ติดตั้ง Extension "Wokwi Simulator" ใน VS Code
-# 2. เปิดไฟล์นี้ แล้วกด F1 > "Wokwi: Start Simulator"
-# 3. ESP32 จะรัน Web Server บนพอร์ต 80 ภายใน Simulator
-# 4. Port Forwarding ด้านล่างจะ map localhost:8180 → ESP32:80
-# 5. ตั้งค่า .env.local ของ Next.js ให้ใช้ ESP32_WOKWI=true
+# 2. ติดตั้ง Arduino CLI (ดูคำสั่งใน README หรือ .vscode/tasks.json)
+# 3. กด F1 > "Tasks: Run Task" > "Build ESP32 Firmware" (คอมไพล์ครั้งแรก)
+# 4. กด F1 > "Wokwi: Start Simulator" (รัน Simulator)
+# 5. ตั้งค่า .env.local: ESP32_WOKWI=true
 
 [wokwi]
 version = 1
-elf = "build/esp32-door-controller.ino.elf"
-firmware = "build/esp32-door-controller.ino.bin"
+elf      = "build/esp32.ino.elf"
+firmware = "build/esp32.ino.bin"
+
+# Wokwi จะรัน VS Code Task "Build ESP32 Firmware" ก่อน Start Simulator อัตโนมัติ
+# (ต้องมี Arduino CLI ในเครื่องก่อน — ดูวิธีติดตั้งด้านล่าง)
+# arduino-cli ดาวน์โหลด: https://arduino.github.io/arduino-cli/latest/installation/
+build_task = "Build ESP32 Firmware"
 
 # Port Forwarding: localhost:8180 → simulated ESP32 port 80
 # Next.js จะเรียกใช้ http://localhost:8180/door/open แทน ESP32 จริง
 [[net.forward]]
 from = "localhost:8180"
-to = "target:80"
+to   = "target:80"

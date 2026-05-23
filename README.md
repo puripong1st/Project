@@ -62,7 +62,7 @@ my-app/
 │       ├── students/route.ts     # ดึงรายชื่อ/ลงทะเบียนข้อมูลนักศึกษา
 │       └── export/pdf/route.ts   # เขียนประวัติ PDF ส่งออกแนวนอน
 ├── esp32/
-│   └── esp32-door-controller.ino # ซอร์สโค้ดอัปโหลดชิปของ ESP32 จริง
+│   └── esp32.ino                 # ซอร์สโค้ดอัปโหลดชิปของ ESP32 จริง
 ├── lib/
 │   ├── db.ts                 # ตัวเชื่อมต่อ MySQL และ Migration ตาราง
 │   ├── esp32.ts              # ตัวจัดการ HTTP Call สั่งปลดล็อกไปฮาร์ดแวร์
@@ -124,7 +124,7 @@ npm run dev
 
 ## 📡 แผนผังการต่ออุปกรณ์ฮาร์ดแวร์บอร์ด ESP32
 
-ซอร์สโค้ดของบอร์ด ESP32 อยู่ภายใต้ [**`esp32/esp32-door-controller.ino`**](file:///c:/Users/aunkh/OneDrive/Desktop/Project/my-app/esp32/esp32-door-controller.ino) 
+ซอร์สโค้ดของบอร์ด ESP32 อยู่ภายใต้ [**`esp32/esp32.ino`**](file:///c:/Users/aunkh/OneDrive/Desktop/Project/esp32/esp32.ino) 
 
 ### การระบุพอร์ตอุปกรณ์บนบอร์ด (Pinout Config):
 * **GPIO 4 (RELAY_PIN)**: ต่อเข้ากับฝั่งทริกเกอร์ของโมดูล Relay 5V เพื่อสลับสถานะจ่ายกระแสไฟเข้ากลอนเหล็กแม่เหล็กไฟฟ้าคีย์การ์ดประตู
