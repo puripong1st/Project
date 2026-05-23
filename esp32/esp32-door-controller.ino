@@ -11,10 +11,20 @@
  *    - GET /status      : ให้ระบบหลังบ้านตรวจสอบสถานะการออนไลน์และสถานะประตู
  *    - POST /display   : รับคำสั่งแสดงผลข้อมูลนักศึกษา/สถานะอนุมัติลงบน Serial/หน้าจอ
  * 
+ * Wokwi Simulator:
+ *    - เปิดด้วย VS Code Extension "Wokwi Simulator"
+ *    - Port Forwarding: localhost:8180 → ESP32:80 (ตั้งค่าใน wokwi.toml)
+ *    - ตั้งค่า .env.local: ESP32_WOKWI=true
+ * 
  * ไลบรารีที่จำเป็น (ติดตั้งผ่าน Arduino IDE Library Manager):
  * - ArduinoJson (โดย Benoit Blanchon)
  * - WebServer (มาพร้อมบอร์ด ESP32)
  */
+
+// =========================================
+// โหมดจำลอง Wokwi (comment out เมื่อใช้ฮาร์ดแวร์จริง)
+// =========================================
+#define WOKWI_SIM  // ← ลบบรรทัดนี้เมื่อ Flash บอร์ดจริง
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -44,6 +54,7 @@ IPAddress dns(8, 8, 8, 8);
 #define RELAY_PIN       4   // ขาควบคุมรีเลย์กลอนแม่เหล็ก Solenoid (Active HIGH/LOW ตั้งค่าด้านล่าง)
 #define BUZZER_PIN      5   // ขาควบคุมบัซเซอร์แจ้งเตือนแบบมีเสียง
 #define STATUS_LED_PIN  2   // ไฟ LED บนบอร์ดแสดงสถานะการเชื่อมต่อ Wi-Fi
+#define REJECT_LED_PIN  26  // ไฟ LED แดง — กระพริบเมื่อถูกปฏิเสธ/ผิด API Key (Wokwi: ต่อที่ D26)
 
 // โหมดการทำงานของรีเลย์
 #define RELAY_ACTIVE    HIGH  // ปลดล็อกด้วยไฟบวก (HIGH) หรือ โหมดตัดไฟ (LOW)
@@ -71,8 +82,10 @@ void toneSuccess() {
 void toneReject() {
   for (int i = 0; i < 3; i++) {
     digitalWrite(BUZZER_PIN, HIGH);
+    digitalWrite(REJECT_LED_PIN, HIGH); // กระพริบ LED แดงพร้อมกัน
     delay(100);
     digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(REJECT_LED_PIN, LOW);
     delay(50);
   }
 }
@@ -225,21 +238,30 @@ void setup() {
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(STATUS_LED_PIN, OUTPUT);
+  pinMode(REJECT_LED_PIN, OUTPUT);
   
   // ตั้งสถานะเริ่มต้น
   digitalWrite(RELAY_PIN, RELAY_IDLE);
   digitalWrite(BUZZER_PIN, LOW);
   digitalWrite(STATUS_LED_PIN, LOW);
+  digitalWrite(REJECT_LED_PIN, LOW);
   
   Serial.println("");
   Serial.println("================================================");
-  Serial.println("     RMUTP Door Access Controller System v1.0   ");
+  Serial.println("     RMUTP Door Access Controller System v2.0   ");
   Serial.println("================================================");
-  
+
+#ifdef WOKWI_SIM
+  Serial.println("[MODE] Running in WOKWI SIMULATOR mode");
+  Serial.println("[MODE] Static IP skipped (Wokwi uses DHCP auto)");
+  Serial.println("[MODE] Port forwarding: localhost:8180 -> ESP32:80");
+  Serial.println("[MODE] Set ESP32_WOKWI=true in Next.js .env.local");
+#else
   // กำหนด Static IP (หากต้องการใช้งาน DHCP ให้ลบบรรทัดข้างล่างนี้ออก)
   if (!WiFi.config(local_IP, gateway, subnet, dns)) {
     Serial.println("[Wi-Fi] Static IP Configuration Failed. Using DHCP.");
   }
+#endif
   
   // เชื่อมต่อ Wi-Fi
   Serial.print("[Wi-Fi] Connecting to: ");
@@ -268,6 +290,15 @@ void setup() {
   Serial.println("[Wi-Fi] Connected Successfully!");
   Serial.print("[Wi-Fi] ESP32 Local IP Address: ");
   Serial.println(WiFi.localIP());
+#ifdef WOKWI_SIM
+  Serial.println("[Wokwi] =====================================" );
+  Serial.println("[Wokwi] Next.js can reach this ESP32 via:");
+  Serial.println("[Wokwi]   http://localhost:8180");
+  Serial.println("[Wokwi] Set in .env.local:");
+  Serial.println("[Wokwi]   ESP32_WOKWI=true");
+  Serial.println("[Wokwi]   ESP32_WOKWI_URL=http://localhost:8180");
+  Serial.println("[Wokwi] =====================================");
+#endif
   
   // กำหนดเส้นทาง API ของ Web Server
   server.on("/status", HTTP_GET, handleGetStatus);
