@@ -793,7 +793,7 @@ export default function AdminDashboard() {
               <div style={{ fontSize: 10.5, color: "var(--text-secondary)", fontWeight: 600 }}>บอร์ดควบคุมครุศาสตร์</div>
             </div>
             <button 
-              className="md:hidden" 
+              className="desktop-hide-trigger" 
               onClick={() => setMobileMenuOpen(false)}
               style={{ marginLeft: "auto", background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-secondary)" }}
             >
@@ -807,7 +807,7 @@ export default function AdminDashboard() {
                 {user.full_name}
               </div>
               <div style={{ fontSize: 10.5, color: isOwner ? "var(--edu-pink)" : "var(--rmutp-purple)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                <span>{isOwner ? <CrownIcon className="w-3.5 h-3.5" /> : <KeyIcon className="w-3.5 h-3.5" />}</span>
+                <span>{isOwner ? <CrownIcon /> : <KeyIcon />}</span>
                 <span>{isOwner ? "Owner (เจ้าของห้อง)" : "Door Operator"}</span>
               </div>
             </div>
@@ -902,7 +902,7 @@ export default function AdminDashboard() {
                   {tab === "pending" && (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <span style={{ color: "#F59E0B", display: "inline-flex" }}>
-                        <ClockIcon className="w-5 h-5" />
+                        <ClockIcon />
                       </span>
                       <span>ตรวจสอบสิทธิ์รออนุมัติ</span>
                     </span>
@@ -921,7 +921,7 @@ export default function AdminDashboard() {
                   )}
                 </h2>
                 <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 500, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                  <ClockIcon className="w-3.5 h-3.5" />
+                  <ClockIcon />
                   <span>{currentTime}</span>
                 </div>
               </div>
@@ -1087,7 +1087,7 @@ export default function AdminDashboard() {
                             </div>
                             
                             <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
-                              <ClockIcon className="w-3.5 h-3.5" />
+                              <ClockIcon />
                               <span>ยื่นสมัครเมื่อ: {formatDateTime(s.registered_at)}</span>
                             </div>
                           </div>

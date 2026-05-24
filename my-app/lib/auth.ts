@@ -3,6 +3,9 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
 const JWT_SECRET = process.env.JWT_SECRET || "rmutp-secret-key";
+if (JWT_SECRET === "rmutp-secret-key" && process.env.NODE_ENV === "production") {
+  throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing or insecurely configured in production!");
+}
 const COOKIE_NAME = "rmutp_admin_token";
 
 export interface AdminPayload {
@@ -18,7 +21,7 @@ export function signToken(payload: AdminPayload): string {
 
 export function verifyToken(token: string): AdminPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as AdminPayload;
+    return jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as AdminPayload;
   } catch {
     return null;
   }

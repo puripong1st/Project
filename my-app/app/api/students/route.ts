@@ -4,6 +4,7 @@ import { getPool, initDatabase, StudentRow } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
 import { RMUTP_FACULTIES } from "@/lib/faculties";
+import { openDoor } from "@/lib/esp32";
 import crypto from "crypto";
 
 let initialized = false;
@@ -87,17 +88,109 @@ export async function POST(req: NextRequest) {
 
     const pool = getPool();
 
-    // Check duplicate student_id
+    // Check duplicate student_id securely for intelligent re-entry / re-submission
     const [existing] = await pool.query(
-      "SELECT id FROM students WHERE student_id = ?",
+      "SELECT * FROM students WHERE student_id = ?",
       [student_id.trim()]
     );
-    if ((existing as StudentRow[]).length > 0) {
-      return NextResponse.json({ error: "รหัสนักศึกษานี้ลงทะเบียนแล้ว" }, { status: 409 });
-    }
+    const existingStudents = existing as StudentRow[];
 
     // Get client IP
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+
+    if (existingStudents.length > 0) {
+      const existingStudent = existingStudents[0];
+
+      if (existingStudent.status === "approved") {
+        // Returning approved student! Trigger instant re-entry bypass (open door + renew token)
+        const newBypassToken = crypto.randomBytes(24).toString("hex");
+        
+        // Open the door lock via ESP32 integration
+        const esp32Result = await openDoor(existingStudent.student_id);
+
+        if (esp32Result.success) {
+          await pool.query(
+            "UPDATE students SET bypass_token = ?, last_door_open = NOW() WHERE id = ?",
+            [newBypassToken, existingStudent.id]
+          );
+        } else {
+          await pool.query(
+            "UPDATE students SET bypass_token = ? WHERE id = ?",
+            [newBypassToken, existingStudent.id]
+          );
+        }
+
+        // Log the re-entry action inside access_logs
+        await pool.query(
+          `INSERT INTO access_logs (student_id, action, notes, esp32_response) VALUES (?, ?, ?, ?)`,
+          [
+            existingStudent.id, 
+            esp32Result.success ? "door_opened" : "door_failed", 
+            "ผ่านเข้าห้องเรียนสำเร็จด้วยระบบสิทธิ์อนุมัติเดิม (Re-entry)",
+            esp32Result.message
+          ]
+        );
+
+        // Send non-blocking Discord notification
+        sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
+          studentName: `${existingStudent.title}${existingStudent.first_name} ${existingStudent.last_name}`,
+          studentId: existingStudent.student_id,
+          adminName: "ระบบสิทธิ์เดิม (Re-entry)",
+          esp32Response: esp32Result.message,
+        }).catch(() => {});
+
+        return NextResponse.json({
+          success: true,
+          reEntry: true,
+          message: "ยินดีต้อนรับกลับ! ระบบตรวจพบสิทธิ์อนุมัติของท่าน จึงได้ทำการปลดล็อกประตูให้ทันที",
+          id: existingStudent.id,
+          title: existingStudent.title,
+          first_name: existingStudent.first_name,
+          last_name: existingStudent.last_name,
+          student_id: existingStudent.student_id,
+          bypass_token: newBypassToken,
+          status: "approved"
+        }, { status: 200 });
+      }
+
+      if (existingStudent.status === "rejected") {
+        // Returning rejected student! Allow them to re-register/update their details and reset to pending
+        const newBypassToken = crypto.randomBytes(24).toString("hex");
+        
+        await pool.query(
+          `UPDATE students 
+           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'pending', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NULL, registered_at = NOW() 
+           WHERE id = ?`,
+          [title, first_name.trim(), last_name.trim(), year, faculty, branch, newBypassToken, existingStudent.id]
+        );
+
+        // Log the re-registration action
+        await pool.query(
+          "INSERT INTO access_logs (student_id, action, notes) VALUES (?, 'registered', ?)",
+          [existingStudent.id, `แก้ไขข้อมูลและยื่นลงทะเบียนเข้าห้องอีกครั้งสำเร็จ (จาก IP: ${ip})`]
+        );
+
+        // Send non-blocking Discord notification
+        sendDiscordNotification("student_registered", {
+          studentName: `${title} ${first_name.trim()} ${last_name.trim()}`,
+          studentId: student_id.trim(),
+          faculty,
+          branch,
+          year,
+        }).catch(() => {});
+
+        return NextResponse.json({
+          success: true,
+          message: "ระบบได้ทำการบันทึกและส่งคำขอลงทะเบียนของท่านใหม่อีกครั้งแล้ว",
+          id: existingStudent.id,
+          bypass_token: newBypassToken,
+          status: "pending"
+        }, { status: 200 });
+      }
+
+      // If status is pending, block double submission
+      return NextResponse.json({ error: "ข้อมูลของท่านอยู่ในขั้นตอนรอเจ้าหน้าที่ตรวจสอบสิทธิ์ กรุณาอย่าส่งคำขอซ้ำ" }, { status: 409 });
+    }
 
     // Generate secure device bypass token
     const bypassToken = crypto.randomBytes(24).toString("hex");

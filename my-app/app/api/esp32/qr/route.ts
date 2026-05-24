@@ -1,50 +1,7 @@
 // app/api/esp32/qr/route.ts — Return QR code PNG for ESP32 display
-// QR code contains a rotating token that changes every 5 minutes
+// Uses database-backed dynamic one-time tokens (no legacy HMAC rotation)
 import { NextRequest, NextResponse } from "next/server";
-import { generateQRCodeBuffer } from "@/lib/qr";
-import crypto from "crypto";
-
-// Secret key for generating time-based tokens
-const QR_SECRET = process.env.JWT_SECRET || "rmutp-qr-secret-2026";
-
-/**
- * Generate a time-based token that rotates every 5 minutes.
- * Uses HMAC-SHA256 with the current 5-minute window index.
- */
-function generateRotatingToken(): { token: string; expiresAt: number } {
-  const windowMs = 5 * 60 * 1000; // 5 minutes
-  const currentWindow = Math.floor(Date.now() / windowMs);
-  const expiresAt = (currentWindow + 1) * windowMs; // End of current window
-
-  const hmac = crypto.createHmac("sha256", QR_SECRET);
-  hmac.update(`rmutp_qr_${currentWindow}`);
-  const token = hmac.digest("hex").substring(0, 16); // Short 16-char token
-
-  return { token, expiresAt };
-}
-
-/**
- * Validate a QR token — accepts current window AND previous window
- * (to handle edge cases where someone scans right at the boundary)
- */
-export function validateQRToken(token: string): boolean {
-  const windowMs = 5 * 60 * 1000;
-  const currentWindow = Math.floor(Date.now() / windowMs);
-
-  // Check current window
-  const hmacCurrent = crypto.createHmac("sha256", QR_SECRET);
-  hmacCurrent.update(`rmutp_qr_${currentWindow}`);
-  const currentToken = hmacCurrent.digest("hex").substring(0, 16);
-  if (token === currentToken) return true;
-
-  // Check previous window (grace period)
-  const hmacPrev = crypto.createHmac("sha256", QR_SECRET);
-  hmacPrev.update(`rmutp_qr_${currentWindow - 1}`);
-  const prevToken = hmacPrev.digest("hex").substring(0, 16);
-  if (token === prevToken) return true;
-
-  return false;
-}
+import { generateQRCodeBuffer, getOrCreateActiveQRToken } from "@/lib/qr";
 
 /**
  * Detect the network IP address for the QR code URL.
@@ -73,19 +30,12 @@ function getNetworkUrl(req: NextRequest): string {
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const { token } = generateRotatingToken();
+    // Always use the database-backed dynamic token (no query param override)
+    const token = await getOrCreateActiveQRToken();
 
-    // Allow custom URL override via query param, otherwise build dynamic URL
-    const customUrl = searchParams.get("url");
-    let target: string;
-
-    if (customUrl) {
-      target = customUrl;
-    } else {
-      const baseUrl = getNetworkUrl(req);
-      target = `${baseUrl}/?scan=${token}`;
-    }
+    // Build the QR target URL (no custom URL override — prevents SSRF/phishing)
+    const baseUrl = getNetworkUrl(req);
+    const target = `${baseUrl}/?scan=${token}`;
 
     const buffer = await generateQRCodeBuffer(target);
 
@@ -95,8 +45,8 @@ export async function GET(req: NextRequest) {
         "Content-Type": "image/png",
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
         "Access-Control-Allow-Origin": "*",
-        "X-QR-Token": token,
-        "X-QR-URL": target,
+        // SECURITY: Do NOT expose token or URL in headers.
+        // ESP32 can poll /api/esp32/display for the active_token if needed.
       },
     });
   } catch (error) {

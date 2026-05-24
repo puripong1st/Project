@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["192.168.2.49"],
   serverExternalPackages: ["mysql2", "pdfkit", "bcryptjs", "jsonwebtoken", "qrcode"],
   turbopack: {
     // CRITICAL: A stray package-lock.json at C:\Users\aunkh\ causes Turbopack

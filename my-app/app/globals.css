@@ -1,8 +1,6 @@
 /* app/globals.css — RMUTP Purple & Faculty of Education Pink Design System */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-@import "tailwindcss";
-
 :root {
   --rmutp-purple: #7C3AED;       /* University Purple */
   --rmutp-purple-dark: #5B21B6;
@@ -523,4 +521,35 @@ body {
   }
 }
 
+/* ── Glass Card (ESP32 Preview) ── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+}
 
+/* ── Blink Animation ── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.animate-blink {
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+/* ── Additional Fade-in Delay (for ESP32 page) ── */
+.animate-fade-in-delay {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+/* ── Blob Drift (for QR blocked screen) ── */
+@keyframes blob-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -20px) scale(1.05); }
+  100% { transform: translate(-20px, 15px) scale(0.95); }
+}

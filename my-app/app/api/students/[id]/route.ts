@@ -17,6 +17,9 @@ export async function GET(
 ) {
   try {
     await ensureInit();
+    const admin = await getAdminFromCookie();
+    if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id } = await params;
     const pool = getPool();
     const [rows] = await pool.query(

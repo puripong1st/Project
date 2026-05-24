@@ -89,6 +89,17 @@ export async function initDatabase(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // Create dynamic_qr_tokens table (security-hardened schema)
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS dynamic_qr_tokens (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        token VARCHAR(64) UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT NOW(),
+        is_consumed BOOLEAN DEFAULT FALSE,
+        INDEX idx_active_token (is_consumed, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // Seed default admin if not exists
     const [existingAdmins] = await conn.query(
       "SELECT id FROM admin_users WHERE username = ?",

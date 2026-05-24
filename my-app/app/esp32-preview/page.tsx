@@ -10,6 +10,7 @@ interface DisplayState {
   last_approved: { name: string; student_id: string; time: string } | null;
   server_time: string;
   status: string;
+  active_token?: string;
 }
 
 interface ESP32Status {
@@ -84,10 +85,11 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
   }, []);
 
   useEffect(() => {
-    // Fetch QR code for display preview — refreshes every 5 minutes (token rotation)
+    // Fetch QR code for display preview
     const fetchQR = () => {
       const cacheBuster = Date.now();
-      fetch(`/api/esp32/qr?_t=${cacheBuster}`)
+      const tokenQuery = displayData?.active_token ? `&token=${displayData.active_token}` : "";
+      fetch(`/api/esp32/qr?_t=${cacheBuster}${tokenQuery}`)
         .then(r => r.blob())
         .then(blob => {
           // Revoke old URL to prevent memory leak
@@ -97,11 +99,11 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
         .catch(() => {});
     };
     fetchQR();
-    // Refresh QR every 5 minutes to match token rotation
-    const qrInterval = setInterval(fetchQR, 5 * 60 * 1000);
+    // Refresh QR every 10 seconds to keep synced
+    const qrInterval = setInterval(fetchQR, 10000);
     return () => clearInterval(qrInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [displayData?.active_token]);
 
   // IDLE screen — show QR
   if (mode === "idle") {

@@ -1,6 +1,7 @@
 // app/api/esp32/display/route.ts — JSON display state for ESP32 polling
 import { NextRequest, NextResponse } from "next/server";
 import { initDatabase, getPool } from "@/lib/db";
+import { getOrCreateActiveQRToken } from "@/lib/qr";
 
 let initialized = false;
 async function ensureInit() {
@@ -31,12 +32,15 @@ export async function GET() {
 
     const lastStudent = (lastApproved as { name: string; student_id: string; approved_at: Date }[])[0];
 
+    const activeToken = await getOrCreateActiveQRToken();
+
     return NextResponse.json(
       {
         // Display info for ESP32
         title: "RMUTP Door Access",
         subtitle: "มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร",
-        qr_url: `${appUrl}/api/esp32/qr?_t=${Date.now()}`,
+        active_token: activeToken,
+        qr_url: `${appUrl}/api/esp32/qr?token=${activeToken}`,
         register_url: `${appUrl}/`,
         pending_count: pendingCount,
         last_approved: lastStudent

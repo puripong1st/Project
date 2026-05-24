@@ -97,7 +97,7 @@ const WifiOffIcon = () => (
 );
 
 // ─── QR Access Blocked Screen ─────────────────────────
-function QRAccessBlockedScreen() {
+function QRAccessBlockedScreen({ message }: { message?: string }) {
   return (
     <div style={{
       minHeight: "100vh",
@@ -184,8 +184,14 @@ function QRAccessBlockedScreen() {
           ไม่สามารถเข้าใช้งานได้
         </h1>
         <p style={{ color: "rgba(255,255,255,0.55)", marginBottom: 36, fontSize: 14, lineHeight: 1.7 }}>
-          หน้าลงทะเบียนนี้สามารถเข้าได้ผ่าน <strong style={{ color: "rgba(167,139,250,0.9)" }}>การสแกน QR Code</strong> เท่านั้น<br />
-          กรุณาสแกน QR Code ที่ติดตั้งอยู่หน้าห้องปฏิบัติการ
+          {message ? (
+            <span style={{ color: "#FCA5A5", fontWeight: 600, display: "block", fontSize: 15 }}>{message}</span>
+          ) : (
+            <>
+              หน้าลงทะเบียนนี้สามารถเข้าได้ผ่าน <strong style={{ color: "rgba(167,139,250,0.9)" }}>การสแกน QR Code</strong> เท่านั้น<br />
+              กรุณาสแกน QR Code ที่ติดตั้งอยู่หน้าห้องปฏิบัติการ
+            </>
+          )}
         </p>
 
         {/* How-to steps */}
@@ -246,8 +252,42 @@ function QRAccessBlockedScreen() {
 function RegistrationPageInner() {
   // ─── QR Access Authorization ─────────────────────────
   const searchParams = useSearchParams();
-  const [qrAuthorized, setQrAuthorized] = useState<boolean>(true); // เสมอ เพื่อให้เข้าหน้าเว็บได้โดยไม่ต้องสแกน QR Code
-  const authChecked = useRef(true);
+  const [qrAuthorized, setQrAuthorized] = useState<boolean | null>(null); // null = checking, true = authorized, false = blocked
+  const [blockedMessage, setBlockedMessage] = useState<string>("");
+  const authChecked = useRef(false);
+
+  useEffect(() => {
+    const scanToken = searchParams.get("scan");
+    if (!scanToken) {
+      setQrAuthorized(true);
+      return;
+    }
+
+    if (authChecked.current) return;
+    authChecked.current = true;
+
+    const verifyToken = async () => {
+      try {
+        const res = await fetch("/api/esp32/qr/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: scanToken }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setQrAuthorized(true);
+        } else {
+          setQrAuthorized(false);
+          setBlockedMessage(data.error || "รหัส QR Code นี้หมดอายุ หรือถูกใช้งานโดยผู้อื่นไปแล้ว");
+        }
+      } catch {
+        setQrAuthorized(false);
+        setBlockedMessage("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์เพื่อตรวจสอบสิทธิ์สแกน");
+      }
+    };
+
+    verifyToken();
+  }, [searchParams]);
 
   const [form, setForm] = useState({
     title: "นาย",
@@ -527,9 +567,16 @@ function RegistrationPageInner() {
   }
 
   // ─── QR Lockdown Gate ───────────────────────────────────────
-  // While checking authorization, show nothing (prevents FOUC)
-  if (qrAuthorized === null) return null;
-  if (qrAuthorized === false) return <QRAccessBlockedScreen />;
+  // While checking authorization, show checking screen or loader
+  if (qrAuthorized === null) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0f0c29", display: "flex", alignItems: "center", justifyContent: "center", color: "#FFF", flexDirection: "column", gap: 16 }}>
+        <span className="animate-spin" style={{ display: "inline-block", width: 36, height: 36, border: "3px solid rgba(255,255,255,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+        <span style={{ fontSize: 14, fontWeight: 600 }}>กำลังตรวจสอบความถูกต้องของรหัสสแกน QR Code...</span>
+      </div>
+    );
+  }
+  if (qrAuthorized === false) return <QRAccessBlockedScreen message={blockedMessage} />;
 
   // ─── Bypass Loading / Verification Screen ──────────────────
   if (bypassState === "checking") {
@@ -699,7 +746,7 @@ function RegistrationPageInner() {
             <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: rejectionReason ? "1px solid var(--border)" : "none" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13.5 }}>สถานะสิทธิ์</span>
               <span className={`badge ${currentStatus === "approved" ? "badge-approved" : currentStatus === "rejected" ? "badge-rejected" : "badge-pending"}`}>
-                <ClockIcon className="w-3.5 h-3.5" />
+                <ClockIcon />
                 {currentStatus === "pending" && "รอเจ้าหน้าที่อนุมัติ"}
                 {currentStatus === "approved" && "อนุมัติสำเร็จ (ประตูเปิดแล้ว)"}
                 {currentStatus === "rejected" && "ถูกปฏิเสธการเข้าใช้"}
@@ -792,7 +839,7 @@ function RegistrationPageInner() {
             สิทธิ์การผ่านประตูจะถูกตรวจสอบโดยอาจารย์หรือเจ้าหน้าที่ดูแลระบบ
           </p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 600, marginTop: 12 }}>
-            <ClockIcon className="w-3.5 h-3.5" />
+            <ClockIcon />
             <span>{currentTime}</span>
           </div>
         </div>
