@@ -17,13 +17,17 @@ export function getPool(): mysql.Pool {
       connectionLimit: 10,
       queueLimit: 0,
       timezone: "+07:00",
-      ...(isSSL ? { ssl: {} } : {}),
+      // ปรับปรุงให้ใส่ rejectUnauthorized: false เพื่อรองรับใบรับรองภายนอกของ Aiven
+      ...(isSSL ? { ssl: { rejectUnauthorized: false } } : {}),
     });
   }
   return pool;
 }
 
 export async function initDatabase(): Promise<void> {
+  // เช็กเงื่อนไข SSL สำหรับช่วงเริ่มต้นสร้างฐานข้อมูล (ป้องกันการโดน Aiven ปฏิเสธการเชื่อมต่อ)
+  const isSSL = process.env.MYSQL_SSL === 'true' || (process.env.MYSQL_HOST && process.env.MYSQL_HOST.endsWith('.aivencloud.com'));
+
   // First connect without database to create it if not exists
   const initPool = mysql.createPool({
     host: process.env.MYSQL_HOST || "localhost",
@@ -32,6 +36,8 @@ export async function initDatabase(): Promise<void> {
     password: process.env.MYSQL_PASSWORD || "admin",
     waitForConnections: true,
     connectionLimit: 2,
+    // เพิ่มการตั้งค่า SSL เข้าไปในส่วนเชื่อมต่อเริ่มต้นสำเร็จ
+    ...(isSSL ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   const conn = await initPool.getConnection();
@@ -146,7 +152,6 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
-
     // Seed default admin if not exists
     const [existingAdmins] = await conn.query(
       "SELECT id FROM admin_users WHERE username = ?",
@@ -168,9 +173,8 @@ export async function initDatabase(): Promise<void> {
       );
       console.log("[DB] Migration: added title column to students");
     } catch (e: unknown) {
-      // Ignore if column already exists (error code 1060)
       if (!(e instanceof Error) || !e.message.includes("Duplicate column name")) {
-        // column already exists — ok
+        // บล็อกกรณีมีคอลัมน์อยู่แล้ว — ปล่อยผ่าน
       }
     }
 
@@ -181,7 +185,7 @@ export async function initDatabase(): Promise<void> {
       );
       console.log("[DB] Migration: added bypass_token column to students");
     } catch {
-      // Ignore if column already exists
+      // ปล่อยผ่านถ้ามีคอลัมน์แล้ว
     }
 
     // ─── Migration: ขยาย student_id ให้รับ format XXXXXXXXXXXX-X ─
@@ -189,7 +193,7 @@ export async function initDatabase(): Promise<void> {
       await conn.query(
         `ALTER TABLE students MODIFY COLUMN student_id VARCHAR(30) UNIQUE NOT NULL`
       );
-    } catch { /* already correct length */ }
+    } catch { /* ความยาวถูกต้องแล้ว */ }
 
     // ─── Migration: เพิ่ม column room_code ใน dynamic_qr_tokens ถ้ายังไม่มี ─────────
     try {
@@ -197,15 +201,15 @@ export async function initDatabase(): Promise<void> {
         `ALTER TABLE dynamic_qr_tokens ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`
       );
       console.log("[DB] Migration: added room_code column to dynamic_qr_tokens");
-    } catch { /* already exists */ }
-    
+    } catch { /* มีคอลัมน์แล้ว */ }
+
     // ─── Migration: เพิ่ม column requested_room ใน students ถ้ายังไม่มี ─────────
     try {
       await conn.query(
         `ALTER TABLE students ADD COLUMN requested_room VARCHAR(50) NOT NULL DEFAULT 'default'`
       );
       console.log("[DB] Migration: added requested_room column to students");
-    } catch { /* already exists */ }
+    } catch { /* มีคอลัมน์แล้ว */ }
 
     // ─── Migration: เพิ่ม column room_code ใน access_logs ถ้ายังไม่มี ─────────
     try {
@@ -213,7 +217,7 @@ export async function initDatabase(): Promise<void> {
         `ALTER TABLE access_logs ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`
       );
       console.log("[DB] Migration: added room_code column to access_logs");
-    } catch { /* already exists */ }
+    } catch { /* มีคอลัมน์แล้ว */ }
 
     console.log("[DB] Database initialized successfully");
 
@@ -288,4 +292,3 @@ export async function updateSystemSetting(key: string, value: string): Promise<v
     [key, value, value]
   );
 }
-
