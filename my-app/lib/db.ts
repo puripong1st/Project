@@ -68,6 +68,7 @@ export async function initDatabase(): Promise<void> {
         approved_at DATETIME,
         rejection_reason VARCHAR(500),
         ip_address VARCHAR(50),
+        requested_room VARCHAR(50) NOT NULL DEFAULT 'default',
         registered_at DATETIME DEFAULT NOW(),
         last_door_open DATETIME,
         FOREIGN KEY (approved_by) REFERENCES admin_users(id) ON DELETE SET NULL
@@ -94,9 +95,10 @@ export async function initDatabase(): Promise<void> {
       CREATE TABLE IF NOT EXISTS dynamic_qr_tokens (
         id INT PRIMARY KEY AUTO_INCREMENT,
         token VARCHAR(64) UNIQUE NOT NULL,
+        room_code VARCHAR(50) NOT NULL DEFAULT 'default',
         created_at DATETIME DEFAULT NOW(),
         is_consumed BOOLEAN DEFAULT FALSE,
-        INDEX idx_active_token (is_consumed, created_at)
+        INDEX idx_active_token (is_consumed, room_code, created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
@@ -179,6 +181,22 @@ export async function initDatabase(): Promise<void> {
         `ALTER TABLE students MODIFY COLUMN student_id VARCHAR(30) UNIQUE NOT NULL`
       );
     } catch { /* already correct length */ }
+
+    // ─── Migration: เพิ่ม column room_code ใน dynamic_qr_tokens ถ้ายังไม่มี ─────────
+    try {
+      await conn.query(
+        `ALTER TABLE dynamic_qr_tokens ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`
+      );
+      console.log("[DB] Migration: added room_code column to dynamic_qr_tokens");
+    } catch { /* already exists */ }
+    
+    // ─── Migration: เพิ่ม column requested_room ใน students ถ้ายังไม่มี ─────────
+    try {
+      await conn.query(
+        `ALTER TABLE students ADD COLUMN requested_room VARCHAR(50) NOT NULL DEFAULT 'default'`
+      );
+      console.log("[DB] Migration: added requested_room column to students");
+    } catch { /* already exists */ }
 
     console.log("[DB] Database initialized successfully");
 

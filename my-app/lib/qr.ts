@@ -62,32 +62,34 @@ function generateSecureToken(): string {
 }
 
 /**
- * Fetch the current unconsumed + unexpired token, or create a new one if none exists.
+ * Fetch the current unconsumed + unexpired token, or create a new one if none exists for a specific room.
  * Expired tokens are automatically invalidated.
  */
-export async function getOrCreateActiveQRToken(): Promise<string> {
+export async function getOrCreateActiveQRToken(roomCode: string = "default"): Promise<string> {
   const pool = getPool();
 
-  // Expire stale unconsumed tokens first (garbage collection)
+  const sanitizedRoom = (roomCode || "default").trim();
+
+  // Expire stale unconsumed tokens first for this room (garbage collection)
   await pool.query(
-    "UPDATE dynamic_qr_tokens SET is_consumed = TRUE WHERE is_consumed = FALSE AND created_at < NOW() - INTERVAL ? SECOND",
-    [TOKEN_TTL_SECONDS]
+    "UPDATE dynamic_qr_tokens SET is_consumed = TRUE WHERE is_consumed = FALSE AND room_code = ? AND created_at < NOW() - INTERVAL ? SECOND",
+    [sanitizedRoom, TOKEN_TTL_SECONDS]
   );
 
   const [rows] = await pool.query(
-    "SELECT token FROM dynamic_qr_tokens WHERE is_consumed = FALSE AND created_at >= NOW() - INTERVAL ? SECOND ORDER BY created_at DESC LIMIT 1",
-    [TOKEN_TTL_SECONDS]
+    "SELECT token FROM dynamic_qr_tokens WHERE is_consumed = FALSE AND room_code = ? AND created_at >= NOW() - INTERVAL ? SECOND ORDER BY created_at DESC LIMIT 1",
+    [sanitizedRoom, TOKEN_TTL_SECONDS]
   );
   const active = rows as { token: string }[];
   if (active.length > 0) {
     return active[0].token;
   }
 
-  // Generate new high-entropy token
+  // Generate new high-entropy token for this specific room
   const newToken = generateSecureToken();
   await pool.query(
-    "INSERT INTO dynamic_qr_tokens (token) VALUES (?)",
-    [newToken]
+    "INSERT INTO dynamic_qr_tokens (token, room_code) VALUES (?, ?)",
+    [newToken, sanitizedRoom]
   );
   return newToken;
 }
@@ -110,6 +112,15 @@ export async function consumeQRToken(token: string): Promise<boolean> {
 
   const pool = getPool();
 
+  // Find the token to know which room it belongs to
+  const [rows] = await pool.query(
+    "SELECT room_code FROM dynamic_qr_tokens WHERE token = ? AND is_consumed = FALSE AND created_at >= NOW() - INTERVAL ? SECOND LIMIT 1",
+    [trimmed, TOKEN_TTL_SECONDS]
+  );
+  const active = rows as { room_code: string }[];
+  if (active.length === 0) return false;
+  const roomCode = active[0].room_code;
+
   // Atomic single-statement consume: only one concurrent caller can succeed.
   // The WHERE clause checks is_consumed=FALSE AND expiry simultaneously.
   // affectedRows=1 means THIS caller won the race, affectedRows=0 means someone else did.
@@ -127,11 +138,11 @@ export async function consumeQRToken(token: string): Promise<boolean> {
     return false; // Token already consumed, expired, or invalid
   }
 
-  // Instantly generate a new active token for the display
+  // Instantly generate a new active token for the exact same room
   const newToken = generateSecureToken();
   await pool.query(
-    "INSERT INTO dynamic_qr_tokens (token) VALUES (?)",
-    [newToken]
+    "INSERT INTO dynamic_qr_tokens (token, room_code) VALUES (?, ?)",
+    [newToken, roomCode]
   );
 
   return true;
