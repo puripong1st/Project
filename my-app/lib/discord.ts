@@ -48,18 +48,35 @@ export async function sendDiscordNotification(
   
   try {
     const settings = await getSystemSettings();
-    logWebhookUrl = settings.discord_webhook_logs || "";
+    const sanitizedRoom = data.room ? data.room.trim() : "";
     
-    // ─── [IoT Cloud Room-Specific Webhook Routing] ───
-    // ค้นหาว่ามี Discord Webhook เฉพาะของห้องปฏิบัติการเป้าหมายหรือไม่
-    const roomKey = data.room ? `room_webhook_${data.room.trim()}` : "";
-    const roomWebhook = roomKey ? settings[roomKey] : "";
+    // ─── [IoT Cloud Room-Specific 3-Channel Webhook Routing] ───
+    // ค้นหาและแยกแยะช่องทาง Webhook ของห้องปฏิบัติการเป้าหมายตามประเภทกิจกรรม
+    if (sanitizedRoom) {
+      const roomRegWebhook = settings[`room_webhook_register_${sanitizedRoom}`] || "";
+      const roomApproveWebhook = settings[`room_webhook_approve_${sanitizedRoom}`] || "";
+      const roomLogsWebhook = settings[`room_webhook_logs_${sanitizedRoom}`] || "";
 
-    if (roomWebhook) {
-      targetWebhookUrl = roomWebhook;
-      console.log(`[Discord Cloud] Routing notification to room-specific webhook for: ${data.room}`);
+      // 1. กำหนด Webhook ประจำกิจกรรมระบบ
+      if (eventType === "student_registered") {
+        targetWebhookUrl = roomRegWebhook || settings.discord_webhook_register || "";
+      } else if (
+        eventType === "student_approved" || 
+        eventType === "student_rejected" || 
+        eventType === "door_opened" || 
+        eventType === "door_failed"
+      ) {
+        targetWebhookUrl = roomApproveWebhook || settings.discord_webhook_approve || "";
+      } else if (eventType === "esp32_offline") {
+        targetWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || "";
+      }
+
+      // 2. กำหนด Webhook ประจำ Log จราจร/ความปลอดภัยอย่างละเอียด
+      logWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || "";
+      
+      console.log(`[Discord Cloud] Routed room '${sanitizedRoom}' event '${eventType}' to: targetUrl=${targetWebhookUrl ? 'Configured' : 'Global Fallback'}, logUrl=${logWebhookUrl ? 'Configured' : 'Global Fallback'}`);
     } else {
-      // หากไม่มี Webhook เฉพาะห้อง ให้ใช้ Webhook ของประเภทกิจกรรมส่วนกลาง
+      // หากไม่มีข้อมูลห้องเรียนเป้าหมาย ให้ Fallback ไปยังกิจกรรมส่วนกลาง
       if (eventType === "student_registered") {
         targetWebhookUrl = settings.discord_webhook_register || "";
       } else if (
@@ -70,6 +87,7 @@ export async function sendDiscordNotification(
       ) {
         targetWebhookUrl = settings.discord_webhook_approve || "";
       }
+      logWebhookUrl = settings.discord_webhook_logs || "";
     }
   } catch (error) {
     console.error("[Discord] Failed to fetch settings from DB, using env fallback", error);

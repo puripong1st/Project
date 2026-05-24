@@ -42,8 +42,8 @@ export async function POST(
     );
 
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, notes) VALUES (?, 'rejected', ?, ?)`,
-      [studentId, admin.id, `เหตุผล: ${reason || "ไม่ผ่านการตรวจสอบ"} | โดย: ${admin.full_name}`]
+      `INSERT INTO access_logs (student_id, action, performed_by, notes, room_code) VALUES (?, 'rejected', ?, ?, ?)`,
+      [studentId, admin.id, `เหตุผล: ${reason || "ไม่ผ่านการตรวจสอบ"} | โดย: ${admin.full_name}`, student.requested_room || 'default']
     );
 
     sendDiscordNotification("student_rejected", {
@@ -51,6 +51,7 @@ export async function POST(
       studentId: student.student_id,
       adminName: admin.full_name,
       reason: reason || "ไม่ผ่านการตรวจสอบ",
+      room: student.requested_room,
     }).catch(() => {});
 
     return NextResponse.json({ success: true, message: "ปฏิเสธคำขอสำเร็จ" });

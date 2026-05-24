@@ -38,15 +38,15 @@ export async function POST(
       return NextResponse.json({ error: "นักศึกษานี้ยังไม่ได้รับการอนุมัติ" }, { status: 400 });
     }
 
-    const esp32Result = await openDoor(student.student_id);
+    const esp32Result = await openDoor(student.student_id, student.requested_room);
 
     if (esp32Result.success) {
       await pool.query("UPDATE students SET last_door_open = NOW() WHERE id = ?", [studentId]);
     }
 
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes) VALUES (?, ?, ?, ?, ?)`,
-      [studentId, esp32Result.success ? "door_opened" : "door_failed", admin.id, esp32Result.message, `สั่งเปิดประตูโดย: ${admin.full_name}`]
+      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code) VALUES (?, ?, ?, ?, ?, ?)`,
+      [studentId, esp32Result.success ? "door_opened" : "door_failed", admin.id, esp32Result.message, `สั่งเปิดประตูโดย: ${admin.full_name}`, student.requested_room || 'default']
     );
 
     sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
@@ -54,6 +54,7 @@ export async function POST(
       studentId: student.student_id,
       adminName: admin.full_name,
       esp32Response: esp32Result.message,
+      room: student.requested_room,
     }).catch(() => {});
 
     return NextResponse.json({ success: esp32Result.success, message: esp32Result.message, esp32: esp32Result });

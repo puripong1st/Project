@@ -21,23 +21,31 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const rawLimit = parseInt(searchParams.get("limit") || "100");
     const limit = isNaN(rawLimit) ? 100 : Math.min(Math.max(rawLimit, 1), 500);
+    const room = searchParams.get("room") || "";
 
     const pool = getPool();
-    const [rows] = await pool.query(
-      `SELECT al.*, 
+    let query = `SELECT al.*, 
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.student_id as student_code,
         s.requested_room as requested_room,
         a.full_name as admin_name
        FROM access_logs al
        LEFT JOIN students s ON al.student_id = s.id
-       LEFT JOIN admin_users a ON al.performed_by = a.id
-       ORDER BY al.timestamp DESC
-       LIMIT ?`,
-      [limit]
-    );
+       LEFT JOIN admin_users a ON al.performed_by = a.id`;
+    
+    const params: any[] = [];
+    if (room && room !== "all") {
+      query += ` WHERE al.room_code = ?`;
+      params.push(room);
+    }
+    
+    query += ` ORDER BY al.timestamp DESC LIMIT ?`;
+    params.push(limit);
+
+    const [rows] = await pool.query(query, params);
     return NextResponse.json({ logs: rows });
-  } catch {
+  } catch (error) {
+    console.error("[Logs API Error]", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }

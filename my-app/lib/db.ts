@@ -6,6 +6,7 @@ let pool: mysql.Pool | null = null;
 
 export function getPool(): mysql.Pool {
   if (!pool) {
+    const isSSL = process.env.MYSQL_SSL === 'true' || (process.env.MYSQL_HOST && process.env.MYSQL_HOST.endsWith('.aivencloud.com'));
     pool = mysql.createPool({
       host: process.env.MYSQL_HOST || "localhost",
       port: parseInt(process.env.MYSQL_PORT || "3306"),
@@ -16,6 +17,7 @@ export function getPool(): mysql.Pool {
       connectionLimit: 10,
       queueLimit: 0,
       timezone: "+07:00",
+      ...(isSSL ? { ssl: {} } : {}),
     });
   }
   return pool;
@@ -85,6 +87,7 @@ export async function initDatabase(): Promise<void> {
         timestamp DATETIME DEFAULT NOW(),
         esp32_response VARCHAR(500),
         notes TEXT,
+        room_code VARCHAR(50) NOT NULL DEFAULT 'default',
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL,
         FOREIGN KEY (performed_by) REFERENCES admin_users(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -125,6 +128,9 @@ export async function initDatabase(): Promise<void> {
       { key: "configured_rooms", value: "CE-401,CE-402" },
       { key: "room_ip_CE-401", value: "192.168.1.100" },
       { key: "room_ip_CE-402", value: "192.168.1.101" },
+      { key: "room_webhook_register_CE-401", value: "https://discord.com/api/webhooks/1507982864132870266/4x9kmjb2a6MyNN1PU-DTXuTDP-yKRXS-2CrB4MH6kgm0YCw3gkQpzNIajWlYT6Oe5mb0" },
+      { key: "room_webhook_approve_CE-401", value: "https://discord.com/api/webhooks/1507982955207987313/ir0bWNmwvS4sAMtRBrZ8RzKQQN2y69HiFi9HHKYucnvUpJ4c4ZCIkhgWvLu63j6Vs-_4" },
+      { key: "room_webhook_logs_CE-401", value: "https://discord.com/api/webhooks/1507983021817725062/sXAZeB6hmEAR-awMiU484AFKO9IKOPZFkXWgfPiHUefpnCkUuNZDwHXrF7-tsAIILWCr" },
     ];
 
     for (const setting of defaultSettings) {
@@ -201,6 +207,14 @@ export async function initDatabase(): Promise<void> {
       console.log("[DB] Migration: added requested_room column to students");
     } catch { /* already exists */ }
 
+    // ─── Migration: เพิ่ม column room_code ใน access_logs ถ้ายังไม่มี ─────────
+    try {
+      await conn.query(
+        `ALTER TABLE access_logs ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`
+      );
+      console.log("[DB] Migration: added room_code column to access_logs");
+    } catch { /* already exists */ }
+
     console.log("[DB] Database initialized successfully");
 
   } finally {
@@ -250,9 +264,11 @@ export interface AccessLogRow {
   timestamp: Date;
   esp32_response: string | null;
   notes: string | null;
+  room_code: string;
   student_name?: string;
   student_code?: string;
   admin_name?: string;
+  requested_room?: string;
 }
 
 export async function getSystemSettings(): Promise<Record<string, string>> {

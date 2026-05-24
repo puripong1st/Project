@@ -53,8 +53,8 @@ export async function generateQRCodeSVG(text: string): Promise<string> {
 import { getPool } from "./db";
 import crypto from "crypto";
 
-/** Token lifetime in seconds (10 minutes) */
-const TOKEN_TTL_SECONDS = 600;
+/** Token lifetime in seconds (1 minute) - ป้องกันการแชร์ลิงก์ข้ามเน็ตและการสแกนจากที่ไกลๆ */
+const TOKEN_TTL_SECONDS = 60;
 
 /** Minimum entropy: 32 hex chars = 128 bits (brute-force resistant) */
 function generateSecureToken(): string {

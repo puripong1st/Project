@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     // บันทึก log ในระบบ
     const pool = getPool();
     await pool.query(
-      "INSERT INTO access_logs (action, performed_by, notes) VALUES ('approved', ?, ?)",
+      "INSERT INTO access_logs (action, performed_by, notes, room_code) VALUES ('approved', ?, ?, 'system')",
       [admin.id, `อัปเดตการตั้งค่าระบบและการแจ้งเตือน Discord Webhook โดยแอดมิน: ${admin.full_name}`]
     );
 

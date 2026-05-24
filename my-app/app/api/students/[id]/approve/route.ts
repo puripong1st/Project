@@ -56,14 +56,15 @@ export async function POST(
 
     // Log access
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         studentId,
         esp32Result.success ? "door_opened" : "door_failed",
         admin.id,
         esp32Result.message,
         `อนุมัติโดย: ${admin.full_name}`,
+        student.requested_room || 'default'
       ]
     );
 
@@ -74,6 +75,7 @@ export async function POST(
       studentId: student.student_id,
       adminName: admin.full_name,
       esp32Response: esp32Result.message,
+      room: student.requested_room,
     }).catch(() => {});
 
     return NextResponse.json({

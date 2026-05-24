@@ -472,8 +472,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAddRoom = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddRoom = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     const code = newRoomCode.trim().toUpperCase();
     const ip = newRoomIp.trim();
     if (!code || !ip) {
@@ -2331,16 +2331,101 @@ void loop() {
             {/* ── System & Discord Settings Tab (Owner Only) ────────────── */}
             {tab === "settings" && isOwner && (
               <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-                
-                {/* 3-Cards Dashboard Redesign */}
+
+                {/* ═══ SECTION 1: Deployment & Connection Guide ═══ */}
+                <div className="premium-card" style={{ padding: 0, overflow: "hidden" }}>
+                  <div style={{
+                    padding: "20px 26px",
+                    background: "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.05) 100%)",
+                    borderBottom: "1px solid var(--border)",
+                    display: "flex", alignItems: "center", gap: 10
+                  }}>
+                    <span style={{ fontSize: 22 }}>🌐</span>
+                    <div>
+                      <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", margin: 0 }}>
+                        คู่มือเชื่อมต่อระบบ & Deployment (IoT Architecture Guide)
+                      </h3>
+                      <p style={{ fontSize: 11.5, color: "var(--text-secondary)", margin: "2px 0 0" }}>
+                        วิธีทดสอบจำลองระบบหลายห้องพร้อมกัน และวิธีทำให้ออนไลน์ใช้งานได้จริงข้ามเครือข่าย
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: "22px 26px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+                    {/* Step 1: Testing */}
+                    <div style={{ padding: 18, background: "rgba(59,130,246,0.04)", border: "1px solid rgba(59,130,246,0.15)", borderRadius: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #3B82F6, #6366F1)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 }}>1</span>
+                        <span style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)" }}>🧪 โหมดจำลอง (Software Simulation)</span>
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, lineHeight: 1.8, color: "var(--text-secondary)" }}>
+                        <li>ตั้งค่า <code style={{ background: "rgba(0,0,0,0.06)", padding: "1px 4px", borderRadius: 4, fontSize: 11 }}>ESP32_MOCK_MODE=true</code> ใน <code style={{ fontSize: 11 }}>.env.local</code></li>
+                        <li>ระบบจะจำลองการเชื่อมต่อบอร์ดเป็น <strong>Online</strong> และจำลองสลับปลดล็อกรีเลย์ผ่านเว็บให้ทันที</li>
+                        <li><strong>สามารถเพิ่มทดสอบได้หลายห้องพร้อมกัน</strong> โดยใส่ IP สมมติอะไรก็ได้</li>
+                        <li>ไปที่หน้าลิงก์ <strong>/esp32-preview</strong> เพื่อดูการแสดงผล QR Code และบอร์ดจำลองเสมือน</li>
+                      </ul>
+                    </div>
+
+                    {/* Step 2: Vercel */}
+                    <div style={{ padding: 18, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #10B981, #059669)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 }}>2</span>
+                        <span style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)" }}>☁️ อัพขึ้น Vercel (ทดสอบสาธารณะ)</span>
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, lineHeight: 1.8, color: "var(--text-secondary)" }}>
+                        <li>อัพโหลดโปรเจกต์ขึ้น GitHub และ Import บนเว็บ <span style={{ color: "var(--rmutp-purple)", fontWeight: 700 }}>Vercel.com</span></li>
+                        <li>ผูกฐานข้อมูล MySQL บนคลาวด์ฟรี (เช่น Aiven / Railway)</li>
+                        <li>ตั้งค่า Environment Variables ต่างๆ ใน Vercel ให้เรียบร้อย</li>
+                        <li>จะได้ URL สากล เช่น <code style={{ fontSize: 11 }}>https://your-project.vercel.app</code></li>
+                        <li><strong>ข้อดี:</strong> ทุกคนสามารถสแกนเข้าใช้งานหน้าเว็บได้จากทุกที่โดยไม่ต้องต่อวง LAN ท้องถิ่น</li>
+                      </ul>
+                    </div>
+
+                    {/* Step 3: Raspberry Pi */}
+                    <div style={{ padding: 18, background: "rgba(168,85,247,0.04)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #A855F7, #7C3AED)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 }}>3</span>
+                        <span style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)" }}>🍓 Raspberry Pi + Cloud Tunnel</span>
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, lineHeight: 1.8, color: "var(--text-secondary)" }}>
+                        <li>ติดตั้งเซิร์ฟเวอร์ Next.js และฐานข้อมูล MySQL บน Raspberry Pi</li>
+                        <li>ใช้บริการ **ngrok** หรือ **Cloudflare Tunnel** เพื่อแปลงพอร์ต `3000` ท้องถิ่นเป็น HTTPS สาธารณะ</li>
+                        <li><strong>บอร์ด ESP32 เชื่อมต่อ Wi-Fi หรือ 4G</strong> จะร้องขอดึงสเตตัสและส่งเปิดรีเลย์จากเน็ตสาธารณะข้ามโลกได้</li>
+                        <li><strong>ข้อดี:</strong> ทำงานออนไลน์ข้ามเครือข่าย โดยที่บอร์ดกับเซิร์ฟเวอร์ไม่ต้องอยู่วง LAN เดียวกัน</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* IP Explanation banner */}
+                  <div style={{ padding: "16px 26px 20px", borderTop: "1px dashed var(--border)" }}>
+                    <div style={{ padding: 16, background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12 }}>
+                      <div style={{ fontWeight: 800, fontSize: 13, color: "#D97706", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                        💡 IP Address คืออะไร? เอามาจากไหน? และการเปลี่ยนบอร์ดจริง?
+                      </div>
+                      <div style={{ fontSize: 12, lineHeight: 1.8, color: "var(--text-secondary)" }}>
+                        <p style={{ margin: "0 0 6px" }}>
+                          📡 <strong>IP ของ ESP32:</strong> คือหมายเลขไอพีเฉพาะที่บอร์ดได้รับจากเร้าเตอร์ WiFi เมื่อเชื่อมต่ออินเทอร์เน็ตสำเร็จ สามารถตรวจสอบได้จาก <strong>Serial Monitor</strong> ในโปรแกรม Arduino IDE ทันทีที่เชื่อมต่อสำเร็จ (เช่น <code style={{ fontSize: 11, background: "rgba(0,0,0,0.06)", padding: "1px 4px", borderRadius: 3 }}>192.168.1.100</code>)
+                        </p>
+                        <p style={{ margin: "0 0 6px" }}>
+                          🧪 <strong>สำหรับการทดสอบ (Simulation):</strong> หากเปิดใช้ <strong>Mock Mode</strong> อยู่ ท่านสามารถ <strong>ระบุ IP จำลองใดๆ ก็ได้</strong> (เช่น <code style={{ fontSize: 11, background: "rgba(0,0,0,0.06)", padding: "1px 4px", borderRadius: 3 }}>192.168.1.101</code>) เพื่อสร้างและจำลองใช้งานหลายๆ ห้องเรียนได้ทันทีโดยไม่จำเป็นต้องต่อบอร์ดจริง
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          🔌 <strong>เมื่อต่อบอร์ดจริง (Production):</strong> นำโค้ด C++ (.ino) จากปุ่ม <strong>⚙️ API & Webhook</strong> ไปอัปโหลดลงบอร์ดตัวจริง เมื่อบอร์ดได้ IP จริงแล้ว ให้นำ IP ตัวจริงนั้นมากรอกทับที่ช่องแก้ไขห้องเรียนด้านล่าง เพื่อยืนยันและสั่งปลดล็อกกลอนจริงผ่านวง LAN (หรือปล่อยรัน Polling ดึงผลผ่าน Public Cloud ก็ได้)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ═══ SECTION 2: General & Automation Settings Card ═══ */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24, alignItems: "start" }}>
-                  
+
                   {/* Card 1: Automated Approvals & Auto-fill */}
                   <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
                       <SettingsIcon /> ⚙️ อนุมัติ & กรอกฟอร์มอัตโนมัติ (Automated Control)
                     </h3>
-                    
+
                     <div style={{ padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
                       <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 700, fontSize: 13.5 }}>
                         <input 
@@ -2483,141 +2568,18 @@ void loop() {
                     </div>
                   </form>
 
-                  {/* Card 2: Multi-Room Control Manager */}
-                  <div className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--rmutp-purple)" }}>
-                        <rect x="3" y="3" width="7" height="9" />
-                        <rect x="14" y="3" width="7" height="5" />
-                        <rect x="14" y="12" width="7" height="9" />
-                        <rect x="3" y="16" width="7" height="5" />
-                      </svg>
-                      🏢 บอร์ดควบคุม & ห้องปฏิบัติการ (Multi-Room ESP32s)
-                    </h3>
-                    
-                    <p style={{ color: "var(--text-secondary)", fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
-                      แชร์เครื่องเซิร์ฟเวอร์เดียวเพื่อควบคุมหลายห้องเรียน แยกสเตทสแกนคำขออย่างอิสระ ระบุ IP สำหรับแต่ละบอร์ดเพื่อแยกยิงสัญญาณ
-                    </p>
-
-                    {/* Rooms List */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 220, overflowY: "auto", paddingRight: 4 }}>
-                      {roomsList.length === 0 ? (
-                        <div style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)", fontSize: 12.5, border: "1px dashed var(--border)", borderRadius: 10 }}>
-                          ไม่มีห้องเรียนที่กำหนดค่า (ระบบจะใช้ค่าเริ่มต้น)
-                        </div>
-                      ) : (
-                        roomsList.map(r => {
-                          const testRes = testResults[r.room];
-                          return (
-                            <div key={r.room} style={{ 
-                              display: "flex", 
-                              justifyContent: "space-between", 
-                              alignItems: "center", 
-                              padding: "12px 14px", 
-                              background: "var(--background-secondary)", 
-                              border: "1px solid var(--border)", 
-                              borderRadius: 12,
-                              gap: 10
-                            }}>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                <div style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span>🚪 {r.room}</span>
-                                  {testRes && (
-                                    <span style={{ 
-                                      fontSize: 10, 
-                                      padding: "1px 6px", 
-                                      borderRadius: 4,
-                                      fontWeight: 800,
-                                      background: testRes.online ? "#ECFDF5" : "#FEF2F2",
-                                      color: testRes.online ? "#059669" : "#DC2626",
-                                      border: testRes.online ? "1px solid rgba(16,185,129,0.2)" : "1px solid rgba(239,68,68,0.2)"
-                                    }}>
-                                      {testRes.online ? "Online" : "Offline"}
-                                    </span>
-                                  )}
-                                </div>
-                                <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-secondary)" }}>
-                                  🔗 IP: {r.ip}
-                                </span>
-                              </div>
-
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleTestConnection(r.room)}
-                                  disabled={testingRoom === r.room}
-                                  className="btn-ghost"
-                                  style={{ padding: "6px 10px", borderRadius: 8, fontSize: 11, display: "flex", gap: 4, alignItems: "center" }}
-                                >
-                                  {testingRoom === r.room ? (
-                                    <span className="animate-spin" style={{ display: "inline-block", width: 10, height: 10, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
-                                  ) : (
-                                    <span>📡 ทดสอบ</span>
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenRoomDetails(r.room, r.ip)}
-                                  className="btn-ghost"
-                                  style={{ padding: "6px 8px", borderRadius: 8, color: "var(--rmutp-purple)", display: "flex", alignItems: "center" }}
-                                  title="ดูรายละเอียด API & ตั้งค่า IoT รายห้อง"
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="3"/>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveRoom(r.room)}
-                                  className="btn-ghost"
-                                  style={{ padding: "6px 8px", borderRadius: 8, color: "#DC2626" }}
-                                >
-                                  <TrashIcon />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    {/* Add Room Subcard */}
-                    <div style={{ padding: 14, background: "rgba(124,58,237,0.03)", border: "1px dashed var(--rmutp-purple-light)", borderRadius: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple-dark)" }}>➕ เพิ่มห้องเรียน / บอร์ดควบคุมใหม่</span>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 8 }}>
-                        <input
-                          className="rmutp-input"
-                          placeholder="รหัสห้อง เช่น CE-403"
-                          value={newRoomCode}
-                          onChange={e => setNewRoomCode(e.target.value)}
-                          style={{ padding: "8px 12px", fontSize: 12.5 }}
-                        />
-                        <input
-                          className="rmutp-input"
-                          placeholder="IP เช่น 192.168.1.102"
-                          value={newRoomIp}
-                          onChange={e => setNewRoomIp(e.target.value)}
-                          style={{ padding: "8px 12px", fontSize: 12.5 }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAddRoom}
-                        className="btn-secondary"
-                        style={{ padding: "8px 12px", fontSize: 12, fontWeight: 700, borderRadius: 10, alignSelf: "flex-end", borderColor: "var(--rmutp-purple-light)", color: "var(--rmutp-purple)" }}
-                      >
-                        เพิ่มลงในรายการ
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Discord Webhooks */}
+                  {/* Card 2: Discord Webhooks (ส่วนกลาง) */}
                   <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
-                      <FileTextIcon /> 🔔 บูรณาการระบบแจ้งเตือน (Discord Webhooks)
+                      <FileTextIcon /> 🔔 Discord Webhooks (ส่วนกลาง)
                     </h3>
-                    
+
+                    <div style={{ padding: 12, background: "rgba(139,92,246,0.04)", border: "1px dashed rgba(139,92,246,0.2)", borderRadius: 10 }}>
+                      <p style={{ fontSize: 11.5, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
+                        Webhook ด้านล่างนี้เป็น <strong>ค่าตั้งต้นสำหรับทุกห้อง</strong> — หากห้องไหนไม่ได้ตั้ง Webhook เฉพาะ ระบบจะใช้ค่าเริ่มต้นนี้ส่งข้อมูลความปลอดภัย
+                      </p>
+                    </div>
+
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
@@ -2662,21 +2624,181 @@ void loop() {
                       </div>
                     </div>
                   </form>
-                  
                 </div>
 
-                {/* Centralized Save Button (Triggers saveSettings for all) */}
+                {/* ═══ SECTION 3: Redesigned Multi-Room Manager with Inline Editing ═══ */}
+                <div className="premium-card" style={{ padding: 0, overflow: "hidden" }}>
+                  <div style={{
+                    padding: "20px 26px",
+                    background: "linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(59,130,246,0.04) 100%)",
+                    borderBottom: "1px solid var(--border)",
+                    display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 22 }}>🏢</span>
+                      <div>
+                        <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", margin: 0 }}>
+                          จัดการห้องเรียน & บอร์ด ESP32
+                        </h3>
+                        <p style={{ fontSize: 11.5, color: "var(--text-secondary)", margin: "2px 0 0" }}>
+                          เพิ่ม แก้ไขรหัสห้อง หรือ IP บอร์ดแต่ละห้องเรียนได้โดยตรง และกดปุ่มบันทึกระบบด้านล่างสุด
+                        </p>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11.5, padding: "4px 12px", borderRadius: 20, background: "rgba(16,185,129,0.1)", color: "#059669", fontWeight: 700 }}>
+                      {roomsList.length} ห้องเรียนลงทะเบียน
+                    </span>
+                  </div>
+
+                  <div style={{ padding: "20px 26px" }}>
+                    {/* Rooms List */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
+                      {roomsList.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)", fontSize: 13, border: "2px dashed var(--border)", borderRadius: 14 }}>
+                          <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>🏫</span>
+                          ยังไม่มีห้องเรียนลงทะเบียนใช้งานในระบบ — กรุณาพิมพ์เพิ่มห้องเรียนใหม่ในกล่องด้านล่าง
+                        </div>
+                      ) : (
+                        roomsList.map((r, idx) => {
+                          const testRes = testResults[r.room];
+                          return (
+                            <div key={`room-${idx}`} style={{
+                              padding: "16px 20px", background: "var(--background-secondary)",
+                              border: "1px solid var(--border)", borderRadius: 14,
+                              display: "flex", flexDirection: "column", gap: 12,
+                            }}>
+                              {/* Top row with room label and action buttons */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <span style={{
+                                    width: 32, height: 32, borderRadius: 10,
+                                    background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                                    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: 14, fontWeight: 800, flexShrink: 0
+                                  }}>
+                                    {idx + 1}
+                                  </span>
+                                  <div>
+                                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+                                      🚪 ห้อง: {r.room}
+                                      {testRes && (
+                                        <span style={{
+                                          fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 800,
+                                          background: testRes.online ? "#ECFDF5" : "#FEF2F2",
+                                          color: testRes.online ? "#059669" : "#DC2626",
+                                        }}>
+                                          {testRes.online ? "🟢 Online" : "🔴 Offline"}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span style={{ fontSize: 11.5, fontFamily: "monospace", color: "var(--text-secondary)" }}>
+                                      📡 IP: {r.ip}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                  <button type="button" onClick={() => handleTestConnection(r.room)} disabled={testingRoom === r.room}
+                                    className="btn-ghost" style={{ padding: "6px 12px", borderRadius: 8, fontSize: 11, display: "flex", gap: 4, alignItems: "center" }}>
+                                    {testingRoom === r.room ? (
+                                      <span className="animate-spin" style={{ display: "inline-block", width: 10, height: 10, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+                                    ) : (
+                                      <span>📡 ทดสอบเชื่อมต่อ</span>
+                                    )}
+                                  </button>
+                                  <button type="button" onClick={() => handleOpenRoomDetails(r.room, r.ip)}
+                                    className="btn-ghost" style={{ padding: "6px 12px", borderRadius: 8, fontSize: 11, color: "var(--rmutp-purple)", display: "flex", alignItems: "center", gap: 4 }}
+                                    title="ดูรายละเอียด API, Webhook & Arduino Code">
+                                    ⚙️ API & Webhook
+                                  </button>
+                                  <button type="button" onClick={() => handleRemoveRoom(r.room)}
+                                    className="btn-ghost" style={{ padding: "6px 8px", borderRadius: 8, color: "#DC2626" }}>
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Inline Editing Row (Direct inputs for Room Name and Board IP) */}
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr auto", gap: 8, alignItems: "end", marginTop: 4, paddingTop: 10, borderTop: "1px dashed var(--border)" }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 10.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>
+                                    ✏️ แก้ไขชื่อ/รหัสห้อง
+                                  </label>
+                                  <input
+                                    className="rmutp-input"
+                                    value={r.room}
+                                    onChange={e => {
+                                      const newVal = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+                                      setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, room: newVal } : rm));
+                                    }}
+                                    style={{ padding: "7px 10px", fontSize: 12, fontFamily: "monospace" }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 10.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>
+                                    📡 แก้ไข IP Address / พอร์ตบอร์ด
+                                  </label>
+                                  <input
+                                    className="rmutp-input"
+                                    value={r.ip}
+                                    onChange={e => {
+                                      setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, ip: e.target.value } : rm));
+                                    }}
+                                    placeholder="เช่น 192.168.1.100"
+                                    style={{ padding: "7px 10px", fontSize: 12, fontFamily: "monospace" }}
+                                  />
+                                </div>
+                                <button type="button"
+                                  onClick={() => showToast(`✅ ปรับปรุงข้อมูลห้อง ${r.room} เรียบร้อยแล้ว! อย่าลืมกด "บันทึกการตั้งค่าทั้งหมด" ด้านล่างสุด`, "success")}
+                                  className="btn-ghost"
+                                  style={{ padding: "7px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700, color: "#059669", border: "1px solid rgba(16,185,129,0.3)" }}>
+                                  ✓ ยืนยันชั่วคราว
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Add Room Subcard */}
+                    <div style={{ padding: 16, background: "rgba(124,58,237,0.02)", border: "1px dashed var(--rmutp-purple-light)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 4 }}>
+                        ➕ ลงทะเบียนห้องเรียน / บอร์ดควบคุมใหม่
+                      </span>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 10.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>
+                            รหัสห้องเรียน (อังกฤษ-ตัวเลข)
+                          </label>
+                          <input className="rmutp-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)}
+                            style={{ padding: "8px 12px", fontSize: 12.5 }} />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: 10.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>
+                            IP Address บอร์ด (ใส่ IP สมมติเพื่อเทสได้)
+                          </label>
+                          <input className="rmutp-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)}
+                            style={{ padding: "8px 12px", fontSize: 12.5 }} />
+                        </div>
+                        <button type="button" onClick={() => handleAddRoom()} className="btn-secondary"
+                          style={{ padding: "8px 16px", fontSize: 12, fontWeight: 700, borderRadius: 10, borderColor: "var(--rmutp-purple-light)", color: "var(--rmutp-purple)", whiteSpace: "nowrap" }}>
+                          ➕ เพิ่มห้องลงรายการ
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ═══ SECTION 4: Centralized Save Settings Button ═══ */}
                 <div className="premium-card" style={{ padding: 18, background: "linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(219,39,119,0.03) 100%)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>⚠️ ต้องการยืนยันการตั้งค่าระบบทั้งหมดหรือไม่?</span>
-                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>การกดปุ่มบันทึกด้านขวาจะเซฟทั้งตารางเวลาบริการ, วันเปิดทำการ, โหมดช่วยกรอก, รายชื่อห้องเรียน (IP) และ Discord Webhooks ทั้งหมด</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>⚠️ ยืนยันการบันทึกการตั้งค่าระบบทั้งหมด</span>
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>กดปุ่มเพื่อบันทึกตารางเวลาบริการ, วันเปิดบริการ, รายชื่อห้องเรียน (IP) และ Discord Webhooks ทั้งหมดถาวร</span>
                   </div>
-                  <button 
-                    onClick={saveSettings}
-                    disabled={settingsLoading}
-                    className="btn-primary hover-card" 
-                    style={{ padding: "12px 28px", borderRadius: 12, fontSize: 13.5, display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}
-                  >
+                  <button onClick={saveSettings} disabled={settingsLoading}
+                    className="btn-primary hover-card"
+                    style={{ padding: "12px 28px", borderRadius: 12, fontSize: 13.5, display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
                     {settingsLoading ? (
                       <>
                         <span className="animate-spin" style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} />

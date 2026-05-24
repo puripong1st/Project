@@ -5,6 +5,7 @@ import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
 import { RMUTP_FACULTIES } from "@/lib/faculties";
 import { openDoor } from "@/lib/esp32";
+import { consumeQRToken } from "@/lib/qr";
 import crypto from "crypto";
 
 let initialized = false;
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureInit();
     const body = await req.json();
-    const { title, first_name, last_name, student_id, year, faculty, branch, requested_room } = body;
+    const { title, first_name, last_name, student_id, year, faculty, branch, requested_room, token } = body;
 
     // Sanitize input to prevent XSS
     const sanitizeHTML = (input: string): string => {
@@ -98,6 +99,18 @@ export async function POST(req: NextRequest) {
     }
     if (!sanitizedBranch || !RMUTP_FACULTIES[sanitizedFaculty].includes(sanitizedBranch)) {
       return NextResponse.json({ error: "กรุณาเลือกสาขาที่ถูกต้อง" }, { status: 400 });
+    }
+
+    // ─── [Dynamic QR Single-Use Verification] ───
+    // ตรวจสอบและ Consume Token ทันทีเสี้ยววินาทีที่ยื่นฟอร์มสมัคร 
+    // หาก Token นี้ไม่มีในระบบ, หมดอายุ (เกิน 60s), หรือเคยถูกใช้งาน (Consume) ไปแล้ว ให้ปฏิเสธการลงทะเบียนทันที!
+    // สิ่งนี้ช่วยป้องกันการแชร์ลิงก์ให้คนอื่นไปกดสมัครต่อ หรือการเปิดลิงก์เดิมลงทะเบียนซ้ำได้อย่างเด็ดขาด 100%!
+    const isTokenValid = await consumeQRToken(token || "");
+    if (!isTokenValid) {
+      return NextResponse.json(
+        { error: "ลิงก์สแกน QR Code นี้หมดอายุแล้วหรือถูกใช้งานโดยผู้อื่นไปแล้ว กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องปฏิบัติการ" },
+        { status: 403 }
+      );
     }
 
     const pool = getPool();
@@ -147,12 +160,13 @@ export async function POST(req: NextRequest) {
         );
 
         await pool.query(
-          `INSERT INTO access_logs (student_id, action, notes, esp32_response) VALUES (?, ?, ?, ?)`,
+          `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES (?, ?, ?, ?, ?)`,
           [
             existingStudent.id,
             esp32Result.success ? "door_opened" : "door_failed",
             "อนุมัติเข้าห้องและเปิดประตูอัตโนมัติในช่วงเวลาให้บริการ (Auto-Approve)",
-            esp32Result.message
+            esp32Result.message,
+            sanitizedRequestedRoom
           ]
         );
 
@@ -161,6 +175,7 @@ export async function POST(req: NextRequest) {
           studentId: existingStudent.student_id,
           adminName: "ระบบอนุมัติอัตโนมัติ (Auto-Approve)",
           esp32Response: esp32Result.message,
+          room: sanitizedRequestedRoom,
         }).catch(() => {});
 
         return NextResponse.json({
@@ -189,8 +204,8 @@ export async function POST(req: NextRequest) {
         );
 
         await pool.query(
-          "INSERT INTO access_logs (student_id, action, notes) VALUES (?, 'registered', ?)",
-          [existingStudent.id, `ส่งคำขอลงทะเบียนเข้าห้องอีกครั้ง นอกเวลาให้บริการอัตโนมัติ (จาก IP: ${ip})`]
+          "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES (?, 'registered', ?, ?)",
+          [existingStudent.id, `ส่งคำขอลงทะเบียนเข้าห้องอีกครั้ง นอกเวลาให้บริการอัตโนมัติ (จาก IP: ${ip})`, sanitizedRequestedRoom]
         );
 
         sendDiscordNotification("student_registered", {
@@ -199,6 +214,7 @@ export async function POST(req: NextRequest) {
           faculty: sanitizedFaculty,
           branch: sanitizedBranch,
           year: yearNum,
+          room: sanitizedRequestedRoom,
         }).catch(() => {});
 
         return NextResponse.json({
@@ -226,12 +242,13 @@ export async function POST(req: NextRequest) {
       const esp32Result = await openDoor(sanitizedStudentId, sanitizedRequestedRoom);
 
       await pool.query(
-        `INSERT INTO access_logs (student_id, action, notes, esp32_response) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES (?, ?, ?, ?, ?)`,
         [
           insertId,
           esp32Result.success ? "door_opened" : "door_failed",
           "ลงทะเบียนสำเร็จและได้รับการอนุมัติเข้าห้องอัตโนมัติ (Auto-Approve)",
-          esp32Result.message
+          esp32Result.message,
+          sanitizedRequestedRoom
         ]
       );
 
@@ -240,6 +257,7 @@ export async function POST(req: NextRequest) {
         studentId: sanitizedStudentId,
         adminName: "ระบบอนุมัติอัตโนมัติ (Auto-Approve)",
         esp32Response: esp32Result.message,
+        room: sanitizedRequestedRoom,
       }).catch(() => {});
 
       return NextResponse.json({
@@ -260,8 +278,8 @@ export async function POST(req: NextRequest) {
       const insertId = (result as { insertId: number }).insertId;
 
       await pool.query(
-        "INSERT INTO access_logs (student_id, action, notes) VALUES (?, 'registered', ?)",
-        [insertId, `ลงทะเบียนนอกช่วงเวลาบริการจาก IP: ${ip} (รออนุมัติปกติ)`]
+        "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES (?, 'registered', ?, ?)",
+        [insertId, `ลงทะเบียนนอกช่วงเวลาบริการจาก IP: ${ip} (รออนุมัติปกติ)`, sanitizedRequestedRoom]
       );
 
       sendDiscordNotification("student_registered", {
@@ -270,6 +288,7 @@ export async function POST(req: NextRequest) {
         faculty: sanitizedFaculty,
         branch: sanitizedBranch,
         year: yearNum,
+        room: sanitizedRequestedRoom,
       }).catch(() => {});
 
       return NextResponse.json({

@@ -77,12 +77,13 @@ export async function POST(req: NextRequest) {
 
     // Log the bypass entry event inside MySQL access_logs
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, notes, esp32_response) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES (?, ?, ?, ?, ?)`,
       [
         student.id, 
         esp32Result.success ? "door_opened" : "door_failed", 
         reasonText, 
-        esp32Result.message
+        esp32Result.message,
+        student.requested_room || 'default'
       ]
     );
 
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
       adminName: "ระบบอัตโนมัติ (Bypass)",
       esp32Response: esp32Result.message,
       reason: reasonText,
+      room: student.requested_room,
     }).catch(() => {});
 
     return NextResponse.json({

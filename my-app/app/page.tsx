@@ -255,6 +255,7 @@ function RegistrationPageInner() {
   const room = searchParams.get("room") || "default";
   const [qrAuthorized, setQrAuthorized] = useState<boolean | null>(null); // null = checking, true = authorized, false = blocked
   const [blockedMessage, setBlockedMessage] = useState<string>("");
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); // ตัวแปรนับถอยหลังหมดอายุ 60 วินาที
   const authChecked = useRef(false);
 
   useEffect(() => {
@@ -330,6 +331,35 @@ function RegistrationPageInner() {
 
     verifyToken();
   }, [searchParams, room]);
+
+  // ─── [Client-Side Session Expiration Timer] ───
+  // จับเวลานับถอยหลังเมื่อ QR Code ได้รับการยืนยันแล้ว
+  // หากนักศึกษาปล่อยค้างหน้าจอลงทะเบียนไว้นานเกิน 60 วินาที ระบบจะบังคับให้หมดอายุทันที ป้องกันการแชร์ลิงก์ข้ามเครือข่าย!
+  useEffect(() => {
+    if (qrAuthorized !== true) return;
+    
+    // ตั้งค่าเริ่มต้นของ Timer นับถอยหลังเป็น 60 วินาที
+    if (timeLeft === null) {
+      setTimeLeft(60);
+      return;
+    }
+    
+    if (timeLeft <= 0) {
+      // เมื่อเวลาหมด (ครบ 60 วินาที)
+      setQrAuthorized(false);
+      setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
+      try {
+        sessionStorage.removeItem(`rmutp_qr_verified_${room}`);
+      } catch {}
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setTimeLeft(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [qrAuthorized, timeLeft, room]);
 
   const [form, setForm] = useState({
     title: "นาย",
@@ -650,7 +680,7 @@ function RegistrationPageInner() {
     if (!isOnline) {
       const entry: OfflineEntry = {
         id: Date.now().toString(),
-        data: { ...form, year: parseInt(form.year), requested_room: room },
+        data: { ...form, year: parseInt(form.year), requested_room: room, token: searchParams.get("scan") || "" },
         timestamp: new Date().toISOString(),
         retries: 0,
       };
@@ -666,7 +696,12 @@ function RegistrationPageInner() {
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, year: parseInt(form.year), requested_room: room }),
+        body: JSON.stringify({ 
+          ...form, 
+          year: parseInt(form.year), 
+          requested_room: room, 
+          token: searchParams.get("scan") || "" 
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1005,9 +1040,29 @@ function RegistrationPageInner() {
               <span>🚪 ห้องเรียนเป้าหมาย: {room}</span>
             </div>
           )}
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 600, marginTop: 12 }}>
-            <ClockIcon />
-            <span>{currentTime}</span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 12 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 600 }}>
+              <ClockIcon />
+              <span>{currentTime}</span>
+            </div>
+
+            {timeLeft !== null && (
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: timeLeft <= 15 ? "#FEF2F2" : "rgba(245,158,11,0.08)",
+                border: timeLeft <= 15 ? "1px solid rgba(239,68,68,0.35)" : "1px solid rgba(245,158,11,0.3)",
+                borderRadius: 99,
+                padding: "4px 12px",
+                color: timeLeft <= 15 ? "#DC2626" : "#D97706",
+                fontSize: 12,
+                fontWeight: 800,
+                boxShadow: timeLeft <= 15 ? "0 0 10px rgba(239,68,68,0.2)" : "none"
+              }} className={timeLeft <= 15 ? "animate-pulse" : ""}>
+                <span>⏳ ลิงก์หมดอายุใน: {timeLeft} วินาที</span>
+              </div>
+            )}
           </div>
         </div>
 
