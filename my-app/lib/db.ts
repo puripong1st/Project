@@ -1,4 +1,4 @@
-// lib/db.ts — MySQL connection pool with auto table creation + seed
+// lib/db.ts — MySQL connection pool with auto table creation + seed (Vercel-Compatible)
 import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
 
@@ -17,7 +17,7 @@ export function getPool(): mysql.Pool {
       connectionLimit: 10,
       queueLimit: 0,
       timezone: "+07:00",
-      // ปรับปรุงให้ใส่ rejectUnauthorized: false เพื่อรองรับใบรับรองภายนอกของ Aiven
+      // ใส่ rejectUnauthorized: false เพื่อรองรับใบรับรองภายนอกของ Aiven SSL บน Production
       ...(isSSL ? { ssl: { rejectUnauthorized: false } } : {}),
     });
   }
@@ -25,28 +25,28 @@ export function getPool(): mysql.Pool {
 }
 
 export async function initDatabase(): Promise<void> {
-  // เช็กเงื่อนไข SSL สำหรับช่วงเริ่มต้นสร้างฐานข้อมูล (ป้องกันการโดน Aiven ปฏิเสธการเชื่อมต่อ)
   const isSSL = process.env.MYSQL_SSL === 'true' || (process.env.MYSQL_HOST && process.env.MYSQL_HOST.endsWith('.aivencloud.com'));
+  const dbName = process.env.MYSQL_DATABASE || "rmutp_access";
 
-  // First connect without database to create it if not exists
+  console.log(`[DB] Production mode: Connecting directly to database: "${dbName}"`);
+
+  // แก้ไข: เชื่อมต่อเข้าฐานข้อมูลปลายทางโดยตรง (ไม่ใช้คำสั่ง CREATE DATABASE เพื่อเลี่ยง Error Access Denied บน Aiven)
   const initPool = mysql.createPool({
     host: process.env.MYSQL_HOST || "localhost",
     port: parseInt(process.env.MYSQL_PORT || "3306"),
     user: process.env.MYSQL_USER || "root",
     password: process.env.MYSQL_PASSWORD || "admin",
+    database: dbName,
     waitForConnections: true,
     connectionLimit: 2,
-    // เพิ่มการตั้งค่า SSL เข้าไปในส่วนเชื่อมต่อเริ่มต้นสำเร็จ
     ...(isSSL ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   const conn = await initPool.getConnection();
   try {
-    const dbName = process.env.MYSQL_DATABASE || "rmutp_access";
-    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-    await conn.query(`USE \`${dbName}\``);
+    console.log(`[DB] Connection established. Initializing tables for "${dbName}"...`);
 
-    // Create admin_users table
+    // 1. Create admin_users table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -60,14 +60,14 @@ export async function initDatabase(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Create students table
+    // 2. Create students table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS students (
         id INT PRIMARY KEY AUTO_INCREMENT,
         title VARCHAR(20) NOT NULL DEFAULT 'นาย',
         first_name VARCHAR(100) NOT NULL,
         last_name VARCHAR(100) NOT NULL,
-        student_id VARCHAR(20) UNIQUE NOT NULL,
+        student_id VARCHAR(30) UNIQUE NOT NULL,
         year TINYINT NOT NULL,
         faculty VARCHAR(150) NOT NULL,
         branch VARCHAR(150) NOT NULL,
@@ -79,11 +79,12 @@ export async function initDatabase(): Promise<void> {
         requested_room VARCHAR(50) NOT NULL DEFAULT 'default',
         registered_at DATETIME DEFAULT NOW(),
         last_door_open DATETIME,
+        bypass_token VARCHAR(64) DEFAULT NULL,
         FOREIGN KEY (approved_by) REFERENCES admin_users(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Create access_logs table
+    // 3. Create access_logs table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS access_logs (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -99,7 +100,7 @@ export async function initDatabase(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Create dynamic_qr_tokens table (security-hardened schema)
+    // 4. Create dynamic_qr_tokens table (security-hardened schema)
     await conn.query(`
       CREATE TABLE IF NOT EXISTS dynamic_qr_tokens (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -111,7 +112,7 @@ export async function initDatabase(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Create system_settings table for configurable features
+    // 5. Create system_settings table for configurable features
     await conn.query(`
       CREATE TABLE IF NOT EXISTS system_settings (
         setting_key VARCHAR(100) PRIMARY KEY,
@@ -166,64 +167,48 @@ export async function initDatabase(): Promise<void> {
       console.log("[DB] Seeded default admin user: admin / admin123");
     }
 
-    // ─── Migration: เพิ่ม column title ถ้ายังไม่มี ─────────
+    // ─── Migrations Block (ครอบ Try-Catch แยกแต่ละส่วน เพื่อป้องกันบิวด์พังใน Vercel ในกรณีที่มีคอลัมน์อยู่แล้ว) ───
+
+    // Migration: เพิ่ม column title
     try {
-      await conn.query(
-        `ALTER TABLE students ADD COLUMN title VARCHAR(20) NOT NULL DEFAULT 'นาย' AFTER id`
-      );
+      await conn.query(`ALTER TABLE students ADD COLUMN title VARCHAR(20) NOT NULL DEFAULT 'นาย' AFTER id`);
       console.log("[DB] Migration: added title column to students");
-    } catch (e: unknown) {
-      if (!(e instanceof Error) || !e.message.includes("Duplicate column name")) {
-        // บล็อกกรณีมีคอลัมน์อยู่แล้ว — ปล่อยผ่าน
-      }
-    }
+    } catch (e: any) { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
 
-    // ─── Migration: เพิ่ม column bypass_token ถ้ายังไม่มี ─────────
+    // Migration: เพิ่ม column bypass_token
     try {
-      await conn.query(
-        `ALTER TABLE students ADD COLUMN bypass_token VARCHAR(64) DEFAULT NULL`
-      );
+      await conn.query(`ALTER TABLE students ADD COLUMN bypass_token VARCHAR(64) DEFAULT NULL`);
       console.log("[DB] Migration: added bypass_token column to students");
-    } catch {
-      // ปล่อยผ่านถ้ามีคอลัมน์แล้ว
-    }
+    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
 
-    // ─── Migration: ขยาย student_id ให้รับ format XXXXXXXXXXXX-X ─
+    // Migration: ขยายความยาว student_id
     try {
-      await conn.query(
-        `ALTER TABLE students MODIFY COLUMN student_id VARCHAR(30) UNIQUE NOT NULL`
-      );
-    } catch { /* ความยาวถูกต้องแล้ว */ }
+      await conn.query(`ALTER TABLE students MODIFY COLUMN student_id VARCHAR(30) UNIQUE NOT NULL`);
+    } catch { /* ปล่อยผ่าน */ }
 
-    // ─── Migration: เพิ่ม column room_code ใน dynamic_qr_tokens ถ้ายังไม่มี ─────────
+    // Migration: เพิ่ม column room_code ใน dynamic_qr_tokens
     try {
-      await conn.query(
-        `ALTER TABLE dynamic_qr_tokens ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`
-      );
-      console.log("[DB] Migration: added room_code column to dynamic_qr_tokens");
-    } catch { /* มีคอลัมน์แล้ว */ }
+      await conn.query(`ALTER TABLE dynamic_qr_tokens ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`);
+    } catch { /* ปล่อยผ่าน */ }
 
-    // ─── Migration: เพิ่ม column requested_room ใน students ถ้ายังไม่มี ─────────
+    // Migration: เพิ่ม column requested_room ใน students
     try {
-      await conn.query(
-        `ALTER TABLE students ADD COLUMN requested_room VARCHAR(50) NOT NULL DEFAULT 'default'`
-      );
-      console.log("[DB] Migration: added requested_room column to students");
-    } catch { /* มีคอลัมน์แล้ว */ }
+      await conn.query(`ALTER TABLE students ADD COLUMN requested_room VARCHAR(50) NOT NULL DEFAULT 'default'`);
+    } catch { /* ปล่อยผ่าน */ }
 
-    // ─── Migration: เพิ่ม column room_code ใน access_logs ถ้ายังไม่มี ─────────
+    // Migration: เพิ่ม column room_code ใน access_logs
     try {
-      await conn.query(
-        `ALTER TABLE access_logs ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`
-      );
-      console.log("[DB] Migration: added room_code column to access_logs");
-    } catch { /* มีคอลัมน์แล้ว */ }
+      await conn.query(`ALTER TABLE access_logs ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`);
+    } catch { /* ปล่อยผ่าน */ }
 
     console.log("[DB] Database initialized successfully");
 
+  } catch (error) {
+    console.error("[DB] Error during database initialization:", error);
+    throw error; // พ่นข้อผิดพลาดออกไปเพื่อให้ตรวจ Log บน Vercel ได้ชัดเจน
   } finally {
     conn.release();
-    await initPool.end();
+    await initPool.end(); // ปิด Pool ตัวชั่วคราวนี้
   }
 }
 
