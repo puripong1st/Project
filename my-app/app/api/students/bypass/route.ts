@@ -42,13 +42,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ไม่สามารถ Bypass ได้เนื่องจากสิทธิ์ของคุณถูกระงับหรือยังไม่อนุมัติ" }, { status: 403 });
     }
 
-    // Determine the most recent door open or approval event time
-    const lastOpen = student.last_door_open ? new Date(student.last_door_open).getTime() : 0;
+    // The 5-minute bypass window is calculated strictly from the original administrator approval time
     const approvedAt = student.approved_at ? new Date(student.approved_at).getTime() : 0;
-    const recentTime = Math.max(lastOpen, approvedAt);
+    const recentTime = approvedAt;
 
     if (recentTime === 0) {
-      return NextResponse.json({ error: "ไม่พบประวัติการเข้าใช้งานล่าสุดเพื่อประมวลผล Bypass" }, { status: 400 });
+      return NextResponse.json({ error: "ไม่พบประวัติการอนุมัติล่าสุดเพื่อประมวลผล Bypass" }, { status: 400 });
     }
 
     const now = new Date().getTime();
@@ -81,12 +80,19 @@ export async function POST(req: NextRequest) {
       ]
     );
 
+    // Calculate detailed bypass metrics
+    const lastEventTimeStr = new Date(recentTime).toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok" });
+    const minutesAgo = Math.floor(diffSeconds / 60);
+    const secondsAgo = Math.floor(diffSeconds % 60);
+    const reasonText = `⚡ ผ่านเข้าห้องเรียนสำเร็จด้วยสิทธิ์ Bypass อัตโนมัติ (สแกนซ้ำภายใน 5 นาที)\n• มีประวัติเปิดประตูหรือได้รับอนุมัติล่าสุดเมื่อเวลา: ${lastEventTimeStr} น.\n• ระยะเวลาที่ผ่านไป: ${minutesAgo} นาที ${secondsAgo} วินาที (ไม่เกิน 300 วินาที)\n• ระบบอนุญาตให้ปลดล็อกประตูได้ทันทีโดยไม่ต้องลงทะเบียนซ้ำ`;
+
     // Send notification to Discord channel
     sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
       studentName: `${student.first_name} ${student.last_name}`,
       studentId: student.student_id,
       adminName: "ระบบอัตโนมัติ (Bypass)",
       esp32Response: esp32Result.message,
+      reason: reasonText,
     }).catch(() => {});
 
     return NextResponse.json({

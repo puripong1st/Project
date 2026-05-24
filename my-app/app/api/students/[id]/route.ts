@@ -17,22 +17,58 @@ export async function GET(
 ) {
   try {
     await ensureInit();
+    // Try to retrieve admin context (if available)
     const admin = await getAdminFromCookie();
-    if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const numId = parseInt(id);
+    if (isNaN(numId)) {
+      return NextResponse.json({ error: "ID นักศึกษาต้องเป็นตัวเลข" }, { status: 400 });
+    }
+
     const pool = getPool();
     const [rows] = await pool.query(
       `SELECT s.*, a.full_name as approver_name FROM students s
        LEFT JOIN admin_users a ON s.approved_by = a.id
        WHERE s.id = ?`,
-      [parseInt(id)]
+      [numId]
     );
     const students = rows as StudentRow[];
     if (students.length === 0) {
       return NextResponse.json({ error: "ไม่พบข้อมูลนักศึกษา" }, { status: 404 });
     }
-    return NextResponse.json({ student: students[0] });
+
+    const student = students[0];
+
+    // ─── Data Privacy Filtering ───
+    if (admin) {
+      // 1. If admin is logged in
+      if (admin.role !== "owner") {
+        // Door Operator: strip sensitive fields to prevent IDOR data leakage
+        const { ip_address, bypass_token, ...safeStudent } = student;
+        return NextResponse.json({ student: safeStudent });
+      }
+      // Owner: return full record
+      return NextResponse.json({ student });
+    } else {
+      // 2. If student is polling publicly to see their status:
+      // Strip critical secrets (bypass_token, ip_address) to prevent hijacking
+      const safePublicStudent = {
+        id: student.id,
+        title: student.title,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        student_id: student.student_id,
+        year: student.year,
+        faculty: student.faculty,
+        branch: student.branch,
+        status: student.status,
+        rejection_reason: student.rejection_reason,
+        registered_at: student.registered_at,
+        last_door_open: student.last_door_open,
+      };
+      return NextResponse.json({ student: safePublicStudent });
+    }
   } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }

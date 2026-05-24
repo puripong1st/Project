@@ -1,6 +1,6 @@
 // app/api/students/route.ts — GET list + POST register
 import { NextRequest, NextResponse } from "next/server";
-import { getPool, initDatabase, StudentRow } from "@/lib/db";
+import { getPool, initDatabase, StudentRow, getSystemSettings } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
 import { RMUTP_FACULTIES } from "@/lib/faculties";
@@ -60,29 +60,42 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/students — register new student (public)
+// POST /api/students — register new student (public)
 export async function POST(req: NextRequest) {
   try {
     await ensureInit();
     const body = await req.json();
     const { title, first_name, last_name, student_id, year, faculty, branch } = body;
 
+    // Sanitize input to prevent XSS
+    const sanitizeHTML = (input: string): string => {
+      return input.replace(/<[^>]*>/g, '');
+    };
+    const sanitizedTitle = sanitizeHTML(title?.trim() ?? '');
+    const sanitizedFirstName = sanitizeHTML(first_name?.trim() ?? '');
+    const sanitizedLastName = sanitizeHTML(last_name?.trim() ?? '');
+    const sanitizedStudentId = sanitizeHTML(student_id?.trim() ?? '');
+    const sanitizedFaculty = sanitizeHTML(faculty?.trim() ?? '');
+    const sanitizedBranch = sanitizeHTML(branch?.trim() ?? '');
+
     // Validation
-    if (!title || !["นาย", "นางสาว", "นาง"].includes(title)) {
+    if (!sanitizedTitle || !["นาย", "นางสาว", "นาง"].includes(sanitizedTitle)) {
       return NextResponse.json({ error: "กรุณาเลือกคำนำหน้า" }, { status: 400 });
     }
-    if (!first_name?.trim()) return NextResponse.json({ error: "กรุณากรอกชื่อ" }, { status: 400 });
-    if (!last_name?.trim()) return NextResponse.json({ error: "กรุณากรอกนามสกุล" }, { status: 400 });
-    if (!student_id?.trim()) return NextResponse.json({ error: "กรุณากรอกรหัสนักศึกษา" }, { status: 400 });
+    if (!sanitizedFirstName) return NextResponse.json({ error: "กรุณากรอกชื่อ" }, { status: 400 });
+    if (!sanitizedLastName) return NextResponse.json({ error: "กรุณากรอกนามสกุล" }, { status: 400 });
+    if (!sanitizedStudentId) return NextResponse.json({ error: "กรุณากรอกรหัสนักศึกษา" }, { status: 400 });
     // รองรับ: ตัวเลขล้วน (8-13 หลัก) หรือรูปแบบ XXXXXXXXXXXX-X
     const idRegex = /^\d{8,13}$|^\d{9,12}-\d{1}$/;
-    if (!idRegex.test(student_id.trim())) {
+    if (!idRegex.test(sanitizedStudentId)) {
       return NextResponse.json({ error: "รูปแบบรหัสนักศึกษาไม่ถูกต้อง เช่น 036650504008-4" }, { status: 400 });
     }
-    if (!year || year < 1 || year > 4) return NextResponse.json({ error: "กรุณาเลือกชั้นปี" }, { status: 400 });
-    if (!faculty || !RMUTP_FACULTIES[faculty]) {
+    const yearNum = parseInt(year ?? '');
+    if (isNaN(yearNum) || yearNum < 1 || yearNum > 4) return NextResponse.json({ error: "กรุณาเลือกชั้นปี" }, { status: 400 });
+    if (!sanitizedFaculty || !RMUTP_FACULTIES[sanitizedFaculty]) {
       return NextResponse.json({ error: "กรุณาเลือกคณะที่ถูกต้อง" }, { status: 400 });
     }
-    if (!branch || !RMUTP_FACULTIES[faculty].includes(branch)) {
+    if (!sanitizedBranch || !RMUTP_FACULTIES[sanitizedFaculty].includes(sanitizedBranch)) {
       return NextResponse.json({ error: "กรุณาเลือกสาขาที่ถูกต้อง" }, { status: 400 });
     }
 
@@ -91,142 +104,184 @@ export async function POST(req: NextRequest) {
     // Check duplicate student_id securely for intelligent re-entry / re-submission
     const [existing] = await pool.query(
       "SELECT * FROM students WHERE student_id = ?",
-      [student_id.trim()]
+      [sanitizedStudentId]
     );
     const existingStudents = existing as StudentRow[];
 
     // Get client IP
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
 
+    // ─── Auto-Approve Verification ───
+    const settings = await getSystemSettings();
+    const autoApproveEnabled = settings.auto_approve_enabled === "1";
+    const autoApproveStartTime = settings.auto_approve_start_time || "09:00";
+    const autoApproveEndTime = settings.auto_approve_end_time || "16:00";
+    const autoApproveDays = (settings.auto_approve_days || "1,2,3,4,5").split(",").map(Number);
+
+    // Get current time in Bangkok (ICT, UTC+7) timezone
+    const now = new Date();
+    const localTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+    const currentDay = localTime.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const currentHour = localTime.getHours();
+    const currentMin = localTime.getMinutes();
+    const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+
+    const isWorkingDay = autoApproveDays.includes(currentDay);
+    const isWithinTimeRange = currentTimeStr >= autoApproveStartTime && currentTimeStr <= autoApproveEndTime;
+    const shouldAutoApprove = autoApproveEnabled && isWorkingDay && isWithinTimeRange;
+
     if (existingStudents.length > 0) {
       const existingStudent = existingStudents[0];
+      const newBypassToken = crypto.randomBytes(24).toString("hex");
 
-      if (existingStudent.status === "approved") {
-        // Returning approved student! Trigger instant re-entry bypass (open door + renew token)
-        const newBypassToken = crypto.randomBytes(24).toString("hex");
-        
-        // Open the door lock via ESP32 integration
+      if (shouldAutoApprove) {
+        // Auto-approve working hours: instant approval and door trigger!
         const esp32Result = await openDoor(existingStudent.student_id);
 
-        if (esp32Result.success) {
-          await pool.query(
-            "UPDATE students SET bypass_token = ?, last_door_open = NOW() WHERE id = ?",
-            [newBypassToken, existingStudent.id]
-          );
-        } else {
-          await pool.query(
-            "UPDATE students SET bypass_token = ? WHERE id = ?",
-            [newBypassToken, existingStudent.id]
-          );
-        }
+        await pool.query(
+          `UPDATE students 
+           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'approved', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NOW(), last_door_open = NOW() 
+           WHERE id = ?`,
+          [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, existingStudent.id]
+        );
 
-        // Log the re-entry action inside access_logs
         await pool.query(
           `INSERT INTO access_logs (student_id, action, notes, esp32_response) VALUES (?, ?, ?, ?)`,
           [
-            existingStudent.id, 
-            esp32Result.success ? "door_opened" : "door_failed", 
-            "ผ่านเข้าห้องเรียนสำเร็จด้วยระบบสิทธิ์อนุมัติเดิม (Re-entry)",
+            existingStudent.id,
+            esp32Result.success ? "door_opened" : "door_failed",
+            "อนุมัติเข้าห้องและเปิดประตูอัตโนมัติในช่วงเวลาให้บริการ (Auto-Approve)",
             esp32Result.message
           ]
         );
 
-        // Send non-blocking Discord notification
-        sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
-          studentName: `${existingStudent.title}${existingStudent.first_name} ${existingStudent.last_name}`,
+        sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
+          studentName: `${sanitizedTitle}${sanitizedFirstName} ${sanitizedLastName}`,
           studentId: existingStudent.student_id,
-          adminName: "ระบบสิทธิ์เดิม (Re-entry)",
+          adminName: "ระบบอนุมัติอัตโนมัติ (Auto-Approve)",
           esp32Response: esp32Result.message,
         }).catch(() => {});
 
         return NextResponse.json({
           success: true,
-          reEntry: true,
-          message: "ยินดีต้อนรับกลับ! ระบบตรวจพบสิทธิ์อนุมัติของท่าน จึงได้ทำการปลดล็อกประตูให้ทันที",
+          message: "ยินดีต้อนรับ! ระบบได้อนุมัติสิทธิ์เข้าห้องเรียนและสั่งเปิดประตูให้ท่านอัตโนมัติเรียบร้อยแล้ว",
           id: existingStudent.id,
-          title: existingStudent.title,
-          first_name: existingStudent.first_name,
-          last_name: existingStudent.last_name,
+          title: sanitizedTitle,
+          first_name: sanitizedFirstName,
+          last_name: sanitizedLastName,
           student_id: existingStudent.student_id,
           bypass_token: newBypassToken,
           status: "approved"
         }, { status: 200 });
-      }
 
-      if (existingStudent.status === "rejected") {
-        // Returning rejected student! Allow them to re-register/update their details and reset to pending
-        const newBypassToken = crypto.randomBytes(24).toString("hex");
-        
+      } else {
+        // Outside working hours: reset to pending and wait for admin approval
+        if (existingStudent.status === "pending") {
+          return NextResponse.json({ error: "ข้อมูลของท่านอยู่ในขั้นตอนรอเจ้าหน้าที่ตรวจสอบสิทธิ์ กรุณาอย่าส่งคำขอซ้ำ" }, { status: 409 });
+        }
+
         await pool.query(
           `UPDATE students 
            SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'pending', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NULL, registered_at = NOW() 
            WHERE id = ?`,
-          [title, first_name.trim(), last_name.trim(), year, faculty, branch, newBypassToken, existingStudent.id]
+          [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, existingStudent.id]
         );
 
-        // Log the re-registration action
         await pool.query(
           "INSERT INTO access_logs (student_id, action, notes) VALUES (?, 'registered', ?)",
-          [existingStudent.id, `แก้ไขข้อมูลและยื่นลงทะเบียนเข้าห้องอีกครั้งสำเร็จ (จาก IP: ${ip})`]
+          [existingStudent.id, `ส่งคำขอลงทะเบียนเข้าห้องอีกครั้ง นอกเวลาให้บริการอัตโนมัติ (จาก IP: ${ip})`]
         );
 
-        // Send non-blocking Discord notification
         sendDiscordNotification("student_registered", {
-          studentName: `${title} ${first_name.trim()} ${last_name.trim()}`,
-          studentId: student_id.trim(),
-          faculty,
-          branch,
-          year,
+          studentName: `${sanitizedTitle} ${sanitizedFirstName} ${sanitizedLastName}`,
+          studentId: existingStudent.student_id,
+          faculty: sanitizedFaculty,
+          branch: sanitizedBranch,
+          year: yearNum,
         }).catch(() => {});
 
         return NextResponse.json({
           success: true,
-          message: "ระบบได้ทำการบันทึกและส่งคำขอลงทะเบียนของท่านใหม่อีกครั้งแล้ว",
+          message: "ระบบได้รับคำขอลงทะเบียนของท่านแล้ว กรุณารอเจ้าหน้าที่ตรวจสอบความถูกต้องและอนุมัติเข้าห้อง",
           id: existingStudent.id,
           bypass_token: newBypassToken,
           status: "pending"
         }, { status: 200 });
       }
-
-      // If status is pending, block double submission
-      return NextResponse.json({ error: "ข้อมูลของท่านอยู่ในขั้นตอนรอเจ้าหน้าที่ตรวจสอบสิทธิ์ กรุณาอย่าส่งคำขอซ้ำ" }, { status: 409 });
     }
 
     // Generate secure device bypass token
     const bypassToken = crypto.randomBytes(24).toString("hex");
 
-    // Insert student
-    const [result] = await pool.query(
-      `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
-      [title, first_name.trim(), last_name.trim(), student_id.trim(), year, faculty, branch, ip, bypassToken]
-    );
+    if (shouldAutoApprove) {
+      // New student - within working hours: auto approve!
+      const [result] = await pool.query(
+        `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token, approved_at, last_door_open)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NOW(), NOW())`,
+        [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken]
+      );
+      const insertId = (result as { insertId: number }).insertId;
 
-    const insertId = (result as { insertId: number }).insertId;
+      const esp32Result = await openDoor(sanitizedStudentId);
 
-    // Insert access log
-    await pool.query(
-      "INSERT INTO access_logs (student_id, action, notes) VALUES (?, 'registered', ?)",
-      [insertId, `ลงทะเบียนจาก IP: ${ip}`]
-    );
+      await pool.query(
+        `INSERT INTO access_logs (student_id, action, notes, esp32_response) VALUES (?, ?, ?, ?)`,
+        [
+          insertId,
+          esp32Result.success ? "door_opened" : "door_failed",
+          "ลงทะเบียนสำเร็จและได้รับการอนุมัติเข้าห้องอัตโนมัติ (Auto-Approve)",
+          esp32Result.message
+        ]
+      );
 
-    // Send Discord notification (non-blocking)
-    sendDiscordNotification("student_registered", {
-      studentName: `${title} ${first_name.trim()} ${last_name.trim()}`,
-      studentId: student_id.trim(),
-      faculty,
-      branch,
-      year,
-    }).catch(() => {});
+      sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
+        studentName: `${sanitizedTitle}${sanitizedFirstName} ${sanitizedLastName}`,
+        studentId: sanitizedStudentId,
+        adminName: "ระบบอนุมัติอัตโนมัติ (Auto-Approve)",
+        esp32Response: esp32Result.message,
+      }).catch(() => {});
 
-    return NextResponse.json({
-      success: true,
-      message: "ลงทะเบียนสำเร็จ รอการอนุมัติจาก Admin",
-      id: insertId,
-      bypass_token: bypassToken,
-    }, { status: 201 });
+      return NextResponse.json({
+        success: true,
+        message: "ลงทะเบียนและอนุมัติสำเร็จ ประตูปลดล็อกแล้วในช่วงเวลาให้บริการอัตโนมัติ!",
+        id: insertId,
+        bypass_token: bypassToken,
+        status: "approved"
+      }, { status: 201 });
+
+    } else {
+      // New student - outside working hours: request pending normally
+      const [result] = await pool.query(
+        `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+        [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken]
+      );
+      const insertId = (result as { insertId: number }).insertId;
+
+      await pool.query(
+        "INSERT INTO access_logs (student_id, action, notes) VALUES (?, 'registered', ?)",
+        [insertId, `ลงทะเบียนนอกช่วงเวลาบริการจาก IP: ${ip} (รออนุมัติปกติ)`]
+      );
+
+      sendDiscordNotification("student_registered", {
+        studentName: `${sanitizedTitle} ${sanitizedFirstName} ${sanitizedLastName}`,
+        studentId: sanitizedStudentId,
+        faculty: sanitizedFaculty,
+        branch: sanitizedBranch,
+        year: yearNum,
+      }).catch(() => {});
+
+      return NextResponse.json({
+        success: true,
+        message: "ลงทะเบียนสำเร็จเรียบร้อยแล้ว กรุณารอผู้ดูแลระบบตรวจสอบและทำการอนุมัติ",
+        id: insertId,
+        bypass_token: bypassToken,
+        status: "pending"
+      }, { status: 201 });
+    }
   } catch (error) {
     console.error("[Students] POST error:", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาดในระบบ" }, { status: 500 });
   }
 }
+

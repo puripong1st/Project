@@ -100,6 +100,42 @@ export async function initDatabase(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // Create system_settings table for configurable features
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        setting_key VARCHAR(100) PRIMARY KEY,
+        setting_value TEXT,
+        updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Seed default settings if not exists
+    const defaultSettings = [
+      { key: "auto_approve_enabled", value: "1" },
+      { key: "auto_approve_start_time", value: "09:00" },
+      { key: "auto_approve_end_time", value: "16:00" },
+      { key: "auto_approve_days", value: "1,2,3,4,5" },
+      { key: "discord_webhook_register", value: "" },
+      { key: "discord_webhook_approve", value: "" },
+      { key: "discord_webhook_logs", value: "" },
+      { key: "auto_fill_enabled", value: "1" },
+      { key: "auto_fill_mode", value: "auto" },
+    ];
+
+    for (const setting of defaultSettings) {
+      const [existing] = await conn.query(
+        "SELECT setting_key FROM system_settings WHERE setting_key = ?",
+        [setting.key]
+      );
+      if ((existing as mysql.RowDataPacket[]).length === 0) {
+        await conn.query(
+          "INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
+          [setting.key, setting.value]
+        );
+      }
+    }
+
+
     // Seed default admin if not exists
     const [existingAdmins] = await conn.query(
       "SELECT id FROM admin_users WHERE username = ?",
@@ -196,3 +232,22 @@ export interface AccessLogRow {
   student_code?: string;
   admin_name?: string;
 }
+
+export async function getSystemSettings(): Promise<Record<string, string>> {
+  const pool = getPool();
+  const [rows] = await pool.query("SELECT setting_key, setting_value FROM system_settings");
+  const settings: Record<string, string> = {};
+  for (const row of rows as { setting_key: string; setting_value: string }[]) {
+    settings[row.setting_key] = row.setting_value;
+  }
+  return settings;
+}
+
+export async function updateSystemSetting(key: string, value: string): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    "INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?",
+    [key, value, value]
+  );
+}
+

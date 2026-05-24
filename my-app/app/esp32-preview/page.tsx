@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface DisplayState {
   title: string;
@@ -92,7 +92,6 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
       fetch(`/api/esp32/qr?_t=${cacheBuster}${tokenQuery}`)
         .then(r => r.blob())
         .then(blob => {
-          // Revoke old URL to prevent memory leak
           if (qrDataUrl) URL.revokeObjectURL(qrDataUrl);
           setQrDataUrl(URL.createObjectURL(blob));
         })
@@ -105,59 +104,114 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayData?.active_token]);
 
-  // IDLE screen — show QR
+  // IDLE screen — show QR and status information
   if (mode === "idle") {
     return (
-      <div style={{ width: 320, height: 240, background: "#000", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div className="premium-lcd" style={{ width: 320, height: 240, background: "#06070D", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", border: "1px solid #111" }}>
         {/* Status bar */}
-        <div style={{ background: "#1B5E20", padding: "3px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <span style={{ color: "#FFD700", fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}>RMUTP DOOR ACCESS</span>
-          <span style={{ color: "#4CAF50", fontSize: 9 }}>● {time}</span>
+        <div style={{ background: "#0E111C", padding: "4px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ color: "#E2E8F0", fontSize: 9, fontWeight: 800, letterSpacing: "1px" }}>RMUTP DOOR ACCESS</span>
+            <span style={{ fontSize: 8, padding: "1px 4px", background: "rgba(16,185,129,0.15)", color: "#10B981", borderRadius: 3, fontWeight: 700 }}>ACTIVE</span>
+          </div>
+          <span style={{ color: "#10B981", fontSize: 9, fontWeight: 700 }} className="anim-pulse">● {time}</span>
         </div>
 
-        {/* Main content */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px" }}>
-          {/* QR Code area */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ width: 110, height: 110, background: "#FFF", padding: 3, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #4CAF50" }}>
-              {qrDataUrl
-                ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={qrDataUrl} alt="QR" style={{ width: 104, height: 104 }} />
-                )
-                : <div style={{ width: 104, height: 104, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#999" }}>Loading...</div>
-              }
+        {/* Main LCD Panel */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", gap: 10 }}>
+          
+          {/* QR Code Scan Frame */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+            <div style={{ 
+              width: 120, 
+              height: 120, 
+              background: "#FFFFFF", 
+              padding: 4, 
+              borderRadius: 6, 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              border: "3px solid #10B981",
+              boxShadow: "0 0 15px rgba(16,185,129,0.2)",
+              position: "relative",
+              overflow: "hidden"
+            }}>
+              {qrDataUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={qrDataUrl} alt="QR" style={{ width: 108, height: 108, display: "block" }} />
+              ) : (
+                <div style={{ width: 108, height: 108, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#666" }}>Loading...</div>
+              )}
+              {/* Laser Scan Line Overlay */}
+              <div className="anim-scan" />
             </div>
-            <div style={{ color: "#FFD700", fontSize: 8, marginTop: 4, textAlign: "center" }}>SCAN TO REGISTER</div>
+            <div style={{ color: "#FFD700", fontSize: 8, fontWeight: 800, marginTop: 6, letterSpacing: "0.5px", textShadow: "0 0 2px rgba(255,215,0,0.5)" }}>SCAN FOR ACCESS</div>
           </div>
 
-          {/* Info panel */}
-          <div style={{ flex: 1, paddingLeft: 10 }}>
-            <div style={{ color: "#4CAF50", fontSize: 10, fontWeight: 700, marginBottom: 6 }}>ลงทะเบียนเข้าห้อง</div>
-            <div style={{ color: "#FFF", fontSize: 8, marginBottom: 4, lineHeight: 1.5 }}>สแกน QR เพื่อ</div>
-            <div style={{ color: "#FFF", fontSize: 8, marginBottom: 8, lineHeight: 1.5 }}>ยื่นขอเปิดประตู</div>
-
-            <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 4, padding: "4px 8px", marginBottom: 4 }}>
-              <div style={{ color: "#9EA8A0", fontSize: 7 }}>รออนุมัติ</div>
-              <div style={{ color: "#F59E0B", fontSize: 14, fontWeight: 700 }}>{pendingCount}</div>
+          {/* Info LCD Panel */}
+          <div style={{ flex: 1, height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ color: "#F0F4F0", fontSize: 12, fontWeight: 800, textShadow: "0 1px 2px rgba(0,0,0,0.5)", marginBottom: 2 }}>ครุศาสตร์ มทร.พ.</div>
+              <div style={{ color: "#3B82F6", fontSize: 8, fontWeight: 700, letterSpacing: "0.5px" }}>LAB DOOR CONTROLLER</div>
             </div>
 
-            {displayData?.last_approved && (
-              <div style={{ background: "rgba(76,175,80,0.15)", borderRadius: 4, padding: "4px 8px", border: "1px solid rgba(76,175,80,0.3)" }}>
-                <div style={{ color: "#4CAF50", fontSize: 7, marginBottom: 1, display: "flex", alignItems: "center", gap: 2 }}>
-                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#4CAF50" }} />
-                  <span>ล่าสุด</span>
+            {/* Waiting Queue counter */}
+            <div style={{ 
+              background: "rgba(245,158,11,0.08)", 
+              border: "1px solid rgba(245,158,11,0.25)",
+              borderRadius: 6, 
+              padding: "6px 8px", 
+              margin: "6px 0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ color: "#F59E0B", fontSize: 8, fontWeight: 800 }}>คิวรออนุมัติ</div>
+                <div style={{ color: "#9CA3AF", fontSize: 7 }}>PENDING REQUESTS</div>
+              </div>
+              <div style={{ color: "#F59E0B", fontSize: 18, fontWeight: 800, textShadow: "0 0 6px rgba(245,158,11,0.3)" }}>
+                {pendingCount}
+              </div>
+            </div>
+
+            {/* Last Approved Student */}
+            {displayData?.last_approved ? (
+              <div style={{ 
+                background: "rgba(16,185,129,0.08)", 
+                border: "1px solid rgba(16,185,129,0.25)",
+                borderRadius: 6, 
+                padding: "6px 8px",
+                textAlign: "left"
+              }}>
+                <div style={{ color: "#10B981", fontSize: 8, fontWeight: 800, display: "flex", alignItems: "center", gap: 3, marginBottom: 2 }}>
+                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#10B981" }} className="anim-pulse" />
+                  <span>ล่าสุด (LATEST)</span>
                 </div>
-                <div style={{ color: "#FFF", fontSize: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>{displayData.last_approved.name}</div>
+                <div style={{ color: "#FFF", fontSize: 9, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>
+                  {displayData.last_approved.name}
+                </div>
+              </div>
+            ) : (
+              <div style={{ 
+                background: "rgba(255,255,255,0.03)", 
+                border: "1px dashed rgba(255,255,255,0.1)",
+                borderRadius: 6, 
+                padding: "6px 8px",
+                textAlign: "center",
+                color: "#6B7A70",
+                fontSize: 8
+              }}>
+                ไม่มีประวัติการอนุมัติล่าสุด
               </div>
             )}
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div style={{ background: "#0D1B0D", padding: "3px 8px", display: "flex", justifyContent: "space-between", flexShrink: 0 }}>
-          <span style={{ color: "#2E7D32", fontSize: 7 }}>มหาวิทยาลัยราชมงคลพระนคร</span>
-          <span style={{ color: "#1B5E20", fontSize: 7 }}>192.168.1.100</span>
+        {/* Bottom LCD bar */}
+        <div style={{ background: "#0A0B10", padding: "4px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.05)", flexShrink: 0 }}>
+          <span style={{ color: "#6B7A70", fontSize: 8 }}>มทร.พระนคร (ครุศาสตร์)</span>
+          <span style={{ color: "#10B981", fontSize: 8, fontFamily: "monospace" }}>192.168.2.49</span>
         </div>
       </div>
     );
@@ -166,22 +220,42 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
   // APPROVED screen
   if (mode === "approved") {
     return (
-      <div style={{ width: 320, height: 240, background: "#000", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        {/* Green flash bg */}
-        <div style={{ position: "absolute", inset: 0, background: "rgba(76,175,80,0.08)" }} />
-        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#1B5E20", border: "2px solid #4CAF50", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, color: "#4CAF50" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <div className="premium-lcd" style={{ width: 320, height: 240, background: "#030C05", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1px solid #111" }}>
+        {/* Glow effect */}
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 80%)" }} />
+        
+        {/* Animated outer ring */}
+        <div style={{ 
+          width: 64, 
+          height: 64, 
+          borderRadius: "50%", 
+          background: "#064E3B", 
+          border: "3px solid #10B981", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center", 
+          marginBottom: 14, 
+          color: "#10B981",
+          boxShadow: "0 0 20px rgba(16,185,129,0.4)"
+        }} className="animate-pulse-soft">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
-        <div style={{ color: "#4CAF50", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>ACCESS GRANTED</div>
-        <div style={{ color: "#FFD700", fontSize: 12, marginBottom: 2 }}>DOOR OPENING...</div>
-        <div style={{ color: "#9EA8A0", fontSize: 9 }}>{displayData?.last_approved?.name || "นักศึกษา"}</div>
-        <div style={{ color: "#6B7A70", fontSize: 8, marginTop: 4 }}>{displayData?.last_approved?.student_id}</div>
+        
+        <div style={{ color: "#10B981", fontSize: 18, fontWeight: 900, marginBottom: 4, letterSpacing: "1px", textShadow: "0 0 8px rgba(16,185,129,0.5)" }}>ACCESS GRANTED</div>
+        <div style={{ color: "#FFD700", fontSize: 13, fontWeight: 800, marginBottom: 6, letterSpacing: "0.5px" }}>DOOR UNLOCKED (ปลดล็อก)...</div>
+        
+        <div style={{ color: "#FFFFFF", fontSize: 11, fontWeight: 700, background: "rgba(255,255,255,0.06)", padding: "4px 12px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)" }}>
+          {displayData?.last_approved?.name || "นักศึกษา"}
+        </div>
+        <div style={{ color: "#9CA3AF", fontSize: 8, marginTop: 6, fontFamily: "monospace" }}>
+          {displayData?.last_approved?.student_id || "รหัสประจำตัวนักศึกษา"}
+        </div>
 
-        {/* Progress bar */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: "#1B5E20" }}>
-          <div style={{ height: "100%", background: "#4CAF50", width: "70%", transition: "width 3s linear" }} />
+        {/* Dynamic progress bar representing door holding open time */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, background: "#064E3B" }}>
+          <div style={{ height: "100%", background: "#10B981", width: "100%", animation: "door-countdown 5s linear forwards", boxShadow: "0 0 8px #10B981" }} />
         </div>
       </div>
     );
@@ -190,17 +264,29 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
   // REJECTED screen
   if (mode === "rejected") {
     return (
-      <div style={{ width: 320, height: 240, background: "#000", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ position: "absolute", inset: 0, background: "rgba(239,68,68,0.06)" }} />
-        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#5A1C1C", border: "2px solid #EF4444", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, color: "#EF4444" }}>
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <div className="premium-lcd" style={{ width: 320, height: 240, background: "#0F0303", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1px solid #111" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 80%)" }} />
+        <div style={{ 
+          width: 64, 
+          height: 64, 
+          borderRadius: "50%", 
+          background: "#7F1D1D", 
+          border: "3px solid #EF4444", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center", 
+          marginBottom: 14, 
+          color: "#EF4444",
+          boxShadow: "0 0 20px rgba(239,68,68,0.4)"
+        }} className="animate-shake">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </div>
-        <div style={{ color: "#EF4444", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>ACCESS DENIED</div>
-        <div style={{ color: "#9EA8A0", fontSize: 10, marginBottom: 2 }}>คำขอถูกปฏิเสธ</div>
-        <div style={{ color: "#6B7A70", fontSize: 8 }}>กรุณาติดต่อเจ้าหน้าที่</div>
+        <div style={{ color: "#EF4444", fontSize: 18, fontWeight: 900, marginBottom: 4, letterSpacing: "1px", textShadow: "0 0 8px rgba(239,68,68,0.5)" }}>ACCESS DENIED</div>
+        <div style={{ color: "#FFC7C7", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>❌ ปฏิเสธการเข้าใช้ห้อง</div>
+        <div style={{ color: "#9CA3AF", fontSize: 9 }}>กรุณาลงทะเบียนใหม่หรือติดต่อเจ้าหน้าที่</div>
       </div>
     );
   }
@@ -208,10 +294,21 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
   // SCANNING screen
   if (mode === "scanning") {
     return (
-      <div style={{ width: 320, height: 240, background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 40, height: 40, border: "3px solid rgba(76,175,80,0.3)", borderTopColor: "#4CAF50", borderRadius: "50%", animation: "spin 1s linear infinite", marginBottom: 12 }} />
-        <div style={{ color: "#4CAF50", fontSize: 12, fontWeight: 700 }}>PROCESSING...</div>
-        <div style={{ color: "#9EA8A0", fontSize: 9, marginTop: 4 }}>กำลังตรวจสอบ</div>
+      <div className="premium-lcd" style={{ width: 320, height: 240, background: "#03080F", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1px solid #111" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 80%)" }} />
+        <div style={{ 
+          width: 48, 
+          height: 48, 
+          border: "4px solid rgba(59,130,246,0.15)", 
+          borderTopColor: "#3B82F6", 
+          borderRadius: "50%", 
+          animation: "spin 1s linear infinite", 
+          marginBottom: 16,
+          boxShadow: "0 0 15px rgba(59,130,246,0.2)"
+        }} />
+        <div style={{ color: "#3B82F6", fontSize: 16, fontWeight: 900, letterSpacing: "1px", textShadow: "0 0 6px rgba(59,130,246,0.4)" }}>PROCESSING...</div>
+        <div style={{ color: "#E2E8F0", fontSize: 11, fontWeight: 800, marginTop: 4 }}>กำลังตรวจสอบข้อมูลขอผ่านทาง</div>
+        <div style={{ color: "#6B7A70", fontSize: 8, marginTop: 4, fontFamily: "monospace" }}>VERIFYING WITH DATABASE</div>
       </div>
     );
   }
@@ -226,13 +323,27 @@ export default function ESP32PreviewPage() {
   const [isRefreshing, setRefreshing] = useState(false);
   const [scale, setScale] = useState(1.5);
   const [esp32Status, setEsp32Status] = useState<ESP32Status | null>(null);
+  
+  // Real-Time automatic event triggers from DB
+  const lastApprovedTimeRef = useRef<string | null>(null);
 
   const fetchDisplay = async () => {
     setRefreshing(true);
     try {
       const r = await fetch("/api/esp32/display");
-      const d = await r.json();
-      setDisplayData(d);
+      if (r.ok) {
+        const d = (await r.json()) as DisplayState;
+        
+        // Auto-detect a new approved student on the database and trigger real-time simulated unlock sequence
+        if (d.last_approved) {
+          const approvedTime = d.last_approved.time;
+          if (lastApprovedTimeRef.current !== null && lastApprovedTimeRef.current !== approvedTime) {
+            simulateApprove();
+          }
+          lastApprovedTimeRef.current = approvedTime;
+        }
+        setDisplayData(d);
+      }
     } catch {}
     setRefreshing(false);
   };
@@ -246,24 +357,63 @@ export default function ESP32PreviewPage() {
 
   useEffect(() => {
     setTimeout(() => { fetchDisplay(); fetchESP32Status(); }, 0);
-    const i1 = setInterval(fetchDisplay, 5000);
-    const i2 = setInterval(fetchESP32Status, 5000);
+    const i1 = setInterval(fetchDisplay, 4000); // Poll every 4 seconds to be snappy
+    const i2 = setInterval(fetchESP32Status, 4000);
     return () => { clearInterval(i1); clearInterval(i2); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function simulateApprove() {
     setMode("scanning");
     setTimeout(() => setMode("approved"), 1500);
-    setTimeout(() => setMode("idle"), 5000);
+    setTimeout(() => setMode("idle"), 6500);
   }
   function simulateReject() {
     setMode("scanning");
     setTimeout(() => setMode("rejected"), 1500);
-    setTimeout(() => setMode("idle"), 4000);
+    setTimeout(() => setMode("idle"), 5000);
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "#0F1117", color: "#F0F4F0", padding: 32 }}>
+      {/* Laser Scanning Styles & Transitions */}
+      <style>{`
+        @keyframes scan-line {
+          0% { top: 0%; }
+          50% { top: 100%; }
+          100% { top: 0%; }
+        }
+        @keyframes pulse-dot {
+          0% { opacity: 0.4; }
+          50% { opacity: 1; }
+          100% { opacity: 0.4; }
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes door-countdown {
+          0% { width: 100%; }
+          100% { width: 0%; }
+        }
+        .anim-scan {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: #10B981;
+          box-shadow: 0 0 10px #10B981, 0 0 20px #10B981;
+          animation: scan-line 3s linear infinite;
+          opacity: 0.8;
+        }
+        .anim-pulse {
+          animation: pulse-dot 1.5s infinite ease-in-out;
+        }
+        .premium-lcd {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+      `}</style>
+
       {/* Header */}
       <div className="animate-fade-in" style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div>
@@ -271,50 +421,90 @@ export default function ESP32PreviewPage() {
             <TVIcon />
             <span>ESP32 Display Preview</span>
           </h1>
-          <p style={{ color: "#9EA8A0", fontSize: 13 }}>จำลองหน้าจอ LAFVIN 4.0 TFT Display (3.2&quot; — 320×240 px) · ILI9341</p>
+          <p style={{ color: "#9EA8A0", fontSize: 13 }}>จำลองหน้าจอ LAFVIN 4.0 TFT Display (3.2&quot; — 320×240 px) · คอนโทรลเลอร์ ILI9341</p>
         </div>
-        <a href="/admin/dashboard" style={{ color: "#4CAF50", fontSize: 13, textDecoration: "none" }}>← Admin Dashboard</a>
+        <a href="/admin/dashboard" style={{ color: "#4CAF50", fontSize: 13, textDecoration: "none", fontWeight: "bold" }}>← Back to Admin Dashboard</a>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 40, alignItems: "start" }}>
+        
         {/* Left: Physical Display Mockup */}
         <div className="animate-fade-in">
-          {/* Device frame */}
-          <div style={{ display: "inline-block", padding: 16, background: "#1A1A1A", borderRadius: 12, boxShadow: "0 0 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05)", position: "relative" }}>
-            {/* Top bar with buttons */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "0 4px" }}>
-              <span style={{ fontSize: 9, color: "#555", fontWeight: 600 }}>LAFVIN 4.0 · ESP32</span>
-              <div style={{ display: "flex", gap: 4 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: mode === "idle" ? "#4CAF50" : "#F59E0B" }} className="animate-blink" />
+          {/* Device frame representing the physical ESP32 + TFT module */}
+          <div style={{ 
+            display: "inline-block", 
+            padding: "24px 20px 16px", 
+            background: "#1E1E2E", // Classic premium dark blue PCB texture
+            borderRadius: 16, 
+            boxShadow: "0 25px 60px rgba(0,0,0,0.8), inset 0 2px 2px rgba(255,255,255,0.05)", 
+            position: "relative",
+            border: "1px solid rgba(255,255,255,0.08)"
+          }}>
+            {/* Silkscreen lines and mounting holes on classic PCB */}
+            <div style={{ position: "absolute", top: 12, left: 12, width: 8, height: 8, borderRadius: "50%", background: "#111", border: "2px solid #D4AF37", boxShadow: "inset 0 0 2px #000" }} />
+            <div style={{ position: "absolute", top: 12, right: 12, width: 8, height: 8, borderRadius: "50%", background: "#111", border: "2px solid #D4AF37", boxShadow: "inset 0 0 2px #000" }} />
+            <div style={{ position: "absolute", bottom: 44, left: 12, width: 8, height: 8, borderRadius: "50%", background: "#111", border: "2px solid #D4AF37", boxShadow: "inset 0 0 2px #000" }} />
+            <div style={{ position: "absolute", bottom: 44, right: 12, width: 8, height: 8, borderRadius: "50%", background: "#111", border: "2px solid #D4AF37", boxShadow: "inset 0 0 2px #000" }} />
+
+            {/* Top PCB brand printing */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, padding: "0 8px" }}>
+              <span style={{ fontSize: 10, color: "#CDD6F4", fontWeight: 700, fontFamily: "monospace", letterSpacing: "1px" }}>RMUTP · ILI9341 3.2&quot; TFT</span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 8, color: "#A6ADC8", fontFamily: "monospace" }}>ESP32 LINK:</span>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: mode === "idle" ? "#10B981" : "#F59E0B", boxShadow: mode === "idle" ? "0 0 10px #10B981" : "0 0 10px #F59E0B" }} />
               </div>
             </div>
 
-            {/* Screen bezel */}
+            {/* Matte-black metallic screen bezel with flow-accurate scaling to avoid overlaps */}
             <div style={{
-              padding: 4, background: "#111",
-              borderRadius: 4, border: "2px solid #333",
-              boxShadow: "inset 0 0 10px rgba(0,0,0,0.8)",
-              transform: `scale(${scale})`,
-              transformOrigin: "top left",
+              width: `${(320 + 12) * scale}px`, 
+              height: `${(240 + 12) * scale}px`, 
+              position: "relative",
+              overflow: "hidden",
+              background: "#08080C",
+              borderRadius: 6,
+              border: "3px solid #2B2D3A",
+              boxShadow: "inset 0 0 20px rgba(0,0,0,0.9), 0 8px 30px rgba(0,0,0,0.5)"
             }}>
-              <ESP32Screen mode={mode} displayData={displayData} pendingCount={displayData?.pending_count || 0} />
+              <div style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                padding: 6,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+                width: 332,
+                height: 252,
+              }}>
+                <ESP32Screen mode={mode} displayData={displayData} pendingCount={displayData?.pending_count || 0} />
+              </div>
             </div>
 
-            {/* Scale spacer */}
-            <div style={{ height: (240 * scale - 240) + (320 * scale - 320) / 2 * 0 }} />
-
-            {/* Bottom connectors */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 12 }}>
-              {["USB-C", "RST", "EN"].map(l => (
-                <div key={l} style={{ padding: "2px 6px", background: "#222", borderRadius: 3, fontSize: 7, color: "#555", border: "1px solid #333" }}>{l}</div>
+            {/* Bottom realistic copper pin headers */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12 }}>
+              {[
+                { label: "VCC", color: "#EF4444" },
+                { label: "GND", color: "#374151" },
+                { label: "CS", color: "#F59E0B" },
+                { label: "RST", color: "#F59E0B" },
+                { label: "D/C", color: "#F59E0B" },
+                { label: "MOSI", color: "#3B82F6" },
+                { label: "SCK", color: "#3B82F6" },
+                { label: "LED", color: "#EF4444" },
+                { label: "MISO", color: "#3B82F6" }
+              ].map((pin, index) => (
+                <div key={index} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 8, height: 16, background: "linear-gradient(to bottom, #D4AF37, #AA7C11)", borderRadius: 2, border: "1px solid #785A06", boxShadow: "0 1px 2px rgba(0,0,0,0.4)" }} />
+                  <span style={{ fontSize: 7, color: pin.color, fontWeight: "bold", fontFamily: "monospace" }}>{pin.label}</span>
+                </div>
               ))}
             </div>
           </div>
 
           {/* Scale control */}
           <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 11, color: "#6B7A70" }}>ขนาด:</span>
-            {[1, 1.5, 2].map(s => (
+            <span style={{ fontSize: 11, color: "#6B7A70" }}>ขนาดจำลองหน้าจอ:</span>
+            {[1, 1.25, 1.5, 2].map(s => (
               <button key={s} onClick={() => setScale(s)}
                 style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${scale === s ? "#4CAF50" : "rgba(255,255,255,0.1)"}`, background: scale === s ? "rgba(76,175,80,0.15)" : "transparent", color: scale === s ? "#4CAF50" : "#6B7A70", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                 {s}×
@@ -325,6 +515,19 @@ export default function ESP32PreviewPage() {
 
         {/* Right: Controls + Info */}
         <div style={{ maxWidth: 500 }}>
+
+          {/* ─── Real-Time Sync Indicator Card ─── */}
+          <div className="glass-card animate-fade-in" style={{ padding: 18, marginBottom: 20, background: "rgba(16,185,129,0.03)", border: "1px dashed rgba(16,185,129,0.25)" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#10B981" }} className="anim-pulse" />
+              <div style={{ textAlign: "left" }}>
+                <span style={{ fontSize: 13, fontWeight: "bold", color: "#10B981" }}>ระบบจำลองหน้าจอแบบเชื่อมโยงฐานข้อมูลจริง (Real-Time Live Mode)</span>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "4px 0 0 0", lineHeight: "1.4" }}>
+                  หน้าจอนี้เชื่อมโยงกับฐานข้อมูลโดยตรง หากท่านเปิดหน้านี้ทิ้งไว้ แล้วไปกด **อนุมัติ (Approve)** หรือ **เปิดประตู (Unlock)** บนแดชบอร์ด หน้าจำลองนี้จะรันลำดับตรวจสอบและปลดล็อกอัตโนมัติทันทีเสมือนหน้าจอจริง!
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* ─── Wokwi Connection Panel ─── */}
           <div className="glass-card animate-fade-in" style={{ padding: 24, marginBottom: 20, borderColor: esp32Status?.mode === "wokwi" ? "rgba(139,92,246,0.4)" : undefined }}>
@@ -352,7 +555,7 @@ export default function ESP32PreviewPage() {
               <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: "10px 14px" }}>
                 <div style={{ color: "#6B7A70", fontSize: 11, marginBottom: 4 }}>สถานะการเชื่อมต่อ</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: esp32Status?.online ? "#4CAF50" : "#EF4444", flexShrink: 0 }} className={esp32Status?.online ? "animate-blink" : ""} />
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: esp32Status?.online ? "#4CAF50" : "#EF4444", flexShrink: 0 }} className={esp32Status?.online ? "anim-pulse" : ""} />
                   <span style={{ color: esp32Status?.online ? "#4CAF50" : "#EF4444", fontSize: 13, fontWeight: 700 }}>
                     {esp32Status === null ? "กำลังตรวจสอบ..." : esp32Status.online ? "Online" : "Offline"}
                   </span>
@@ -397,32 +600,33 @@ export default function ESP32PreviewPage() {
               </span>
             </div>
           </div>
+
           {/* Simulate Buttons */}
           <div className="glass-card animate-fade-in-delay" style={{ padding: 24, marginBottom: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: "#FFD700", display: "flex", alignItems: "center" }}>
               <GamepadIcon />
-              <span>จำลองการทำงาน</span>
+              <span>แผงควบคุมทดสอบจำลอง (Mock Control)</span>
             </h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
               <button onClick={() => setMode("idle")}
                 style={{ padding: "10px 0", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#F0F4F0", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Idle Screen
+                หน้าจอปกติ (Idle)
               </button>
               <button onClick={simulateApprove}
                 style={{ padding: "10px 0", background: "rgba(76,175,80,0.15)", border: "1px solid rgba(76,175,80,0.3)", borderRadius: 10, color: "#4CAF50", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                ✅ Approved
+                ✅ อนุมัติสำเร็จ (Approved)
               </button>
               <button onClick={simulateReject}
-                style={{ padding: "10px 0", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, color: "#EF4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                ❌ Rejected
+                style={{ padding: "10px 0", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, color: "#EF4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                ❌ ปฏิเสธ (Rejected)
               </button>
               <button onClick={() => { setMode("scanning"); setTimeout(() => setMode("idle"), 2000); }}
                 style={{ padding: "10px 0", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 10, color: "#3B82F6", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                🔄 Scanning
+                🔄 กำลังสแกน (Scanning)
               </button>
             </div>
             <div style={{ fontSize: 11, color: "#6B7A70" }}>
-              สถานะปัจจุบัน: <span style={{ color: "#4CAF50", fontWeight: 600 }}>{mode}</span>
+              โหมดการแสดงผลปัจจุบันของเครื่อง: <span style={{ color: "#4CAF50", fontWeight: 600 }}>{mode.toUpperCase()}</span>
             </div>
           </div>
 
@@ -433,19 +637,19 @@ export default function ESP32PreviewPage() {
                 <TerminalIcon />
                 <span>ESP32 API Endpoints</span>
               </h3>
-              <button onClick={fetchDisplay} style={{ background: "none", border: "none", cursor: "pointer", color: "#4CAF50", fontSize: 11, fontFamily: "inherit" }}>
-                {isRefreshing ? "⏳ รีเฟรช..." : "🔄 รีเฟรช"}
+              <button onClick={fetchDisplay} style={{ background: "none", border: "none", cursor: "pointer", color: "#4CAF50", fontSize: 11, fontFamily: "inherit", fontWeight: "bold" }}>
+                {isRefreshing ? "⏳ กำลังรีเฟรช..." : "🔄 รีเฟรชข้อมูล"}
               </button>
             </div>
             {[
-              { method: "GET", path: "/api/esp32/qr", desc: "รับ QR Code เป็น PNG (240×240)", color: "#3B82F6" },
-              { method: "GET", path: "/api/esp32/display", desc: "รับ JSON state สำหรับ render", color: "#3B82F6" },
-              { method: "POST", path: "/api/esp32/display", desc: "ESP32 ส่งสถานะมายังเซิร์ฟเวอร์", color: "#F59E0B" },
-              { method: "POST", path: "/api/students/{id}/door", desc: "สั่งเปิดประตู (Admin → ESP32)", color: "#EF4444" },
+              { method: "GET", path: "/api/esp32/qr", desc: "ดึง QR Code เป็นไฟล์ภาพ (PNG)", color: "#3B82F6" },
+              { method: "GET", path: "/api/esp32/display", desc: "รับค่า JSON เพื่อเรนเดอร์สเตทหน้าจอ", color: "#3B82F6" },
+              { method: "POST", path: "/api/esp32/display", desc: "บอร์ด ESP32 อัปเดตสถานะขึ้นคลาวด์", color: "#F59E0B" },
+              { method: "POST", path: "/api/students/{id}/door", desc: "แอดมินสั่งเปิดประตูผ่าน API หาบอร์ด", color: "#EF4444" },
             ].map((ep, i) => (
               <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : undefined }}>
                 <span style={{ background: ep.color + "22", color: ep.color, padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{ep.method}</span>
-                <code style={{ color: "#4CAF50", fontSize: 12, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ep.path}</code>
+                <code style={{ color: "#4CAF50", fontSize: 11, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ep.path}</code>
                 <span style={{ color: "#6B7A70", fontSize: 11, flexShrink: 0 }}>{ep.desc}</span>
               </div>
             ))}
@@ -455,16 +659,16 @@ export default function ESP32PreviewPage() {
           <div className="glass-card animate-fade-in-delay-3" style={{ padding: 24 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: "#FFD700", display: "flex", alignItems: "center" }}>
               <DatabaseIcon />
-              <span>สถานะปัจจุบันจากเซิร์ฟเวอร์</span>
+              <span>ค่า JSON ที่ได้รับจาก Server สำหรับนำไปเขียนบอร์ดจริง</span>
             </h3>
             {displayData ? (
-              <div style={{ fontFamily: "monospace", fontSize: 12, color: "#4CAF50", background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: 16, overflow: "auto" }}>
+              <div style={{ fontFamily: "monospace", fontSize: 11, color: "#4CAF50", background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: 16, overflow: "auto" }}>
                 <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                   {JSON.stringify(displayData, null, 2)}
                 </pre>
               </div>
             ) : (
-              <div style={{ color: "#6B7A70", fontSize: 13, textAlign: "center", padding: 20 }}>กำลังโหลด...</div>
+              <div style={{ color: "#6B7A70", fontSize: 13, textAlign: "center", padding: 20 }}>กำลังเรียกข้อมูลจากเซิร์ฟเวอร์...</div>
             )}
           </div>
 
@@ -472,53 +676,50 @@ export default function ESP32PreviewPage() {
           <div className="glass-card animate-fade-in-delay-3" style={{ padding: 24, marginTop: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: "#FFD700", display: "flex", alignItems: "center" }}>
               <CodeIcon />
-              <span>Arduino/ESP32 Code (ตัวอย่าง)</span>
+              <span>Arduino C++ (ตัวอย่างดึง API มาโชว์บนหน้าจอจริง)</span>
             </h3>
             <div style={{ fontFamily: "monospace", fontSize: 11, color: "#86C98A", background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: 16, overflow: "auto" }}>
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{`// ESP32 + TFT_eSPI (ILI9341 320x240)
-// ดึง QR Code จาก Server
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{`// การเขียน Arduino ESP32 ร่วมกับจอ ILI9341 3.2 นิ้ว
+// ดึงข้อมูล JSON จาก Next.js Server มาอัปเดตหน้าจอจริง
 
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <TFT_eSPI.h>
-#include <TJpg_Decoder.h>
+#include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager
 
-TFT_eSPI tft = TFT_eSPI();
-const char* SERVER = "http://192.168.1.x:3000";
+const char* server_url = "http://192.168.2.49:3000/api/esp32/display";
 
-void setup() {
-  tft.init();
-  tft.setRotation(1); // 320x240
-  WiFi.begin("SSID", "PASS");
-  while (WiFi.status() != WL_CONNECTED) delay(500);
-  fetchAndShowDisplay();
-}
-
-void loop() {
-  // Poll every 5 seconds
-  delay(5000);
-  fetchAndShowDisplay();
-}
-
-void fetchAndShowDisplay() {
-  HTTPClient http;
-  http.begin(String(SERVER) + "/api/esp32/display");
-  int code = http.GET();
-  if (code == 200) {
-    String body = http.getString();
-    // Parse JSON and update screen
-    // ...
+void updateDisplayFromAPI() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(server_url);
+    
+    // ตั้งค่า Header สำหรับอุปกรณ์ ESP32 ยืนยันตัวตน
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("x-api-key", "rmutp_secure_door_unlock_token_2026");
+    
+    int httpCode = http.GET();
+    if (httpCode == 200) {
+      String payload = http.getString();
+      
+      // Parse ข้อมูล JSON ขนาด 512 bytes
+      StaticJsonDocument<512> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+      
+      if (!error) {
+        int pending_count = doc["pending_count"]; // คิวรออนุมัติ
+        const char* title = doc["title"];
+        
+        // ตรวจสอบประวัติล่าสุด
+        if (doc.containsKey("last_approved") && !doc["last_approved"].isNull()) {
+          const char* name = doc["last_approved"]["name"];
+          const char* id = doc["last_approved"]["student_id"];
+          // วาดข้อมูลลงบนจอ LCD
+          // tft.drawString(name, 10, 80);
+        }
+      }
+    }
+    http.end();
   }
-  http.end();
-}
-
-void openDoor() {
-  // Called when admin approves
-  HTTPClient http;
-  http.begin(String(SERVER) + "/api/door/open");
-  http.POST("{}");
-  http.end();
-  // Play sound / LED
 }`}</pre>
             </div>
           </div>

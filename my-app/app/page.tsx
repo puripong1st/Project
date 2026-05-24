@@ -257,9 +257,44 @@ function RegistrationPageInner() {
   const authChecked = useRef(false);
 
   useEffect(() => {
+    // ─── 5-Minutes Returning Bypass Gate ───
+    const saved = localStorage.getItem("rmutp_user_session");
+    let isBypassValid = false;
+    if (saved) {
+      try {
+        const session = JSON.parse(saved);
+        const lastTime = new Date(session.timestamp).getTime();
+        const now = new Date().getTime();
+        const diffSeconds = (now - lastTime) / 1000;
+        if (diffSeconds <= 300) {
+          isBypassValid = true;
+        }
+      } catch {}
+    }
+
+    // If session is active and approved within 5 minutes, grant instant authorization to skip QR token check
+    if (isBypassValid) {
+      setQrAuthorized(true);
+      return;
+    }
+
+    // If this tab session has already successfully scanned and verified, skip the dynamic token check
+    let isSessionVerified = false;
+    try {
+      if (sessionStorage.getItem("rmutp_qr_verified") === "1") {
+        isSessionVerified = true;
+      }
+    } catch {}
+
+    if (isSessionVerified) {
+      setQrAuthorized(true);
+      return;
+    }
+
     const scanToken = searchParams.get("scan");
     if (!scanToken) {
-      setQrAuthorized(true);
+      setQrAuthorized(false);
+      setBlockedMessage("ไม่พบข้อมูลการสแกน QR Code กรุณาสแกน QR Code ที่ติดตั้งอยู่หน้าห้องปฏิบัติการเพื่อลงทะเบียนเข้าใช้ห้อง");
       return;
     }
 
@@ -275,6 +310,9 @@ function RegistrationPageInner() {
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          try {
+            sessionStorage.setItem("rmutp_qr_verified", "1");
+          } catch {}
           setQrAuthorized(true);
         } else {
           setQrAuthorized(false);
@@ -300,6 +338,90 @@ function RegistrationPageInner() {
   });
   const [branches, setBranches] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // ─── Customizable Student Auto-fill ───
+  const [matchedHistory, setMatchedHistory] = useState<{ year: number; faculty: string; branch: string } | null>(null);
+  const [showAutoFillPrompt, setShowAutoFillPrompt] = useState(false);
+  const [autoFillToast, setAutoFillToast] = useState<string | null>(null);
+
+  // Debounced check for student history to auto-fill or display confirmation button
+  useEffect(() => {
+    const fName = form.first_name.trim();
+    const lName = form.last_name.trim();
+    const sId = form.student_id.trim();
+
+    if (fName.length < 2 || lName.length < 2 || sId.length < 8) {
+      setMatchedHistory(null);
+      setShowAutoFillPrompt(false);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/students/check-match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            first_name: fName,
+            last_name: lName,
+            student_id: sId,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.found) {
+            const history = {
+              year: data.year,
+              faculty: data.faculty,
+              branch: data.branch,
+            };
+            setMatchedHistory(history);
+            
+            if (data.mode === "manual") {
+              // Manual confirmation mode: show button prompt
+              setShowAutoFillPrompt(true);
+            } else {
+              // Auto pop-up mode: fill immediately!
+              setForm(f => ({
+                ...f,
+                year: String(data.year),
+                faculty: data.faculty,
+                branch: data.branch,
+              }));
+              setBranches(RMUTP_FACULTIES[data.faculty] || []);
+              
+              // Show modern transient checkmark Toast
+              setAutoFillToast("✓ ดึงข้อมูลประวัติการเรียนเดิมสำเร็จอัตโนมัติ");
+              setTimeout(() => setAutoFillToast(null), 3000);
+            }
+          } else {
+            setMatchedHistory(null);
+            setShowAutoFillPrompt(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error checking auto-fill history:", err);
+      }
+    }, 600); // 600ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [form.first_name, form.last_name, form.student_id]);
+
+  function applyManualAutoFill() {
+    if (matchedHistory) {
+      setForm(f => ({
+        ...f,
+        year: String(matchedHistory.year),
+        faculty: matchedHistory.faculty,
+        branch: matchedHistory.branch,
+      }));
+      setBranches(RMUTP_FACULTIES[matchedHistory.faculty] || []);
+      setShowAutoFillPrompt(false);
+      
+      setAutoFillToast("✓ ดึงข้อมูลประวัติการเรียนเดิมเรียบร้อยแล้ว");
+      setTimeout(() => setAutoFillToast(null), 3000);
+    }
+  }
   const [success, setSuccess] = useState<{ id: number; student_id: string; title: string; first_name: string; last_name: string; bypass_token?: string } | null>(null);
   const [error, setError] = useState("");
   const [isOnline, setIsOnline] = useState(true);
@@ -397,9 +519,7 @@ function RegistrationPageInner() {
       const data = await res.json();
       if (res.ok && data.success) {
         setBypassState("success");
-        // Renew/extend 5 minutes timer
-        const updatedSession = { ...session, timestamp: new Date().toISOString() };
-        localStorage.setItem("rmutp_user_session", JSON.stringify(updatedSession));
+        // We do NOT renew the timestamp so that the 5-minute session is strictly from the original approval time
       } else {
         localStorage.removeItem("rmutp_user_session");
         setBypassState("none");
@@ -566,18 +686,6 @@ function RegistrationPageInner() {
     }
   }
 
-  // ─── QR Lockdown Gate ───────────────────────────────────────
-  // While checking authorization, show checking screen or loader
-  if (qrAuthorized === null) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#0f0c29", display: "flex", alignItems: "center", justifyContent: "center", color: "#FFF", flexDirection: "column", gap: 16 }}>
-        <span className="animate-spin" style={{ display: "inline-block", width: 36, height: 36, border: "3px solid rgba(255,255,255,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
-        <span style={{ fontSize: 14, fontWeight: 600 }}>กำลังตรวจสอบความถูกต้องของรหัสสแกน QR Code...</span>
-      </div>
-    );
-  }
-  if (qrAuthorized === false) return <QRAccessBlockedScreen message={blockedMessage} />;
-
   // ─── Bypass Loading / Verification Screen ──────────────────
   if (bypassState === "checking") {
     return (
@@ -674,6 +782,18 @@ function RegistrationPageInner() {
       </div>
     );
   }
+
+  // ─── QR Lockdown Gate ───────────────────────────────────────
+  // While checking authorization, show checking screen or loader
+  if (qrAuthorized === null) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0f0c29", display: "flex", alignItems: "center", justifyContent: "center", color: "#FFF", flexDirection: "column", gap: 16 }}>
+        <span className="animate-spin" style={{ display: "inline-block", width: 36, height: 36, border: "3px solid rgba(255,255,255,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+        <span style={{ fontSize: 14, fontWeight: 600 }}>กำลังตรวจสอบความถูกต้องของรหัสสแกน QR Code...</span>
+      </div>
+    );
+  }
+  if (qrAuthorized === false) return <QRAccessBlockedScreen message={blockedMessage} />;
 
   // ─── Success & Real-Time Polling Screen ────────────────────
   if (success) {
@@ -847,6 +967,34 @@ function RegistrationPageInner() {
         {/* Form Card */}
         <div className="premium-card animate-fade-in-delay-1" style={{ padding: 32 }}>
           <form onSubmit={handleSubmit}>
+            {autoFillToast && (
+              <div 
+                className="animate-scale-in"
+                style={{
+                  background: "#ECFDF5",
+                  border: "1px solid rgba(16,185,129,0.2)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  color: "#059669",
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  marginBottom: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  boxShadow: "0 4px 12px rgba(16,185,129,0.1)"
+                }}
+              >
+                <div style={{
+                  width: 22, height: 22, borderRadius: "50%",
+                  background: "#D1FAE5", display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  color: "#10B981", flexShrink: 0
+                }}>✓</div>
+                <span>{autoFillToast}</span>
+              </div>
+            )}
+
             {error && (
               <div style={{ background: "var(--edu-pink-pale)", border: "1px solid rgba(219,39,119,0.2)", borderRadius: 12, padding: "12px 16px", color: "var(--edu-pink)", fontSize: 13.5, fontWeight: 600, marginBottom: 20 }}>
                 <AlertIcon />
@@ -928,6 +1076,61 @@ function RegistrationPageInner() {
                 style={{ fontFamily: "monospace", letterSpacing: "1px", fontSize: 15, fontWeight: 700 }}
               />
             </div>
+
+            {showAutoFillPrompt && matchedHistory && (
+              <div 
+                className="animate-scale-in"
+                style={{
+                  marginBottom: 18,
+                  padding: "12px 16px",
+                  background: "linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(219,39,119,0.08) 100%)",
+                  border: "1px dashed var(--rmutp-purple)",
+                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  boxShadow: "0 4px 15px rgba(124,58,237,0.05)"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    background: "var(--rmutp-purple-pale)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--rmutp-purple)", flexShrink: 0
+                  }}>
+                    <GraduationIcon />
+                  </div>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--rmutp-purple-dark)" }}>พบประวัติการใช้ห้องเดิมของคุณ!</div>
+                    <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
+                      ปี {matchedHistory.year} | {matchedHistory.faculty} | {matchedHistory.branch.substring(0, 22)}{matchedHistory.branch.length > 22 ? "..." : ""}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={applyManualAutoFill}
+                  style={{
+                    background: "var(--rmutp-purple)",
+                    color: "#FFFFFF",
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 10px rgba(124,58,237,0.3)",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseOver={e => e.currentTarget.style.transform = "scale(1.05)"}
+                  onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
+                >
+                  ดึงข้อมูลอัตโนมัติ
+                </button>
+              </div>
+            )}
 
             {/* Year */}
             <div style={{ marginBottom: 18 }}>

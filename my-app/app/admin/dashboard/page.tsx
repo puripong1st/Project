@@ -255,7 +255,7 @@ const ACTION_METADATA: Record<string, { label: string; icon: React.ReactNode; co
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [tab, setTab] = useState<"pending" | "all" | "admins">("pending");
+  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings">("pending");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [pending, setPending] = useState<Student[]>([]);
   const [allStudents, setAll] = useState<Student[]>([]);
@@ -265,6 +265,68 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [rejectModal, setRejectModal] = useState<{ id: number; name: string } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [settings, setSettings] = useState({
+    auto_approve_enabled: false,
+    auto_approve_start_time: "09:00",
+    auto_approve_end_time: "16:00",
+    auto_approve_days: "1,2,3,4,5",
+    discord_webhook_register: "",
+    discord_webhook_approve: "",
+    discord_webhook_logs: "",
+    auto_fill_enabled: true,
+    auto_fill_mode: "auto",
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+ 
+  const fetchSettings = useCallback(async () => {
+    try {
+      const r = await fetch("/api/system/settings");
+      if (r.ok) {
+        const data = await r.json();
+        if (data.settings) {
+          setSettings({
+            auto_approve_enabled: data.settings.auto_approve_enabled === "1",
+            auto_approve_start_time: data.settings.auto_approve_start_time || "09:00",
+            auto_approve_end_time: data.settings.auto_approve_end_time || "16:00",
+            auto_approve_days: data.settings.auto_approve_days || "1,2,3,4,5",
+            discord_webhook_register: data.settings.discord_webhook_register || "",
+            discord_webhook_approve: data.settings.discord_webhook_approve || "",
+            discord_webhook_logs: data.settings.discord_webhook_logs || "",
+            auto_fill_enabled: data.settings.auto_fill_enabled === "1",
+            auto_fill_mode: data.settings.auto_fill_mode || "auto",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings", err);
+    }
+  }, []);
+
+  const saveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsLoading(true);
+    try {
+      const r = await fetch("/api/system/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...settings,
+          auto_approve_enabled: settings.auto_approve_enabled ? "1" : "0",
+          auto_fill_enabled: settings.auto_fill_enabled ? "1" : "0",
+        }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        showToast("บันทึกการตั้งค่าระบบและ Discord Webhooks สำเร็จ", "success");
+      } else {
+        showToast(data.error || "ไม่สามารถบันทึกได้", "error");
+      }
+    } catch (err) {
+      showToast("เกิดข้อผิดพลาดการบันทึกข้อมูล", "error");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
   
   // Unified Filters (Tab 2: ทำเนียบ & ประวัติเข้าออก)
   const [searchQ, setSearchQ] = useState("");
@@ -417,7 +479,12 @@ export default function AdminDashboard() {
         fetchAdmins();
       }, 0);
     }
-  }, [tab, user, fetchAll, fetchLogs, fetchAdmins]);
+    if (tab === "settings" && user?.role === "owner") {
+      setTimeout(() => {
+        fetchSettings();
+      }, 0);
+    }
+  }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings]);
 
   useEffect(() => {
     if (tab === "all") {
@@ -819,7 +886,8 @@ export default function AdminDashboard() {
               { id: "pending", icon: <ClockIcon />, label: "รายการรออนุมัติ", badge: pendingCount },
               ...(isOwner ? [
                 { id: "all", icon: <UsersIcon />, label: "ทำเนียบ & ประวัติเข้าออก", badge: 0 },
-                { id: "admins", icon: <SettingsIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
+                { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
+                { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
             ].map(item => (
               <button 
@@ -1657,6 +1725,246 @@ export default function AdminDashboard() {
                       >
                         <CheckIcon />
                         <span style={{ marginLeft: 6 }}>ยืนยันแต่งตั้งแอดมินใหม่</span>
+                      </button>
+                    </form>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* ── System & Discord Settings Tab (Owner Only) ────────────── */}
+            {tab === "settings" && isOwner && (
+              <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, alignItems: "start" }}>
+                  
+                  {/* Settings form card */}
+                  <form onSubmit={saveSettings} className="premium-card" style={{ padding: 24 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--rmutp-purple-dark)", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+                      <SettingsIcon /> ตั้งค่าระบบประตูเข้าออกห้องเรียนอัตโนมัติ
+                    </h3>
+                    
+                    <div style={{ marginBottom: 20, padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 700, fontSize: 13.5 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={settings.auto_approve_enabled}
+                          onChange={e => setSettings(s => ({ ...s, auto_approve_enabled: e.target.checked }))}
+                          style={{ width: 18, height: 18, accentColor: "var(--rmutp-purple)" }}
+                        />
+                        <span>เปิดระบบเข้าห้องอัตโนมัติไม่ต้องรออนุมัติ</span>
+                      </label>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, marginLeft: 28, lineHeight: "1.4" }}>
+                        เมื่อเปิดใช้งาน นักศึกษาที่ลงทะเบียนใหม่ภายในวันและเวลาบริการที่กำหนดจะได้รับสิทธิ์เข้าห้องอัตโนมัติทันที (Auto-Approve)
+                      </p>
+                    </div>
+
+                     <div style={{ marginBottom: 20, padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 700, fontSize: 13.5 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={settings.auto_fill_enabled}
+                          onChange={e => setSettings(s => ({ ...s, auto_fill_enabled: e.target.checked }))}
+                          style={{ width: 18, height: 18, accentColor: "var(--rmutp-purple)" }}
+                        />
+                        <span>เปิดระบบช่วยกรอกข้อมูลนักศึกษาเดิมอัตโนมัติ (Auto-fill)</span>
+                      </label>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, marginLeft: 28, lineHeight: "1.4", marginBottom: settings.auto_fill_enabled ? 12 : 0 }}>
+                        เมื่อเปิดใช้งาน หากนักศึกษากรอกชื่อ-นามสกุล และรหัสเดิมตรงกับในประวัติ ระบบจะช่วยดึงชั้นปี คณะ และสาขากรอกให้เอง
+                      </p>
+                      
+                      {settings.auto_fill_enabled && (
+                        <div style={{ marginLeft: 28, padding: 12, background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px dashed var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>รูปแบบการช่วยกรอก (Auto-fill Mode):</span>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
+                              <input 
+                                type="radio" 
+                                name="auto_fill_mode" 
+                                value="auto"
+                                checked={settings.auto_fill_mode === "auto"}
+                                onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
+                                style={{ accentColor: "var(--rmutp-purple)", cursor: "pointer" }}
+                              />
+                              <span>เด้งข้อมูลขึ้นมาให้เองอัตโนมัติ (Auto Pop-up)</span>
+                            </label>
+                            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
+                              <input 
+                                type="radio" 
+                                name="auto_fill_mode" 
+                                value="manual"
+                                checked={settings.auto_fill_mode === "manual"}
+                                onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
+                                style={{ accentColor: "var(--rmutp-purple)", cursor: "pointer" }}
+                              />
+                              <span>แสดงปุ่มให้กดเลือกเอง (Manual Confirmation)</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          เวลาเริ่มบริการ (ชั่วโมง:นาที)
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="text" 
+                          placeholder="เช่น 09:00"
+                          value={settings.auto_approve_start_time}
+                          onChange={e => setSettings(s => ({ ...s, auto_approve_start_time: e.target.value }))}
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          เวลาปิดบริการ (ชั่วโมง:นาที)
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="text" 
+                          placeholder="เช่น 16:00"
+                          value={settings.auto_approve_end_time}
+                          onChange={e => setSettings(s => ({ ...s, auto_approve_end_time: e.target.value }))}
+                          required 
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+                        เลือกวันเปิดให้บริการเข้าห้องอัตโนมัติ (คลิกเพื่อเปิด-ปิดบริการ)
+                      </label>
+                      
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4, marginBottom: 8 }}>
+                        {[
+                          { val: 1, label: "จันทร์", color: "#EAB308" },  // Monday - Gold/Yellow
+                          { val: 2, label: "อังคาร", color: "#EC4899" },  // Tuesday - Pink
+                          { val: 3, label: "พุธ", color: "#10B981" },     // Wednesday - Green
+                          { val: 4, label: "พฤหัสฯ", color: "#F97316" },   // Thursday - Orange
+                          { val: 5, label: "ศุกร์", color: "#3B82F6" },    // Friday - Blue
+                          { val: 6, label: "เสาร์", color: "#8B5CF6" },    // Saturday - Purple
+                          { val: 0, label: "อาทิตย์", color: "#EF4444" },  // Sunday - Red
+                        ].map(day => {
+                          const activeDaysList = settings.auto_approve_days ? settings.auto_approve_days.split(",").map(Number).filter(n => !isNaN(n)) : [];
+                          const isActive = activeDaysList.includes(day.val);
+                          
+                          const handleDayToggle = () => {
+                            let updated: number[];
+                            if (isActive) {
+                              updated = activeDaysList.filter(d => d !== day.val);
+                            } else {
+                              updated = [...activeDaysList, day.val];
+                            }
+                            updated.sort((a, b) => a - b);
+                            setSettings(s => ({ ...s, auto_approve_days: updated.join(",") }));
+                          };
+
+                          return (
+                            <button
+                              type="button"
+                              key={day.val}
+                              onClick={handleDayToggle}
+                              style={{
+                                padding: "8px 14px",
+                                borderRadius: "24px",
+                                border: isActive ? `1.5px solid ${day.color}` : "1.5px solid var(--border)",
+                                background: isActive ? `${day.color}15` : "transparent",
+                                color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                                fontSize: "12.5px",
+                                fontWeight: isActive ? 700 : 500,
+                                cursor: "pointer",
+                                transition: "all 0.2s ease-in-out",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                boxShadow: isActive ? `0 2px 8px ${day.color}25` : "none",
+                              }}
+                            >
+                              <span style={{ 
+                                display: "inline-block", 
+                                width: 8, 
+                                height: 8, 
+                                borderRadius: "50%", 
+                                background: isActive ? day.color : "#9CA3AF" 
+                              }} />
+                              {day.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      <p style={{ fontSize: 10.5, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.4 }}>
+                        💡 วันที่มีไฮไลต์สีสันคือวันเปิดให้บริการแบบ Auto-Approve (ค่าเริ่มต้น: จันทร์ - ศุกร์)
+                      </p>
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="btn-primary" 
+                      disabled={settingsLoading}
+                      style={{ width: "100%", justifyContent: "center", borderRadius: 12, padding: "12px" }}
+                    >
+                      <SaveIcon />
+                      <span style={{ marginLeft: 6 }}>{settingsLoading ? "กำลังบันทึก..." : "บันทึกการตั้งค่าระบบและเวลา"}</span>
+                    </button>
+                  </form>
+
+                  {/* Webhook Config Card */}
+                  <div className="premium-card" style={{ padding: 24 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--rmutp-purple-dark)", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+                      <FileTextIcon /> ตั้งค่า Discord Webhook แจ้งเตือนละเอียด
+                    </h3>
+                    <form onSubmit={saveSettings}>
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          📝 ช่องคำขอเข้าห้องเรียนใหม่ (New registration requests)
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="url" 
+                          placeholder="เช่น https://discord.com/api/webhooks/..."
+                          value={settings.discord_webhook_register}
+                          onChange={e => setSettings(s => ({ ...s, discord_webhook_register: e.target.value }))}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          🚪 ช่องแจ้งเตือนอนุมัติ / เปิดประตูสำเร็จ (Access events)
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="url" 
+                          placeholder="กรอก URL ของ Discord Webhook อนุมัติ"
+                          value={settings.discord_webhook_approve}
+                          onChange={e => setSettings(s => ({ ...s, discord_webhook_approve: e.target.value }))}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: 20 }}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          📊 ช่องเก็บ Log ความปลอดภัยของระบบแบบละเอียด (Audit logs)
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="url" 
+                          placeholder="กรอก URL ของ Discord Webhook สำหรับเก็บ Log"
+                          value={settings.discord_webhook_logs}
+                          onChange={e => setSettings(s => ({ ...s, discord_webhook_logs: e.target.value }))}
+                        />
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        className="btn-primary" 
+                        disabled={settingsLoading}
+                        style={{ width: "100%", justifyContent: "center", borderRadius: 12, padding: "12px", background: "var(--rmutp-purple-dark)" }}
+                      >
+                        <CheckIcon />
+                        <span style={{ marginLeft: 6 }}>{settingsLoading ? "กำลังบันทึก..." : "ยืนยันตั้งค่า Webhooks"}</span>
                       </button>
                     </form>
                   </div>

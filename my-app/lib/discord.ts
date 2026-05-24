@@ -1,4 +1,6 @@
 // lib/discord.ts — Discord webhook notifications
+import { getSystemSettings } from "./db";
+
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "";
 
 export type DiscordEventType =
@@ -39,10 +41,38 @@ export async function sendDiscordNotification(
     esp32Response?: string;
   }
 ): Promise<boolean> {
-  if (!WEBHOOK_URL) {
-    console.warn("[Discord] DISCORD_WEBHOOK_URL not set");
+  // Load dynamic webhook URLs from database
+  let targetWebhookUrl = "";
+  let logWebhookUrl = "";
+  
+  try {
+    const settings = await getSystemSettings();
+    logWebhookUrl = settings.discord_webhook_logs || "";
+    
+    if (eventType === "student_registered") {
+      targetWebhookUrl = settings.discord_webhook_register || "";
+    } else if (
+      eventType === "student_approved" || 
+      eventType === "student_rejected" || 
+      eventType === "door_opened" || 
+      eventType === "door_failed"
+    ) {
+      targetWebhookUrl = settings.discord_webhook_approve || "";
+    }
+  } catch (error) {
+    console.error("[Discord] Failed to fetch settings from DB, using env fallback", error);
+  }
+
+  // Fallback to environment variable if database configuration is missing
+  if (!targetWebhookUrl) {
+    targetWebhookUrl = WEBHOOK_URL;
+  }
+
+  if (!targetWebhookUrl && !logWebhookUrl) {
+    console.warn("[Discord] Webhook URL and Log Webhook URL are not set");
     return false;
   }
+
 
   const now = new Date().toLocaleString("th-TH", {
     timeZone: "Asia/Bangkok",
@@ -113,26 +143,31 @@ export async function sendDiscordNotification(
     case "door_opened":
       embed = {
         title: "🚪 ประตูเปิดแล้ว",
-        description: `ระบบสั่งเปิดประตูสำเร็จ`,
+        description: data.reason ? `🔓 เข้าห้องสำเร็จด้วยสิทธิ์ Bypass` : `ระบบสั่งเปิดประตูสำเร็จ`,
         color: COLORS.success,
         fields: [
           { name: "👤 นักศึกษา", value: data.studentName || "-", inline: true },
+          { name: "🎓 รหัสนักศึกษา", value: data.studentId || "-", inline: true },
           { name: "📡 ESP32", value: data.esp32Response || "OK", inline: true },
+          ...(data.adminName ? [{ name: "👨‍💼 ดำเนินการโดย", value: data.adminName, inline: true }] : []),
+          ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
         footer: { text: "ระบบ RMUTP Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
-
+ 
     case "door_failed":
       embed = {
         title: "⚠️ เปิดประตูไม่สำเร็จ",
-        description: `ไม่สามารถส่งคำสั่งไปยัง ESP32 ได้`,
+        description: data.reason ? `❌ เปิดประตูด้วยสิทธิ์ Bypass ล้มเหลว` : `ไม่สามารถส่งคำสั่งไปยัง ESP32 ได้`,
         color: COLORS.warning,
         fields: [
           { name: "👤 นักศึกษา", value: data.studentName || "-", inline: true },
+          { name: "🎓 รหัสนักศึกษา", value: data.studentId || "-", inline: true },
           { name: "❌ ข้อผิดพลาด", value: data.esp32Response || "Timeout", inline: true },
+          ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
         footer: { text: "ระบบ RMUTP Door Access" },
@@ -154,19 +189,44 @@ export async function sendDiscordNotification(
       break;
   }
 
-  try {
-    const response = await fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: "RMUTP Door Access",
-        avatar_url: "https://www.rmutp.ac.th/wp-content/uploads/2020/11/logo-rmutp.png",
-        embeds: [embed!],
-      }),
-    });
-    return response.ok;
-  } catch (error) {
-    console.error("[Discord] Webhook failed:", error);
-    return false;
+  let success = false;
+
+  // Send to the specific event target Webhook URL
+  if (targetWebhookUrl) {
+    try {
+      const response = await fetch(targetWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "RMUTP Door Access",
+          avatar_url: "https://www.rmutp.ac.th/wp-content/uploads/2020/11/logo-rmutp.png",
+          embeds: [embed!],
+        }),
+      });
+      success = response.ok;
+    } catch (error) {
+      console.error("[Discord] Target Webhook failed:", error);
+    }
   }
+
+  // Send to the comprehensive Audit Log Webhook URL
+  if (logWebhookUrl) {
+    try {
+      await fetch(logWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "RMUTP Audit Log Bot",
+          avatar_url: "https://www.rmutp.ac.th/wp-content/uploads/2020/11/logo-rmutp.png",
+          content: `📊 **[SYSTEM LOG]** ตรวจพบเหตุการณ์ประเภท \`${eventType}\``,
+          embeds: [embed!],
+        }),
+      });
+    } catch (error) {
+      console.error("[Discord] Log Webhook failed:", error);
+    }
+  }
+
+  return success;
+
 }
