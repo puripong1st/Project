@@ -252,6 +252,7 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
 function RegistrationPageInner() {
   // ─── QR Access Authorization ─────────────────────────
   const searchParams = useSearchParams();
+  const room = searchParams.get("room") || "default";
   const [qrAuthorized, setQrAuthorized] = useState<boolean | null>(null); // null = checking, true = authorized, false = blocked
   const [blockedMessage, setBlockedMessage] = useState<string>("");
   const authChecked = useRef(false);
@@ -266,7 +267,10 @@ function RegistrationPageInner() {
         const lastTime = new Date(session.timestamp).getTime();
         const now = new Date().getTime();
         const diffSeconds = (now - lastTime) / 1000;
-        if (diffSeconds <= 300) {
+        
+        // Ensure returning bypass is room-isolated: student can only bypass the room they originally registered for
+        const sessionRoom = session.requested_room || "default";
+        if (diffSeconds <= 300 && sessionRoom === room) {
           isBypassValid = true;
         }
       } catch {}
@@ -278,10 +282,10 @@ function RegistrationPageInner() {
       return;
     }
 
-    // If this tab session has already successfully scanned and verified, skip the dynamic token check
+    // If this tab session has already successfully scanned and verified for this specific room, skip the dynamic token check
     let isSessionVerified = false;
     try {
-      if (sessionStorage.getItem("rmutp_qr_verified") === "1") {
+      if (sessionStorage.getItem(`rmutp_qr_verified_${room}`) === "1") {
         isSessionVerified = true;
       }
     } catch {}
@@ -311,7 +315,7 @@ function RegistrationPageInner() {
         const data = await res.json();
         if (res.ok && data.success) {
           try {
-            sessionStorage.setItem("rmutp_qr_verified", "1");
+            sessionStorage.setItem(`rmutp_qr_verified_${room}`, "1");
           } catch {}
           setQrAuthorized(true);
         } else {
@@ -325,7 +329,7 @@ function RegistrationPageInner() {
     };
 
     verifyToken();
-  }, [searchParams]);
+  }, [searchParams, room]);
 
   const [form, setForm] = useState({
     title: "นาย",
@@ -609,10 +613,11 @@ function RegistrationPageInner() {
         title: success.title,
         first_name: success.first_name,
         last_name: success.last_name,
+        requested_room: room,
       };
       localStorage.setItem("rmutp_user_session", JSON.stringify(session));
     }
-  }, [success, currentStatus]);
+  }, [success, currentStatus, room]);
 
   // Cascade faculty → branch
   function handleFacultyChange(faculty: string) {
@@ -645,7 +650,7 @@ function RegistrationPageInner() {
     if (!isOnline) {
       const entry: OfflineEntry = {
         id: Date.now().toString(),
-        data: { ...form, year: parseInt(form.year) },
+        data: { ...form, year: parseInt(form.year), requested_room: room },
         timestamp: new Date().toISOString(),
         retries: 0,
       };
@@ -661,7 +666,7 @@ function RegistrationPageInner() {
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, year: parseInt(form.year) }),
+        body: JSON.stringify({ ...form, year: parseInt(form.year), requested_room: room }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -759,6 +764,10 @@ function RegistrationPageInner() {
               <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>รหัสนักศึกษา</span>
               <span style={{ color: "var(--rmutp-purple)", fontWeight: 800, fontSize: 14.5 }}>{sessionCode}</span>
             </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>ห้องปฏิบัติการ</span>
+              <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>🚪 {room}</span>
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>สถานะ Bypass</span>
               <span className="badge badge-approved">
@@ -840,6 +849,24 @@ function RegistrationPageInner() {
             {currentStatus === "approved" && "ได้รับสิทธิ์เข้าห้องแล้ว!"}
             {currentStatus === "rejected" && "ปฏิเสธการเข้าใช้ห้อง"}
           </h1>
+
+          {room && room !== "default" && (
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "4px 12px",
+              marginBottom: 16,
+              color: "var(--text-secondary)",
+              fontSize: 13,
+              fontWeight: 700
+            }}>
+              🚪 ห้องปฏิบัติการ: {room}
+            </div>
+          )}
 
           <p style={{ color: "var(--text-secondary)", marginBottom: 24, fontSize: 14, lineHeight: 1.5 }}>
             {currentStatus === "pending" && "ระบบได้รับข้อมูลของคุณแล้ว กำลังประสานงานและตรวจสิทธิ์..."}
@@ -958,6 +985,26 @@ function RegistrationPageInner() {
             กรอกข้อมูลเพื่อยื่นสิทธิ์ขออนุญาตเข้าใช้ห้องปฏิบัติการ คณะครุศาสตร์ <br />
             สิทธิ์การผ่านประตูจะถูกตรวจสอบโดยอาจารย์หรือเจ้าหน้าที่ดูแลระบบ
           </p>
+          
+          {room && room !== "default" && (
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(219,39,119,0.12) 100%)",
+              border: "1px solid rgba(124,58,237,0.3)",
+              borderRadius: 99,
+              padding: "6px 16px",
+              marginTop: 12,
+              color: "var(--rmutp-purple-dark)",
+              fontSize: 13.5,
+              fontWeight: 800,
+              boxShadow: "0 4px 12px rgba(124,58,237,0.08)"
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--rmutp-purple)", display: "inline-block" }} className="animate-pulse" />
+              <span>🚪 ห้องเรียนเป้าหมาย: {room}</span>
+            </div>
+          )}
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 600, marginTop: 12 }}>
             <ClockIcon />
             <span>{currentTime}</span>

@@ -323,9 +323,17 @@ export default function ESP32PreviewPage() {
   const [isRefreshing, setRefreshing] = useState(false);
   const [scale, setScale] = useState(1.5);
   const [esp32Status, setEsp32Status] = useState<ESP32Status | null>(null);
+  const [simRoom, setSimRoom] = useState("CE-401");
+  const [originUrl, setOriginUrl] = useState("");
   
   // Real-Time automatic event triggers from DB
   const lastApprovedTimeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOriginUrl(window.location.origin);
+    }
+  }, []);
 
   const fetchDisplay = async () => {
     setRefreshing(true);
@@ -526,6 +534,76 @@ export default function ESP32PreviewPage() {
                   หน้าจอนี้เชื่อมโยงกับฐานข้อมูลโดยตรง หากท่านเปิดหน้านี้ทิ้งไว้ แล้วไปกด **อนุมัติ (Approve)** หรือ **เปิดประตู (Unlock)** บนแดชบอร์ด หน้าจำลองนี้จะรันลำดับตรวจสอบและปลดล็อกอัตโนมัติทันทีเสมือนหน้าจอจริง!
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* ─── 🔗 Dev Link: Clickable Simulator Scan ─── */}
+          <div className="glass-card animate-fade-in" style={{ padding: 24, marginBottom: 20, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.02)", boxShadow: "0 10px 25px -5px rgba(16,185,129,0.05)" }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 12, color: "#10B981", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+              <span style={{ fontSize: 18 }}>🔗</span>
+              <span>Dev Link: ปุ่มลัดสำหรับนักพัฒนา</span>
+            </h3>
+            <p style={{ color: "#9EA8A0", fontSize: 12, marginTop: 6, marginBottom: 16, lineHeight: "1.4" }}>
+              จำลองการสแกนด้วยคอมพิวเตอร์เพื่อสิทธิ์เข้าห้องปฏิบัติการ (คลิกเพื่อเปิดหน้าฟอร์มลงทะเบียนพร้อมพารามิเตอร์ Token ความปลอดภัยล่าสุด)
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Select Room to Scan */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: "#E2E8F0" }}>ห้องปฏิบัติการจำลอง:</span>
+                <select 
+                  className="rmutp-input"
+                  value={simRoom}
+                  onChange={e => setSimRoom(e.target.value)}
+                  style={{ flex: 1, padding: "8px 12px", fontSize: 12.5, background: "rgba(15,17,23,0.8)", borderColor: "rgba(255,255,255,0.08)", color: "#F0F4F0" }}
+                >
+                  <option value="CE-401">🚪 Classroom CE-401</option>
+                  <option value="CE-402">🚪 Classroom CE-402</option>
+                  <option value="CE-403">🚪 Classroom CE-403</option>
+                </select>
+              </div>
+
+              {/* Clickable Simulate Link Button */}
+              {displayData?.active_token ? (
+                <a
+                  href={`/?scan=${displayData.active_token}&room=${simRoom}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    textDecoration: "none",
+                    background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+                    color: "#fff",
+                    boxShadow: "0 4px 12px rgba(16,185,129,0.25)",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  ⚡ คลิกเปิดแท็บลงทะเบียนห้อง {simRoom} (Simulate Scan)
+                </a>
+              ) : (
+                <div style={{ color: "#EF4444", fontSize: 11.5, textAlign: "center", background: "rgba(239,68,68,0.05)", padding: 10, borderRadius: 8 }}>
+                  ⚠️ กำลังตรวจจับคีย์ Token ล่าสุดจากเซิร์ฟเวอร์...
+                </div>
+              )}
+
+              {/* Show raw URL for reference */}
+              {displayData?.active_token && originUrl && (
+                <div style={{ fontSize: 10, color: "#6B7A70", background: "rgba(0,0,0,0.3)", padding: 10, borderRadius: 8, wordBreak: "break-all", fontFamily: "monospace", border: "1px solid rgba(255,255,255,0.03)" }}>
+                  <strong style={{ color: "#9EA8A0" }}>ลิงก์สำหรับคลิกทดสอบ (คลิกเพื่อก็อปปี้หรือเปิดใช้งาน):</strong><br />
+                  <a href={`${originUrl}/?scan=${displayData.active_token}&room=${simRoom}`} target="_blank" rel="noopener noreferrer" style={{ color: "#10B981", textDecoration: "none", display: "inline-block", marginTop: 4 }}>
+                    {`${originUrl}/?scan=${displayData.active_token}&room=${simRoom}`}
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 

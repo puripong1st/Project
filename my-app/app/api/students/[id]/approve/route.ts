@@ -47,7 +47,7 @@ export async function POST(
     );
 
     // Open door via ESP32
-    const esp32Result = await openDoor(student.student_id);
+    const esp32Result = await openDoor(student.student_id, student.requested_room);
 
     // Update last door open
     if (esp32Result.success) {

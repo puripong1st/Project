@@ -78,6 +78,16 @@ export async function POST(req: NextRequest) {
       await updateSystemSetting("discord_webhook_logs", String(discord_webhook_logs).trim());
     }
 
+    // อัปเดตการตั้งค่าเพิ่มเติม (custom settings) เช่น รายชื่อห้องเรียน และ IP แยกห้อง
+    const { custom_settings } = body;
+    if (custom_settings && typeof custom_settings === "object") {
+      for (const [key, value] of Object.entries(custom_settings)) {
+        if (typeof key === "string" && typeof value === "string") {
+          await updateSystemSetting(key, value.trim());
+        }
+      }
+    }
+
     // บันทึก log ในระบบ
     const pool = getPool();
     await pool.query(

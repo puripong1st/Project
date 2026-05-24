@@ -122,6 +122,9 @@ export async function initDatabase(): Promise<void> {
       { key: "discord_webhook_logs", value: "" },
       { key: "auto_fill_enabled", value: "1" },
       { key: "auto_fill_mode", value: "auto" },
+      { key: "configured_rooms", value: "CE-401,CE-402" },
+      { key: "room_ip_CE-401", value: "192.168.1.100" },
+      { key: "room_ip_CE-402", value: "192.168.1.101" },
     ];
 
     for (const setting of defaultSettings) {
@@ -225,6 +228,7 @@ export interface StudentRow {
   last_door_open: Date | null;
   bypass_token?: string | null;
   approver_name?: string;
+  requested_room: string;
 }
 
 export interface AdminRow {

@@ -61,8 +61,14 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Calculate detailed bypass metrics
+    const lastEventTimeStr = new Date(recentTime).toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok" });
+    const minutesAgo = Math.floor(diffSeconds / 60);
+    const secondsAgo = Math.floor(diffSeconds % 60);
+    const reasonText = `⚡ ผ่านเข้าห้องเรียนสำเร็จด้วยสิทธิ์ Bypass อัตโนมัติ (สแกนซ้ำภายใน 5 นาที)\n• มีประวัติเปิดประตูหรือได้รับอนุมัติล่าสุดเมื่อเวลา: ${lastEventTimeStr} น.\n• ระยะเวลาที่ผ่านไป: ${minutesAgo} นาที ${secondsAgo} วินาที (ไม่เกิน 300 วินาที)\n• ระบบอนุญาตให้ปลดล็อกประตูได้ทันทีโดยไม่ต้องลงทะเบียนซ้ำ`;
+
     // Trigger physical door unlock via ESP32 API
-    const esp32Result = await openDoor(student.student_id);
+    const esp32Result = await openDoor(student.student_id, student.requested_room);
 
     if (esp32Result.success) {
       // Update last_door_open timestamp
@@ -75,16 +81,10 @@ export async function POST(req: NextRequest) {
       [
         student.id, 
         esp32Result.success ? "door_opened" : "door_failed", 
-        "ผ่านเข้าห้องเรียนสำเร็จด้วยระบบ Bypass อัตโนมัติ (สแกนซ้ำภายใน 5 นาที)", 
+        reasonText, 
         esp32Result.message
       ]
     );
-
-    // Calculate detailed bypass metrics
-    const lastEventTimeStr = new Date(recentTime).toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok" });
-    const minutesAgo = Math.floor(diffSeconds / 60);
-    const secondsAgo = Math.floor(diffSeconds % 60);
-    const reasonText = `⚡ ผ่านเข้าห้องเรียนสำเร็จด้วยสิทธิ์ Bypass อัตโนมัติ (สแกนซ้ำภายใน 5 นาที)\n• มีประวัติเปิดประตูหรือได้รับอนุมัติล่าสุดเมื่อเวลา: ${lastEventTimeStr} น.\n• ระยะเวลาที่ผ่านไป: ${minutesAgo} นาที ${secondsAgo} วินาที (ไม่เกิน 300 วินาที)\n• ระบบอนุญาตให้ปลดล็อกประตูได้ทันทีโดยไม่ต้องลงทะเบียนซ้ำ`;
 
     // Send notification to Discord channel
     sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {

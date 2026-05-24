@@ -19,13 +19,15 @@ export async function GET(req: NextRequest) {
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
 
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") || "100");
+    const rawLimit = parseInt(searchParams.get("limit") || "100");
+    const limit = isNaN(rawLimit) ? 100 : Math.min(Math.max(rawLimit, 1), 500);
 
     const pool = getPool();
     const [rows] = await pool.query(
       `SELECT al.*, 
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.student_id as student_code,
+        s.requested_room as requested_room,
         a.full_name as admin_name
        FROM access_logs al
        LEFT JOIN students s ON al.student_id = s.id

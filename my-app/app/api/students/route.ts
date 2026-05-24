@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureInit();
     const body = await req.json();
-    const { title, first_name, last_name, student_id, year, faculty, branch } = body;
+    const { title, first_name, last_name, student_id, year, faculty, branch, requested_room } = body;
 
     // Sanitize input to prevent XSS
     const sanitizeHTML = (input: string): string => {
@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
     const sanitizedStudentId = sanitizeHTML(student_id?.trim() ?? '');
     const sanitizedFaculty = sanitizeHTML(faculty?.trim() ?? '');
     const sanitizedBranch = sanitizeHTML(branch?.trim() ?? '');
+    const sanitizedRequestedRoom = sanitizeHTML(requested_room?.trim() ?? 'default') || 'default';
 
     // Validation
     if (!sanitizedTitle || !["นาย", "นางสาว", "นาง"].includes(sanitizedTitle)) {
@@ -136,13 +137,13 @@ export async function POST(req: NextRequest) {
 
       if (shouldAutoApprove) {
         // Auto-approve working hours: instant approval and door trigger!
-        const esp32Result = await openDoor(existingStudent.student_id);
+        const esp32Result = await openDoor(existingStudent.student_id, sanitizedRequestedRoom);
 
         await pool.query(
           `UPDATE students 
-           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'approved', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NOW(), last_door_open = NOW() 
+           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'approved', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NOW(), last_door_open = NOW(), requested_room = ? 
            WHERE id = ?`,
-          [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, existingStudent.id]
+          [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, sanitizedRequestedRoom, existingStudent.id]
         );
 
         await pool.query(
@@ -182,9 +183,9 @@ export async function POST(req: NextRequest) {
 
         await pool.query(
           `UPDATE students 
-           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'pending', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NULL, registered_at = NOW() 
+           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'pending', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NULL, registered_at = NOW(), requested_room = ? 
            WHERE id = ?`,
-          [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, existingStudent.id]
+          [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, sanitizedRequestedRoom, existingStudent.id]
         );
 
         await pool.query(
@@ -216,13 +217,13 @@ export async function POST(req: NextRequest) {
     if (shouldAutoApprove) {
       // New student - within working hours: auto approve!
       const [result] = await pool.query(
-        `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token, approved_at, last_door_open)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NOW(), NOW())`,
-        [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken]
+        `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token, approved_at, last_door_open, requested_room)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NOW(), NOW(), ?)`,
+        [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken, sanitizedRequestedRoom]
       );
       const insertId = (result as { insertId: number }).insertId;
 
-      const esp32Result = await openDoor(sanitizedStudentId);
+      const esp32Result = await openDoor(sanitizedStudentId, sanitizedRequestedRoom);
 
       await pool.query(
         `INSERT INTO access_logs (student_id, action, notes, esp32_response) VALUES (?, ?, ?, ?)`,
@@ -252,9 +253,9 @@ export async function POST(req: NextRequest) {
     } else {
       // New student - outside working hours: request pending normally
       const [result] = await pool.query(
-        `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
-        [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken]
+        `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token, requested_room)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+        [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken, sanitizedRequestedRoom]
       );
       const insertId = (result as { insertId: number }).insertId;
 

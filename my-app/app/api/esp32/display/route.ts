@@ -11,37 +11,71 @@ async function ensureInit() {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await ensureInit();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+    const { searchParams } = new URL(req.url);
+    const room = (searchParams.get("room") || "default").trim();
+
     const pool = getPool();
-    // Count pending students
+
+    // ─── [IoT Cloud Polling command check] ───
+    // ตรวจสอบว่าแอดมินพึ่งกดยอมรับอนุมัติเปิดประตูสำหรับห้องนี้หรือไม่
+    let doorTrigger = "idle";
+    const [settingRows] = await pool.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = ?",
+      [`room_cmd_${room}`]
+    );
+    const settings = settingRows as { setting_value: string }[];
+    if (settings.length > 0 && settings[0].setting_value === "unlock") {
+      doorTrigger = "open";
+      // ทำการล้างสถานะในทันที (Consume) เพื่อป้องกันการเปิดซ้ำซ้อนใน Polling รอบถัดไป
+      await pool.query(
+        "UPDATE system_settings SET setting_value = 'consumed', updated_at = NOW() WHERE setting_key = ?",
+        [`room_cmd_${room}`]
+      );
+      console.log(`[IoT Cloud API] Command 'unlock' consumed by device for room: ${room}`);
+    }
+
+    // Count pending students for this specific room
     const [pendingRows] = await pool.query(
-      "SELECT COUNT(*) as count FROM students WHERE status = 'pending'"
+      "SELECT COUNT(*) as count FROM students WHERE status = 'pending' AND requested_room = ?",
+      [room]
     );
     const pendingCount = (pendingRows as { count: number }[])[0].count;
 
-    // Get last approved student
+    // Get last approved student for this specific room
     const [lastApproved] = await pool.query(
       `SELECT CONCAT(first_name, ' ', last_name) as name, student_id, approved_at
-       FROM students WHERE status = 'approved' AND approved_at IS NOT NULL
-       ORDER BY approved_at DESC LIMIT 1`
+       FROM students WHERE status = 'approved' AND approved_at IS NOT NULL AND requested_room = ?
+       ORDER BY approved_at DESC LIMIT 1`,
+      [room]
     );
 
     const lastStudent = (lastApproved as { name: string; student_id: string; approved_at: Date }[])[0];
 
     const activeToken = await getOrCreateActiveQRToken();
 
+    // Only expose the active_token if the caller authenticates with ESP32 API key
+    const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";
+    const callerKey = req.headers.get("x-api-key") || "";
+    const isAuthenticatedDevice = callerKey === esp32ApiKey;
+
+    let activeTokenVal: string | undefined;
+    if (isAuthenticatedDevice) {
+      activeTokenVal = activeToken;
+    }
+
     return NextResponse.json(
       {
         // Display info for ESP32
         title: "RMUTP Door Access",
         subtitle: "มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร",
-        active_token: activeToken,
-        qr_url: `${appUrl}/api/esp32/qr?token=${activeToken}`,
-        register_url: `${appUrl}/`,
+        ...(isAuthenticatedDevice && { active_token: activeTokenVal }),
+        qr_url: `${appUrl}/api/esp32/qr?room=${room}`,
+        register_url: `${appUrl}/?room=${room}`,
         pending_count: pendingCount,
         last_approved: lastStudent
           ? {
@@ -52,6 +86,8 @@ export async function GET() {
           : null,
         server_time: new Date().toISOString(),
         status: "online",
+        door_trigger: doorTrigger,
+        requested_room: room,
         // Display dimensions hint for LAFVIN 3.2" (320x240)
         display: {
           width: 320,

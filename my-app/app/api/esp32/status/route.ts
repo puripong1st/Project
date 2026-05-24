@@ -1,15 +1,18 @@
 // app/api/esp32/status/route.ts — ESP32 connection status & mode info
-import { NextResponse } from "next/server";
-import { getESP32Status, getESP32BaseUrl } from "@/lib/esp32";
+import { NextRequest, NextResponse } from "next/server";
+import { getESP32Status, getESP32Url } from "@/lib/esp32";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const status = await getESP32Status();
-    const url    = getESP32BaseUrl();
+    const { searchParams } = new URL(req.url);
+    const room = searchParams.get("room") || "default";
+
+    const status = await getESP32Status(room);
+    const url    = await getESP32Url(room);
 
     return NextResponse.json({ ...status, url });
   } catch (error) {
-    console.error("[ESP32/Status]", error);
+    console.error("[ESP32/Status] error:", error);
     return NextResponse.json({ online: false, mode: "physical", error: "Status check failed" }, { status: 500 });
   }
 }

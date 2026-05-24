@@ -39,6 +39,7 @@ export async function sendDiscordNotification(
     adminName?: string;
     reason?: string;
     esp32Response?: string;
+    room?: string; // เพิ่มฟิลด์ห้องสำหรับแยกสิทธิ์และ Webhook รายห้อง
   }
 ): Promise<boolean> {
   // Load dynamic webhook URLs from database
@@ -49,15 +50,26 @@ export async function sendDiscordNotification(
     const settings = await getSystemSettings();
     logWebhookUrl = settings.discord_webhook_logs || "";
     
-    if (eventType === "student_registered") {
-      targetWebhookUrl = settings.discord_webhook_register || "";
-    } else if (
-      eventType === "student_approved" || 
-      eventType === "student_rejected" || 
-      eventType === "door_opened" || 
-      eventType === "door_failed"
-    ) {
-      targetWebhookUrl = settings.discord_webhook_approve || "";
+    // ─── [IoT Cloud Room-Specific Webhook Routing] ───
+    // ค้นหาว่ามี Discord Webhook เฉพาะของห้องปฏิบัติการเป้าหมายหรือไม่
+    const roomKey = data.room ? `room_webhook_${data.room.trim()}` : "";
+    const roomWebhook = roomKey ? settings[roomKey] : "";
+
+    if (roomWebhook) {
+      targetWebhookUrl = roomWebhook;
+      console.log(`[Discord Cloud] Routing notification to room-specific webhook for: ${data.room}`);
+    } else {
+      // หากไม่มี Webhook เฉพาะห้อง ให้ใช้ Webhook ของประเภทกิจกรรมส่วนกลาง
+      if (eventType === "student_registered") {
+        targetWebhookUrl = settings.discord_webhook_register || "";
+      } else if (
+        eventType === "student_approved" || 
+        eventType === "student_rejected" || 
+        eventType === "door_opened" || 
+        eventType === "door_failed"
+      ) {
+        targetWebhookUrl = settings.discord_webhook_approve || "";
+      }
     }
   } catch (error) {
     console.error("[Discord] Failed to fetch settings from DB, using env fallback", error);
@@ -187,6 +199,11 @@ export async function sendDiscordNotification(
         timestamp: new Date().toISOString(),
       };
       break;
+  }
+
+  // แทรกแท็กระบุห้องเรียนลงใน Embed ก่อนทำการส่ง เพื่อความชัดเจนและเรียบร้อยใน Discord
+  if (data.room && embed) {
+    embed.fields.push({ name: "🚪 ห้องเรียน", value: data.room, inline: true });
   }
 
   let success = false;

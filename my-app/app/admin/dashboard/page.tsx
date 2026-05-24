@@ -18,6 +18,7 @@ interface Student {
   approver_name?: string;
   last_door_open?: string;
   ip_address?: string;
+  requested_room?: string;
 }
 
 interface AdminUser {
@@ -39,6 +40,7 @@ interface AccessLog {
   timestamp: string;
   esp32_response?: string;
   notes?: string;
+  requested_room?: string;
 }
 
 interface CurrentUser {
@@ -253,6 +255,57 @@ const ACTION_METADATA: Record<string, { label: string; icon: React.ReactNode; co
   export_pdf: { label: "จัดทำรายงาน PDF", icon: <SaveIcon />, color: "#3B82F6" },
 };
 
+function renderLogNotes(notes?: string) {
+  if (!notes) return <span style={{ color: "var(--text-muted)" }}>-</span>;
+  
+  const lines = notes.split("\n");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("•")) {
+          return (
+            <div key={idx} style={{ 
+              fontSize: "11px", 
+              color: "var(--text-secondary)", 
+              display: "flex", 
+              alignItems: "flex-start", 
+              gap: 6,
+              paddingLeft: 8,
+              lineHeight: 1.4
+            }}>
+              <span style={{ color: "var(--rmutp-purple)", fontWeight: "bold", marginTop: 2 }}>•</span>
+              <span>{trimmed.replace(/^•\s*/, "")}</span>
+            </div>
+          );
+        }
+        if (trimmed.startsWith("⚡")) {
+          return (
+            <div key={idx} style={{ 
+              fontSize: "12px", 
+              fontWeight: 800, 
+              color: "#D97706", // Amber color
+              display: "flex", 
+              alignItems: "flex-start", 
+              gap: 6,
+              lineHeight: 1.4,
+              marginBottom: 4
+            }}>
+              <span style={{ marginTop: 2 }}>⚡</span>
+              <span>{trimmed.replace(/^⚡\s*/, "")}</span>
+            </div>
+          );
+        }
+        return (
+          <div key={idx} style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.4 }}>
+            {line}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings">("pending");
@@ -277,6 +330,25 @@ export default function AdminDashboard() {
     auto_fill_mode: "auto",
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [rawSettings, setRawSettings] = useState<Record<string, string>>({});
+  const [activeRoomDetails, setActiveRoomDetails] = useState<{ room: string; ip: string } | null>(null);
+  const [roomDetailsTab, setRoomDetailsTab] = useState<"api" | "webhook" | "arduino">("api");
+  const [roomWebhookInput, setRoomWebhookInput] = useState("");
+  const [roomDetailsLoading, setRoomDetailsLoading] = useState(false);
+  const [originUrl, setOriginUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOriginUrl(window.location.origin);
+    }
+  }, []);
+
+  // Multi-Room dynamic states
+  const [roomsList, setRoomsList] = useState<{ room: string; ip: string }[]>([]);
+  const [newRoomCode, setNewRoomCode] = useState("");
+  const [newRoomIp, setNewRoomIp] = useState("");
+  const [testingRoom, setTestingRoom] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { online: boolean; ip: string; mode: string }>>({});
  
   const fetchSettings = useCallback(async () => {
     try {
@@ -284,6 +356,7 @@ export default function AdminDashboard() {
       if (r.ok) {
         const data = await r.json();
         if (data.settings) {
+          setRawSettings(data.settings || {});
           setSettings({
             auto_approve_enabled: data.settings.auto_approve_enabled === "1",
             auto_approve_start_time: data.settings.auto_approve_start_time || "09:00",
@@ -295,6 +368,14 @@ export default function AdminDashboard() {
             auto_fill_enabled: data.settings.auto_fill_enabled === "1",
             auto_fill_mode: data.settings.auto_fill_mode || "auto",
           });
+
+          // Parse dynamic configured rooms
+          const confRooms = data.settings.configured_rooms || "CE-401,CE-402";
+          const rooms = confRooms.split(",").filter(Boolean).map((rm: string) => ({
+            room: rm,
+            ip: data.settings[`room_ip_${rm}`] || "192.168.1.100"
+          }));
+          setRoomsList(rooms);
         }
       }
     } catch (err) {
@@ -302,9 +383,50 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const handleOpenRoomDetails = (room: string, ip: string) => {
+    setActiveRoomDetails({ room, ip });
+    setRoomDetailsTab("api");
+    const currentWebhook = rawSettings[`room_webhook_${room}`] || "";
+    setRoomWebhookInput(currentWebhook);
+  };
+
+  const handleSaveRoomWebhook = async () => {
+    if (!activeRoomDetails) return;
+    setRoomDetailsLoading(true);
+    try {
+      const response = await fetch("/api/system/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          custom_settings: {
+            [`room_webhook_${activeRoomDetails.room}`]: roomWebhookInput
+          }
+        })
+      });
+      if (response.ok) {
+        showToast(`บันทึก Webhook ประจำห้อง ${activeRoomDetails.room} สำเร็จ`, "success");
+        await fetchSettings();
+      } else {
+        showToast("บันทึกไม่สำเร็จ กรุณาลองใหม่", "error");
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดเครือข่าย", "error");
+    } finally {
+      setRoomDetailsLoading(false);
+    }
+  };
+
   const saveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setSettingsLoading(true);
+
+    // Prepare room custom settings to be dynamically saved
+    const custom_settings: Record<string, string> = {};
+    custom_settings["configured_rooms"] = roomsList.map(r => r.room).join(",");
+    roomsList.forEach(r => {
+      custom_settings[`room_ip_${r.room}`] = r.ip;
+    });
+
     try {
       const r = await fetch("/api/system/settings", {
         method: "POST",
@@ -313,11 +435,13 @@ export default function AdminDashboard() {
           ...settings,
           auto_approve_enabled: settings.auto_approve_enabled ? "1" : "0",
           auto_fill_enabled: settings.auto_fill_enabled ? "1" : "0",
+          custom_settings
         }),
       });
       const data = await r.json();
       if (r.ok) {
-        showToast("บันทึกการตั้งค่าระบบและ Discord Webhooks สำเร็จ", "success");
+        showToast("บันทึกการตั้งค่าระบบและรายการห้องเรียนสำเร็จ", "success");
+        fetchSettings();
       } else {
         showToast(data.error || "ไม่สามารถบันทึกได้", "error");
       }
@@ -326,6 +450,54 @@ export default function AdminDashboard() {
     } finally {
       setSettingsLoading(false);
     }
+  };
+
+  const handleTestConnection = async (roomCode: string) => {
+    setTestingRoom(roomCode);
+    try {
+      const res = await fetch(`/api/esp32/status?room=${roomCode}`);
+      const data = await res.json();
+      if (res.ok && data.online) {
+        setTestResults(prev => ({ ...prev, [roomCode]: { online: true, ip: data.ip, mode: data.mode } }));
+        showToast(`📡 เชื่อมต่อบอร์ดห้อง ${roomCode} (${data.ip}) สำเร็จ!`, "success");
+      } else {
+        setTestResults(prev => ({ ...prev, [roomCode]: { online: false, ip: data.ip || "ไม่ระบุ", mode: data.mode || "physical" } }));
+        showToast(`❌ ไม่สามารถเชื่อมต่อกับบอร์ดห้อง ${roomCode} (${data.ip || "ไม่ระบุ"})`, "error");
+      }
+    } catch {
+      setTestResults(prev => ({ ...prev, [roomCode]: { online: false, ip: "error", mode: "physical" } }));
+      showToast(`❌ ไม่สามารถติดต่อเซิร์ฟเวอร์เพื่อทดสอบห้อง ${roomCode}`, "error");
+    } finally {
+      setTestingRoom(null);
+    }
+  };
+
+  const handleAddRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = newRoomCode.trim().toUpperCase();
+    const ip = newRoomIp.trim();
+    if (!code || !ip) {
+      showToast("กรุณากรอกรหัสห้องเรียนและ IP Address", "error");
+      return;
+    }
+    // Block special characters in room code for safety
+    if (!/^[A-Z0-9_-]{2,20}$/.test(code)) {
+      showToast("รหัสห้องเรียนต้องเป็นตัวอักษรภาษาอังกฤษ ตัวเลข - หรือ _ เท่านั้น", "error");
+      return;
+    }
+    if (roomsList.some(r => r.room === code)) {
+      showToast("รหัสห้องเรียนนี้มีอยู่แล้ว", "error");
+      return;
+    }
+    setRoomsList(prev => [...prev, { room: code, ip }]);
+    setNewRoomCode("");
+    setNewRoomIp("");
+    showToast(`🏢 เพิ่มห้อง ${code} ลงในรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
+  };
+
+  const handleRemoveRoom = (roomCode: string) => {
+    setRoomsList(prev => prev.filter(r => r.room !== roomCode));
+    showToast(`🗑️ ลบห้อง ${roomCode} ออกจากรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
   };
   
   // Unified Filters (Tab 2: ทำเนียบ & ประวัติเข้าออก)
@@ -338,6 +510,8 @@ export default function AdminDashboard() {
 
   const [logFilter, setLogFilter] = useState("all");
   const [logSearch, setLogSearch] = useState("");
+  const [logPageSize, setLogPageSize] = useState(10);
+  const [logCurrentPage, setLogCurrentPage] = useState(1);
 
   const [newAdmin, setNewAdmin] = useState({ username: "", password: "", full_name: "", role: "door_operator" });
   const [currentTime, setTime] = useState("");
@@ -376,6 +550,12 @@ export default function AdminDashboard() {
     tick();
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
+  }, []);
+
+  // Set end date to today dynamically on client-side mount to prevent Hydration Mismatch
+  useEffect(() => {
+    const today = new Date().toLocaleDateString("en-CA");
+    setEndDate(today);
   }, []);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
@@ -703,6 +883,10 @@ export default function AdminDashboard() {
     return true;
   });
 
+  const totalFilteredLogs = filteredLogs.length;
+  const totalLogPages = Math.ceil(totalFilteredLogs / logPageSize) || 1;
+  const displayedLogs = filteredLogs.slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize);
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -753,6 +937,281 @@ export default function AdminDashboard() {
               >
                 {loadingId === rejectModal.id ? "กำลังดำเนินการ..." : "ยืนยันปฏิเสธ"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Room IoT & Webhook Settings Modal ─── */}
+      {activeRoomDetails && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(30, 27, 75, 0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 24 }}>
+          <div className="premium-card animate-scale-in" style={{ maxWidth: 640, width: "100%", padding: 28, background: "var(--bg-secondary)", border: "1px solid var(--border)", position: "relative" }}>
+            
+            {/* Close button */}
+            <button 
+              type="button"
+              onClick={() => setActiveRoomDetails(null)}
+              style={{ position: "absolute", top: 20, right: 20, background: "none", border: "none", color: "var(--text-secondary)", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              ✕
+            </button>
+
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+              🚪 ตั้งค่าและรายละเอียด IoT: <span style={{ color: "var(--rmutp-purple-dark)" }}>ห้อง {activeRoomDetails.room}</span>
+            </h3>
+            <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 20 }}>
+              ที่อยู่ IP ของบอร์ดภายในเครือข่ายจำลอง: <code style={{ color: "var(--rmutp-purple)" }}>{activeRoomDetails.ip}</code>
+            </p>
+
+            {/* Modal Tabs selector */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 20, background: "rgba(255,255,255,0.02)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)" }}>
+              {[
+                { id: "api", label: "🔗 API & URLs" },
+                { id: "webhook", label: "🔔 Discord Webhook" },
+                { id: "arduino", label: "🔌 Arduino โค้ดบอร์ด (.ino)" }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRoomDetailsTab(tab.id as any)}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: "none",
+                    background: roomDetailsTab === tab.id ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                    color: roomDetailsTab === tab.id ? "#fff" : "var(--text-secondary)",
+                    boxShadow: roomDetailsTab === tab.id ? "0 2px 6px rgba(124,58,237,0.2)" : "none",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Content Panels */}
+            <div style={{ minHeight: 260, maxHeight: 380, overflowY: "auto", paddingRight: 4 }}>
+              
+              {/* TAB 1: API & URLs */}
+              {roomDetailsTab === "api" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }} className="animate-fade-in">
+                  {[
+                    {
+                      label: "📡 1. API ดึงค่าสเตตัสบอร์ด & ทริกเปิดประตู (Display Polling API)",
+                      desc: "สำหรับฝั่งบอร์ด ESP32 คอยยิงดึงสถานะจอและแฟล็กปลดล็อกทุกๆ 2 วินาที",
+                      url: `${originUrl}/api/esp32/display?room=${activeRoomDetails.room}`
+                    },
+                    {
+                      label: "🖼️ 2. API รูปภาพ QR Code ประจำห้อง (Dynamic PNG QR)",
+                      desc: "ส่งกลับผลลัพธ์เป็นไฟล์รูปภาพสแกน PNG ล่าสุดสำหรับนำไปใช้วาดบน LCD",
+                      url: `${originUrl}/api/esp32/qr?room=${activeRoomDetails.room}`
+                    },
+                    {
+                      label: "📝 3. ลิงก์ตรงหน้าลงทะเบียนนักศึกษา (Student Registration URL)",
+                      desc: "ใช้สแกนลงทะเบียนขอผ่านทางของห้องปฏิบัติการนี้โดยเฉพาะข้ามเครือข่าย",
+                      url: `${originUrl}/?scan=${systemStatus?.esp32?.online ? "active" : ""}&room=${activeRoomDetails.room}`
+                    }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{ padding: 14, background: "rgba(0,0,0,0.15)", borderRadius: 10, border: "1px solid var(--border)", textAlign: "left" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>{item.label}</div>
+                      <div style={{ fontSize: 10.5, color: "var(--text-secondary)", marginBottom: 8 }}>{item.desc}</div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <code style={{ flex: 1, padding: "8px 12px", background: "rgba(0,0,0,0.3)", borderRadius: 6, fontSize: 10.5, color: "#10B981", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "1px solid rgba(255,255,255,0.02)", fontFamily: "monospace" }}>
+                          {item.url}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.url);
+                            showToast("📋 คัดลอกลิงก์สำเร็จ", "success");
+                          }}
+                          className="btn-ghost"
+                          style={{ padding: "8px 12px", fontSize: 11, borderRadius: 6, flexShrink: 0, fontWeight: 700 }}
+                        >
+                          ก็อปปี้
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* TAB 2: Discord Webhook */}
+              {roomDetailsTab === "webhook" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }} className="animate-fade-in">
+                  <div style={{ padding: 14, background: "rgba(139,92,246,0.03)", border: "1px dashed rgba(139,92,246,0.25)", borderRadius: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple-dark)" }}>🔔 ระบบแจ้งเตือนเฉพาะกลุ่มห้องเรียน (Traffic Webhook Isolation)</span>
+                    <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.4" }}>
+                      ท่านสามารถระบุ Discord Webhook ประจำห้องเรียนห้องนี้ได้โดยเฉพาะ เพื่อส่งข้อมูลประวัติการขอเข้าห้อง การสแกน และการเปิดประตู ไปยัง Discord Channel เฉพาะของห้องเรียนนี้ (เช่น กลุ่มอาจารย์ผู้สอนประจำวิชา) แยกขาดจากกันโดยไม่ปะปนกับห้องปฏิบัติการอื่น
+                    </p>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                      Discord Webhook URL ของห้อง {activeRoomDetails.room}
+                    </label>
+                    <input
+                      className="rmutp-input"
+                      placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
+                      value={roomWebhookInput}
+                      onChange={e => setRoomWebhookInput(e.target.value)}
+                      style={{ padding: "10px 14px", fontSize: 12.5 }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveRoomWebhook}
+                    disabled={roomDetailsLoading}
+                    className="btn-success"
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      fontWeight: 800,
+                      fontSize: 12.5,
+                      alignSelf: "flex-end",
+                      background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                      color: "#fff",
+                      boxShadow: "0 4px 10px rgba(124,58,237,0.2)"
+                    }}
+                  >
+                    {roomDetailsLoading ? "⏳ กำลังเซฟ..." : "💾 บันทึก Webhook ประจำห้อง"}
+                  </button>
+                </div>
+              )}
+
+              {/* TAB 3: Arduino .ino Code Generator */}
+              {roomDetailsTab === "arduino" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }} className="animate-fade-in">
+                  <div style={{ padding: 14, background: "rgba(16,185,129,0.03)", border: "1px dashed rgba(16,185,129,0.25)", borderRadius: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#059669" }}>🔌 IoT C++ (.ino) Code Generator</span>
+                    <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.4" }}>
+                      ระบบได้ทำการ **ฝังตัวแปร URL เซิร์ฟเวอร์ และ รหัสห้องเรียนเฉพาะ** ลงในโค้ด Arduino ESP32 ด้านล่างให้อัตโนมัติแล้ว! ท่านสามารถคัดลอกรหัส C++ ทั้งหมดนี้ไปใช้วางในโปรแกรม Arduino IDE และอัปโหลดลงบอร์ดประจำห้องนี้ได้โดยไม่ต้องปรับแต่งรหัสใดๆ ด้วยตนเอง
+                    </p>
+                  </div>
+
+                  <div style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const codeElement = document.getElementById("arduino-code-block");
+                        if (codeElement) {
+                          navigator.clipboard.writeText(codeElement.textContent || "");
+                          showToast("📋 คัดลอกโค้ด Arduino C++ สำเร็จ", "success");
+                        }
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: 10,
+                        right: 10,
+                        padding: "6px 12px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        background: "rgba(255,255,255,0.08)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        color: "#E2E8F0",
+                        cursor: "pointer",
+                        zIndex: 10
+                      }}
+                    >
+                      📋 คัดลอกโค้ด
+                    </button>
+                    <pre 
+                      id="arduino-code-block"
+                      style={{
+                        margin: 0,
+                        padding: "40px 16px 16px 16px",
+                        background: "rgba(0,0,0,0.35)",
+                        borderRadius: 10,
+                        border: "1px solid var(--border)",
+                        fontFamily: "monospace",
+                        fontSize: 10.5,
+                        color: "#a6e22e",
+                        overflowX: "auto",
+                        whiteSpace: "pre",
+                        maxHeight: 280,
+                        textAlign: "left"
+                      }}
+                    >
+{`/*
+  ==============================================================
+  RMUTP Door Access Controller - Firmware for ESP32
+  ห้องปฏิบัติการเรียนการสอน: Classroom ${activeRoomDetails.room}
+  ระบบทำงานผ่านอินเทอร์เน็ต (Public Cloud Polling Architecture)
+  ==============================================================
+*/
+
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
+
+// --- ตั้งค่าการเชื่อมต่อเครือข่าย Wi-Fi ท้องถิ่น ---
+const char* ssid     = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
+const char* server_url   = "${originUrl}/api/esp32/display?room=${activeRoomDetails.room}";
+const char* api_key      = "rmutp_secure_door_unlock_token_2026";
+const int relay_pin      = 12; // พินสั่งการรีเลย์ประตู (GPIO 12)
+const int polling_delay  = 2000; // ความเร็วในการดึงคำสั่ง (2 วินาที)
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(relay_pin, OUTPUT);
+  digitalWrite(relay_pin, LOW); // ล็อกประตูก่อนเสมอ
+  
+  Serial.print("Connecting to Wi-Fi...");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\\nWiFi connected successfully!");
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(server_url);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("x-api-key", api_key);
+    
+    int httpCode = http.GET();
+    if (httpCode == 200) {
+      String payload = http.getString();
+      StaticJsonDocument<768> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+      
+      if (!error) {
+        const char* door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
+        
+        Serial.print("Door Trigger command: ");
+        Serial.println(door_trigger);
+        
+        // เมื่อได้รับทริกคำสั่ง "open" จากระบบคลาวด์Next.js!
+        if (String(door_trigger) == "open") {
+          Serial.println("🔓 UNLOCK COMMAND RECEIVED! Unlocking door...");
+          digitalWrite(relay_pin, HIGH); // สับสวิตช์รีเลย์ ประตูปลดล็อก
+          delay(5000); // ปล่อยประตูเปิดค้างไว้ 5 วินาที
+          digitalWrite(relay_pin, LOW);  // ล็อกประตูกลับคืน
+          Serial.println("🔒 Door locked.");
+        }
+      }
+    }
+    http.end();
+  }
+  delay(polling_delay);
+}`}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
@@ -1140,6 +1599,11 @@ export default function AdminDashboard() {
                             </div>
                             
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                              {s.requested_room && s.requested_room !== "default" && (
+                                <span style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(219,39,119,0.12) 100%)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 8, padding: "4px 10px", fontSize: 11.5, color: "var(--rmutp-purple-dark)", fontWeight: 800, display: "flex", alignItems: "center" }}>
+                                  🚪 คำขอเข้าห้อง: {s.requested_room}
+                                </span>
+                              )}
                               <span style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 10px", fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 600, display: "flex", alignItems: "center" }}>
                                 <GraduationIcon />
                                 <span style={{ marginLeft: 4 }}>ชั้นปีที่ {s.year}</span>
@@ -1391,6 +1855,7 @@ export default function AdminDashboard() {
                           <th>ชื่อ - นามสกุลจริง</th>
                           <th>คณะ / ภาควิชาที่สังกัด</th>
                           <th style={{ width: 60, textAlign: "center" }}>ชั้นปี</th>
+                          <th style={{ width: 100, textAlign: "center" }}>ห้องเรียน</th>
                           <th style={{ width: 90, textAlign: "center" }}>สถานะสิทธิ์</th>
                           <th>วันที่บันทึกระบบ</th>
                           <th style={{ width: 140, textAlign: "center" }}>จัดการข้อมูล</th>
@@ -1399,7 +1864,7 @@ export default function AdminDashboard() {
                       <tbody>
                         {filteredStudents.length === 0 ? (
                           <tr>
-                            <td colSpan={8} style={{ textAlign: "center", padding: 50, color: "var(--text-secondary)" }}>
+                            <td colSpan={9} style={{ textAlign: "center", padding: 50, color: "var(--text-secondary)" }}>
                               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, justifyContent: "center" }}>
                                 <AlertIcon />
                                 <span>ไม่พบระเบียนข้อมูลนักศึกษาในช่วงเวลานี้</span>
@@ -1428,6 +1893,22 @@ export default function AdminDashboard() {
                                 <div style={{ fontSize: 10.5, color: "var(--text-secondary)" }}>{s.branch}</div>
                               </td>
                               <td style={{ textAlign: "center", fontWeight: 600 }}>ปี {s.year}</td>
+                              <td style={{ textAlign: "center" }}>
+                                <span style={{ 
+                                  fontSize: 12, 
+                                  fontWeight: 800, 
+                                  color: s.requested_room && s.requested_room !== "default" ? "var(--rmutp-purple-dark)" : "var(--text-secondary)",
+                                  background: s.requested_room && s.requested_room !== "default" ? "var(--rmutp-purple-pale)" : "transparent",
+                                  padding: s.requested_room && s.requested_room !== "default" ? "4px 10px" : "0",
+                                  border: s.requested_room && s.requested_room !== "default" ? "1px solid rgba(124,58,237,0.2)" : "none",
+                                  borderRadius: 8,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4
+                                }}>
+                                  {s.requested_room && s.requested_room !== "default" ? `🚪 ${s.requested_room}` : "default"}
+                                </span>
+                              </td>
                               <td style={{ textAlign: "center" }}>
                                 <span className={`badge ${s.status === "approved" ? "badge-approved" : s.status === "rejected" ? "badge-rejected" : "badge-pending"}`}>
                                   <ClockIcon className="w-3 h-3" />
@@ -1510,33 +1991,77 @@ export default function AdminDashboard() {
                     <TerminalIcon /> 2. บันทึกประวัติความปลอดภัย และการผ่านเข้าออกห้องปฏิบัติการ (Audit Logs)
                   </h3>
                   
-                  <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 450 }}>
-                    <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                    {/* Item Limit Selector (10, 25, 50 items) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.02)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ fontSize: 12, color: "var(--text-secondary)", padding: "0 6px", fontWeight: 700 }}>แสดง:</span>
+                      {[10, 25, 50].map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => { setLogPageSize(size); setLogCurrentPage(1); }}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            border: "none",
+                            background: logPageSize === size ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                            color: logPageSize === size ? "#fff" : "var(--text-secondary)",
+                            boxShadow: logPageSize === size ? "0 2px 8px rgba(124, 58, 237, 0.2)" : "none",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Search Input */}
+                    <div style={{ width: 220 }}>
                       <input 
                         className="rmutp-input" 
-                        placeholder="ค้นหาบันทึกระบบด้วยคีย์เวิร์ด..." 
+                        placeholder="ค้นหาประวัติ..." 
                         value={logSearch}
-                        onChange={e => setLogSearch(e.target.value)} 
-                        style={{ padding: "8px 12px" }}
+                        onChange={e => { setLogSearch(e.target.value); setLogCurrentPage(1); }} 
+                        style={{ padding: "8px 12px", fontSize: 12.5 }}
                       />
                     </div>
-                    <div style={{ width: 180 }}>
-                      <select 
-                        className="rmutp-input" 
-                        value={logFilter} 
-                        onChange={e => setLogFilter(e.target.value)}
-                        style={{ padding: "8px 12px" }}
-                      >
-                        <option value="all">กรองทุกกิจกรรมระบบ</option>
-                        <option value="door_opened">ผ่านประตูสำเร็จ</option>
-                        <option value="door_failed">ผ่านประตูล้มเหลว/ปฏิเสธสิทธิ์</option>
-                        <option value="approved">การอนุมัติสิทธิ์สมัคร</option>
-                        <option value="rejected">การปฏิเสธสิทธิ์สมัคร</option>
-                        <option value="registered">ประวัติการลงทะเบียน</option>
-                        <option value="export_pdf">การส่งออกรายงาน PDF</option>
-                      </select>
-                    </div>
                   </div>
+                </div>
+
+                {/* ── Filter Pills Tabs ── */}
+                <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", background: "rgba(255, 255, 255, 0.02)", padding: 6, borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)" }}>
+                  {[
+                    { value: "all", label: "📁 ทั้งหมด", color: "var(--text-secondary)" },
+                    { value: "door_opened", label: "🔓 ผ่านประตูสำเร็จ", color: "#10B981" },
+                    { value: "door_failed", label: "⚠️ ปฏิเสธสิทธิ์/ล้มเหลว", color: "#EF4444" },
+                    { value: "approved", label: "✅ อนุมัติสิทธิ์สมัคร", color: "#7C3AED" },
+                    { value: "rejected", label: "❌ ปฏิเสธสิทธิ์สมัคร", color: "#F59E0B" },
+                    { value: "registered", label: "📝 ลงทะเบียนใหม่", color: "#3B82F6" },
+                    { value: "export_pdf", label: "📄 ส่งออก PDF", color: "#EC4899" }
+                  ].map(t => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => { setLogFilter(t.value); setLogCurrentPage(1); }}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 8,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        border: "none",
+                        background: logFilter === t.value ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                        color: logFilter === t.value ? "#fff" : t.color,
+                        boxShadow: logFilter === t.value ? "0 4px 12px rgba(124, 58, 237, 0.25)" : "none",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="premium-card" style={{ overflow: "hidden" }}>
@@ -1554,7 +2079,7 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredLogs.length === 0 ? (
+                        {displayedLogs.length === 0 ? (
                           <tr>
                             <td colSpan={7} style={{ textAlign: "center", padding: 40, color: "var(--text-secondary)" }}>
                               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, justifyContent: "center" }}>
@@ -1564,19 +2089,35 @@ export default function AdminDashboard() {
                             </td>
                           </tr>
                         ) : (
-                          filteredLogs.map((log, i) => {
+                          displayedLogs.map((log, i) => {
                             const act = ACTION_METADATA[log.action] || { label: log.action, icon: <TerminalIcon />, color: "var(--text-primary)" };
                             return (
                               <tr key={log.id}>
-                                <td style={{ color: "var(--text-muted)", fontSize: 12, textAlign: "center" }}>{i + 1}</td>
+                                <td style={{ color: "var(--text-muted)", fontSize: 12, textAlign: "center" }}>{(logCurrentPage - 1) * logPageSize + i + 1}</td>
                                 <td>
                                   <span style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, color: act.color, fontWeight: 800 }}>
                                     <span>{act.icon}</span> <span>{act.label}</span>
                                   </span>
                                 </td>
                                 <td>
-                                  <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
-                                    {log.student_name || "เครื่องรับสัญญาณประตู / ESP32"}
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                    <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                                      {log.student_name || "เครื่องรับสัญญาณประตู / ESP32"}
+                                    </div>
+                                    {log.requested_room && log.requested_room !== "default" && (
+                                      <span style={{
+                                        alignSelf: "flex-start",
+                                        fontSize: 10,
+                                        fontWeight: 800,
+                                        background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(219,39,119,0.12) 100%)",
+                                        border: "1px solid rgba(124,58,237,0.25)",
+                                        color: "var(--rmutp-purple-dark)",
+                                        padding: "2px 8px",
+                                        borderRadius: 6
+                                      }}>
+                                        🚪 ห้อง: {log.requested_room}
+                                      </span>
+                                    )}
                                   </div>
                                 </td>
                                 <td>
@@ -1596,17 +2137,15 @@ export default function AdminDashboard() {
                                       style={{ 
                                         background: "var(--bg-primary)", 
                                         border: "1px solid var(--border)", 
-                                        padding: "6px 10px", 
-                                        borderRadius: 8, 
-                                        fontFamily: "monospace", 
-                                        fontSize: 10.5, 
+                                        padding: "10px 14px", 
+                                        borderRadius: 10, 
+                                        fontFamily: "inherit", 
+                                        fontSize: 11, 
                                         color: "var(--text-primary)", 
-                                        whiteSpace: "pre-wrap", 
-                                        wordBreak: "break-all",
                                         boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
                                       }}
                                     >
-                                      {log.notes}
+                                      {renderLogNotes(log.notes)}
                                     </div>
                                   ) : (
                                     <span style={{ color: "var(--text-muted)" }}>-</span>
@@ -1619,6 +2158,62 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                {/* ── Pagination Footer ── */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "0 4px", flexWrap: "wrap", gap: 12 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                    แสดงรายการที่ <strong>{totalFilteredLogs === 0 ? 0 : (logCurrentPage - 1) * logPageSize + 1}</strong> ถึง <strong>{Math.min(logCurrentPage * logPageSize, totalFilteredLogs)}</strong> จากทั้งหมด <strong>{totalFilteredLogs}</strong> รายการ
+                  </div>
+                  
+                  {totalLogPages > 1 && (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <button
+                        type="button"
+                        disabled={logCurrentPage === 1}
+                        onClick={() => setLogCurrentPage(prev => Math.max(prev - 1, 1))}
+                        className="btn-secondary"
+                        style={{ padding: "6px 12px", fontSize: 12.5, borderRadius: 8, opacity: logCurrentPage === 1 ? 0.4 : 1, cursor: logCurrentPage === 1 ? "not-allowed" : "pointer" }}
+                      >
+                        ◀ ย้อนกลับ
+                      </button>
+                      
+                      {Array.from({ length: totalLogPages }, (_, idx) => idx + 1).map(p => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setLogCurrentPage(p)}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 8,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            border: logCurrentPage === p ? "1px solid var(--rmutp-purple)" : "1px solid rgba(255,255,255,0.08)",
+                            background: logCurrentPage === p ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.02)",
+                            color: logCurrentPage === p ? "#fff" : "var(--text-secondary)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                      
+                      <button
+                        type="button"
+                        disabled={logCurrentPage === totalLogPages}
+                        onClick={() => setLogCurrentPage(prev => Math.min(prev + 1, totalLogPages))}
+                        className="btn-secondary"
+                        style={{ padding: "6px 12px", fontSize: 12.5, borderRadius: 8, opacity: logCurrentPage === totalLogPages ? 0.4 : 1, cursor: logCurrentPage === totalLogPages ? "not-allowed" : "pointer" }}
+                      >
+                        ถัดไป ▶
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1736,15 +2331,17 @@ export default function AdminDashboard() {
             {/* ── System & Discord Settings Tab (Owner Only) ────────────── */}
             {tab === "settings" && isOwner && (
               <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, alignItems: "start" }}>
+                
+                {/* 3-Cards Dashboard Redesign */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24, alignItems: "start" }}>
                   
-                  {/* Settings form card */}
-                  <form onSubmit={saveSettings} className="premium-card" style={{ padding: 24 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--rmutp-purple-dark)", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-                      <SettingsIcon /> ตั้งค่าระบบประตูเข้าออกห้องเรียนอัตโนมัติ
+                  {/* Card 1: Automated Approvals & Auto-fill */}
+                  <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
+                      <SettingsIcon /> ⚙️ อนุมัติ & กรอกฟอร์มอัตโนมัติ (Automated Control)
                     </h3>
                     
-                    <div style={{ marginBottom: 20, padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
+                    <div style={{ padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
                       <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 700, fontSize: 13.5 }}>
                         <input 
                           type="checkbox" 
@@ -1755,11 +2352,11 @@ export default function AdminDashboard() {
                         <span>เปิดระบบเข้าห้องอัตโนมัติไม่ต้องรออนุมัติ</span>
                       </label>
                       <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, marginLeft: 28, lineHeight: "1.4" }}>
-                        เมื่อเปิดใช้งาน นักศึกษาที่ลงทะเบียนใหม่ภายในวันและเวลาบริการที่กำหนดจะได้รับสิทธิ์เข้าห้องอัตโนมัติทันที (Auto-Approve)
+                        นักศึกษาใหม่ยื่นขอในเวลาบริการ จะได้รับอนุมัติผ่านเข้าห้องอัตโนมัติทันที
                       </p>
                     </div>
 
-                     <div style={{ marginBottom: 20, padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
+                    <div style={{ padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
                       <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 700, fontSize: 13.5 }}>
                         <input 
                           type="checkbox" 
@@ -1767,16 +2364,16 @@ export default function AdminDashboard() {
                           onChange={e => setSettings(s => ({ ...s, auto_fill_enabled: e.target.checked }))}
                           style={{ width: 18, height: 18, accentColor: "var(--rmutp-purple)" }}
                         />
-                        <span>เปิดระบบช่วยกรอกข้อมูลนักศึกษาเดิมอัตโนมัติ (Auto-fill)</span>
+                        <span>เปิดระบบช่วยกรอกข้อมูลอัตโนมัติ (Auto-fill)</span>
                       </label>
                       <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, marginLeft: 28, lineHeight: "1.4", marginBottom: settings.auto_fill_enabled ? 12 : 0 }}>
-                        เมื่อเปิดใช้งาน หากนักศึกษากรอกชื่อ-นามสกุล และรหัสเดิมตรงกับในประวัติ ระบบจะช่วยดึงชั้นปี คณะ และสาขากรอกให้เอง
+                        ดึงชั้นปี คณะ และสาขาของนักศึกษาเดิมมากรอกให้อัตโนมัติ
                       </p>
                       
                       {settings.auto_fill_enabled && (
                         <div style={{ marginLeft: 28, padding: 12, background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px dashed var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>รูปแบบการช่วยกรอก (Auto-fill Mode):</span>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>รูปแบบการดึงข้อมูล:</span>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
                               <input 
                                 type="radio" 
@@ -1786,7 +2383,7 @@ export default function AdminDashboard() {
                                 onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
                                 style={{ accentColor: "var(--rmutp-purple)", cursor: "pointer" }}
                               />
-                              <span>เด้งข้อมูลขึ้นมาให้เองอัตโนมัติ (Auto Pop-up)</span>
+                              <span>เด้งขึ้นมาให้เองอัตโนมัติ (Auto Pop-up)</span>
                             </label>
                             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
                               <input 
@@ -1804,7 +2401,7 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           เวลาเริ่มบริการ (ชั่วโมง:นาที)
@@ -1833,20 +2430,19 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div style={{ marginBottom: 20 }}>
+                    <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
-                        เลือกวันเปิดให้บริการเข้าห้องอัตโนมัติ (คลิกเพื่อเปิด-ปิดบริการ)
+                        วันเปิดให้บริการอัตโนมัติ
                       </label>
-                      
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4, marginBottom: 8 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {[
-                          { val: 1, label: "จันทร์", color: "#EAB308" },  // Monday - Gold/Yellow
-                          { val: 2, label: "อังคาร", color: "#EC4899" },  // Tuesday - Pink
-                          { val: 3, label: "พุธ", color: "#10B981" },     // Wednesday - Green
-                          { val: 4, label: "พฤหัสฯ", color: "#F97316" },   // Thursday - Orange
-                          { val: 5, label: "ศุกร์", color: "#3B82F6" },    // Friday - Blue
-                          { val: 6, label: "เสาร์", color: "#8B5CF6" },    // Saturday - Purple
-                          { val: 0, label: "อาทิตย์", color: "#EF4444" },  // Sunday - Red
+                          { val: 1, label: "จ.", color: "#EAB308" },
+                          { val: 2, label: "อ.", color: "#EC4899" },
+                          { val: 3, label: "พ.", color: "#10B981" },
+                          { val: 4, label: "พฤ.", color: "#F97316" },
+                          { val: 5, label: "ศ.", color: "#3B82F6" },
+                          { val: 6, label: "ส.", color: "#8B5CF6" },
+                          { val: 0, label: "อา.", color: "#EF4444" },
                         ].map(day => {
                           const activeDaysList = settings.auto_approve_days ? settings.auto_approve_days.split(",").map(Number).filter(n => !isNaN(n)) : [];
                           const isActive = activeDaysList.includes(day.val);
@@ -1868,108 +2464,233 @@ export default function AdminDashboard() {
                               key={day.val}
                               onClick={handleDayToggle}
                               style={{
-                                padding: "8px 14px",
-                                borderRadius: "24px",
+                                padding: "6px 10px",
+                                borderRadius: "16px",
                                 border: isActive ? `1.5px solid ${day.color}` : "1.5px solid var(--border)",
                                 background: isActive ? `${day.color}15` : "transparent",
                                 color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                                fontSize: "12.5px",
+                                fontSize: "11.5px",
                                 fontWeight: isActive ? 700 : 500,
                                 cursor: "pointer",
                                 transition: "all 0.2s ease-in-out",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                boxShadow: isActive ? `0 2px 8px ${day.color}25` : "none",
                               }}
                             >
-                              <span style={{ 
-                                display: "inline-block", 
-                                width: 8, 
-                                height: 8, 
-                                borderRadius: "50%", 
-                                background: isActive ? day.color : "#9CA3AF" 
-                              }} />
                               {day.label}
                             </button>
                           );
                         })}
                       </div>
-                      
-                      <p style={{ fontSize: 10.5, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.4 }}>
-                        💡 วันที่มีไฮไลต์สีสันคือวันเปิดให้บริการแบบ Auto-Approve (ค่าเริ่มต้น: จันทร์ - ศุกร์)
-                      </p>
                     </div>
-
-                    <button 
-                      type="submit" 
-                      className="btn-primary" 
-                      disabled={settingsLoading}
-                      style={{ width: "100%", justifyContent: "center", borderRadius: 12, padding: "12px" }}
-                    >
-                      <SaveIcon />
-                      <span style={{ marginLeft: 6 }}>{settingsLoading ? "กำลังบันทึก..." : "บันทึกการตั้งค่าระบบและเวลา"}</span>
-                    </button>
                   </form>
 
-                  {/* Webhook Config Card */}
-                  <div className="premium-card" style={{ padding: 24 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--rmutp-purple-dark)", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-                      <FileTextIcon /> ตั้งค่า Discord Webhook แจ้งเตือนละเอียด
+                  {/* Card 2: Multi-Room Control Manager */}
+                  <div className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--rmutp-purple)" }}>
+                        <rect x="3" y="3" width="7" height="9" />
+                        <rect x="14" y="3" width="7" height="5" />
+                        <rect x="14" y="12" width="7" height="9" />
+                        <rect x="3" y="16" width="7" height="5" />
+                      </svg>
+                      🏢 บอร์ดควบคุม & ห้องปฏิบัติการ (Multi-Room ESP32s)
                     </h3>
-                    <form onSubmit={saveSettings}>
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          📝 ช่องคำขอเข้าห้องเรียนใหม่ (New registration requests)
-                        </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="url" 
-                          placeholder="เช่น https://discord.com/api/webhooks/..."
-                          value={settings.discord_webhook_register}
-                          onChange={e => setSettings(s => ({ ...s, discord_webhook_register: e.target.value }))}
+                    
+                    <p style={{ color: "var(--text-secondary)", fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
+                      แชร์เครื่องเซิร์ฟเวอร์เดียวเพื่อควบคุมหลายห้องเรียน แยกสเตทสแกนคำขออย่างอิสระ ระบุ IP สำหรับแต่ละบอร์ดเพื่อแยกยิงสัญญาณ
+                    </p>
+
+                    {/* Rooms List */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 220, overflowY: "auto", paddingRight: 4 }}>
+                      {roomsList.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)", fontSize: 12.5, border: "1px dashed var(--border)", borderRadius: 10 }}>
+                          ไม่มีห้องเรียนที่กำหนดค่า (ระบบจะใช้ค่าเริ่มต้น)
+                        </div>
+                      ) : (
+                        roomsList.map(r => {
+                          const testRes = testResults[r.room];
+                          return (
+                            <div key={r.room} style={{ 
+                              display: "flex", 
+                              justifyContent: "space-between", 
+                              alignItems: "center", 
+                              padding: "12px 14px", 
+                              background: "var(--background-secondary)", 
+                              border: "1px solid var(--border)", 
+                              borderRadius: 12,
+                              gap: 10
+                            }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                <div style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span>🚪 {r.room}</span>
+                                  {testRes && (
+                                    <span style={{ 
+                                      fontSize: 10, 
+                                      padding: "1px 6px", 
+                                      borderRadius: 4,
+                                      fontWeight: 800,
+                                      background: testRes.online ? "#ECFDF5" : "#FEF2F2",
+                                      color: testRes.online ? "#059669" : "#DC2626",
+                                      border: testRes.online ? "1px solid rgba(16,185,129,0.2)" : "1px solid rgba(239,68,68,0.2)"
+                                    }}>
+                                      {testRes.online ? "Online" : "Offline"}
+                                    </span>
+                                  )}
+                                </div>
+                                <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-secondary)" }}>
+                                  🔗 IP: {r.ip}
+                                </span>
+                              </div>
+
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestConnection(r.room)}
+                                  disabled={testingRoom === r.room}
+                                  className="btn-ghost"
+                                  style={{ padding: "6px 10px", borderRadius: 8, fontSize: 11, display: "flex", gap: 4, alignItems: "center" }}
+                                >
+                                  {testingRoom === r.room ? (
+                                    <span className="animate-spin" style={{ display: "inline-block", width: 10, height: 10, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+                                  ) : (
+                                    <span>📡 ทดสอบ</span>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenRoomDetails(r.room, r.ip)}
+                                  className="btn-ghost"
+                                  style={{ padding: "6px 8px", borderRadius: 8, color: "var(--rmutp-purple)", display: "flex", alignItems: "center" }}
+                                  title="ดูรายละเอียด API & ตั้งค่า IoT รายห้อง"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveRoom(r.room)}
+                                  className="btn-ghost"
+                                  style={{ padding: "6px 8px", borderRadius: 8, color: "#DC2626" }}
+                                >
+                                  <TrashIcon />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Add Room Subcard */}
+                    <div style={{ padding: 14, background: "rgba(124,58,237,0.03)", border: "1px dashed var(--rmutp-purple-light)", borderRadius: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple-dark)" }}>➕ เพิ่มห้องเรียน / บอร์ดควบคุมใหม่</span>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 8 }}>
+                        <input
+                          className="rmutp-input"
+                          placeholder="รหัสห้อง เช่น CE-403"
+                          value={newRoomCode}
+                          onChange={e => setNewRoomCode(e.target.value)}
+                          style={{ padding: "8px 12px", fontSize: 12.5 }}
+                        />
+                        <input
+                          className="rmutp-input"
+                          placeholder="IP เช่น 192.168.1.102"
+                          value={newRoomIp}
+                          onChange={e => setNewRoomIp(e.target.value)}
+                          style={{ padding: "8px 12px", fontSize: 12.5 }}
                         />
                       </div>
-
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          🚪 ช่องแจ้งเตือนอนุมัติ / เปิดประตูสำเร็จ (Access events)
-                        </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="url" 
-                          placeholder="กรอก URL ของ Discord Webhook อนุมัติ"
-                          value={settings.discord_webhook_approve}
-                          onChange={e => setSettings(s => ({ ...s, discord_webhook_approve: e.target.value }))}
-                        />
-                      </div>
-
-                      <div style={{ marginBottom: 20 }}>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          📊 ช่องเก็บ Log ความปลอดภัยของระบบแบบละเอียด (Audit logs)
-                        </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="url" 
-                          placeholder="กรอก URL ของ Discord Webhook สำหรับเก็บ Log"
-                          value={settings.discord_webhook_logs}
-                          onChange={e => setSettings(s => ({ ...s, discord_webhook_logs: e.target.value }))}
-                        />
-                      </div>
-
-                      <button 
-                        type="submit" 
-                        className="btn-primary" 
-                        disabled={settingsLoading}
-                        style={{ width: "100%", justifyContent: "center", borderRadius: 12, padding: "12px", background: "var(--rmutp-purple-dark)" }}
+                      <button
+                        type="button"
+                        onClick={handleAddRoom}
+                        className="btn-secondary"
+                        style={{ padding: "8px 12px", fontSize: 12, fontWeight: 700, borderRadius: 10, alignSelf: "flex-end", borderColor: "var(--rmutp-purple-light)", color: "var(--rmutp-purple)" }}
                       >
-                        <CheckIcon />
-                        <span style={{ marginLeft: 6 }}>{settingsLoading ? "กำลังบันทึก..." : "ยืนยันตั้งค่า Webhooks"}</span>
+                        เพิ่มลงในรายการ
                       </button>
-                    </form>
+                    </div>
                   </div>
 
+                  {/* Card 3: Discord Webhooks */}
+                  <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
+                      <FileTextIcon /> 🔔 บูรณาการระบบแจ้งเตือน (Discord Webhooks)
+                    </h3>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          📝 คำขอลงทะเบียนเข้าใช้ห้องใหม่
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="url" 
+                          placeholder="https://discord.com/api/webhooks/..."
+                          value={settings.discord_webhook_register}
+                          onChange={e => setSettings(s => ({ ...s, discord_webhook_register: e.target.value }))}
+                          style={{ fontSize: 12.5 }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          🚪 แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="url" 
+                          placeholder="กรอก URL แจ้งเตือนการเปิดประตู"
+                          value={settings.discord_webhook_approve}
+                          onChange={e => setSettings(s => ({ ...s, discord_webhook_approve: e.target.value }))}
+                          style={{ fontSize: 12.5 }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          📊 บันทึก Log จราจร/ความปลอดภัยอย่างละเอียด
+                        </label>
+                        <input 
+                          className="rmutp-input" 
+                          type="url" 
+                          placeholder="กรอก URL เก็บ Log ความปลอดภัย"
+                          value={settings.discord_webhook_logs}
+                          onChange={e => setSettings(s => ({ ...s, discord_webhook_logs: e.target.value }))}
+                          style={{ fontSize: 12.5 }}
+                        />
+                      </div>
+                    </div>
+                  </form>
+                  
                 </div>
+
+                {/* Centralized Save Button (Triggers saveSettings for all) */}
+                <div className="premium-card" style={{ padding: 18, background: "linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(219,39,119,0.03) 100%)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>⚠️ ต้องการยืนยันการตั้งค่าระบบทั้งหมดหรือไม่?</span>
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>การกดปุ่มบันทึกด้านขวาจะเซฟทั้งตารางเวลาบริการ, วันเปิดทำการ, โหมดช่วยกรอก, รายชื่อห้องเรียน (IP) และ Discord Webhooks ทั้งหมด</span>
+                  </div>
+                  <button 
+                    onClick={saveSettings}
+                    disabled={settingsLoading}
+                    className="btn-primary hover-card" 
+                    style={{ padding: "12px 28px", borderRadius: 12, fontSize: 13.5, display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}
+                  >
+                    {settingsLoading ? (
+                      <>
+                        <span className="animate-spin" style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} />
+                        <span>กำลังบันทึกตั้งค่า...</span>
+                      </>
+                    ) : (
+                      <>
+                        <SaveIcon />
+                        <span>💾 บันทึกการตั้งค่าระบบทั้งหมด</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
               </div>
             )}
 
