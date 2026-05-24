@@ -53,8 +53,15 @@ export async function generateQRCodeSVG(text: string): Promise<string> {
 import { getPool } from "./db";
 import crypto from "crypto";
 
-/** Token lifetime in seconds (1 minute) - ป้องกันการแชร์ลิงก์ข้ามเน็ตและการสแกนจากที่ไกลๆ */
-const TOKEN_TTL_SECONDS = 60;
+/** 
+ * Dynamic QR Token Timing Parameters (Security Hardened & Latency Tolerant)
+ */
+/** The duration (in seconds) a QR token is active on the screen before a new one is generated. */
+const TOKEN_ROTATION_SECONDS = 60;
+
+/** The total duration (in seconds) a QR token remains valid for verification and consumption.
+ * This is set to 5 minutes to accommodate slow mobile data, scan latency, and form fill-in time. */
+const TOKEN_EXPIRY_SECONDS = 300;
 
 /** Minimum entropy: 32 hex chars = 128 bits (brute-force resistant) */
 function generateSecureToken(): string {
@@ -73,12 +80,12 @@ export async function getOrCreateActiveQRToken(roomCode: string = "default"): Pr
   // Expire stale unconsumed tokens first for this room (garbage collection)
   await pool.query(
     "UPDATE dynamic_qr_tokens SET is_consumed = TRUE WHERE is_consumed = FALSE AND room_code = ? AND created_at < NOW() - INTERVAL ? SECOND",
-    [sanitizedRoom, TOKEN_TTL_SECONDS]
+    [sanitizedRoom, TOKEN_EXPIRY_SECONDS]
   );
 
   const [rows] = await pool.query(
     "SELECT token FROM dynamic_qr_tokens WHERE is_consumed = FALSE AND room_code = ? AND created_at >= NOW() - INTERVAL ? SECOND ORDER BY created_at DESC LIMIT 1",
-    [sanitizedRoom, TOKEN_TTL_SECONDS]
+    [sanitizedRoom, TOKEN_ROTATION_SECONDS]
   );
   const active = rows as { token: string }[];
   if (active.length > 0) {
@@ -115,7 +122,7 @@ export async function consumeQRToken(token: string): Promise<boolean> {
   // Find the token to know which room it belongs to
   const [rows] = await pool.query(
     "SELECT room_code FROM dynamic_qr_tokens WHERE token = ? AND is_consumed = FALSE AND created_at >= NOW() - INTERVAL ? SECOND LIMIT 1",
-    [trimmed, TOKEN_TTL_SECONDS]
+    [trimmed, TOKEN_EXPIRY_SECONDS]
   );
   const active = rows as { room_code: string }[];
   if (active.length === 0) return false;
@@ -130,7 +137,7 @@ export async function consumeQRToken(token: string): Promise<boolean> {
      WHERE token = ? 
        AND is_consumed = FALSE 
        AND created_at >= NOW() - INTERVAL ? SECOND`,
-    [trimmed, TOKEN_TTL_SECONDS]
+    [trimmed, TOKEN_EXPIRY_SECONDS]
   );
 
   const affected = (result as { affectedRows: number }).affectedRows;
@@ -165,7 +172,7 @@ export async function validateQRToken(token: string): Promise<boolean> {
 
   const [rows] = await pool.query(
     "SELECT 1 FROM dynamic_qr_tokens WHERE token = ? AND is_consumed = FALSE AND created_at >= NOW() - INTERVAL ? SECOND LIMIT 1",
-    [trimmed, TOKEN_TTL_SECONDS]
+    [trimmed, TOKEN_EXPIRY_SECONDS]
   );
 
   return (rows as unknown[]).length > 0;

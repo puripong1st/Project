@@ -255,7 +255,7 @@ function RegistrationPageInner() {
   const room = searchParams.get("room") || "default";
   const [qrAuthorized, setQrAuthorized] = useState<boolean | null>(null); // null = checking, true = authorized, false = blocked
   const [blockedMessage, setBlockedMessage] = useState<string>("");
-  const [timeLeft, setTimeLeft] = useState<number | null>(null); // ตัวแปรนับถอยหลังหมดอายุ 60 วินาที
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); // ตัวแปรนับถอยหลังหมดอายุ 120 วินาที
   const authChecked = useRef(false);
 
   useEffect(() => {
@@ -334,18 +334,18 @@ function RegistrationPageInner() {
 
   // ─── [Client-Side Session Expiration Timer] ───
   // จับเวลานับถอยหลังเมื่อ QR Code ได้รับการยืนยันแล้ว
-  // หากนักศึกษาปล่อยค้างหน้าจอลงทะเบียนไว้นานเกิน 60 วินาที ระบบจะบังคับให้หมดอายุทันที ป้องกันการแชร์ลิงก์ข้ามเครือข่าย!
+  // หากนักศึกษาปล่อยค้างหน้าจอลงทะเบียนไว้นานเกิน 120 วินาที ระบบจะบังคับให้หมดอายุทันที ป้องกันการแชร์ลิงก์ข้ามเครือข่าย!
   useEffect(() => {
     if (qrAuthorized !== true) return;
     
-    // ตั้งค่าเริ่มต้นของ Timer นับถอยหลังเป็น 60 วินาที
+    // ตั้งค่าเริ่มต้นของ Timer นับถอยหลังเป็น 120 วินาที
     if (timeLeft === null) {
-      setTimeLeft(60);
+      setTimeLeft(120);
       return;
     }
     
     if (timeLeft <= 0) {
-      // เมื่อเวลาหมด (ครบ 60 วินาที)
+      // เมื่อเวลาหมด (ครบ 120 วินาที)
       setQrAuthorized(false);
       setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
       try {
