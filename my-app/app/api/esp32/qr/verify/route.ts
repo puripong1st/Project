@@ -3,22 +3,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeQRToken } from "@/lib/qr";
 
-// ─── In-Memory Rate Limiter (Serverless Safe) ───
+// ─── In-Memory Rate Limiter ───
+// Prevents brute-force token guessing attacks
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_ATTEMPTS = 30; // ขยายจำนวนครั้งเพิ่มขึ้นป้องกันตัวคูณ Polling ดักเครื่องมือเทส
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute window
+const RATE_LIMIT_MAX_ATTEMPTS = 10;   // max 10 attempts per IP per minute
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
-
-  // ล้างข้อมูลหมดอายุแบบประหยัดทรัพยากรบน Serverless
-  for (const [key, entry] of rateLimitMap.entries()) {
-    if (now > entry.resetAt) {
-      rateLimitMap.delete(key);
-    }
-  }
-
   const entry = rateLimitMap.get(ip);
+
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
     return false;
@@ -31,12 +25,24 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
+// Periodic cleanup of stale entries (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap.entries()) {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 5 * 60_000);
+
 export async function POST(req: NextRequest) {
   try {
+    // Extract client IP for rate limiting
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || req.headers.get("x-real-ip")
       || "unknown";
 
+    // Rate limit check
     if (isRateLimited(clientIp)) {
       return NextResponse.json({
         success: false,
@@ -51,21 +57,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ไม่พบข้อมูลรหัสสแกน" }, { status: 400 });
     }
 
-    // ─── ระบบ Smart Testing Detection (Bypass พิเศษเฉพาะตอนเทสด้วย Postman) ───
-    // ระบบจะเช็คว่าหากยิงคำขอมาจากโปรแกรมจำลอง Postman ให้ยอมสแกนผ่านซ้ำๆ ได้ทันทีเพื่อทดสอบ Flow 
-    // ส่วนถ้าสแกนมาจากหน้าห้องเรียนผ่าน ESP32 หรือเบราว์เซอร์ปกติ จะทำงานในโหมด One-time use เพื่อความปลอดภัยสูงสุด
-    const userAgent = req.headers.get("user-agent") || "";
-    const isPostmanTest = userAgent.toLowerCase().includes("postman") || req.headers.get("x-test-bypass") === "true";
-
-    let success = false;
-
-    if (isPostmanTest) {
-      console.log(`[QR Verify] Postman Request Detected. Bypassing atomic database consumption for testing token: ${token}`);
-      success = true; // เปิดไฟเขียวให้ยิงจำลองผ่าน Postman ซ้ำๆ ได้รัวๆ
-    } else {
-      // โหมดการทำงานจริงที่เชื่อมโยงกับหน้าจอ Preview: บันทึกใช้งานและตัดสิทธิ์เพื่อป้องกันสแกนซ้ำ
-      success = await consumeQRToken(token);
-    }
+    // consumeQRToken handles all validation atomically:
+    // - format check (32 hex chars)
+    // - expiry check (server-side TTL)
+    // - race-condition safe (atomic UPDATE)
+    const success = await consumeQRToken(token);
 
     if (success) {
       return NextResponse.json({

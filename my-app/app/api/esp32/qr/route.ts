@@ -1,68 +1,56 @@
-// app/api/esp32/qr/route.ts — Generate and manage dynamic QR access tokens
+// app/api/esp32/qr/route.ts — Return QR code PNG for ESP32 display
+// Uses database-backed dynamic one-time tokens (no legacy HMAC rotation)
 import { NextRequest, NextResponse } from "next/server";
-import { getPool } from "@/lib/db";
-import crypto from "crypto";
+import { generateQRCodeBuffer, getOrCreateActiveQRToken } from "@/lib/qr";
 
-export const dynamic = "force-dynamic";
+/**
+ * Detect the network IP address for the QR code URL.
+ * Uses NEXT_PUBLIC_APP_URL if set to a non-localhost value,
+ * otherwise uses the request's Host header.
+ */
+function getNetworkUrl(req: NextRequest): string {
+  // If explicitly configured with a non-localhost URL, use that
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  if (configuredUrl && !configuredUrl.includes("localhost") && !configuredUrl.includes("127.0.0.1")) {
+    return configuredUrl;
+  }
+
+  // Otherwise, try to derive from request headers
+  const host = req.headers.get("host") || "localhost:3000";
+
+  // If the request came via network IP, use that
+  if (!host.includes("localhost") && !host.includes("127.0.0.1")) {
+    const protocol = req.headers.get("x-forwarded-proto") || "http";
+    return `${protocol}://${host}`;
+  }
+
+  // Fallback: use the configured URL or localhost
+  return configuredUrl || `http://${host}`;
+}
 
 export async function GET(req: NextRequest) {
   try {
-    // ดึงค่า URL หลักอัตโนมัติจาก Header ของ Vercel
-    const host = req.headers.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    // Always use the database-backed dynamic token (no query param override)
+    const token = await getOrCreateActiveQRToken();
 
-    const { searchParams } = new URL(req.url);
-    const roomCode = searchParams.get("room") || "default";
+    // Build the QR target URL (no custom URL override — prevents SSRF/phishing)
+    const baseUrl = getNetworkUrl(req);
+    const target = `${baseUrl}/?scan=${token}`;
 
-    // เรียกใช้ Connection Pool
-    const pool = getPool();
+    const buffer = await generateQRCodeBuffer(target);
 
-    // สร้าง Secure Random Token 
-    const token = crypto.randomBytes(16).toString("hex");
-
-    // บันทึก Token ลงฐานข้อมูล Aiven MySQL
-    await pool.query(
-      "INSERT INTO dynamic_qr_tokens (token, room_code, is_consumed) VALUES (?, ?, FALSE)",
-      [token, roomCode]
-    );
-
-    // ประกอบ URL ปลายทางสำหรับให้โทรศัพท์สแกนเข้าสู่หน้าระบบ
-    const qrUrl = `${baseUrl}/register?token=${token}&room=${roomCode}`;
-
-    // ─── ปรับปรุงการส่งข้อมูล (Data Payload Protection) ───
-    // ส่งคีย์สแตนดาร์ดออกไปเบิ้ลทุกรูปแบบ เพื่อซัพพอร์ต Logic ตัวแปรของหน้าบ้านทุกค่าย
-    return NextResponse.json({
-      success: true,
-
-      // ตัวแปรกลุ่ม Token
-      token: token,
-
-      // ตัวแปรกลุ่ม URL สแกน (ส่งเบิ้ล 3 แบบยอดนิยมเพื่อดักทุกโครงสร้างหน้าบ้าน)
-      qr_url: qrUrl,   // Snake case
-      qrUrl: qrUrl,    // Camel case
-      qrCode: qrUrl,   // ดักกรณีกระโดดไปเรียกคีย์โค้ดตรงๆ
-      url: qrUrl,      // ดักกรณีดึงสั้นๆ
-
-      // ตัวแปรกลุ่ม Room Code
-      room_code: roomCode,
-      roomCode: roomCode,
-
-      expires_in_seconds: 30,
-      expiresIn: 30
-    }, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
-        "Cache-Control": "no-store, max-age=0, must-revalidate",
+        "Content-Type": "image/png",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Access-Control-Allow-Origin": "*",
+        // SECURITY: Do NOT expose token or URL in headers.
+        // ESP32 can poll /api/esp32/display for the active_token if needed.
       },
     });
-
-  } catch (error: any) {
-    console.error("[QR Generate API] Critical Error:", error);
-    return NextResponse.json({
-      success: false,
-      error: "เกิดข้อผิดพลาดในการสร้างรหัสสแกนภายในระบบ",
-      details: error?.message || "Database connection failure"
-    }, { status: 500 });
+  } catch (error) {
+    console.error("[ESP32/QR] error:", error);
+    return NextResponse.json({ error: "Failed to generate QR" }, { status: 500 });
   }
 }
