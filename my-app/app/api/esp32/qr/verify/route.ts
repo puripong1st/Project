@@ -1,7 +1,7 @@
 // app/api/esp32/qr/verify/route.ts — Validate and consume dynamic scan token
 // Security hardened: rate-limiting, constant-time comparison, IP logging
 import { NextRequest, NextResponse } from "next/server";
-import { consumeQRToken } from "@/lib/qr";
+import { consumeQRToken, validateQRToken } from "@/lib/qr";
 
 // ─── In-Memory Rate Limiter ───
 // Prevents brute-force token guessing attacks
@@ -57,11 +57,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ไม่พบข้อมูลรหัสสแกน" }, { status: 400 });
     }
 
-    // consumeQRToken handles all validation atomically:
-    // - format check (32 hex chars)
-    // - expiry check (server-side TTL)
-    // - race-condition safe (atomic UPDATE)
-    const success = await consumeQRToken(token);
+    // validateQRToken checks token format, expiry, and consumption status
+    // without marking it as consumed yet (which is reserved for form submission)
+    const success = await validateQRToken(token);
 
     if (success) {
       return NextResponse.json({

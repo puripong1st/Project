@@ -147,3 +147,26 @@ export async function consumeQRToken(token: string): Promise<boolean> {
 
   return true;
 }
+
+/**
+ * Validate QR token (check if active and unexpired) WITHOUT consuming it.
+ * This is used for the initial page load check so that the actual consumption
+ * is reserved for the final student registration form submission.
+ */
+export async function validateQRToken(token: string): Promise<boolean> {
+  if (!token || typeof token !== "string") return false;
+
+  const trimmed = token.trim();
+
+  if (trimmed.length !== 32) return false;
+  if (!/^[0-9a-f]{32}$/.test(trimmed)) return false;
+
+  const pool = getPool();
+
+  const [rows] = await pool.query(
+    "SELECT 1 FROM dynamic_qr_tokens WHERE token = ? AND is_consumed = FALSE AND created_at >= NOW() - INTERVAL ? SECOND LIMIT 1",
+    [trimmed, TOKEN_TTL_SECONDS]
+  );
+
+  return (rows as unknown[]).length > 0;
+}
