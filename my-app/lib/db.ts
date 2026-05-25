@@ -201,6 +201,23 @@ export async function initDatabase(): Promise<void> {
       await conn.query(`ALTER TABLE access_logs ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`);
     } catch { /* ปล่อยผ่าน */ }
 
+    // ─── [Aiven MySQL Database Performance Optimization Indexes] ───
+    // เพิ่ม Index เพื่อเร่งความเร็วการ Query ค้นหาข้อมูลและการประมวลผลสถิติบน Dashboard คลาวด์
+    try {
+      await conn.query(`ALTER TABLE students ADD INDEX idx_room_status (requested_room, status)`);
+      console.log("[DB] Migration: added index idx_room_status to students");
+    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
+
+    try {
+      await conn.query(`ALTER TABLE access_logs ADD INDEX idx_room_timestamp (room_code, timestamp)`);
+      console.log("[DB] Migration: added index idx_room_timestamp to access_logs");
+    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
+
+    try {
+      await conn.query(`ALTER TABLE dynamic_qr_tokens ADD INDEX idx_token_lookup (token)`);
+      console.log("[DB] Migration: added index idx_token_lookup to dynamic_qr_tokens");
+    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
+
     console.log("[DB] Database initialized successfully");
 
   } catch (error) {

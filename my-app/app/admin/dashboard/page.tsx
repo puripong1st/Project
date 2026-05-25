@@ -333,7 +333,9 @@ export default function AdminDashboard() {
   const [rawSettings, setRawSettings] = useState<Record<string, string>>({});
   const [activeRoomDetails, setActiveRoomDetails] = useState<{ room: string; ip: string } | null>(null);
   const [roomDetailsTab, setRoomDetailsTab] = useState<"api" | "webhook" | "arduino">("api");
-  const [roomWebhookInput, setRoomWebhookInput] = useState("");
+  const [roomWebhookRegisterInput, setRoomWebhookRegisterInput] = useState("");
+  const [roomWebhookApproveInput, setRoomWebhookApproveInput] = useState("");
+  const [roomWebhookLogsInput, setRoomWebhookLogsInput] = useState("");
   const [roomDetailsLoading, setRoomDetailsLoading] = useState(false);
   const [originUrl, setOriginUrl] = useState("");
 
@@ -386,8 +388,9 @@ export default function AdminDashboard() {
   const handleOpenRoomDetails = (room: string, ip: string) => {
     setActiveRoomDetails({ room, ip });
     setRoomDetailsTab("api");
-    const currentWebhook = rawSettings[`room_webhook_${room}`] || "";
-    setRoomWebhookInput(currentWebhook);
+    setRoomWebhookRegisterInput(rawSettings[`room_webhook_register_${room}`] || "");
+    setRoomWebhookApproveInput(rawSettings[`room_webhook_approve_${room}`] || "");
+    setRoomWebhookLogsInput(rawSettings[`room_webhook_logs_${room}`] || "");
   };
 
   const handleSaveRoomWebhook = async () => {
@@ -399,7 +402,9 @@ export default function AdminDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           custom_settings: {
-            [`room_webhook_${activeRoomDetails.room}`]: roomWebhookInput
+            [`room_webhook_register_${activeRoomDetails.room}`]: roomWebhookRegisterInput,
+            [`room_webhook_approve_${activeRoomDetails.room}`]: roomWebhookApproveInput,
+            [`room_webhook_logs_${activeRoomDetails.room}`]: roomWebhookLogsInput,
           }
         })
       });
@@ -413,6 +418,33 @@ export default function AdminDashboard() {
       showToast("เกิดข้อผิดพลาดเครือข่าย", "error");
     } finally {
       setRoomDetailsLoading(false);
+    }
+  };
+
+  const handleTestWebhook = async (webhookUrl: string, type: "register" | "approve" | "logs", room?: string) => {
+    if (!webhookUrl || !webhookUrl.trim().startsWith("https://discord.com/api/webhooks/")) {
+      showToast("❌ ลิงก์ Discord Webhook ไม่ถูกต้อง หรือไม่ได้ระบุ", "error");
+      return;
+    }
+    showToast("🧪 กำลังส่งข้อความทดสอบ...", "success");
+    try {
+      const response = await fetch("/api/system/test-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl.trim(),
+          type,
+          room: room || "default"
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        showToast("🔔 ส่งข้อความทดสอบเข้า Discord สำเร็จเรียบร้อยแล้ว!", "success");
+      } else {
+        showToast(data.error || "เกิดข้อผิดพลาดในการส่งบอท Discord", "error");
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
     }
   };
 
@@ -1042,25 +1074,83 @@ export default function AdminDashboard() {
 
               {/* TAB 2: Discord Webhook */}
               {roomDetailsTab === "webhook" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }} className="animate-fade-in">
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }} className="animate-fade-in">
                   <div style={{ padding: 14, background: "rgba(139,92,246,0.03)", border: "1px dashed rgba(139,92,246,0.25)", borderRadius: 10 }}>
                     <span style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple-dark)" }}>🔔 ระบบแจ้งเตือนเฉพาะกลุ่มห้องเรียน (Traffic Webhook Isolation)</span>
                     <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.4" }}>
-                      ท่านสามารถระบุ Discord Webhook ประจำห้องเรียนห้องนี้ได้โดยเฉพาะ เพื่อส่งข้อมูลประวัติการขอเข้าห้อง การสแกน และการเปิดประตู ไปยัง Discord Channel เฉพาะของห้องเรียนนี้ (เช่น กลุ่มอาจารย์ผู้สอนประจำวิชา) แยกขาดจากกันโดยไม่ปะปนกับห้องปฏิบัติการอื่น
+                      ท่านสามารถระบุ Discord Webhook ประจำห้องเรียนห้องนี้ได้โดยเฉพาะ เพื่อส่งข้อมูลความปลอดภัยแยกขาดตามห้องปฏิบัติการได้แบบ 3 แชนแนล (สแกน, อนุมัติ, และบันทึกระบบ)
                     </p>
                   </div>
 
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                      Discord Webhook URL ของห้อง {activeRoomDetails.room}
-                    </label>
-                    <input
-                      className="rmutp-input"
-                      placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
-                      value={roomWebhookInput}
-                      onChange={e => setRoomWebhookInput(e.target.value)}
-                      style={{ padding: "10px 14px", fontSize: 12.5 }}
-                    />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                        📝 1. คำขอลงทะเบียนเข้าห้องใหม่ (Register Webhook)
+                      </label>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          className="rmutp-input"
+                          placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
+                          value={roomWebhookRegisterInput}
+                          onChange={e => setRoomWebhookRegisterInput(e.target.value)}
+                          style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleTestWebhook(roomWebhookRegisterInput, "register", activeRoomDetails.room)}
+                          className="btn-ghost"
+                          style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                        >
+                          🧪 ทดสอบส่ง
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                        🚪 2. แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ (Approve/Reject Webhook)
+                      </label>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          className="rmutp-input"
+                          placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
+                          value={roomWebhookApproveInput}
+                          onChange={e => setRoomWebhookApproveInput(e.target.value)}
+                          style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleTestWebhook(roomWebhookApproveInput, "approve", activeRoomDetails.room)}
+                          className="btn-ghost"
+                          style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                        >
+                          🧪 ทดสอบส่ง
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                        📊 3. บันทึก Log จราจร/บอร์ดออฟไลน์ (Logs Webhook)
+                      </label>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          className="rmutp-input"
+                          placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
+                          value={roomWebhookLogsInput}
+                          onChange={e => setRoomWebhookLogsInput(e.target.value)}
+                          style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleTestWebhook(roomWebhookLogsInput, "logs", activeRoomDetails.room)}
+                          className="btn-ghost"
+                          style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                        >
+                          🧪 ทดสอบส่ง
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <button
@@ -1069,17 +1159,20 @@ export default function AdminDashboard() {
                     disabled={roomDetailsLoading}
                     className="btn-success"
                     style={{
-                      padding: "10px 16px",
+                      padding: "10px 20px",
                       borderRadius: 10,
                       fontWeight: 800,
                       fontSize: 12.5,
                       alignSelf: "flex-end",
                       background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
                       color: "#fff",
-                      boxShadow: "0 4px 10px rgba(124,58,237,0.2)"
+                      boxShadow: "0 4px 10px rgba(124,58,237,0.2)",
+                      border: "none",
+                      cursor: "pointer",
+                      marginTop: 8
                     }}
                   >
-                    {roomDetailsLoading ? "⏳ กำลังเซฟ..." : "💾 บันทึก Webhook ประจำห้อง"}
+                    {roomDetailsLoading ? "⏳ กำลังเซฟ..." : "💾 บันทึก Webhooks ทั้งหมดประจำห้อง"}
                   </button>
                 </div>
               )}
@@ -2426,37 +2519,89 @@ void loop() {
                       <SettingsIcon /> ⚙️ อนุมัติ & กรอกฟอร์มอัตโนมัติ (Automated Control)
                     </h3>
 
-                    <div style={{ padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 700, fontSize: 13.5 }}>
-                        <input 
-                          type="checkbox" 
-                          checked={settings.auto_approve_enabled}
-                          onChange={e => setSettings(s => ({ ...s, auto_approve_enabled: e.target.checked }))}
-                          style={{ width: 18, height: 18, accentColor: "var(--rmutp-purple)" }}
+                    <div style={{ padding: 16, background: "rgba(255, 255, 255, 0.02)", borderRadius: 12, border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)" }}>เปิดระบบเข้าห้องอัตโนมัติไม่ต้องรออนุมัติ</span>
+                        <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, lineHeight: "1.4" }}>
+                          นักศึกษาใหม่ยื่นขอในเวลาบริการ จะได้รับอนุมัติผ่านเข้าห้องอัตโนมัติทันที
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSettings(s => ({ ...s, auto_approve_enabled: !s.auto_approve_enabled }))}
+                        style={{
+                          width: 48,
+                          height: 26,
+                          borderRadius: 15,
+                          background: settings.auto_approve_enabled ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
+                          border: "1px solid var(--border)",
+                          position: "relative",
+                          cursor: "pointer",
+                          padding: 0,
+                          transition: "all 0.2s ease-in-out",
+                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center"
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            background: "#FFF",
+                            position: "absolute",
+                            left: settings.auto_approve_enabled ? 24 : 3,
+                            transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                          }}
                         />
-                        <span>เปิดระบบเข้าห้องอัตโนมัติไม่ต้องรออนุมัติ</span>
-                      </label>
-                      <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, marginLeft: 28, lineHeight: "1.4" }}>
-                        นักศึกษาใหม่ยื่นขอในเวลาบริการ จะได้รับอนุมัติผ่านเข้าห้องอัตโนมัติทันที
-                      </p>
+                      </button>
                     </div>
 
-                    <div style={{ padding: 16, background: "var(--background-secondary)", borderRadius: 12, border: "1px solid var(--border)" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 700, fontSize: 13.5 }}>
-                        <input 
-                          type="checkbox" 
-                          checked={settings.auto_fill_enabled}
-                          onChange={e => setSettings(s => ({ ...s, auto_fill_enabled: e.target.checked }))}
-                          style={{ width: 18, height: 18, accentColor: "var(--rmutp-purple)" }}
-                        />
-                        <span>เปิดระบบช่วยกรอกข้อมูลอัตโนมัติ (Auto-fill)</span>
-                      </label>
-                      <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, marginLeft: 28, lineHeight: "1.4", marginBottom: settings.auto_fill_enabled ? 12 : 0 }}>
-                        ดึงชั้นปี คณะ และสาขาของนักศึกษาเดิมมากรอกให้อัตโนมัติ
-                      </p>
+                    <div style={{ padding: 16, background: "rgba(255, 255, 255, 0.02)", borderRadius: 12, border: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <span style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)" }}>เปิดระบบช่วยกรอกข้อมูลอัตโนมัติ (Auto-fill)</span>
+                          <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, lineHeight: "1.4" }}>
+                            ดึงชั้นปี คณะ และสาขาของนักศึกษาเดิมมากรอกให้อัตโนมัติ
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, auto_fill_enabled: !s.auto_fill_enabled }))}
+                          style={{
+                            width: 48,
+                            height: 26,
+                            borderRadius: 15,
+                            background: settings.auto_fill_enabled ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
+                            border: "1px solid var(--border)",
+                            position: "relative",
+                            cursor: "pointer",
+                            padding: 0,
+                            transition: "all 0.2s ease-in-out",
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center"
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                              background: "#FFF",
+                              position: "absolute",
+                              left: settings.auto_fill_enabled ? 24 : 3,
+                              transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                              boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                            }}
+                          />
+                        </button>
+                      </div>
                       
                       {settings.auto_fill_enabled && (
-                        <div style={{ marginLeft: 28, padding: 12, background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px dashed var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ padding: 12, background: "rgba(0,0,0,0.15)", borderRadius: 8, border: "1px dashed var(--border)", display: "flex", flexDirection: "column", gap: 8 }} className="animate-fade-in">
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>รูปแบบการดึงข้อมูล:</span>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
@@ -2585,42 +2730,72 @@ void loop() {
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           📝 คำขอลงทะเบียนเข้าใช้ห้องใหม่
                         </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="url" 
-                          placeholder="https://discord.com/api/webhooks/..."
-                          value={settings.discord_webhook_register}
-                          onChange={e => setSettings(s => ({ ...s, discord_webhook_register: e.target.value }))}
-                          style={{ fontSize: 12.5 }}
-                        />
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input 
+                            className="rmutp-input" 
+                            type="url" 
+                            placeholder="https://discord.com/api/webhooks/..."
+                            value={settings.discord_webhook_register}
+                            onChange={e => setSettings(s => ({ ...s, discord_webhook_register: e.target.value }))}
+                            style={{ flex: 1, fontSize: 12.5 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleTestWebhook(settings.discord_webhook_register, "register")}
+                            className="btn-ghost"
+                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                          >
+                            🧪 ทดสอบส่ง
+                          </button>
+                        </div>
                       </div>
 
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           🚪 แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ
                         </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="url" 
-                          placeholder="กรอก URL แจ้งเตือนการเปิดประตู"
-                          value={settings.discord_webhook_approve}
-                          onChange={e => setSettings(s => ({ ...s, discord_webhook_approve: e.target.value }))}
-                          style={{ fontSize: 12.5 }}
-                        />
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input 
+                            className="rmutp-input" 
+                            type="url" 
+                            placeholder="กรอก URL แจ้งเตือนการเปิดประตู"
+                            value={settings.discord_webhook_approve}
+                            onChange={e => setSettings(s => ({ ...s, discord_webhook_approve: e.target.value }))}
+                            style={{ flex: 1, fontSize: 12.5 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleTestWebhook(settings.discord_webhook_approve, "approve")}
+                            className="btn-ghost"
+                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                          >
+                            🧪 ทดสอบส่ง
+                          </button>
+                        </div>
                       </div>
 
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           📊 บันทึก Log จราจร/ความปลอดภัยอย่างละเอียด
                         </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="url" 
-                          placeholder="กรอก URL เก็บ Log ความปลอดภัย"
-                          value={settings.discord_webhook_logs}
-                          onChange={e => setSettings(s => ({ ...s, discord_webhook_logs: e.target.value }))}
-                          style={{ fontSize: 12.5 }}
-                        />
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input 
+                            className="rmutp-input" 
+                            type="url" 
+                            placeholder="กรอก URL เก็บ Log ความปลอดภัย"
+                            value={settings.discord_webhook_logs}
+                            onChange={e => setSettings(s => ({ ...s, discord_webhook_logs: e.target.value }))}
+                            style={{ flex: 1, fontSize: 12.5 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleTestWebhook(settings.discord_webhook_logs, "logs")}
+                            className="btn-ghost"
+                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                          >
+                            🧪 ทดสอบส่ง
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </form>
