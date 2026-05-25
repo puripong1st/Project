@@ -6,29 +6,31 @@
     {
       "id": "esp",
       "type": "wokwi-esp32-devkit-v1",
-      "top": 0,
+      "top": 160,
       "left": 0,
       "attrs": {}
     },
     {
       "id": "lcd",
       "type": "wokwi-ili9341",
-      "top": -260,
-      "left": -120,
-      "attrs": {}
+      "top": -180,
+      "left": -200,
+      "attrs": {
+        "rotation": "90"
+      }
     },
     {
       "id": "relay",
       "type": "wokwi-relay-module",
-      "top": -40,
-      "left": 230,
+      "top": 160,
+      "left": 310,
       "attrs": {}
     },
     {
       "id": "led-door",
       "type": "wokwi-led",
-      "top": -140,
-      "left": 270,
+      "top": 60,
+      "left": 360,
       "attrs": {
         "color": "green",
         "label": "DOOR LOCK (Solenoid)"
@@ -37,8 +39,8 @@
     {
       "id": "led-wifi",
       "type": "wokwi-led",
-      "top": 60,
-      "left": 270,
+      "top": 260,
+      "left": 360,
       "attrs": {
         "color": "blue",
         "label": "WiFi Status"
@@ -47,8 +49,8 @@
     {
       "id": "led-reject",
       "type": "wokwi-led",
-      "top": 130,
-      "left": 270,
+      "top": 320,
+      "left": 360,
       "attrs": {
         "color": "red",
         "label": "REJECT"
@@ -57,62 +59,185 @@
     {
       "id": "buzzer",
       "type": "wokwi-buzzer",
-      "top": 200,
-      "left": 270,
+      "top": 380,
+      "left": 0,
       "attrs": {}
     },
     {
       "id": "r-door",
       "type": "wokwi-resistor",
-      "top": -100,
-      "left": 230,
-      "attrs": { "value": "220" }
+      "top": 100,
+      "left": 320,
+      "attrs": {
+        "value": "220"
+      }
     },
     {
       "id": "r-wifi",
       "type": "wokwi-resistor",
-      "top": 60,
-      "left": 190,
-      "attrs": { "value": "220" }
+      "top": 260,
+      "left": 290,
+      "attrs": {
+        "value": "220"
+      }
     },
     {
       "id": "r-reject",
       "type": "wokwi-resistor",
-      "top": 130,
-      "left": 190,
-      "attrs": { "value": "220" }
+      "top": 320,
+      "left": 290,
+      "attrs": {
+        "value": "220"
+      }
     }
   ],
   "connections": [
-    [ "lcd:VCC", "esp:3V3", "red", [] ],
-    [ "lcd:GND", "esp:GND.1", "black", [] ],
-    [ "lcd:CS", "esp:D15", "orange", [] ],
-    [ "lcd:RST", "esp:D4", "gray", [] ],
-    [ "lcd:D/C", "esp:D2", "green", [] ],
-    [ "lcd:MOSI", "esp:D23", "blue", [] ],
-    [ "lcd:SCK", "esp:D18", "yellow", [] ],
-    [ "lcd:MISO", "esp:D19", "purple", [] ],
-    [ "lcd:LED", "esp:3V3", "red", [] ],
-
-    [ "relay:VCC", "esp:VIN", "red", [] ],
-    [ "relay:GND", "esp:GND.2", "black", [] ],
-    [ "relay:IN", "esp:D12", "orange", [] ],
-
-    [ "relay:COM", "esp:VIN", "red", [] ],
-    [ "relay:NO", "r-door:1", "green", [] ],
-    [ "r-door:2", "led-door:A", "green", [] ],
-    [ "led-door:C", "esp:GND.3", "black", [] ],
-
-    [ "esp:D14", "r-wifi:1", "blue", [] ],
-    [ "r-wifi:2", "led-wifi:A", "blue", [] ],
-    [ "led-wifi:C", "esp:GND.3", "black", [] ],
-
-    [ "esp:D26", "r-reject:1", "red", [] ],
-    [ "r-reject:2", "led-reject:A", "red", [] ],
-    [ "led-reject:C", "esp:GND.3", "black", [] ],
-
-    [ "esp:D27", "buzzer:1", "orange", [] ],
-    [ "buzzer:2", "esp:GND.3", "black", [] ]
+    [
+      "lcd:VCC",
+      "esp:3V3",
+      "red",
+      []
+    ],
+    [
+      "lcd:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "lcd:CS",
+      "esp:D15",
+      "orange",
+      []
+    ],
+    [
+      "lcd:RST",
+      "esp:D4",
+      "gray",
+      []
+    ],
+    [
+      "lcd:D/C",
+      "esp:D2",
+      "green",
+      []
+    ],
+    [
+      "lcd:MOSI",
+      "esp:D23",
+      "blue",
+      []
+    ],
+    [
+      "lcd:SCK",
+      "esp:D18",
+      "yellow",
+      []
+    ],
+    [
+      "lcd:MISO",
+      "esp:D19",
+      "purple",
+      []
+    ],
+    [
+      "lcd:LED",
+      "esp:3V3",
+      "red",
+      []
+    ],
+    [
+      "relay:VCC",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "relay:GND",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "relay:IN",
+      "esp:D12",
+      "orange",
+      []
+    ],
+    [
+      "relay:COM",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "relay:NO",
+      "r-door:1",
+      "green",
+      []
+    ],
+    [
+      "r-door:2",
+      "led-door:A",
+      "green",
+      []
+    ],
+    [
+      "led-door:C",
+      "esp:GND.3",
+      "black",
+      []
+    ],
+    [
+      "esp:D14",
+      "r-wifi:1",
+      "blue",
+      []
+    ],
+    [
+      "r-wifi:2",
+      "led-wifi:A",
+      "blue",
+      []
+    ],
+    [
+      "led-wifi:C",
+      "esp:GND.3",
+      "black",
+      []
+    ],
+    [
+      "esp:D26",
+      "r-reject:1",
+      "red",
+      []
+    ],
+    [
+      "r-reject:2",
+      "led-reject:A",
+      "red",
+      []
+    ],
+    [
+      "led-reject:C",
+      "esp:GND.3",
+      "black",
+      []
+    ],
+    [
+      "esp:D27",
+      "buzzer:1",
+      "orange",
+      []
+    ],
+    [
+      "buzzer:2",
+      "esp:GND.3",
+      "black",
+      []
+    ]
   ],
-  "dependencies": {}
+  "dependencies": {
+    "wokwi-shared-wi-fi": "1"
+  }
 }
