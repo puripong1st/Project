@@ -519,7 +519,7 @@ export default function AdminDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [systemStatus, setSystemStatus] = useState<{
     mysql: { online: boolean; host: string; database: string; error: string };
-    esp32: { online: boolean; doorStatus: string; ip: string; mock: boolean };
+    esp32: { online: boolean; doorStatus: string; ip: string; mock: boolean; room?: string };
     discord: { configured: boolean };
     logSummary: { total: number; active: number; expired: number; retentionDays: number };
   } | null>(null);
@@ -1505,7 +1505,7 @@ void loop() {
                   </div>
                   <div>
                     <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>บอร์ดควบคุมประตู</span>
+                      <span>บอร์ดควบคุมห้อง {systemStatus.esp32.room || "ทั่วไป"}</span>
                       {systemStatus.esp32.mock && (
                         <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#FFFBEB", color: "#D97706", border: "1px solid rgba(217, 119, 6, 0.2)", fontWeight: 800 }}>MOCK</span>
                       )}
