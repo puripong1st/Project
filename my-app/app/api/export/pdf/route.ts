@@ -11,7 +11,7 @@ async function ensureInit() {
     
     try {
       const pool = getPool();
-      await pool.query("ALTER TABLE access_logs MODIFY COLUMN action VARCHAR(50) NOT NULL");
+      await pool.query("ALTER TABLE access_logs ALTER COLUMN action TYPE VARCHAR(50), ALTER COLUMN action SET NOT NULL");
     } catch (e) {
       console.log("[PDF Route] access_logs column modification skipped:", e);
     }
@@ -45,11 +45,11 @@ export async function GET(req: NextRequest) {
 
     if (idParam) {
       // ─── Export Single Student Detailed Card ───────────────────────────
-      const [rows] = await pool.query(
+      const { rows } = await pool.query(
         `SELECT s.*, a.full_name as approver_name
          FROM students s
          LEFT JOIN admin_users a ON s.approved_by = a.id
-         WHERE s.id = ?`,
+         WHERE s.id = $1`,
         [idParam]
       );
 
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       const pdfBuffer = await generateSingleStudentPDF(student, admin.full_name);
 
       await pool.query(
-        "INSERT INTO access_logs (student_id, action, performed_by, notes) VALUES (?, 'export_pdf', ?, ?)",
+        "INSERT INTO access_logs (student_id, action, performed_by, notes) VALUES ($1, 'export_pdf', $2, $3)",
         [
           student.id,
           admin.id,
@@ -90,31 +90,32 @@ export async function GET(req: NextRequest) {
         WHERE 1=1
       `;
       const params: string[] = [];
+      let paramIndex = 1;
       
       if (filter !== "all") {
-        query += " AND s.status = ?";
+        query += ` AND s.status = $${paramIndex++}`;
         params.push(filter);
       }
 
       if (startDate) {
-        query += " AND s.registered_at >= ?";
+        query += ` AND s.registered_at >= $${paramIndex++}`;
         params.push(`${startDate} 00:00:00`);
       }
 
       if (endDate) {
-        query += " AND s.registered_at <= ?";
+        query += ` AND s.registered_at <= $${paramIndex++}`;
         params.push(`${endDate} 23:59:59`);
       }
 
       query += " ORDER BY s.registered_at DESC";
 
-      const [rows] = await pool.query(query, params);
+      const { rows } = await pool.query(query, params);
       const students = rows as StudentRow[];
 
       const pdfBuffer = await generateStudentsPDF(students, admin.full_name, filter, startDate || undefined, endDate || undefined);
 
       await pool.query(
-        "INSERT INTO access_logs (student_id, action, performed_by, notes) VALUES (NULL, 'export_pdf', ?, ?)",
+        "INSERT INTO access_logs (student_id, action, performed_by, notes) VALUES (NULL, 'export_pdf', $1, $2)",
         [
           admin.id,
           `ส่งออกรายงาน PDF แบบรายชื่อรวม: filter=${filter} ช่วงเวลา=${startDate || "เริ่มต้น"} ถึง ${endDate || "ปัจจุบัน"} จำนวน ${students.length} รายการ`

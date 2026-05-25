@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
     }
 
     const pool = getPool();
-    const [rows] = await pool.query(
+    const { rows } = await pool.query(
       `SELECT year, faculty, branch FROM students 
-       WHERE first_name = ? AND last_name = ? AND student_id = ?
+       WHERE first_name = $1 AND last_name = $2 AND student_id = $3
        ORDER BY registered_at DESC LIMIT 1`,
       [sanitizedFirstName, sanitizedLastName, sanitizedStudentId]
     );

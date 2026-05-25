@@ -27,10 +27,10 @@ export async function GET(
     }
 
     const pool = getPool();
-    const [rows] = await pool.query(
+    const { rows } = await pool.query(
       `SELECT s.*, a.full_name as approver_name FROM students s
        LEFT JOIN admin_users a ON s.approved_by = a.id
-       WHERE s.id = ?`,
+       WHERE s.id = $1`,
       [numId]
     );
     const students = rows as StudentRow[];
@@ -86,8 +86,8 @@ export async function DELETE(
 
     const { id } = await params;
     const pool = getPool();
-    await pool.query("DELETE FROM access_logs WHERE student_id = ?", [parseInt(id)]);
-    await pool.query("DELETE FROM students WHERE id = ?", [parseInt(id)]);
+    await pool.query("DELETE FROM access_logs WHERE student_id = $1", [parseInt(id)]);
+    await pool.query("DELETE FROM students WHERE id = $1", [parseInt(id)]);
     return NextResponse.json({ success: true, message: "ลบข้อมูลสำเร็จ" });
   } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });

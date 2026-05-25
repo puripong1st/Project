@@ -28,7 +28,7 @@ export async function POST(
     if (isNaN(studentId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const pool = getPool();
-    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [studentId]);
+    const { rows } = await pool.query("SELECT * FROM students WHERE id = $1", [studentId]);
     const students = rows as StudentRow[];
     if (students.length === 0) {
       return NextResponse.json({ error: "ไม่พบข้อมูลนักศึกษา" }, { status: 404 });
@@ -41,11 +41,11 @@ export async function POST(
     const esp32Result = await openDoor(student.student_id, student.requested_room);
 
     if (esp32Result.success) {
-      await pool.query("UPDATE students SET last_door_open = NOW() WHERE id = ?", [studentId]);
+      await pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [studentId]);
     }
 
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code) VALUES ($1, $2, $3, $4, $5, $6)`,
       [studentId, esp32Result.success ? "door_opened" : "door_failed", admin.id, esp32Result.message, `สั่งเปิดประตูโดย: ${admin.full_name}`, student.requested_room || 'default']
     );
 

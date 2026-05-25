@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Insert to log
     const pool = getPool();
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code) VALUES (NULL, ?, ?, ?, ?, ?)`,
+      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code) VALUES (NULL, $1, $2, $3, $4, $5)`,
       [
         esp32Result.success ? "door_opened" : "door_failed", 
         admin.id, 

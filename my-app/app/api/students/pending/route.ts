@@ -18,7 +18,7 @@ export async function GET() {
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const pool = getPool();
-    const [rows] = await pool.query(
+    const { rows } = await pool.query(
       `SELECT id, first_name, last_name, student_id, year, faculty, branch, status, registered_at, ip_address, requested_room
        FROM students WHERE status = 'pending' ORDER BY registered_at DESC`
     );

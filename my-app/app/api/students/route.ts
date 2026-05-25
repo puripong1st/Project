@@ -38,21 +38,25 @@ export async function GET(req: NextRequest) {
     `;
     const params: (string | number)[] = [];
 
+    let paramIndex = 1;
     if (status && status !== "all") {
-      query += " AND s.status = ?";
+      query += ` AND s.status = $${paramIndex++}`;
       params.push(status);
     }
     if (faculty) {
-      query += " AND s.faculty = ?";
+      query += ` AND s.faculty = $${paramIndex++}`;
       params.push(faculty);
     }
     if (search) {
-      query += " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.student_id LIKE ?)";
+      const p1 = paramIndex++;
+      const p2 = paramIndex++;
+      const p3 = paramIndex++;
+      query += ` AND (s.first_name ILIKE $${p1} OR s.last_name ILIKE $${p2} OR s.student_id ILIKE $${p3})`;
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     query += " ORDER BY s.registered_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    const { rows } = await pool.query(query, params);
     return NextResponse.json({ students: rows as StudentRow[] });
   } catch (error) {
     console.error("[Students] GET error:", error);
@@ -116,8 +120,8 @@ export async function POST(req: NextRequest) {
     const pool = getPool();
 
     // Check duplicate student_id securely for intelligent re-entry / re-submission
-    const [existing] = await pool.query(
-      "SELECT * FROM students WHERE student_id = ?",
+    const { rows: existing } = await pool.query(
+      "SELECT * FROM students WHERE student_id = $1",
       [sanitizedStudentId]
     );
     const existingStudents = existing as StudentRow[];
@@ -154,13 +158,13 @@ export async function POST(req: NextRequest) {
 
         await pool.query(
           `UPDATE students 
-           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'approved', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NOW(), last_door_open = NOW(), requested_room = ? 
-           WHERE id = ?`,
+           SET title = $1, first_name = $2, last_name = $3, year = $4, faculty = $5, branch = $6, status = 'approved', bypass_token = $7, rejection_reason = NULL, approved_by = NULL, approved_at = CURRENT_TIMESTAMP, last_door_open = CURRENT_TIMESTAMP, requested_room = $8 
+           WHERE id = $9`,
           [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, sanitizedRequestedRoom, existingStudent.id]
         );
 
         await pool.query(
-          `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES ($1, $2, $3, $4, $5)`,
           [
             existingStudent.id,
             esp32Result.success ? "door_opened" : "door_failed",
@@ -198,13 +202,13 @@ export async function POST(req: NextRequest) {
 
         await pool.query(
           `UPDATE students 
-           SET title = ?, first_name = ?, last_name = ?, year = ?, faculty = ?, branch = ?, status = 'pending', bypass_token = ?, rejection_reason = NULL, approved_by = NULL, approved_at = NULL, registered_at = NOW(), requested_room = ? 
-           WHERE id = ?`,
+           SET title = $1, first_name = $2, last_name = $3, year = $4, faculty = $5, branch = $6, status = 'pending', bypass_token = $7, rejection_reason = NULL, approved_by = NULL, approved_at = NULL, registered_at = CURRENT_TIMESTAMP, requested_room = $8 
+           WHERE id = $9`,
           [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, sanitizedRequestedRoom, existingStudent.id]
         );
 
         await pool.query(
-          "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES (?, 'registered', ?, ?)",
+          "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES ($1, 'registered', $2, $3)",
           [existingStudent.id, `ส่งคำขอลงทะเบียนเข้าห้องอีกครั้ง นอกเวลาให้บริการอัตโนมัติ (จาก IP: ${ip})`, sanitizedRequestedRoom]
         );
 
@@ -232,17 +236,17 @@ export async function POST(req: NextRequest) {
 
     if (shouldAutoApprove) {
       // New student - within working hours: auto approve!
-      const [result] = await pool.query(
+      const { rows: result } = await pool.query(
         `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token, approved_at, last_door_open, requested_room)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NOW(), NOW(), ?)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'approved', $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $10) RETURNING id`,
         [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken, sanitizedRequestedRoom]
       );
-      const insertId = (result as { insertId: number }).insertId;
+      const insertId = result[0].id;
 
       const esp32Result = await openDoor(sanitizedStudentId, sanitizedRequestedRoom);
 
       await pool.query(
-        `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES ($1, $2, $3, $4, $5)`,
         [
           insertId,
           esp32Result.success ? "door_opened" : "door_failed",
@@ -270,15 +274,15 @@ export async function POST(req: NextRequest) {
 
     } else {
       // New student - outside working hours: request pending normally
-      const [result] = await pool.query(
+      const { rows: result } = await pool.query(
         `INSERT INTO students (title, first_name, last_name, student_id, year, faculty, branch, status, ip_address, bypass_token, requested_room)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10) RETURNING id`,
         [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken, sanitizedRequestedRoom]
       );
-      const insertId = (result as { insertId: number }).insertId;
+      const insertId = result[0].id;
 
       await pool.query(
-        "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES (?, 'registered', ?, ?)",
+        "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES ($1, 'registered', $2, $3)",
         [insertId, `ลงทะเบียนนอกช่วงเวลาบริการจาก IP: ${ip} (รออนุมัติปกติ)`, sanitizedRequestedRoom]
       );
 

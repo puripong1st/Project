@@ -30,7 +30,7 @@ export async function POST(
     const pool = getPool();
 
     // Get student
-    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [studentId]);
+    const { rows } = await pool.query("SELECT * FROM students WHERE id = $1", [studentId]);
     const students = rows as StudentRow[];
     if (students.length === 0) {
       return NextResponse.json({ error: "ไม่พบข้อมูลนักศึกษา" }, { status: 404 });
@@ -42,7 +42,7 @@ export async function POST(
 
     // Update status to approved
     await pool.query(
-      "UPDATE students SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?",
+      "UPDATE students SET status = 'approved', approved_by = $1, approved_at = CURRENT_TIMESTAMP WHERE id = $2",
       [admin.id, studentId]
     );
 
@@ -51,13 +51,13 @@ export async function POST(
 
     // Update last door open
     if (esp32Result.success) {
-      await pool.query("UPDATE students SET last_door_open = NOW() WHERE id = ?", [studentId]);
+      await pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [studentId]);
     }
 
     // Log access
     await pool.query(
       `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         studentId,
         esp32Result.success ? "door_opened" : "door_failed",

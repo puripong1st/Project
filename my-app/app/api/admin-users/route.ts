@@ -20,7 +20,7 @@ export async function GET() {
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
 
     const pool = getPool();
-    const [rows] = await pool.query(
+    const { rows } = await pool.query(
       "SELECT id, username, full_name, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC"
     );
     return NextResponse.json({ admins: rows });
@@ -48,14 +48,14 @@ export async function POST(req: NextRequest) {
     }
 
     const pool = getPool();
-    const [existing] = await pool.query("SELECT id FROM admin_users WHERE username = ?", [username]);
+    const { rows: existing } = await pool.query("SELECT id FROM admin_users WHERE username = $1", [username]);
     if ((existing as AdminRow[]).length > 0) {
       return NextResponse.json({ error: "Username นี้มีอยู่แล้ว" }, { status: 409 });
     }
 
     const hash = await bcrypt.hash(password, 12);
     await pool.query(
-      "INSERT INTO admin_users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)",
+      "INSERT INTO admin_users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4)",
       [username, hash, full_name, role]
     );
 
