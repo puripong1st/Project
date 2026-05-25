@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
     const pool = getPool();
 
     // Query student matching exact credentials securely
-    const [rows] = await pool.query(
-      "SELECT * FROM students WHERE id = ? AND student_id = ? AND bypass_token = ?",
+    const { rows } = await pool.query(
+      "SELECT * FROM students WHERE id = $1 AND student_id = $2 AND bypass_token = $3",
       [id, student_id.trim(), bypass_token.trim()]
     );
     const students = rows as StudentRow[];
@@ -72,12 +72,12 @@ export async function POST(req: NextRequest) {
 
     if (esp32Result.success) {
       // Update last_door_open timestamp
-      await pool.query("UPDATE students SET last_door_open = NOW() WHERE id = ?", [student.id]);
+      await pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [student.id]);
     }
 
     // Log the bypass entry event inside MySQL access_logs
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES ($1, $2, $3, $4, $5)`,
       [
         student.id, 
         esp32Result.success ? "door_opened" : "door_failed", 

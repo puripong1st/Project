@@ -1,124 +1,118 @@
-// lib/db.ts — MySQL connection pool with auto table creation + seed (Vercel-Compatible)
-import mysql from "mysql2/promise";
+// lib/db.ts — PostgreSQL connection pool with auto table creation + seed
+import { Pool, PoolConfig } from "pg";
 import bcrypt from "bcryptjs";
 
-let pool: mysql.Pool | null = null;
+let pool: Pool | null = null;
 
-export function getPool(): mysql.Pool {
+export function getPool(): Pool {
   if (!pool) {
-    const isSSL = process.env.MYSQL_SSL === 'true' || (process.env.MYSQL_HOST && process.env.MYSQL_HOST.endsWith('.aivencloud.com'));
-    pool = mysql.createPool({
-      host: process.env.MYSQL_HOST || "localhost",
-      port: parseInt(process.env.MYSQL_PORT || "3306"),
-      user: process.env.MYSQL_USER || "root",
-      password: process.env.MYSQL_PASSWORD || "admin",
-      database: process.env.MYSQL_DATABASE || "rmutp_access",
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      timezone: "+07:00",
-      // ใส่ rejectUnauthorized: false เพื่อรองรับใบรับรองภายนอกของ Aiven SSL บน Production
-      ...(isSSL ? { ssl: { rejectUnauthorized: false } } : {}),
-    });
+    const config: PoolConfig = {
+      connectionString: process.env.POSTGRES_URL,
+    };
+    pool = new Pool(config);
   }
   return pool;
 }
 
 export async function initDatabase(): Promise<void> {
-  const isSSL = process.env.MYSQL_SSL === 'true' || (process.env.MYSQL_HOST && process.env.MYSQL_HOST.endsWith('.aivencloud.com'));
-  const dbName = process.env.MYSQL_DATABASE || "rmutp_access";
+  console.log(`[DB] Production mode: Connecting directly to PostgreSQL`);
 
-  console.log(`[DB] Production mode: Connecting directly to database: "${dbName}"`);
-
-  // แก้ไข: เชื่อมต่อเข้าฐานข้อมูลปลายทางโดยตรง (ไม่ใช้คำสั่ง CREATE DATABASE เพื่อเลี่ยง Error Access Denied บน Aiven)
-  const initPool = mysql.createPool({
-    host: process.env.MYSQL_HOST || "localhost",
-    port: parseInt(process.env.MYSQL_PORT || "3306"),
-    user: process.env.MYSQL_USER || "root",
-    password: process.env.MYSQL_PASSWORD || "admin",
-    database: dbName,
-    waitForConnections: true,
-    connectionLimit: 2,
-    ...(isSSL ? { ssl: { rejectUnauthorized: false } } : {}),
-  });
-
-  const conn = await initPool.getConnection();
+  const initPool = getPool();
   try {
-    console.log(`[DB] Connection established. Initializing tables for "${dbName}"...`);
+    console.log(`[DB] Connection established. Initializing tables...`);
 
     // 1. Create admin_users table
-    await conn.query(`
+    await initPool.query(`
       CREATE TABLE IF NOT EXISTS admin_users (
-        id INT PRIMARY KEY AUTO_INCREMENT,
+        id SERIAL PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         full_name VARCHAR(100) NOT NULL,
-        role ENUM('owner', 'door_operator') NOT NULL DEFAULT 'door_operator',
+        role VARCHAR(20) NOT NULL DEFAULT 'door_operator' CHECK (role IN ('owner', 'door_operator')),
         is_active BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT NOW(),
-        last_login DATETIME
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP
+      )
     `);
 
     // 2. Create students table
-    await conn.query(`
+    await initPool.query(`
       CREATE TABLE IF NOT EXISTS students (
-        id INT PRIMARY KEY AUTO_INCREMENT,
+        id SERIAL PRIMARY KEY,
         title VARCHAR(20) NOT NULL DEFAULT 'นาย',
         first_name VARCHAR(100) NOT NULL,
         last_name VARCHAR(100) NOT NULL,
         student_id VARCHAR(30) UNIQUE NOT NULL,
-        year TINYINT NOT NULL,
+        year SMALLINT NOT NULL,
         faculty VARCHAR(150) NOT NULL,
         branch VARCHAR(150) NOT NULL,
-        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
         approved_by INT,
-        approved_at DATETIME,
+        approved_at TIMESTAMP,
         rejection_reason VARCHAR(500),
         ip_address VARCHAR(50),
         requested_room VARCHAR(50) NOT NULL DEFAULT 'default',
-        registered_at DATETIME DEFAULT NOW(),
-        last_door_open DATETIME,
+        registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_door_open TIMESTAMP,
         bypass_token VARCHAR(64) DEFAULT NULL,
         FOREIGN KEY (approved_by) REFERENCES admin_users(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      )
     `);
 
     // 3. Create access_logs table
-    await conn.query(`
+    await initPool.query(`
       CREATE TABLE IF NOT EXISTS access_logs (
-        id INT PRIMARY KEY AUTO_INCREMENT,
+        id SERIAL PRIMARY KEY,
         student_id INT,
-        action ENUM('registered', 'approved', 'rejected', 'door_opened', 'door_failed') NOT NULL,
+        action VARCHAR(50) NOT NULL,
         performed_by INT,
-        timestamp DATETIME DEFAULT NOW(),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         esp32_response VARCHAR(500),
         notes TEXT,
         room_code VARCHAR(50) NOT NULL DEFAULT 'default',
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL,
         FOREIGN KEY (performed_by) REFERENCES admin_users(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      )
     `);
 
     // 4. Create dynamic_qr_tokens table (security-hardened schema)
-    await conn.query(`
+    await initPool.query(`
       CREATE TABLE IF NOT EXISTS dynamic_qr_tokens (
-        id INT PRIMARY KEY AUTO_INCREMENT,
+        id SERIAL PRIMARY KEY,
         token VARCHAR(64) UNIQUE NOT NULL,
         room_code VARCHAR(50) NOT NULL DEFAULT 'default',
-        created_at DATETIME DEFAULT NOW(),
-        is_consumed BOOLEAN DEFAULT FALSE,
-        INDEX idx_active_token (is_consumed, room_code, created_at)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_consumed BOOLEAN DEFAULT FALSE
+      )
     `);
 
     // 5. Create system_settings table for configurable features
-    await conn.query(`
+    await initPool.query(`
       CREATE TABLE IF NOT EXISTS system_settings (
         setting_key VARCHAR(100) PRIMARY KEY,
         setting_value TEXT,
-        updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indexes if not exists using PL/pgSQL
+    await initPool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_active_token') THEN
+              CREATE INDEX idx_active_token ON dynamic_qr_tokens (is_consumed, room_code, created_at);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_room_status') THEN
+              CREATE INDEX idx_room_status ON students (requested_room, status);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_room_timestamp') THEN
+              CREATE INDEX idx_room_timestamp ON access_logs (room_code, timestamp);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_token_lookup') THEN
+              CREATE INDEX idx_token_lookup ON dynamic_qr_tokens (token);
+          END IF;
+      END
+      $$;
     `);
 
     // Seed default settings if not exists
@@ -141,91 +135,31 @@ export async function initDatabase(): Promise<void> {
     ];
 
     for (const setting of defaultSettings) {
-      const [existing] = await conn.query(
-        "SELECT setting_key FROM system_settings WHERE setting_key = ?",
-        [setting.key]
+      await initPool.query(
+        "INSERT INTO system_settings (setting_key, setting_value) VALUES ($1, $2) ON CONFLICT (setting_key) DO NOTHING",
+        [setting.key, setting.value]
       );
-      if ((existing as mysql.RowDataPacket[]).length === 0) {
-        await conn.query(
-          "INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
-          [setting.key, setting.value]
-        );
-      }
     }
 
     // Seed default admin if not exists
-    const [existingAdmins] = await conn.query(
-      "SELECT id FROM admin_users WHERE username = ?",
+    const { rows: existingAdmins } = await initPool.query(
+      "SELECT id FROM admin_users WHERE username = $1",
       ["admin"]
     );
-    if ((existingAdmins as mysql.RowDataPacket[]).length === 0) {
+    if (existingAdmins.length === 0) {
       const hash = await bcrypt.hash("admin123", 12);
-      await conn.query(
-        `INSERT INTO admin_users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)`,
+      await initPool.query(
+        `INSERT INTO admin_users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4)`,
         ["admin", hash, "ผู้ดูแลระบบ (Owner)", "owner"]
       );
       console.log("[DB] Seeded default admin user: admin / admin123");
     }
 
-    // ─── Migrations Block (ครอบ Try-Catch แยกแต่ละส่วน เพื่อป้องกันบิวด์พังใน Vercel ในกรณีที่มีคอลัมน์อยู่แล้ว) ───
-
-    // Migration: เพิ่ม column title
-    try {
-      await conn.query(`ALTER TABLE students ADD COLUMN title VARCHAR(20) NOT NULL DEFAULT 'นาย' AFTER id`);
-      console.log("[DB] Migration: added title column to students");
-    } catch (e: any) { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
-
-    // Migration: เพิ่ม column bypass_token
-    try {
-      await conn.query(`ALTER TABLE students ADD COLUMN bypass_token VARCHAR(64) DEFAULT NULL`);
-      console.log("[DB] Migration: added bypass_token column to students");
-    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
-
-    // Migration: ขยายความยาว student_id
-    try {
-      await conn.query(`ALTER TABLE students MODIFY COLUMN student_id VARCHAR(30) UNIQUE NOT NULL`);
-    } catch { /* ปล่อยผ่าน */ }
-
-    // Migration: เพิ่ม column room_code ใน dynamic_qr_tokens
-    try {
-      await conn.query(`ALTER TABLE dynamic_qr_tokens ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`);
-    } catch { /* ปล่อยผ่าน */ }
-
-    // Migration: เพิ่ม column requested_room ใน students
-    try {
-      await conn.query(`ALTER TABLE students ADD COLUMN requested_room VARCHAR(50) NOT NULL DEFAULT 'default'`);
-    } catch { /* ปล่อยผ่าน */ }
-
-    // Migration: เพิ่ม column room_code ใน access_logs
-    try {
-      await conn.query(`ALTER TABLE access_logs ADD COLUMN room_code VARCHAR(50) NOT NULL DEFAULT 'default'`);
-    } catch { /* ปล่อยผ่าน */ }
-
-    // ─── [Aiven MySQL Database Performance Optimization Indexes] ───
-    // เพิ่ม Index เพื่อเร่งความเร็วการ Query ค้นหาข้อมูลและการประมวลผลสถิติบน Dashboard คลาวด์
-    try {
-      await conn.query(`ALTER TABLE students ADD INDEX idx_room_status (requested_room, status)`);
-      console.log("[DB] Migration: added index idx_room_status to students");
-    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
-
-    try {
-      await conn.query(`ALTER TABLE access_logs ADD INDEX idx_room_timestamp (room_code, timestamp)`);
-      console.log("[DB] Migration: added index idx_room_timestamp to access_logs");
-    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
-
-    try {
-      await conn.query(`ALTER TABLE dynamic_qr_tokens ADD INDEX idx_token_lookup (token)`);
-      console.log("[DB] Migration: added index idx_token_lookup to dynamic_qr_tokens");
-    } catch { /* ปล่อยผ่านถ้ามีอยู่แล้ว */ }
-
     console.log("[DB] Database initialized successfully");
 
   } catch (error) {
     console.error("[DB] Error during database initialization:", error);
-    throw error; // พ่นข้อผิดพลาดออกไปเพื่อให้ตรวจ Log บน Vercel ได้ชัดเจน
-  } finally {
-    conn.release();
-    await initPool.end(); // ปิด Pool ตัวชั่วคราวนี้
+    throw error;
   }
 }
 
@@ -279,7 +213,7 @@ export interface AccessLogRow {
 
 export async function getSystemSettings(): Promise<Record<string, string>> {
   const pool = getPool();
-  const [rows] = await pool.query("SELECT setting_key, setting_value FROM system_settings");
+  const { rows } = await pool.query("SELECT setting_key, setting_value FROM system_settings");
   const settings: Record<string, string> = {};
   for (const row of rows as { setting_key: string; setting_value: string }[]) {
     settings[row.setting_key] = row.setting_value;
@@ -290,7 +224,7 @@ export async function getSystemSettings(): Promise<Record<string, string>> {
 export async function updateSystemSetting(key: string, value: string): Promise<void> {
   const pool = getPool();
   await pool.query(
-    "INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?",
-    [key, value, value]
+    "INSERT INTO system_settings (setting_key, setting_value) VALUES ($1, $2) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP",
+    [key, value]
   );
 }

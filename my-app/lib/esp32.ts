@@ -102,8 +102,8 @@ export async function openDoor(studentId?: string, roomCode?: string): Promise<E
     const pool = getPool();
     await pool.query(
       `INSERT INTO system_settings (setting_key, setting_value, updated_at) 
-       VALUES (?, ?, NOW()) 
-       ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`,
+       VALUES ($1, $2, CURRENT_TIMESTAMP) 
+       ON CONFLICT (setting_key) DO UPDATE SET setting_value = $3, updated_at = CURRENT_TIMESTAMP`,
       [`room_cmd_${sanitizedRoom}`, "unlock", "unlock"]
     );
     console.log(`[IoT Cloud] Command 'unlock' queued in DB for room: ${sanitizedRoom}`);
@@ -205,8 +205,8 @@ export async function getESP32Status(roomCode?: string): Promise<{
     try {
       const pool = getPool();
       const sanitizedRoom = (roomCode || "default").trim();
-      const [rows] = await pool.query(
-        "SELECT setting_value FROM system_settings WHERE setting_key = ?",
+      const { rows } = await pool.query(
+        "SELECT setting_value FROM system_settings WHERE setting_key = $1",
         [`room_last_seen_${sanitizedRoom}`]
       );
       const settings = rows as { setting_value: string }[];

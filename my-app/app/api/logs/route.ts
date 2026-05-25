@@ -34,15 +34,16 @@ export async function GET(req: NextRequest) {
        LEFT JOIN admin_users a ON al.performed_by = a.id`;
     
     const params: any[] = [];
+    let paramIndex = 1;
     if (room && room !== "all") {
-      query += ` WHERE al.room_code = ?`;
+      query += ` WHERE al.room_code = $${paramIndex++}`;
       params.push(room);
     }
     
-    query += ` ORDER BY al.timestamp DESC LIMIT ?`;
+    query += ` ORDER BY al.timestamp DESC LIMIT $${paramIndex++}`;
     params.push(limit);
 
-    const [rows] = await pool.query(query, params);
+    const { rows } = await pool.query(query, params);
     return NextResponse.json({ logs: rows });
   } catch (error) {
     console.error("[Logs API Error]", error);

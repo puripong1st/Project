@@ -24,15 +24,15 @@ export async function POST(request: Request) {
     // 3. Execution logic based on retention rules
     if (type === "expired") {
       // Deleting expired logs (> 90 days) — perfectly legal, no password required
-      const [result] = await pool.query(
-        "DELETE FROM access_logs WHERE timestamp < NOW() - INTERVAL 90 DAY"
+      const { rowCount } = await pool.query(
+        "DELETE FROM access_logs WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '90 days'"
       );
-      const affectedRows = (result as { affectedRows?: number }).affectedRows || 0;
+      const affectedRows = rowCount || 0;
 
       // Log this maintenance action in the audit trail
       await pool.query(
         `INSERT INTO access_logs (action, performed_by, esp32_response, notes) 
-         VALUES ('rejected', ?, 'System Cleanup', ?)`,
+         VALUES ('rejected', $1, 'System Cleanup', $2)`,
         [
           admin.id,
           `บำรุงรักษาระบบ: ล้างข้อมูลประวัติจราจรคอมพิวเตอร์ที่หมดอายุอายุเกิน 90 วันสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`
@@ -53,8 +53,8 @@ export async function POST(request: Request) {
       }
 
       // Query password hash from db
-      const [rows] = await pool.query(
-        "SELECT password_hash FROM admin_users WHERE id = ? AND is_active = TRUE",
+      const { rows } = await pool.query(
+        "SELECT password_hash FROM admin_users WHERE id = $1 AND is_active = TRUE",
         [admin.id]
       );
       const userRow = (rows as { password_hash: string }[])[0];
@@ -70,13 +70,13 @@ export async function POST(request: Request) {
       }
 
       // Safe deletion of access logs
-      const [result] = await pool.query("DELETE FROM access_logs");
-      const affectedRows = (result as { affectedRows?: number }).affectedRows || 0;
+      const { rowCount } = await pool.query("DELETE FROM access_logs");
+      const affectedRows = rowCount || 0;
 
       // Insert fresh audit trail record about this massive purge!
       await pool.query(
         `INSERT INTO access_logs (action, performed_by, esp32_response, notes) 
-         VALUES ('rejected', ?, 'System Format', ?)`,
+         VALUES ('rejected', $1, 'System Format', $2)`,
         [
           admin.id,
           `การล้างข้อมูลครั้งใหญ่: ผู้ดูแลระบบสูงสุดได้ยืนยันรหัสผ่านและล้างข้อมูลประวัติเข้าออกทั้งหมดในระบบสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`

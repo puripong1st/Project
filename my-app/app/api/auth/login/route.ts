@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
     }
 
     const pool = getPool();
-    const [rows] = await pool.query(
-      "SELECT * FROM admin_users WHERE username = ? AND is_active = 1",
+    const { rows } = await pool.query(
+      "SELECT * FROM admin_users WHERE username = $1 AND is_active = true",
       [username]
     );
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Update last login
-    await pool.query("UPDATE admin_users SET last_login = NOW() WHERE id = ?", [admin.id]);
+    await pool.query("UPDATE admin_users SET last_login = NOW() WHERE id = $1", [admin.id]);
 
     const token = signToken({
       id: admin.id,

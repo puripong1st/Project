@@ -29,7 +29,7 @@ export async function POST(
     const { reason } = await req.json();
 
     const pool = getPool();
-    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [studentId]);
+    const { rows } = await pool.query("SELECT * FROM students WHERE id = $1", [studentId]);
     const students = rows as StudentRow[];
     if (students.length === 0) {
       return NextResponse.json({ error: "ไม่พบข้อมูลนักศึกษา" }, { status: 404 });
@@ -37,12 +37,12 @@ export async function POST(
     const student = students[0];
 
     await pool.query(
-      "UPDATE students SET status = 'rejected', approved_by = ?, approved_at = NOW(), rejection_reason = ? WHERE id = ?",
+      "UPDATE students SET status = 'rejected', approved_by = $1, approved_at = CURRENT_TIMESTAMP, rejection_reason = $2 WHERE id = $3",
       [admin.id, reason || "ไม่ผ่านการตรวจสอบ", studentId]
     );
 
     await pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, notes, room_code) VALUES (?, 'rejected', ?, ?, ?)`,
+      `INSERT INTO access_logs (student_id, action, performed_by, notes, room_code) VALUES ($1, 'rejected', $2, $3, $4)`,
       [studentId, admin.id, `เหตุผล: ${reason || "ไม่ผ่านการตรวจสอบ"} | โดย: ${admin.full_name}`, student.requested_room || 'default']
     );
 

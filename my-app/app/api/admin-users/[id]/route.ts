@@ -29,7 +29,7 @@ export async function DELETE(
     }
 
     const pool = getPool();
-    await pool.query("DELETE FROM admin_users WHERE id = ?", [targetId]);
+    await pool.query("DELETE FROM admin_users WHERE id = $1", [targetId]);
     return NextResponse.json({ success: true, message: "ลบ Admin สำเร็จ" });
   } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });

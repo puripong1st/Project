@@ -23,13 +23,13 @@ export async function GET() {
 
     const pool = getPool();
     try {
-      const [dbTest] = await pool.query("SELECT 1");
+      const { rows: dbTest } = await pool.query("SELECT 1");
       if (dbTest) mysqlOnline = true;
 
       // Only query dynamic settings if MySQL is online
       if (mysqlOnline) {
         // Query Discord webhook settings from DB
-        const [webhookRows] = await pool.query(
+        const { rows: webhookRows } = await pool.query(
           "SELECT setting_value FROM system_settings WHERE setting_key LIKE '%webhook%'"
         );
         const webhookSettings = webhookRows as { setting_value: string }[];
@@ -38,7 +38,7 @@ export async function GET() {
         );
 
         // Query configured rooms from DB
-        const [roomsRows] = await pool.query(
+        const { rows: roomsRows } = await pool.query(
           "SELECT setting_value FROM system_settings WHERE setting_key = 'configured_rooms'"
         );
         const roomsConfig = roomsRows as { setting_value: string }[];
@@ -48,11 +48,11 @@ export async function GET() {
 
         // Only query counts if admin is owner
         if (admin.role === "owner") {
-          const [totalRes] = await pool.query("SELECT COUNT(*) as count FROM access_logs");
+          const { rows: totalRes } = await pool.query("SELECT COUNT(*) as count FROM access_logs");
           totalLogs = (totalRes as { count: number }[])[0]?.count || 0;
 
-          const [expiredRes] = await pool.query(
-            "SELECT COUNT(*) as count FROM access_logs WHERE timestamp < NOW() - INTERVAL 90 DAY"
+          const { rows: expiredRes } = await pool.query(
+            "SELECT COUNT(*) as count FROM access_logs WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '90 days'"
           );
           expiredLogs = (expiredRes as { count: number }[])[0]?.count || 0;
 
@@ -69,8 +69,8 @@ export async function GET() {
         let ip = "192.168.1.100";
         if (mysqlOnline) {
           try {
-            const [ipRows] = await pool.query(
-              "SELECT setting_value FROM system_settings WHERE setting_key = ?",
+            const { rows: ipRows } = await pool.query(
+              "SELECT setting_value FROM system_settings WHERE setting_key = $1",
               [`room_ip_${roomCode}`]
             );
             const ipSetting = ipRows as { setting_value: string }[];

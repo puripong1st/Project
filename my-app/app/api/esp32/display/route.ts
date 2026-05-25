@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
     // ─── [IoT Cloud Polling command check] ───
     // ตรวจสอบว่าแอดมินพึ่งกดยอมรับอนุมัติเปิดประตูสำหรับห้องนี้หรือไม่
     let doorTrigger = "idle";
-    const [settingRows] = await pool.query(
-      "SELECT setting_value FROM system_settings WHERE setting_key = ?",
+    const { rows: settingRows } = await pool.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = $1",
       [`room_cmd_${room}`]
     );
     const settings = settingRows as { setting_value: string }[];
@@ -33,23 +33,23 @@ export async function GET(req: NextRequest) {
       doorTrigger = "open";
       // ทำการล้างสถานะในทันที (Consume) เพื่อป้องกันการเปิดซ้ำซ้อนใน Polling รอบถัดไป
       await pool.query(
-        "UPDATE system_settings SET setting_value = 'consumed', updated_at = NOW() WHERE setting_key = ?",
+        "UPDATE system_settings SET setting_value = 'consumed', updated_at = CURRENT_TIMESTAMP WHERE setting_key = $1",
         [`room_cmd_${room}`]
       );
       console.log(`[IoT Cloud API] Command 'unlock' consumed by device for room: ${room}`);
     }
 
     // Count pending students for this specific room
-    const [pendingRows] = await pool.query(
-      "SELECT COUNT(*) as count FROM students WHERE status = 'pending' AND requested_room = ?",
+    const { rows: pendingRows } = await pool.query(
+      "SELECT COUNT(*) as count FROM students WHERE status = 'pending' AND requested_room = $1",
       [room]
     );
     const pendingCount = (pendingRows as { count: number }[])[0].count;
 
     // Get last approved student for this specific room
-    const [lastApproved] = await pool.query(
+    const { rows: lastApproved } = await pool.query(
       `SELECT CONCAT(first_name, ' ', last_name) as name, student_id, approved_at
-       FROM students WHERE status = 'approved' AND approved_at IS NOT NULL AND requested_room = ?
+       FROM students WHERE status = 'approved' AND approved_at IS NOT NULL AND requested_room = $1
        ORDER BY approved_at DESC LIMIT 1`,
       [room]
     );
@@ -64,9 +64,9 @@ export async function GET(req: NextRequest) {
     try {
       await pool.query(
         `INSERT INTO system_settings (setting_key, setting_value) 
-         VALUES (?, ?) 
-         ON DUPLICATE KEY UPDATE setting_value = ?`,
-        [`room_last_seen_${room}`, new Date().toISOString(), new Date().toISOString()]
+         VALUES ($1, $2) 
+         ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value`,
+        [`room_last_seen_${room}`, new Date().toISOString()]
       );
     } catch (heartbeatErr) {
       console.error("[IoT Polling Heartbeat] Failed to update heartbeat:", heartbeatErr);
