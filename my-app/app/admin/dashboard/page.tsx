@@ -485,37 +485,39 @@ export default function AdminDashboard() {
     return `/*
   ==============================================================
   RMUTP Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
+  ห้องปฏิบัติการเรียนการสอน: Classroom \${roomCode}
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-#define WOKWI_SIM        // <-- ต้องมีบรรทัดนี้อยู่บนสุดของโค้ดใน Wokwi
-#include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
-#include <HTTPClient.h>
-#include <WiFi.h>
-#include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
+#define WOKWI_SIM // <-- ต้องมีบรรทัดนี้อยู่บนสุดของโค้ดใน Wokwi
+#include "ricmoo_qrcode.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
+#include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
+#include <HTTPClient.h>
 #include <SPI.h>
-#include "ricmoo_qrcode.h"
+#include <WiFi.h>
+#include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
+
 
 // Wokwi Simulator ใช้ WiFi เสมือน "Wokwi-GUEST" เท่านั้น (ไม่ใช้รหัสผ่าน)
 const char *ssid = "Wokwi-GUEST";
 const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
-const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
+const char *server_url =
+    "\${origin}/api/esp32/display?room=\${roomCode}";
 const char *api_key = "rmutp_secure_door_unlock_token_2026";
-const char *room_code = "${roomCode}";
+const char *room_code = "\${roomCode}";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
-#define TFT_CS   15
-#define TFT_RST   4
-#define TFT_DC    2
-#define RELAY_PIN 12      // รีเลย์ประตู (GPIO 12)
-#define LED_WIFI 14       // WiFi Status LED (GPIO 14)
-#define LED_REJECT 26     // Reject LED (GPIO 26)
-#define BUZZER_PIN 27     // Buzzer (GPIO 27)
+#define TFT_CS 15
+#define TFT_RST 4
+#define TFT_DC 2
+#define RELAY_PIN 12  // รีเลย์ประตู (GPIO 12)
+#define LED_WIFI 14   // WiFi Status LED (GPIO 14)
+#define LED_REJECT 26 // Reject LED (GPIO 26)
+#define BUZZER_PIN 27 // Buzzer (GPIO 27)
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
