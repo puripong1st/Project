@@ -188,7 +188,7 @@ export async function getESP32Status(roomCode?: string): Promise<{
   const ipLabel = url.replace("http://", "").replace("https://", "");
 
   try {
-    const response = await fetchWithTimeout(`${url}/status`, {}, 3000);
+    const response = await fetchWithTimeout(`${url}/status`, {}, 1000);
     const data = await response.json();
     return {
       online: true,

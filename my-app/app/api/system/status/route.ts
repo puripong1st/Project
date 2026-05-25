@@ -57,6 +57,18 @@ export async function GET() {
           expiredLogs = (expiredRes as { count: number }[])[0]?.count || 0;
 
           activeLogs = totalLogs - expiredLogs;
+
+          // Asynchronous Auto-Garbage Collection: Delete expired logs (> 90 days) in the background
+          // Runs completely non-blocking without "await" so database speed is unaffected.
+          if (expiredLogs > 0) {
+            pool.query("DELETE FROM access_logs WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '90 days'")
+              .then(() => {
+                console.log(`[Auto-GC] Successfully purged ${expiredLogs} expired logs older than 90 days from Supabase.`);
+              })
+              .catch(err => {
+                console.error("[Auto-GC] Failed to purge expired logs:", err);
+              });
+          }
         }
       }
     } catch (error) {
