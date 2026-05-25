@@ -14,7 +14,9 @@ async function ensureInit() {
 export async function GET(req: NextRequest) {
   try {
     await ensureInit();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const host = req.headers.get("host") || "localhost:3000";
+    const protocol = req.headers.get("x-forwarded-proto") || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
 
     const { searchParams } = new URL(req.url);
     const room = (searchParams.get("room") || "default").trim();
