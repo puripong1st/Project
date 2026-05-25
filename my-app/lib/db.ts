@@ -5,19 +5,24 @@ import bcrypt from "bcryptjs";
 // Force Node.js to accept self-signed SSL certificates from Supabase
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-let pool: Pool | null = null;
+// Use globalThis to persist the pg Pool instance across module hot-reloads in Next.js development mode
+const globalForDb = globalThis as unknown as { pool?: Pool };
 
 export function getPool(): Pool {
-  if (!pool) {
+  if (!globalForDb.pool) {
     const config: PoolConfig = {
       connectionString: process.env.POSTGRES_URL,
       ssl: {
         rejectUnauthorized: false
-      }
+      },
+      max: 10,                 // Maximum active connections
+      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+      connectionTimeoutMillis: 2000, // Connection timeout
     };
-    pool = new Pool(config);
+    globalForDb.pool = new Pool(config);
+    console.log("[DB] Established global singleton database connection pool");
   }
-  return pool;
+  return globalForDb.pool;
 }
 
 let dbInitialized = false;
