@@ -1,7 +1,7 @@
 /*
   ==============================================================
   RMUTP Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom CE-401
+  ห้องปฏิบัติการเรียนการสอน: Classroom CE-402
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
@@ -21,9 +21,9 @@ const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
 const char *server_url =
-    "http://192.168.2.49:3000/api/esp32/display?room=CE-401";
+    "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-402";
 const char *api_key = "rmutp_secure_door_unlock_token_2026";
-const char *room_code = "CE-401";
+const char *room_code = "CE-402";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
 #define TFT_CS 15
@@ -168,12 +168,7 @@ void drawMainScreen(int queueCount, String lastApprovedName, String timeStr,
 
     tft.setTextColor(ILI9341_WHITE);
     tft.setCursor(153, 148);
-    // ตัดประโยคชื่อหากยาวเกินความกว้างหน้าจอ LCD
-    if (lastApprovedName.length() > 22) {
-      tft.print(lastApprovedName.substring(0, 20) + "..");
-    } else {
-      tft.print(lastApprovedName);
-    }
+    tft.print("ID: " + lastApprovedName);
   } else {
     // กรอบประวัติว่างกรณีไม่มีข้อมูล
     tft.drawRoundRect(145, 125, 165, 45, 6, tft.color565(60, 70, 60));
@@ -252,12 +247,11 @@ void drawUnlockedScreen(String approvedName, String studentId) {
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(1);
 
-  // คำนวณตำแหน่งกึ่งกลาง (Center Alignment) สำหรับชื่อ
-  int nameX = 160 - (approvedName.length() * 3);
-  if (nameX < 35)
-    nameX = 35;
+  // แสดงผลสถานะผู้เข้าใช้เป็นภาษาอังกฤษพรีเมียมแทนการแสดงชื่อภาษาไทยเพื่อเลี่ยงฟอนต์ต่างดาว
+  String statusMsg = "VERIFIED MEMBER";
+  int nameX = 160 - (statusMsg.length() * 3);
   tft.setCursor(nameX, 177);
-  tft.print(approvedName);
+  tft.print(statusMsg);
 
   // รหัสประจำตัวของนักศึกษา
   tft.setTextColor(tft.color565(156, 163, 175));
@@ -348,7 +342,7 @@ void setup() {
 
   digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
   Serial.println("\nWiFi connected successfully!");
-  
+
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
 
@@ -426,7 +420,7 @@ void loop() {
           if (idx != -1) {
             baseUrl = regUrl.substring(0, idx);
           } else {
-            baseUrl = "http://192.168.2.49:3000";
+            baseUrl = "https://project-sigma-ivory-21.vercel.app";
           }
           qrText = baseUrl + "/?scan=" + String(active_token) +
                    "&room=" + String(requested_room);
@@ -484,14 +478,14 @@ void loop() {
         }
         // --- ส่วนลดการกะพริบ: โหลดข้อมูลใหม่เฉพาะจุดที่มีการอัปเดตสเตตัส ---
         else if (pending_count != last_queue_count ||
-                 approvedName != last_approved_name ||
+                 studentId != last_approved_name ||
                  (active_token && String(active_token) != last_active_token)) {
           last_queue_count = pending_count;
-          last_approved_name = approvedName;
+          last_approved_name = studentId;
           if (active_token)
             last_active_token = String(active_token);
 
-          drawMainScreen(pending_count, approvedName, time_str, qrText);
+          drawMainScreen(pending_count, studentId, time_str, qrText);
         } else {
           // หากไม่มีคำสั่งและข้อมูลไม่เปลี่ยน แต่อยากให้อัปเดตเฉพาะนาฬิกา
           tft.setTextSize(1);
