@@ -1,7 +1,7 @@
 /*
   ==============================================================
   RMUTP Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom CE-402
+  ห้องปฏิบัติการเรียนการสอน: Classroom CE-401
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
@@ -22,9 +22,9 @@ const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
 const char *server_url =
-    "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-402";
+    "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-401";
 const char *api_key = "rmutp_secure_door_unlock_token_2026";
-const char *room_code = "CE-402";
+const char *room_code = "CE-401";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
 #define TFT_CS 15

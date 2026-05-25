@@ -742,6 +742,35 @@ void drawUnlockedScreen(String approvedName, String studentId) {
   tft.print(studentId);
 }
 
+// 4. หน้าจอสำหรับกรณีระบบไม่อนุมัติ (Access Denied Mode) — แดงเรืองแสง
+void drawRejectedScreen() {
+  tft.fillScreen(tft.color565(15, 3, 3)); // สีแดงเข้มมืด #0F0303
+
+  // วงแหวนแดงสลัก X
+  tft.fillCircle(160, 65, 32, tft.color565(127, 29, 29));
+  tft.drawCircle(160, 65, 32, tft.color565(239, 68, 68));
+  tft.drawCircle(160, 65, 33, tft.color565(239, 68, 68));
+
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(3);
+  tft.setCursor(151, 55);
+  tft.print("X");
+
+  tft.setTextSize(3);
+  tft.setTextColor(tft.color565(239, 68, 68));
+  tft.setCursor(45, 115);
+  tft.print("ACCESS DENIED");
+
+  tft.setTextSize(1);
+  tft.setTextColor(tft.color565(255, 199, 199));
+  tft.setCursor(85, 148);
+  tft.print("REJECTED ACCESS ATTEMPT");
+
+  tft.setTextColor(tft.color565(156, 163, 175));
+  tft.setCursor(55, 180);
+  tft.print("PLEASE CONTACT CLASSROOM INSTRUCTOR");
+}
+
 void setup() {
   Serial.begin(115200);
   
@@ -801,9 +830,11 @@ void setup() {
 
 void loop() {
   if (WiFi.status() == WL_CONNECTED) {
-    digitalWrite(LED_WIFI, HIGH); 
-    
+    digitalWrite(LED_WIFI, HIGH);
+
+    // ดึงเวลาปัจจุบันจำลอง
     String time_str = "12:00:00";
+    // คำนวณเวลาแบบง่าย (ชั่วโมง:นาที:วินาที)
     unsigned long sec = millis() / 1000;
     unsigned long hh = (sec / 3600) % 24;
     unsigned long mm = (sec / 60) % 60;
@@ -816,7 +847,7 @@ void loop() {
     if (String(server_url).startsWith("https://")) {
       WiFiClientSecure *client = new WiFiClientSecure;
       if (client) {
-        client->setInsecure();
+        client->setInsecure(); // ข้าม CA Cert เพื่อรับความรวดเร็วในการติดต่อเซิร์ฟเวอร์
         http.begin(*client, server_url);
       } else {
         Serial.println("Unable to create WiFiClientSecure");
@@ -836,20 +867,24 @@ void loop() {
       DeserializationError error = deserializeJson(doc, payload);
 
       if (!error) {
-        const char *door_trigger = doc["door_trigger"];
+        const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
         int pending_count = doc["pending_count"];
-        
+
+        // อ่านประวัติและชื่อล่าสุด
         String approvedName = "";
         String studentId = "";
-        if (doc.containsKey("last_approved") && !doc["last_approved"].isNull()) {
+        if (doc.containsKey("last_approved") &&
+            !doc["last_approved"].isNull()) {
           approvedName = doc["last_approved"]["name"].as<String>();
           studentId = doc["last_approved"]["student_id"].as<String>();
         }
-        
+
+        // รับค่าคีย์ลงทะเบียนและ active token ล่าสุดจากคลาวด์เซิร์ฟเวอร์
         const char *active_token = doc["active_token"];
         const char *register_url = doc["register_url"];
         const char *requested_room = doc["requested_room"];
-        
+
+        // สร้างหน้าลิงก์สแกน QR Code ประจำตัวบอร์ดแบบสมบูรณ์
         String qrText = "";
         if (active_token && register_url && requested_room) {
           String regUrl = String(register_url);
@@ -858,9 +893,10 @@ void loop() {
           if (idx != -1) {
             baseUrl = regUrl.substring(0, idx);
           } else {
-            baseUrl = "https://project-sigma-ivory-21.vercel.app";
+            baseUrl = "${origin}";
           }
-          qrText = baseUrl + "/?scan=" + String(active_token) + "&room=" + String(requested_room);
+          qrText = baseUrl + "/?scan=" + String(active_token) +
+                   "&room=" + String(requested_room);
         }
 
         Serial.print("Door command: ");
@@ -868,35 +904,69 @@ void loop() {
         Serial.print(" | Queue: ");
         Serial.println(pending_count);
 
+        // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
         if (String(door_trigger) == "open") {
-          Serial.println("🔓 UNLOCK COMMAND RECEIVED! Opening door...");
-          
+          Serial.println("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
+
+          // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) 1.2 วินาทีเพื่อความเหมือนจริง!
+          drawScanningScreen();
+          tone(BUZZER_PIN, 1500, 100);
+          delay(1200);
+
+          // ขั้น 2: แสดงหน้าจออนุมัติ (Access Granted)
           drawUnlockedScreen(approvedName, studentId);
 
+          // ส่งสัญญาณพอร์ตบวกไประดมการเปิดรีเลย์จริง
           digitalWrite(RELAY_PIN, HIGH);
-          
+
+          // เล่นเพลงเสียงระดับสูงหวานหรูหราต้อนรับ
           tone(BUZZER_PIN, 1000, 150);
           delay(180);
           tone(BUZZER_PIN, 1500, 150);
           delay(180);
           tone(BUZZER_PIN, 2000, 300);
 
-          delay(4190);
-          
-          digitalWrite(RELAY_PIN, LOW);
-          Serial.println("🔒 Door locked.");
+          // ลูปแสดงเกจคูลดาวน์เวลาเปิดประตูก่อนที่จะกลับมาล็อก
+          // (ช่วยเพิ่มแอนิเมชันเกจลดเวลาประดับบนจอจำลองให้เหมือน esp32-preview)
+          int countdownMs = 3800; // หน่วงเวลารวม 5 วินาที
+          int stepSize = 320 / 38;
+          for (int i = 0; i < 38; i++) {
+            tft.fillRect(0, 236, 320 - (i * stepSize), 4,
+                         tft.color565(16, 185, 129));
+            tft.fillRect(320 - (i * stepSize), 236, stepSize, 4,
+                         tft.color565(6, 78, 59));
+            delay(100);
+          }
 
-          tone(BUZZER_PIN, 800, 300);
+          digitalWrite(RELAY_PIN, LOW); // ดึงพินกลับคืนประตูล็อก
+          Serial.println("🔒 Door auto locked.");
 
+          // เสียงติ๊ดสั้นเมื่อประตูล็อกกลับคืน
+          tone(BUZZER_PIN, 800, 250);
+
+          // บังคับให้ล้างค่าเก่าเพื่อรีดรอการวาดหน้าหลักสแตนด์บายรอบใหม่
           last_queue_count = -1;
           last_approved_name = "FORCE_REDRAW";
-        } 
-        else if (pending_count != last_queue_count || approvedName != last_approved_name || (active_token && String(active_token) != last_active_token)) {
+          last_active_token = "FORCE_REDRAW";
+        }
+        // --- ส่วนลดการกะพริบ: โหลดข้อมูลใหม่เฉพาะจุดที่มีการอัปเดตสเตตัส ---
+        else if (pending_count != last_queue_count ||
+                 approvedName != last_approved_name ||
+                 (active_token && String(active_token) != last_active_token)) {
           last_queue_count = pending_count;
           last_approved_name = approvedName;
-          if (active_token) last_active_token = String(active_token);
-          
+          if (active_token)
+            last_active_token = String(active_token);
+
           drawMainScreen(pending_count, approvedName, time_str, qrText);
+        } else {
+          // หากไม่มีคำสั่งและข้อมูลไม่เปลี่ยน แต่อยากให้อัปเดตเฉพาะนาฬิกา
+          tft.setTextSize(1);
+          tft.fillRect(265, 0, 55, 20,
+                       tft.color565(14, 17, 28)); // ล้างแถบเวลาเก่า
+          tft.setTextColor(tft.color565(16, 185, 129));
+          tft.setCursor(265, 6);
+          tft.print(time_str);
         }
       }
     } else {
@@ -905,12 +975,13 @@ void loop() {
     }
     http.end();
   } else {
+    // กะพริบเตือนกรณีสัญญาณเครือข่ายสูญหาย
     digitalWrite(LED_WIFI, LOW);
     delay(250);
     digitalWrite(LED_WIFI, HIGH);
     delay(250);
   }
-  
+
   delay(polling_delay);
 }`;
   };
