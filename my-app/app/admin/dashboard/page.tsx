@@ -871,7 +871,7 @@ void loop() {
         if (String(door_trigger) == "open") {
           Serial.println("🔓 UNLOCK COMMAND RECEIVED! Opening door...");
           
-          drawUnlockedScreen(approvedName);
+          drawUnlockedScreen(approvedName, studentId);
 
           digitalWrite(RELAY_PIN, HIGH);
           
