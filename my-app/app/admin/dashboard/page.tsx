@@ -497,7 +497,7 @@ export default function AdminDashboard() {
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <SPI.h>
-#include "qrcode.h"      // ติดตั้งผ่าน Library Manager (ricmoo/QRCode)
+#include "ricmoo_qrcode.h"
 
 // Wokwi Simulator ใช้ WiFi เสมือน "Wokwi-GUEST" เท่านั้น (ไม่ใช้รหัสผ่าน)
 const char *ssid = "Wokwi-GUEST";
@@ -891,12 +891,12 @@ void loop() {
           last_queue_count = -1;
           last_approved_name = "FORCE_REDRAW";
         } 
-        else if (pending_count != last_queue_count || approvedName != last_approved_name || activeTokenStr != last_active_token) {
+        else if (pending_count != last_queue_count || approvedName != last_approved_name || (active_token && String(active_token) != last_active_token)) {
           last_queue_count = pending_count;
           last_approved_name = approvedName;
-          last_active_token = activeTokenStr;
+          if (active_token) last_active_token = String(active_token);
           
-          drawMainScreen(pending_count, approvedName);
+          drawMainScreen(pending_count, approvedName, time_str, qrText);
         }
       }
     } else {
