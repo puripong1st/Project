@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface DisplayState {
   title: string;
@@ -66,10 +67,11 @@ const CodeIcon = () => (
 );
 
 // ─── Simulated ESP32 TFT Screen (320×240) ──────────────────────
-function ESP32Screen({ mode, displayData, pendingCount }: {
+function ESP32Screen({ mode, displayData, pendingCount, room }: {
   mode: ScreenMode;
   displayData: DisplayState | null;
   pendingCount: number;
+  room: string;
 }) {
   const [time, setTime] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -89,20 +91,20 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
     const fetchQR = () => {
       const cacheBuster = Date.now();
       const tokenQuery = displayData?.active_token ? `&token=${displayData.active_token}` : "";
-      fetch(`/api/esp32/qr?_t=${cacheBuster}${tokenQuery}`)
+      fetch(`/api/esp32/qr?room=${room}&_t=${cacheBuster}${tokenQuery}`)
         .then(r => r.blob())
         .then(blob => {
           if (qrDataUrl) URL.revokeObjectURL(qrDataUrl);
           setQrDataUrl(URL.createObjectURL(blob));
         })
         .catch(() => {});
-    };
-    fetchQR();
-    // Refresh QR every 10 seconds to keep synced
-    const qrInterval = setInterval(fetchQR, 10000);
-    return () => clearInterval(qrInterval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayData?.active_token]);
+     };
+     fetchQR();
+     // Refresh QR every 10 seconds to keep synced
+     const qrInterval = setInterval(fetchQR, 10000);
+     return () => clearInterval(qrInterval);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [displayData?.active_token, room]);
 
   // IDLE screen — show QR and status information
   if (mode === "idle") {
@@ -151,7 +153,7 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
           {/* Info LCD Panel */}
           <div style={{ flex: 1, height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div style={{ textAlign: "left" }}>
-              <div style={{ color: "#F0F4F0", fontSize: 12, fontWeight: 800, textShadow: "0 1px 2px rgba(0,0,0,0.5)", marginBottom: 2 }}>ครุศาสตร์ มทร.พ.</div>
+              <div style={{ color: "#F0F4F0", fontSize: 11, fontWeight: 800, textShadow: "0 1px 2px rgba(0,0,0,0.5)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>ห้อง: {room}</div>
               <div style={{ color: "#3B82F6", fontSize: 8, fontWeight: 700, letterSpacing: "0.5px" }}>LAB DOOR CONTROLLER</div>
             </div>
 
@@ -317,13 +319,16 @@ function ESP32Screen({ mode, displayData, pendingCount }: {
 }
 
 // ─── Main Preview Page ──────────────────────────────────────────
-export default function ESP32PreviewPage() {
+function ESP32PreviewPageInner() {
   const [mode, setMode] = useState<ScreenMode>("idle");
   const [displayData, setDisplayData] = useState<DisplayState | null>(null);
   const [isRefreshing, setRefreshing] = useState(false);
   const [scale, setScale] = useState(1.5);
   const [esp32Status, setEsp32Status] = useState<ESP32Status | null>(null);
-  const [simRoom, setSimRoom] = useState("CE-401");
+  
+  const searchParams = useSearchParams();
+  const initialRoom = searchParams.get("room") || "CE-401";
+  const [simRoom, setSimRoom] = useState(initialRoom);
   const [originUrl, setOriginUrl] = useState("");
   
   // Real-Time automatic event triggers from DB
@@ -335,10 +340,10 @@ export default function ESP32PreviewPage() {
     }
   }, []);
 
-  const fetchDisplay = async () => {
+  const fetchDisplay = async (roomCode: string) => {
     setRefreshing(true);
     try {
-      const r = await fetch("/api/esp32/display");
+      const r = await fetch(`/api/esp32/display?room=${roomCode}`);
       if (r.ok) {
         const d = (await r.json()) as DisplayState;
         
@@ -356,20 +361,21 @@ export default function ESP32PreviewPage() {
     setRefreshing(false);
   };
 
-  const fetchESP32Status = async () => {
+  const fetchESP32Status = async (roomCode: string) => {
     try {
-      const r = await fetch("/api/esp32/status");
+      const r = await fetch(`/api/esp32/status?room=${roomCode}`);
       if (r.ok) setEsp32Status(await r.json());
     } catch {}
   };
 
   useEffect(() => {
-    setTimeout(() => { fetchDisplay(); fetchESP32Status(); }, 0);
-    const i1 = setInterval(fetchDisplay, 4000); // Poll every 4 seconds to be snappy
-    const i2 = setInterval(fetchESP32Status, 4000);
+    fetchDisplay(simRoom);
+    fetchESP32Status(simRoom);
+    const i1 = setInterval(() => fetchDisplay(simRoom), 4000); // Poll every 4 seconds to be snappy
+    const i2 = setInterval(() => fetchESP32Status(simRoom), 4000);
     return () => { clearInterval(i1); clearInterval(i2); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [simRoom]);
 
   function simulateApprove() {
     setMode("scanning");
@@ -484,7 +490,7 @@ export default function ESP32PreviewPage() {
                 width: 332,
                 height: 252,
               }}>
-                <ESP32Screen mode={mode} displayData={displayData} pendingCount={displayData?.pending_count || 0} />
+                 <ESP32Screen mode={mode} displayData={displayData} pendingCount={displayData?.pending_count || 0} room={simRoom} />
               </div>
             </div>
 
@@ -715,7 +721,7 @@ export default function ESP32PreviewPage() {
                 <TerminalIcon />
                 <span>ESP32 API Endpoints</span>
               </h3>
-              <button onClick={fetchDisplay} style={{ background: "none", border: "none", cursor: "pointer", color: "#4CAF50", fontSize: 11, fontFamily: "inherit", fontWeight: "bold" }}>
+              <button onClick={() => fetchDisplay(simRoom)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4CAF50", fontSize: 11, fontFamily: "inherit", fontWeight: "bold" }}>
                 {isRefreshing ? "⏳ กำลังรีเฟรช..." : "🔄 รีเฟรชข้อมูล"}
               </button>
             </div>
@@ -764,7 +770,7 @@ export default function ESP32PreviewPage() {
 #include <HTTPClient.h>
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager
 
-const char* server_url = "http://192.168.2.49:3000/api/esp32/display";
+const char* server_url = "${originUrl || "http://localhost:3000"}/api/esp32/display?room=${simRoom}";
 
 void updateDisplayFromAPI() {
   if (WiFi.status() == WL_CONNECTED) {
@@ -804,5 +810,13 @@ void updateDisplayFromAPI() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ESP32PreviewPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0F1117", color: "#F0F4F0", padding: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>กำลังโหลดหน้าจอจำลอง...</div>}>
+      <ESP32PreviewPageInner />
+    </Suspense>
   );
 }

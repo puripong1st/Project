@@ -30,12 +30,15 @@ function getNetworkUrl(req: NextRequest): string {
 
 export async function GET(req: NextRequest) {
   try {
-    // Always use the database-backed dynamic token (no query param override)
-    const token = await getOrCreateActiveQRToken();
+    const { searchParams } = new URL(req.url);
+    const room = (searchParams.get("room") || "default").trim();
 
-    // Build the QR target URL (no custom URL override — prevents SSRF/phishing)
+    // Always use the database-backed dynamic token for the specific room
+    const token = await getOrCreateActiveQRToken(room);
+
+    // Build the QR target URL
     const baseUrl = getNetworkUrl(req);
-    const target = `${baseUrl}/?scan=${token}`;
+    const target = `${baseUrl}/?scan=${token}&room=${room}`;
 
     const buffer = await generateQRCodeBuffer(target);
 
