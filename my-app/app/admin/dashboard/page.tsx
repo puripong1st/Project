@@ -65,184 +65,184 @@ function formatDateTime(dt: string | null | undefined): string {
 // ─── Minimalist Vector SVGs ───
 const ClockIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
   </svg>
 );
 
 const UsersIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-    <circle cx="9" cy="7" r="4"/>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
 
 const SettingsIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
   </svg>
 );
 
 const TVIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
-    <polyline points="17 2 12 7 7 2"/>
+    <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+    <polyline points="17 2 12 7 7 2" />
   </svg>
 );
 
 const LogoutIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-    <polyline points="16 17 21 12 16 7"/>
-    <line x1="21" y1="12" x2="9" y2="12"/>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
   </svg>
 );
 
 const LockIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
 
 const UnlockIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
   </svg>
 );
 
 const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-    <line x1="10" y1="11" x2="10" y2="17"/>
-    <line x1="14" y1="11" x2="14" y2="17"/>
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
   </svg>
 );
 
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
 const CrossIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <line x1="18" y1="6" x2="6" y2="18"/>
-    <line x1="6" y1="6" x2="18" y2="18"/>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 );
 
 const SaveIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-    <polyline points="17 21 17 13 7 13 7 21"/>
-    <polyline points="7 3 7 8 15 8"/>
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
   </svg>
 );
 
 const FileTextIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-    <polyline points="14 2 14 8 20 8"/>
-    <line x1="16" y1="13" x2="8" y2="13"/>
-    <line x1="16" y1="17" x2="8" y2="17"/>
-    <polyline points="10 9 9 9 8 9"/>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
   </svg>
 );
 
 const CalendarIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-    <line x1="16" y1="2" x2="16" y2="6"/>
-    <line x1="8" y1="2" x2="8" y2="6"/>
-    <line x1="3" y1="10" x2="21" y2="10"/>
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
   </svg>
 );
 
 const PlusIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
-    <line x1="12" y1="5" x2="12" y2="19"/>
-    <line x1="5" y1="12" x2="19" y2="12"/>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
 const AlertIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-    <line x1="12" y1="9" x2="12" y2="13"/>
-    <line x1="12" y1="17" x2="12.01" y2="17"/>
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
   </svg>
 );
 
 const TerminalIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
-    <polyline points="4 17 10 11 4 5"/>
-    <line x1="12" y1="19" x2="20" y2="19"/>
+    <polyline points="4 17 10 11 4 5" />
+    <line x1="12" y1="19" x2="20" y2="19" />
   </svg>
 );
 
 const CrownIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
-    <path d="M3 20h18"/>
+    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" />
+    <path d="M3 20h18" />
   </svg>
 );
 
 const KeyIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3"/>
+    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3" />
   </svg>
 );
 
 const SuccessBadgeIcon = () => (
   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-    <polyline points="22 4 12 14.01 9 11.01"/>
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
   </svg>
 );
 
 const IdCardIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <rect x="3" y="4" width="18" height="16" rx="2" ry="2"/>
-    <line x1="7" y1="8" x2="17" y2="8"/>
-    <line x1="7" y1="12" x2="17" y2="12"/>
-    <line x1="7" y1="16" x2="13" y2="16"/>
+    <rect x="3" y="4" width="18" height="16" rx="2" ry="2" />
+    <line x1="7" y1="8" x2="17" y2="8" />
+    <line x1="7" y1="12" x2="17" y2="12" />
+    <line x1="7" y1="16" x2="13" y2="16" />
   </svg>
 );
 
 const GraduationIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
   </svg>
 );
 
 const FacultyIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <path d="M4 22V4c0-.5.2-1 .6-1.4C5 2.2 5.5 2 6 2h12c.5 0 1 .2 1.4.6.4.4.6.9.6 1.4v18"/>
-    <path d="M10 6h4"/>
-    <path d="M10 10h4"/>
-    <path d="M10 14h4"/>
-    <path d="M10 18h4"/>
+    <path d="M4 22V4c0-.5.2-1 .6-1.4C5 2.2 5.5 2 6 2h12c.5 0 1 .2 1.4.6.4.4.6.9.6 1.4v18" />
+    <path d="M10 6h4" />
+    <path d="M10 10h4" />
+    <path d="M10 14h4" />
+    <path d="M10 18h4" />
   </svg>
 );
 
 const BranchIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
   </svg>
 );
 
 const MenuIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }}>
-    <line x1="3" y1="12" x2="21" y2="12"/>
-    <line x1="3" y1="6" x2="21" y2="6"/>
-    <line x1="3" y1="18" x2="21" y2="18"/>
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="18" x2="21" y2="18" />
   </svg>
 );
 
@@ -257,7 +257,7 @@ const ACTION_METADATA: Record<string, { label: string; icon: React.ReactNode; co
 
 function renderLogNotes(notes?: string) {
   if (!notes) return <span style={{ color: "var(--text-muted)" }}>-</span>;
-  
+
   const lines = notes.split("\n");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -265,11 +265,11 @@ function renderLogNotes(notes?: string) {
         const trimmed = line.trim();
         if (trimmed.startsWith("•")) {
           return (
-            <div key={idx} style={{ 
-              fontSize: "11px", 
-              color: "var(--text-secondary)", 
-              display: "flex", 
-              alignItems: "flex-start", 
+            <div key={idx} style={{
+              fontSize: "11px",
+              color: "var(--text-secondary)",
+              display: "flex",
+              alignItems: "flex-start",
               gap: 6,
               paddingLeft: 8,
               lineHeight: 1.4
@@ -281,12 +281,12 @@ function renderLogNotes(notes?: string) {
         }
         if (trimmed.startsWith("⚡")) {
           return (
-            <div key={idx} style={{ 
-              fontSize: "12px", 
-              fontWeight: 800, 
+            <div key={idx} style={{
+              fontSize: "12px",
+              fontWeight: 800,
               color: "#D97706", // Amber color
-              display: "flex", 
-              alignItems: "flex-start", 
+              display: "flex",
+              alignItems: "flex-start",
               gap: 6,
               lineHeight: 1.4,
               marginBottom: 4
@@ -351,7 +351,7 @@ export default function AdminDashboard() {
   const [newRoomIp, setNewRoomIp] = useState("");
   const [testingRoom, setTestingRoom] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { online: boolean; ip: string; mode: string }>>({});
- 
+
   const fetchSettings = useCallback(async () => {
     try {
       const r = await fetch("/api/system/settings");
@@ -485,39 +485,37 @@ export default function AdminDashboard() {
     return `/*
   ==============================================================
   RMUTP Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
+  ห้องปฏิบัติการเรียนการสอน: Classroom CE-401
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-#define WOKWI_SIM // <-- ต้องมีบรรทัดนี้อยู่บนสุดของโค้ดใน Wokwi
-#include "ricmoo_qrcode.h"
-#include <Adafruit_GFX.h>
-#include <Adafruit_ILI9341.h>
+#define WOKWI_SIM        // <-- ต้องมีบรรทัดนี้อยู่บนสุดของโค้ดใน Wokwi
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
 #include <HTTPClient.h>
-#include <SPI.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
-
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+#include <SPI.h>
+#include "ricmoo_qrcode.h"
 
 // Wokwi Simulator ใช้ WiFi เสมือน "Wokwi-GUEST" เท่านั้น (ไม่ใช้รหัสผ่าน)
 const char *ssid = "Wokwi-GUEST";
 const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
-const char *server_url =
-    "${origin}/api/esp32/display?room=${roomCode}";
+const char *server_url ="${origin}/api/esp32/display?room=${roomCode}";
 const char *api_key = "rmutp_secure_door_unlock_token_2026";
 const char *room_code = "${roomCode}";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
-#define TFT_CS 15
-#define TFT_RST 4
-#define TFT_DC 2
-#define RELAY_PIN 12  // รีเลย์ประตู (GPIO 12)
-#define LED_WIFI 14   // WiFi Status LED (GPIO 14)
-#define LED_REJECT 26 // Reject LED (GPIO 26)
-#define BUZZER_PIN 27 // Buzzer (GPIO 27)
+#define TFT_CS   15
+#define TFT_RST   4
+#define TFT_DC    2
+#define RELAY_PIN 12      // รีเลย์ประตู (GPIO 12)
+#define LED_WIFI 14       // WiFi Status LED (GPIO 14)
+#define LED_REJECT 26     // Reject LED (GPIO 26)
+#define BUZZER_PIN 27     // Buzzer (GPIO 27)
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
@@ -747,24 +745,24 @@ void drawUnlockedScreen(String approvedName, String studentId) {
 // 4. หน้าจอสำหรับกรณีระบบไม่อนุมัติ (Access Denied Mode) — แดงเรืองแสง
 void drawRejectedScreen() {
   tft.fillScreen(tft.color565(15, 3, 3)); // สีแดงเข้มมืด #0F0303
-
+  
   // วงแหวนแดงสลัก X
-  tft.fillCircle(160, 65, 32, tft.color565(127, 29, 29));
-  tft.drawCircle(160, 65, 32, tft.color565(239, 68, 68));
-  tft.drawCircle(160, 65, 33, tft.color565(239, 68, 68));
-
+  tft.fillCircle(160, 65, 32, tft.color565(127, 29, 29)); 
+  tft.drawCircle(160, 65, 32, tft.color565(239, 68, 68)); 
+  tft.drawCircle(160, 65, 33, tft.color565(239, 68, 68)); 
+  
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(3);
   tft.setCursor(151, 55);
   tft.print("X");
 
   tft.setTextSize(3);
-  tft.setTextColor(tft.color565(239, 68, 68));
+  tft.setTextColor(tft.color565(239, 68, 68)); 
   tft.setCursor(45, 115);
   tft.print("ACCESS DENIED");
 
   tft.setTextSize(1);
-  tft.setTextColor(tft.color565(255, 199, 199));
+  tft.setTextColor(tft.color565(255, 199, 199)); 
   tft.setCursor(85, 148);
   tft.print("REJECTED ACCESS ATTEMPT");
 
@@ -776,18 +774,21 @@ void drawRejectedScreen() {
 void setup() {
   Serial.begin(115200);
   
+  // กำหนดรูปแบบอินพุตเอาต์พุตพิน
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_WIFI, OUTPUT);
   pinMode(LED_REJECT, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   
-  digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(RELAY_PIN, LOW); // ค่าดีฟอลต์ประตูล็อกเสมอ
   digitalWrite(LED_WIFI, LOW);
   digitalWrite(LED_REJECT, LOW);
 
+  // สตาร์ตการทำงานหน้าจอ TFT LCD
   tft.begin();
-  tft.setRotation(1);
+  tft.setRotation(1); // แนวนอน (Landscape)
 
+  // วาดหน้าจอกำลังล็อกอินเครือข่าย Wi-Fi
   tft.fillScreen(tft.color565(6, 7, 13));
   tft.fillRect(0, 0, 320, 45, tft.color565(14, 17, 28));
   tft.drawRect(0, 45, 320, 2, tft.color565(16, 185, 129));
@@ -810,6 +811,7 @@ void setup() {
   Serial.print("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
   
+  // ระบบกะพริบไฟสถานะระหว่างรอ WiFi
   bool wifi_led_state = false;
   while (WiFi.status() != WL_CONNECTED) {
     wifi_led_state = !wifi_led_state;
@@ -818,22 +820,25 @@ void setup() {
     Serial.print(".");
   }
   
-  digitalWrite(LED_WIFI, HIGH);
-  Serial.println("\\nWiFi connected successfully!");
+  digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
+  Serial.println("\nWiFi connected successfully!");
   
+  // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
 
+  // เสียงดนตรีบูตระบบเสร็จสิ้นพร้อมใช้ (Sweet boot melody)
   tone(BUZZER_PIN, 1200, 150);
   delay(180);
   tone(BUZZER_PIN, 1600, 250);
 
+  // วาดแผงหน้าจอหลักเริ่มต้น
   drawMainScreen(0, "", "12:00:00", "");
 }
 
 void loop() {
   if (WiFi.status() == WL_CONNECTED) {
-    digitalWrite(LED_WIFI, HIGH);
-
+    digitalWrite(LED_WIFI, HIGH); 
+    
     // ดึงเวลาปัจจุบันจำลอง
     String time_str = "12:00:00";
     // คำนวณเวลาแบบง่าย (ชั่วโมง:นาที:วินาที)
@@ -871,21 +876,20 @@ void loop() {
       if (!error) {
         const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
         int pending_count = doc["pending_count"];
-
+        
         // อ่านประวัติและชื่อล่าสุด
         String approvedName = "";
         String studentId = "";
-        if (doc.containsKey("last_approved") &&
-            !doc["last_approved"].isNull()) {
+        if (doc.containsKey("last_approved") && !doc["last_approved"].isNull()) {
           approvedName = doc["last_approved"]["name"].as<String>();
           studentId = doc["last_approved"]["student_id"].as<String>();
         }
-
+        
         // รับค่าคีย์ลงทะเบียนและ active token ล่าสุดจากคลาวด์เซิร์ฟเวอร์
         const char *active_token = doc["active_token"];
         const char *register_url = doc["register_url"];
         const char *requested_room = doc["requested_room"];
-
+        
         // สร้างหน้าลิงก์สแกน QR Code ประจำตัวบอร์ดแบบสมบูรณ์
         String qrText = "";
         if (active_token && register_url && requested_room) {
@@ -897,8 +901,7 @@ void loop() {
           } else {
             baseUrl = "${origin}";
           }
-          qrText = baseUrl + "/?scan=" + String(active_token) +
-                   "&room=" + String(requested_room);
+          qrText = baseUrl + "/?scan=" + String(active_token) + "&room=" + String(requested_room);
         }
 
         Serial.print("Door command: ");
@@ -909,18 +912,18 @@ void loop() {
         // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
         if (String(door_trigger) == "open") {
           Serial.println("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
-
+          
           // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) 1.2 วินาทีเพื่อความเหมือนจริง!
           drawScanningScreen();
           tone(BUZZER_PIN, 1500, 100);
           delay(1200);
-
+          
           // ขั้น 2: แสดงหน้าจออนุมัติ (Access Granted)
           drawUnlockedScreen(approvedName, studentId);
 
           // ส่งสัญญาณพอร์ตบวกไประดมการเปิดรีเลย์จริง
-          digitalWrite(RELAY_PIN, HIGH);
-
+          digitalWrite(RELAY_PIN, HIGH); 
+          
           // เล่นเพลงเสียงระดับสูงหวานหรูหราต้อนรับ
           tone(BUZZER_PIN, 1000, 150);
           delay(180);
@@ -928,18 +931,16 @@ void loop() {
           delay(180);
           tone(BUZZER_PIN, 2000, 300);
 
-          // ลูปแสดงเกจคูลดาวน์เวลาเปิดประตูก่อนที่จะกลับมาล็อก
+          // ลูปแสดงเกจคูลดาวน์เวลาเปิดประตูก่อนที่จะกลับมาล็อก 
           // (ช่วยเพิ่มแอนิเมชันเกจลดเวลาประดับบนจอจำลองให้เหมือน esp32-preview)
           int countdownMs = 3800; // หน่วงเวลารวม 5 วินาที
           int stepSize = 320 / 38;
           for (int i = 0; i < 38; i++) {
-            tft.fillRect(0, 236, 320 - (i * stepSize), 4,
-                         tft.color565(16, 185, 129));
-            tft.fillRect(320 - (i * stepSize), 236, stepSize, 4,
-                         tft.color565(6, 78, 59));
+            tft.fillRect(0, 236, 320 - (i * stepSize), 4, tft.color565(16, 185, 129));
+            tft.fillRect(320 - (i * stepSize), 236, stepSize, 4, tft.color565(6, 78, 59));
             delay(100);
           }
-
+          
           digitalWrite(RELAY_PIN, LOW); // ดึงพินกลับคืนประตูล็อก
           Serial.println("🔒 Door auto locked.");
 
@@ -950,23 +951,20 @@ void loop() {
           last_queue_count = -1;
           last_approved_name = "FORCE_REDRAW";
           last_active_token = "FORCE_REDRAW";
-        }
+        } 
         // --- ส่วนลดการกะพริบ: โหลดข้อมูลใหม่เฉพาะจุดที่มีการอัปเดตสเตตัส ---
-        else if (pending_count != last_queue_count ||
-                 approvedName != last_approved_name ||
-                 (active_token && String(active_token) != last_active_token)) {
+        else if (pending_count != last_queue_count || approvedName != last_approved_name || (active_token && String(active_token) != last_active_token)) {
           last_queue_count = pending_count;
           last_approved_name = approvedName;
-          if (active_token)
-            last_active_token = String(active_token);
-
+          if (active_token) last_active_token = String(active_token);
+          
           drawMainScreen(pending_count, approvedName, time_str, qrText);
-        } else {
+        }
+        else {
           // หากไม่มีคำสั่งและข้อมูลไม่เปลี่ยน แต่อยากให้อัปเดตเฉพาะนาฬิกา
           tft.setTextSize(1);
-          tft.fillRect(265, 0, 55, 20,
-                       tft.color565(14, 17, 28)); // ล้างแถบเวลาเก่า
-          tft.setTextColor(tft.color565(16, 185, 129));
+          tft.fillRect(265, 0, 55, 20, tft.color565(14, 17, 28)); // ล้างแถบเวลาเก่า
+          tft.setTextColor(tft.color565(16, 185, 129)); 
           tft.setCursor(265, 6);
           tft.print(time_str);
         }
@@ -983,7 +981,7 @@ void loop() {
     digitalWrite(LED_WIFI, HIGH);
     delay(250);
   }
-
+  
   delay(polling_delay);
 }`;
   };
@@ -1150,11 +1148,11 @@ void loop() {
     setRoomsList(prev => prev.filter(r => r.room !== roomCode));
     showToast(`🗑️ ลบห้อง ${roomCode} ออกจากรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
   };
-  
+
   // Unified Filters (Tab 2: ทำเนียบ & ประวัติเข้าออก)
   const [searchQ, setSearchQ] = useState("");
   const [filterStatus, setFilter] = useState("all");
-  
+
   // Unified Date Range selection (Initialized to 2026-05-23 which is system launch)
   const [startDate, setStartDate] = useState("2026-05-23");
   const [endDate, setEndDate] = useState("2026-05-23");
@@ -1175,7 +1173,7 @@ void loop() {
     discord: { configured: boolean };
     logSummary: { total: number; active: number; expired: number; retentionDays: number };
   } | null>(null);
-  
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [, setDeleteType] = useState<"expired" | "all">("expired");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1461,7 +1459,7 @@ void loop() {
       a.download = `rmutp_report_${filterType}_${start || "launch"}_to_${end || "today"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      
+
       showToast("สร้างและส่งออกรายงาน PDF สำเร็จ");
       fetchLogs(); // Reload logs to record PDF export action
     } catch {
@@ -1519,11 +1517,11 @@ void loop() {
 
   const filteredLogs = logs.filter(log => {
     if (logFilter !== "all" && log.action !== logFilter) return false;
-    
+
     const logDate = log.timestamp.split("T")[0]; // YYYY-MM-DD
     if (startDate && logDate < startDate) return false;
     if (endDate && logDate > endDate) return false;
-    
+
     if (logSearch) {
       const q = logSearch.toLowerCase();
       const matchName = log.student_name?.toLowerCase().includes(q) || false;
@@ -1541,7 +1539,8 @@ void loop() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media (min-width: 768px) {
           .desktop-hide-trigger {
             display: none !important;
@@ -1566,25 +1565,25 @@ void loop() {
             <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginBottom: 16 }}>
               นักศึกษา: <strong style={{ color: "var(--rmutp-purple-dark)" }}>{rejectModal.name}</strong>
             </p>
-            <textarea 
-              className="rmutp-input" 
-              placeholder="กรุณาระบุเหตุผลการปฏิเสธสิทธิ์ (เพื่อแสดงบนใบประวัติ PDF)" 
+            <textarea
+              className="rmutp-input"
+              placeholder="กรุณาระบุเหตุผลการปฏิเสธสิทธิ์ (เพื่อแสดงบนใบประวัติ PDF)"
               value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)} 
-              style={{ minHeight: 100, resize: "vertical", marginBottom: 20 }} 
+              onChange={e => setRejectReason(e.target.value)}
+              style={{ minHeight: 100, resize: "vertical", marginBottom: 20 }}
             />
             <div style={{ display: "flex", gap: 12 }}>
-              <button 
-                className="btn-secondary" 
-                style={{ flex: 1, padding: "10px" }} 
+              <button
+                className="btn-secondary"
+                style={{ flex: 1, padding: "10px" }}
                 onClick={() => { setRejectModal(null); setRejectReason(""); }}
               >
                 ยกเลิก
               </button>
-              <button 
-                className="btn-danger" 
-                style={{ flex: 1, padding: "10px" }} 
-                onClick={handleReject} 
+              <button
+                className="btn-danger"
+                style={{ flex: 1, padding: "10px" }}
+                onClick={handleReject}
                 disabled={loadingId === rejectModal.id}
               >
                 {loadingId === rejectModal.id ? "กำลังดำเนินการ..." : "ยืนยันปฏิเสธ"}
@@ -1598,9 +1597,9 @@ void loop() {
       {activeRoomDetails && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(30, 27, 75, 0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 24 }}>
           <div className="premium-card animate-scale-in" style={{ maxWidth: 640, width: "100%", padding: 28, background: "var(--bg-secondary)", border: "1px solid var(--border)", position: "relative" }}>
-            
+
             {/* Close button */}
-            <button 
+            <button
               type="button"
               onClick={() => setActiveRoomDetails(null)}
               style={{ position: "absolute", top: 20, right: 20, background: "none", border: "none", color: "var(--text-secondary)", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -1647,7 +1646,7 @@ void loop() {
 
             {/* Modal Content Panels */}
             <div style={{ minHeight: 260, maxHeight: 480, overflowY: "auto", paddingRight: 4, paddingBottom: 24 }}>
-              
+
               {/* TAB 1: API & URLs */}
               {roomDetailsTab === "api" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }} className="animate-fade-in">
@@ -1843,7 +1842,7 @@ void loop() {
                     >
                       📋 คัดลอกโค้ด
                     </button>
-                    <pre 
+                    <pre
                       id="arduino-code-block"
                       style={{
                         margin: 0,
@@ -1880,8 +1879,8 @@ void loop() {
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
               <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#FEF2F2", border: "2px solid #FCA5A5", display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626" }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
               </div>
               <div>
@@ -1961,11 +1960,11 @@ void loop() {
 
       {/* Responsive Dashboard Shell */}
       <div style={{ display: "flex", minHeight: "100vh", flexDirection: "row" }}>
-        
+
         {/* Sidebar Navigation */}
         <aside className={`sidebar-responsive ${mobileMenuOpen ? 'open' : ''}`}>
           <div style={{ padding: "24px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-            <div 
+            <div
               style={{ width: 40, height: 40, borderRadius: "12px", background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 10px rgba(124,58,237,0.2)" }}
             >
               <LockIcon />
@@ -1974,8 +1973,8 @@ void loop() {
               <div style={{ fontSize: 14, fontWeight: 800, color: "var(--rmutp-purple-dark)", letterSpacing: "0.5px" }}>RMUTP ACCS</div>
               <div style={{ fontSize: 10.5, color: "var(--text-secondary)", fontWeight: 600 }}>บอร์ดควบคุมครุศาสตร์</div>
             </div>
-            <button 
-              className="desktop-hide-trigger" 
+            <button
+              className="desktop-hide-trigger"
               onClick={() => setMobileMenuOpen(false)}
               style={{ marginLeft: "auto", background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-secondary)" }}
             >
@@ -1998,10 +1997,10 @@ void loop() {
           <nav style={{ flex: 1, padding: "0 12px" }}>
             {[
               { id: "pending", icon: <ClockIcon />, label: "รายการรออนุมัติ", badge: pendingCount },
-              { 
-                id: "iot", 
-                icon: <TVIcon />, 
-                label: "📡 สถานะบอร์ด IoT ทั้งหมด", 
+              {
+                id: "iot",
+                icon: <TVIcon />,
+                label: "📡 สถานะบอร์ด IoT ทั้งหมด",
                 badge: systemStatus?.esp32Devices?.filter(d => d.online).length || 0,
                 badgeColor: "#10B981"
               },
@@ -2012,27 +2011,27 @@ void loop() {
               ] : []),
               { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
             ].map(item => (
-              <button 
-                key={item.id} 
+              <button
+                key={item.id}
                 onClick={() => {
                   setTab(item.id as typeof tab);
                   setMobileMenuOpen(false);
                 }}
-                style={{ 
-                  width: "100%", 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: 12, 
-                  padding: "12px 14px", 
-                  borderRadius: 12, 
-                  border: "none", 
-                  background: tab === item.id ? "var(--rmutp-purple-pale)" : "transparent", 
-                  color: tab === item.id ? "var(--rmutp-purple)" : "var(--text-secondary)", 
-                  fontSize: 13.5, 
-                  fontWeight: tab === item.id ? 700 : 500, 
-                  cursor: "pointer", 
-                  marginBottom: 4, 
-                  textAlign: "left" 
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: tab === item.id ? "var(--rmutp-purple-pale)" : "transparent",
+                  color: tab === item.id ? "var(--rmutp-purple)" : "var(--text-secondary)",
+                  fontSize: 13.5,
+                  fontWeight: tab === item.id ? 700 : 500,
+                  cursor: "pointer",
+                  marginBottom: 4,
+                  textAlign: "left"
                 }}
               >
                 <span>{item.icon}</span>
@@ -2047,18 +2046,18 @@ void loop() {
           </nav>
 
           <div style={{ padding: "16px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
-            <a 
-              href="/esp32-preview" 
-              target="_blank" 
-              className="btn-secondary" 
+            <a
+              href="/esp32-preview"
+              target="_blank"
+              className="btn-secondary"
               style={{ padding: "10px", borderRadius: 12, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
             >
               <TVIcon />
               <span>จอจำลอง ESP32 LCD</span>
             </a>
-            <button 
-              onClick={handleLogout} 
-              className="btn-ghost" 
+            <button
+              onClick={handleLogout}
+              className="btn-ghost"
               style={{ width: "100%", borderRadius: 12, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
             >
               <LogoutIcon />
@@ -2068,7 +2067,7 @@ void loop() {
         </aside>
 
         {mobileMenuOpen && (
-          <div 
+          <div
             style={{ position: "fixed", inset: 0, background: "rgba(30, 27, 75, 0.2)", backdropFilter: "blur(2px)", zIndex: 9990 }}
             onClick={() => setMobileMenuOpen(false)}
           />
@@ -2076,12 +2075,12 @@ void loop() {
 
         {/* Main Content Area */}
         <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          
+
           {/* Header Mobile and Topbar */}
           <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <button 
-                className="desktop-hide-trigger btn-secondary" 
+              <button
+                className="desktop-hide-trigger btn-secondary"
                 onClick={() => setMobileMenuOpen(true)}
                 style={{ padding: "8px 12px", borderRadius: 8, fontSize: 13, position: "relative", zIndex: 9950 }}
               >
@@ -2147,17 +2146,17 @@ void loop() {
 
           {/* Inner Content Area */}
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-            
+
             {/* ── Enterprise System Status Grid ── */}
             {systemStatus && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }} className="animate-fade-in">
-                
+
                 {/* 1. Database card */}
                 <div className="stat-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>
+                        <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
                       </svg>
                       ฐานข้อมูล MySQL
                     </span>
@@ -2177,7 +2176,7 @@ void loop() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
                       </svg>
                       ฮาร์ดแวร์ ESP32
                     </span>
@@ -2204,7 +2203,7 @@ void loop() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
                       </svg>
                       แจ้งเตือน Discord
                     </span>
@@ -2226,7 +2225,7 @@ void loop() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                       </svg>
                       ผู้ควบคุมระบบปัจจุบัน
                     </span>
@@ -2280,7 +2279,7 @@ void loop() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                               {s.requested_room && s.requested_room !== "default" && (
                                 <span style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(219,39,119,0.12) 100%)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 8, padding: "4px 10px", fontSize: 11.5, color: "var(--rmutp-purple-dark)", fontWeight: 800, display: "flex", alignItems: "center" }}>
@@ -2300,7 +2299,7 @@ void loop() {
                                 <span style={{ marginLeft: 4 }}>{s.branch}</span>
                               </span>
                             </div>
-                            
+
                             <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
                               <ClockIcon />
                               <span>ยื่นสมัครเมื่อ: {formatDateTime(s.registered_at)}</span>
@@ -2308,17 +2307,17 @@ void loop() {
                           </div>
 
                           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                            <button 
-                              className="btn-primary" 
+                            <button
+                              className="btn-primary"
                               style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}
-                              onClick={() => handleApprove(s.id)} 
+                              onClick={() => handleApprove(s.id)}
                               disabled={loadingId === s.id}
                             >
                               <UnlockIcon />
                               <span>อนุมัติ + สั่งเปิดประตู</span>
                             </button>
-                            <button 
-                              className="btn-danger" 
+                            <button
+                              className="btn-danger"
                               style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}
                               onClick={() => setRejectModal({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
                               disabled={loadingId === s.id}
@@ -2338,7 +2337,7 @@ void loop() {
             {/* ── Dynamic IoT All Classroom Boards Status Tab ── */}
             {tab === "iot" && (
               <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                
+
                 {/* 1. Header Control Panel Card */}
                 <div className="premium-card" style={{ padding: 26 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
@@ -2350,20 +2349,20 @@ void loop() {
                         แสดงสถานะการเชื่อมต่อเครือข่ายบอร์ดไมโครคอนโทรลเลอร์ ESP32 ของห้องปฏิบัติการทั้งหมด {roomsList.length} ห้องแบบ Real-time คุณสามารถสั่งทดสอบสถานะการ Long-polling หรือสั่งปลดล็อกระยะไกลด่วนได้จากที่นี่
                       </p>
                     </div>
-                    
-                    <button 
-                      type="button" 
+
+                    <button
+                      type="button"
                       onClick={() => {
                         fetchSystemStatus();
                         showToast("📡 รีเฟรชสถานะเครือข่ายบอร์ดสำเร็จ", "success");
                       }}
-                      className="btn-primary" 
+                      className="btn-primary"
                       style={{ padding: "10px 20px", borderRadius: 12, fontSize: 13, fontWeight: 700 }}
                     >
                       🔄 รีเฟรชสถานะบอร์ด
                     </button>
                   </div>
-                  
+
                   {/* Summary counter badges */}
                   <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
                     <span style={{ background: "rgba(16,185,129,0.08)", border: "1.5px solid rgba(16,185,129,0.2)", borderRadius: 10, padding: "6px 14px", fontSize: 12, color: "#059669", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -2396,10 +2395,10 @@ void loop() {
                       const doorOpen = liveDev ? liveDev.doorStatus === "open" : false;
                       const isMock = liveDev ? liveDev.mock : false;
                       const activeIp = liveDev ? liveDev.ip : roomItem.ip;
-                      
+
                       return (
                         <div key={roomItem.room} className="premium-card hover-card animate-scale-in" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, background: "var(--bg-secondary)", border: isOnline ? "1.5px solid rgba(16,185,129,0.2)" : "1px solid var(--border)" }}>
-                          
+
                           {/* Card Top row info */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                             <div style={{ textAlign: "left" }}>
@@ -2409,12 +2408,12 @@ void loop() {
                                   <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#FFFBEB", color: "#D97706", border: "1px solid rgba(217,119,6,0.2)", fontWeight: 800 }}>MOCK</span>
                                 )}
                               </h4>
-                              
+
                               <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4, fontFamily: "monospace" }}>
                                 ที่อยู่: {activeIp}
                               </div>
                             </div>
-                            
+
                             {/* Live Badge status */}
                             <span className={`badge ${isOnline ? 'badge-approved' : 'badge-rejected'}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                               <span className={isOnline ? 'animate-pulse-ring' : ''} style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#059669" : "#DC2626", display: "inline-block" }} />
@@ -2423,7 +2422,7 @@ void loop() {
                           </div>
 
                           <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 14, background: "rgba(0,0,0,0.01)", borderRadius: 12, border: "1px solid var(--border)", textAlign: "left" }}>
-                            
+
                             {/* Door lock state */}
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>กลอนประตูบอร์ด:</span>
@@ -2443,7 +2442,7 @@ void loop() {
 
                           {/* Quick remote controls */}
                           <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 10 }}>
-                            
+
                             <button
                               type="button"
                               onClick={() => handleTestConnection(roomItem.room)}
@@ -2495,7 +2494,7 @@ void loop() {
             {/* ── UNIFIED ทำเนียบ & ประวัติเข้าออก Tab (Owner Only) ── */}
             {tab === "all" && isOwner && (
               <div className="animate-fade-in">
-                
+
                 {/* ── Unified Date-Range PDF Export Hub Card ── */}
                 <div className="premium-card" style={{ padding: 26, marginBottom: 24 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
@@ -2504,16 +2503,16 @@ void loop() {
                   <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 20 }}>
                     คุณสามารถเลือกกำหนดวันเริ่มต้นจัดตั้งระบบจนถึงสิ้นสุดสถิติ เพื่อกรองข้อมูลการเข้าใช้งานและทำเนียบนักศึกษา พร้อมดาวน์โหลดเอกสาร PDF แนวนอน (Landscape) ที่กว้างขวาง แสดงวันเวลาประวัติระบบครบถ้วนอย่างเป็นทางการ
                   </p>
-                  
+
                   {/* Grid fields layout */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 20 }}>
-                    
+
                     {/* Date picker: Start */}
                     <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                         เริ่มต้นวันที่ (Start Date) *
                       </label>
-                      <input 
+                      <input
                         type="date"
                         className="rmutp-input"
                         value={startDate}
@@ -2527,7 +2526,7 @@ void loop() {
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                         สิ้นสุดวันที่ (End Date) *
                       </label>
-                      <input 
+                      <input
                         type="date"
                         className="rmutp-input"
                         value={endDate}
@@ -2541,9 +2540,9 @@ void loop() {
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                         กรองสถานะสิทธิ์คำขอ *
                       </label>
-                      <select 
-                        className="rmutp-input" 
-                        value={filterStatus} 
+                      <select
+                        className="rmutp-input"
+                        value={filterStatus}
                         onChange={e => setFilter(e.target.value)}
                         style={{ padding: "10px 14px" }}
                       >
@@ -2556,8 +2555,8 @@ void loop() {
 
                     {/* Action Exporter Button */}
                     <div style={{ display: "flex", alignItems: "flex-end" }}>
-                      <button 
-                        onClick={() => handleExportPDFWithDateRange(filterStatus, startDate, endDate)} 
+                      <button
+                        onClick={() => handleExportPDFWithDateRange(filterStatus, startDate, endDate)}
                         disabled={pdfLoading}
                         className="btn-primary hover-card"
                         style={{ width: "100%", padding: "11px 16px", borderRadius: 12, fontSize: 13, gap: 6, display: "flex" }}
@@ -2592,7 +2591,7 @@ void loop() {
                     <div>
                       <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--edu-pink)" }}>
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                         </svg>
                         ศูนย์รักษาความปลอดภัยและบำรุงรักษาข้อมูล (Log Compliance Hub)
                       </h3>
@@ -2660,7 +2659,7 @@ void loop() {
                       style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                       </svg>
                       ⚠️ ล้างข้อมูลประวัติทั้งหมดในระบบ (ลบถาวร)
                     </button>
@@ -2672,12 +2671,12 @@ void loop() {
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
                     <UsersIcon /> 1. ทำเนียบและทำระเบียนรายชื่อผู้ยื่นคำขอรับสิทธิ์เข้าห้อง
                   </h3>
-                  
+
                   {/* Search and Filters */}
                   <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 360 }}>
-                    <input 
-                      className="rmutp-input" 
-                      placeholder="ค้นหาด้วยชื่อจริง หรือ รหัสนักศึกษา..." 
+                    <input
+                      className="rmutp-input"
+                      placeholder="ค้นหาด้วยชื่อจริง หรือ รหัสนักศึกษา..."
                       value={searchQ}
                       onChange={e => setSearchQ(e.target.value)}
                       style={{ padding: "8px 12px" }}
@@ -2734,9 +2733,9 @@ void loop() {
                               </td>
                               <td style={{ textAlign: "center", fontWeight: 600 }}>ปี {s.year}</td>
                               <td style={{ textAlign: "center" }}>
-                                <span style={{ 
-                                  fontSize: 12, 
-                                  fontWeight: 800, 
+                                <span style={{
+                                  fontSize: 12,
+                                  fontWeight: 800,
                                   color: s.requested_room && s.requested_room !== "default" ? "var(--rmutp-purple-dark)" : "var(--text-secondary)",
                                   background: s.requested_room && s.requested_room !== "default" ? "var(--rmutp-purple-pale)" : "transparent",
                                   padding: s.requested_room && s.requested_room !== "default" ? "4px 10px" : "0",
@@ -2767,7 +2766,7 @@ void loop() {
                               </td>
                               <td>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                                  <button 
+                                  <button
                                     onClick={() => handleExportSingleStudentPDF(s.id, `${s.first_name} ${s.last_name}`)}
                                     title="พิมพ์บัตรรายงาน PDF"
                                     className="btn-ghost"
@@ -2778,8 +2777,8 @@ void loop() {
                                   </button>
 
                                   {s.status === "approved" && (
-                                    <button 
-                                      onClick={() => handleOpenDoor(s.id)} 
+                                    <button
+                                      onClick={() => handleOpenDoor(s.id)}
                                       disabled={loadingId === s.id}
                                       style={{ padding: "6px 10px", background: "#ECFDF5", border: "1px solid #10B981", borderRadius: 8, color: "#059669", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", gap: 4, alignItems: "center" }}
                                     >
@@ -2787,8 +2786,8 @@ void loop() {
                                       <span>เปิด</span>
                                     </button>
                                   )}
-                                  
-                                  <button 
+
+                                  <button
                                     onClick={() => handleDelete(s.id, `${s.first_name} ${s.last_name}`)}
                                     style={{ padding: "6px 8px", background: "#FEF2F2", border: "1px solid #EF4444", borderRadius: 8, color: "#DC2626", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center" }}
                                   >
@@ -2805,7 +2804,7 @@ void loop() {
                 </div>
 
                 {/* ── SECTION 2: บันทึกความปลอดภัยและการเข้าออก (Access & Activity Logs Table) ── */}
-                
+
                 {/* Enterprise Logs Stats Mini Summary */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 16 }}>
                   <div className="stat-card" style={{ borderLeft: "4px solid var(--rmutp-purple)", padding: "14px 20px" }}>
@@ -2830,7 +2829,7 @@ void loop() {
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
                     <TerminalIcon /> 2. บันทึกประวัติความปลอดภัย และการผ่านเข้าออกห้องปฏิบัติการ (Audit Logs)
                   </h3>
-                  
+
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                     {/* Item Limit Selector (10, 25, 50 items) */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.02)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -2860,11 +2859,11 @@ void loop() {
 
                     {/* Search Input */}
                     <div style={{ width: 220 }}>
-                      <input 
-                        className="rmutp-input" 
-                        placeholder="ค้นหาประวัติ..." 
+                      <input
+                        className="rmutp-input"
+                        placeholder="ค้นหาประวัติ..."
                         value={logSearch}
-                        onChange={e => { setLogSearch(e.target.value); setLogCurrentPage(1); }} 
+                        onChange={e => { setLogSearch(e.target.value); setLogCurrentPage(1); }}
                         style={{ padding: "8px 12px", fontSize: 12.5 }}
                       />
                     </div>
@@ -2973,15 +2972,15 @@ void loop() {
                                 </td>
                                 <td style={{ fontSize: 11.5, maxWidth: 280 }}>
                                   {log.notes ? (
-                                    <div 
-                                      style={{ 
-                                        background: "var(--bg-primary)", 
-                                        border: "1px solid var(--border)", 
-                                        padding: "10px 14px", 
-                                        borderRadius: 10, 
-                                        fontFamily: "inherit", 
-                                        fontSize: 11, 
-                                        color: "var(--text-primary)", 
+                                    <div
+                                      style={{
+                                        background: "var(--bg-primary)",
+                                        border: "1px solid var(--border)",
+                                        padding: "10px 14px",
+                                        borderRadius: 10,
+                                        fontFamily: "inherit",
+                                        fontSize: 11,
+                                        color: "var(--text-primary)",
                                         boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
                                       }}
                                     >
@@ -3005,7 +3004,7 @@ void loop() {
                   <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                     แสดงรายการที่ <strong>{totalFilteredLogs === 0 ? 0 : (logCurrentPage - 1) * logPageSize + 1}</strong> ถึง <strong>{Math.min(logCurrentPage * logPageSize, totalFilteredLogs)}</strong> จากทั้งหมด <strong>{totalFilteredLogs}</strong> รายการ
                   </div>
-                  
+
                   {totalLogPages > 1 && (
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       <button
@@ -3017,7 +3016,7 @@ void loop() {
                       >
                         ◀ ย้อนกลับ
                       </button>
-                      
+
                       {Array.from({ length: totalLogPages }, (_, idx) => idx + 1).map(p => (
                         <button
                           key={p}
@@ -3042,7 +3041,7 @@ void loop() {
                           {p}
                         </button>
                       ))}
-                      
+
                       <button
                         type="button"
                         disabled={logCurrentPage === totalLogPages}
@@ -3061,9 +3060,9 @@ void loop() {
             {/* ── Admin Management Tab (Owner Only) ────────────── */}
             {tab === "admins" && isOwner && (
               <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, alignItems: "start" }}>
-                  
+
                   {/* Admin List table card */}
                   <div className="premium-card" style={{ overflow: "hidden" }}>
                     <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", background: "var(--rmutp-purple-pale)" }}>
@@ -3097,8 +3096,8 @@ void loop() {
                               </td>
                               <td>
                                 {a.id !== user.id && (
-                                  <button 
-                                    onClick={() => handleDeleteAdmin(a.id)} 
+                                  <button
+                                    onClick={() => handleDeleteAdmin(a.id)}
                                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
                                     title="ถอดถอนสิทธิ์"
                                   >
@@ -3128,23 +3127,23 @@ void loop() {
                           <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                             {f.label} *
                           </label>
-                          <input 
-                            className="rmutp-input" 
-                            type={f.type} 
+                          <input
+                            className="rmutp-input"
+                            type={f.type}
                             placeholder={f.placeholder}
                             value={(newAdmin as Record<string, string>)[f.key]}
-                            onChange={e => setNewAdmin(a => ({ ...a, [f.key]: e.target.value }))} 
-                            required 
+                            onChange={e => setNewAdmin(a => ({ ...a, [f.key]: e.target.value }))}
+                            required
                           />
                         </div>
                       ))}
-                      
+
                       <div style={{ marginBottom: 20 }}>
                         <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           ขอบเขตสิทธิ์ในการทำงาน (Role) *
                         </label>
-                        <select 
-                          className="rmutp-input" 
+                        <select
+                          className="rmutp-input"
                           value={newAdmin.role}
                           onChange={e => setNewAdmin(a => ({ ...a, role: e.target.value }))}
                         >
@@ -3153,9 +3152,9 @@ void loop() {
                         </select>
                       </div>
 
-                      <button 
-                        type="submit" 
-                        className="btn-primary" 
+                      <button
+                        type="submit"
+                        className="btn-primary"
                         style={{ width: "100%", justifyContent: "center", borderRadius: 12, padding: "12px" }}
                       >
                         <CheckIcon />
@@ -3259,15 +3258,15 @@ void loop() {
                           />
                         </button>
                       </div>
-                      
+
                       {settings.auto_fill_enabled && (
                         <div style={{ padding: 12, background: "rgba(0,0,0,0.15)", borderRadius: 8, border: "1px dashed var(--border)", display: "flex", flexDirection: "column", gap: 8 }} className="animate-fade-in">
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>รูปแบบการดึงข้อมูล:</span>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
-                              <input 
-                                type="radio" 
-                                name="auto_fill_mode" 
+                              <input
+                                type="radio"
+                                name="auto_fill_mode"
                                 value="auto"
                                 checked={settings.auto_fill_mode === "auto"}
                                 onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
@@ -3276,9 +3275,9 @@ void loop() {
                               <span>เด้งขึ้นมาให้เองอัตโนมัติ (Auto Pop-up)</span>
                             </label>
                             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
-                              <input 
-                                type="radio" 
-                                name="auto_fill_mode" 
+                              <input
+                                type="radio"
+                                name="auto_fill_mode"
                                 value="manual"
                                 checked={settings.auto_fill_mode === "manual"}
                                 onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
@@ -3296,26 +3295,26 @@ void loop() {
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           เวลาเริ่มบริการ (ชั่วโมง:นาที)
                         </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="text" 
+                        <input
+                          className="rmutp-input"
+                          type="text"
                           placeholder="เช่น 09:00"
                           value={settings.auto_approve_start_time}
                           onChange={e => setSettings(s => ({ ...s, auto_approve_start_time: e.target.value }))}
-                          required 
+                          required
                         />
                       </div>
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           เวลาปิดบริการ (ชั่วโมง:นาที)
                         </label>
-                        <input 
-                          className="rmutp-input" 
-                          type="text" 
+                        <input
+                          className="rmutp-input"
+                          type="text"
                           placeholder="เช่น 16:00"
                           value={settings.auto_approve_end_time}
                           onChange={e => setSettings(s => ({ ...s, auto_approve_end_time: e.target.value }))}
-                          required 
+                          required
                         />
                       </div>
                     </div>
@@ -3336,7 +3335,7 @@ void loop() {
                         ].map(day => {
                           const activeDaysList = settings.auto_approve_days ? settings.auto_approve_days.split(",").map(Number).filter(n => !isNaN(n)) : [];
                           const isActive = activeDaysList.includes(day.val);
-                          
+
                           const handleDayToggle = () => {
                             let updated: number[];
                             if (isActive) {
@@ -3391,9 +3390,9 @@ void loop() {
                           📝 คำขอลงทะเบียนเข้าใช้ห้องใหม่
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input 
-                            className="rmutp-input" 
-                            type="url" 
+                          <input
+                            className="rmutp-input"
+                            type="url"
                             placeholder="https://discord.com/api/webhooks/..."
                             value={settings.discord_webhook_register}
                             onChange={e => setSettings(s => ({ ...s, discord_webhook_register: e.target.value }))}
@@ -3415,9 +3414,9 @@ void loop() {
                           🚪 แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input 
-                            className="rmutp-input" 
-                            type="url" 
+                          <input
+                            className="rmutp-input"
+                            type="url"
                             placeholder="กรอก URL แจ้งเตือนการเปิดประตู"
                             value={settings.discord_webhook_approve}
                             onChange={e => setSettings(s => ({ ...s, discord_webhook_approve: e.target.value }))}
@@ -3439,9 +3438,9 @@ void loop() {
                           📊 บันทึก Log จราจร/ความปลอดภัยอย่างละเอียด
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input 
-                            className="rmutp-input" 
-                            type="url" 
+                          <input
+                            className="rmutp-input"
+                            type="url"
                             placeholder="กรอก URL เก็บ Log ความปลอดภัย"
                             value={settings.discord_webhook_logs}
                             onChange={e => setSettings(s => ({ ...s, discord_webhook_logs: e.target.value }))}
@@ -3658,10 +3657,10 @@ void loop() {
             {/* ── User Guide Tab (Available for all Admins) ────────────── */}
             {tab === "guide" && (
               <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-                
+
                 {/* 📚 Premium User Manual Guide Panel */}
                 <div className="premium-card" style={{ padding: 32, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
-                  
+
                   <div style={{
                     display: "flex",
                     alignItems: "center",
@@ -3695,7 +3694,7 @@ void loop() {
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 28, textAlign: "left" }}>
-                    
+
                     {/* Section 1: Overview */}
                     <div>
                       <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -3703,7 +3702,7 @@ void loop() {
                       </h3>
                       <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8, paddingLeft: 8 }}>
                         <p style={{ margin: "0 0 10px 0" }}>
-                          เนื่องจากเครื่องเซิร์ฟเวอร์บน **Vercel** ทำงานอยู่บนโครงข่ายอินเทอร์เน็ตสาธารณะ (Public Cloud) ในขณะที่ตัวบอร์ด **ESP32** ประจำห้องปฏิบัติการจะติดตั้งอยู่ภายในวง LAN ของมหาวิทยาลัย ซึ่งไม่ได้รับ Public IP จริงและมักถูกปิดกั้นด้วย Firewall/NAT 
+                          เนื่องจากเครื่องเซิร์ฟเวอร์บน **Vercel** ทำงานอยู่บนโครงข่ายอินเทอร์เน็ตสาธารณะ (Public Cloud) ในขณะที่ตัวบอร์ด **ESP32** ประจำห้องปฏิบัติการจะติดตั้งอยู่ภายในวง LAN ของมหาวิทยาลัย ซึ่งไม่ได้รับ Public IP จริงและมักถูกปิดกั้นด้วย Firewall/NAT
                         </p>
                         <p style={{ margin: "0 0 10px 0" }}>
                           เพื่อความง่ายและปลอดภัยสูงสุด ระบบนี้จึงถูกออกแบบบน **Polling Architecture** คือบอร์ด ESP32 จะคอยทำหน้าที่เป็นผู้เรียกติดต่อเข้าหาเซิร์ฟเวอร์ Vercel ทุกๆ 2 วินาทีเพื่อคอยดึงข้อมูล (Display Polling) และตรวจเช็กสถานะการอนุมัติสลับสัญญาณกลอนรีเลย์ผ่านทางฐานข้อมูลโดยตรง โดย<strong>ไม่จำเป็นต้องทำการฟอร์เวิร์ดพอร์ต (Port Forwarding)</strong> บนเร้าเตอร์ของมหาวิทยาลัยแต่อย่างใด
