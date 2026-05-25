@@ -149,6 +149,7 @@ export async function initDatabase(): Promise<void> {
       { key: "room_webhook_register_CE-401", value: "https://discord.com/api/webhooks/1507982864132870266/4x9kmjb2a6MyNN1PU-DTXuTDP-yKRXS-2CrB4MH6kgm0YCw3gkQpzNIajWlYT6Oe5mb0" },
       { key: "room_webhook_approve_CE-401", value: "https://discord.com/api/webhooks/1507982955207987313/ir0bWNmwvS4sAMtRBrZ8RzKQQN2y69HiFi9HHKYucnvUpJ4c4ZCIkhgWvLu63j6Vs-_4" },
       { key: "room_webhook_logs_CE-401", value: "https://discord.com/api/webhooks/1507983021817725062/sXAZeB6hmEAR-awMiU484AFKO9IKOPZFkXWgfPiHUefpnCkUuNZDwHXrF7-tsAIILWCr" },
+      { key: "student_id_display_mode", value: "full" },
     ];
 
     for (const setting of defaultSettings) {
