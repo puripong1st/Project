@@ -485,7 +485,7 @@ export default function AdminDashboard() {
     return `/*
   ==============================================================
   RMUTP Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom \${roomCode}
+  ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
@@ -506,9 +506,9 @@ const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
 const char *server_url =
-    "\${origin}/api/esp32/display?room=\${roomCode}";
+    "${origin}/api/esp32/display?room=${roomCode}";
 const char *api_key = "rmutp_secure_door_unlock_token_2026";
-const char *room_code = "\${roomCode}";
+const char *room_code = "${roomCode}";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
 #define TFT_CS 15
