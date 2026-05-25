@@ -2,62 +2,62 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
+//ฟิล์มเอง
 // ─── Minimalist Vector SVGs ───
 const KeyholeShieldIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    <circle cx="12" cy="11" r="2"/>
-    <path d="M12 13v3"/>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <circle cx="12" cy="11" r="2" />
+    <path d="M12 13v3" />
   </svg>
 );
 
 const EyeOpenIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
 const EyeClosedIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-    <line x1="1" y1="1" x2="23" y2="23"/>
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 );
 
 const CrownIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
-    <path d="M3 20h18"/>
+    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" />
+    <path d="M3 20h18" />
   </svg>
 );
 
 const DoorKeyIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3M15.5 7.5L19 4"/>
+    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3M15.5 7.5L19 4" />
   </svg>
 );
 
 const AlertIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-    <line x1="12" y1="9" x2="12" y2="13"/>
-    <line x1="12" y1="17" x2="12.01" y2="17"/>
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
   </svg>
 );
 
 const ArrowLeftIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
-    <line x1="19" y1="12" x2="5" y2="12"/>
-    <polyline points="12 19 5 12 12 5"/>
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
   </svg>
 );
 
 const UnlockIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 8 }}>
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
   </svg>
 );
 
@@ -100,7 +100,7 @@ export default function AdminLoginPage() {
       <div style={{ maxWidth: 420, width: "100%", position: "relative" }}>
         {/* Logo and Titles */}
         <div className="animate-fade-in" style={{ textAlign: "center", marginBottom: 32 }}>
-          <div 
+          <div
             style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#fff", boxShadow: "0 10px 25px rgba(124,58,237,0.25)" }}
             className="animate-pulse-ring"
           >
@@ -132,14 +132,14 @@ export default function AdminLoginPage() {
               <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                 Username
               </label>
-              <input 
-                className="rmutp-input" 
-                type="text" 
-                placeholder="กรอกชื่อผู้ใช้ของท่าน" 
+              <input
+                className="rmutp-input"
+                type="text"
+                placeholder="กรอกชื่อผู้ใช้ของท่าน"
                 value={username}
-                onChange={e => setUsername(e.target.value)} 
-                autoComplete="username" 
-                required 
+                onChange={e => setUsername(e.target.value)}
+                autoComplete="username"
+                required
               />
             </div>
 
@@ -147,18 +147,18 @@ export default function AdminLoginPage() {
               <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                 Password
               </label>
-              <input 
-                className="rmutp-input" 
-                type={showPass ? "text" : "password"} 
-                placeholder="กรอกรหัสผ่านของท่าน" 
+              <input
+                className="rmutp-input"
+                type={showPass ? "text" : "password"}
+                placeholder="กรอกรหัสผ่านของท่าน"
                 value={password}
-                onChange={e => setPassword(e.target.value)} 
-                autoComplete="current-password" 
-                required 
-                style={{ paddingRight: 46 }} 
+                onChange={e => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                style={{ paddingRight: 46 }}
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowPass(s => !s)}
                 style={{ position: "absolute", right: 14, top: 35, background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: 16 }}
               >
@@ -166,15 +166,15 @@ export default function AdminLoginPage() {
               </button>
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              style={{ width: "100%", justifyContent: "center", fontSize: 15, borderRadius: 14, padding: "14px 20px" }} 
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: "100%", justifyContent: "center", fontSize: 15, borderRadius: 14, padding: "14px 20px" }}
               disabled={loading}
             >
               {loading ? (
                 <>
-                  <span className="animate-spin" style={{ display: "inline-block", width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} /> 
+                  <span className="animate-spin" style={{ display: "inline-block", width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} />
                   <span style={{ marginLeft: 8 }}>กำลังตรวจสอบสิทธิ์...</span>
                 </>
               ) : (
