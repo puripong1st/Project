@@ -41,5 +41,4 @@ yarn-error.log*
 next-env.d.ts
 
 #esp32
-/esp32/build/
-esp32/build
+esp32/build/
