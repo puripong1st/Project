@@ -822,7 +822,7 @@ void setup() {
   }
   
   digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
-  Serial.println("\nWiFi connected successfully!");
+  Serial.println("\\nWiFi connected successfully!");
   
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();

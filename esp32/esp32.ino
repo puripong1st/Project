@@ -21,7 +21,7 @@ const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
 const char *server_url =
-    "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-401";
+    "http://192.168.2.49:3000/api/esp32/display?room=CE-401";
 const char *api_key = "rmutp_secure_door_unlock_token_2026";
 const char *room_code = "CE-401";
 
@@ -348,7 +348,7 @@ void setup() {
 
   digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
   Serial.println("\nWiFi connected successfully!");
-
+  
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
 
@@ -426,7 +426,7 @@ void loop() {
           if (idx != -1) {
             baseUrl = regUrl.substring(0, idx);
           } else {
-            baseUrl = "https://project-sigma-ivory-21.vercel.app";
+            baseUrl = "http://192.168.2.49:3000";
           }
           qrText = baseUrl + "/?scan=" + String(active_token) +
                    "&room=" + String(requested_room);
