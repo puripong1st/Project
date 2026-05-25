@@ -572,46 +572,58 @@ void loop() {
   };
 
   const highlightArduinoCode = (code: string) => {
-    const lines = code.split("\n");
-    const highlightedLines = lines.map(line => {
-      let trimmed = line.trim();
-      let safeLine = line
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    // 1. Escape HTML first
+    let safeCode = code
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
 
-      if (trimmed.startsWith("/*") || trimmed.startsWith("*") || trimmed.endsWith("*/") || trimmed.startsWith("//")) {
-        return `<span style="color: #7CA668; font-style: italic;">${safeLine}</span>`;
+    // 2. Tokenize using a single regex that matches comments, strings, preprocessors, keywords, built-ins, and numbers.
+    const tokenRegex = new RegExp(
+      [
+        // 1. Multi-line comments
+        `(\\/\\*[\\s\\S]*?\\*\\/)`,
+        // 2. Single-line comments
+        `(\\/\\/.*)`,
+        // 3. Double-quoted strings
+        `("[^"\\\\\\r\\n]*(?:\\\\.[^"\\\\\\r\\n]*)*")`,
+        // 4. Preprocessor directives
+        `(#include\\s+&lt;[^&]+&gt;|#include\\s+"[^"]+"|#define\\s+\\w+)`,
+        // 5. Keywords (types, control statements)
+        `\\b(void|const|char|int|float|double|bool|while|if|else|new|return|setup|loop|String|StaticJsonDocument|DeserializationError)\\b`,
+        // 6. Arduino / ESP32 Built-in objects and functions
+        `\\b(Serial|pinMode|digitalWrite|delay|WiFi|HTTPClient|WiFiClientSecure|deserializeJson|OUTPUT|INPUT|HIGH|LOW|WL_CONNECTED)\\b`,
+        // 7. Numbers
+        `\\b(\\d+)\\b`
+      ].join("|"),
+      "g"
+    );
+
+    // Replace matched tokens with styled spans
+    return safeCode.replace(tokenRegex, (match, mComment1, mComment2, mString, mPreproc, mKeyword, mBuiltin, mNumber) => {
+      if (mComment1 || mComment2) {
+        return `<span style="color: #7CA668; font-style: italic;">${match}</span>`;
       }
-
-      let commentIndex = safeLine.indexOf("//");
-      let codePart = safeLine;
-      let commentPart = "";
-      if (commentIndex !== -1) {
-        codePart = safeLine.substring(0, commentIndex);
-        commentPart = `<span style="color: #7CA668; font-style: italic;">${safeLine.substring(commentIndex)}</span>`;
+      if (mString) {
+        return `<span style="color: #CE9178;">${match}</span>`;
       }
-
-      const keywords = ["void", "const", "char", "int", "while", "if", "else", "new", "return", "setup", "loop", "String", "StaticJsonDocument", "DeserializationError"];
-      keywords.forEach(keyword => {
-        const regex = new RegExp(`\\b(${keyword})\\b`, "g");
-        codePart = codePart.replace(regex, '<span style="color: #569CD6; font-weight: bold;">$1</span>');
-      });
-
-      const builtins = ["Serial", "pinMode", "digitalWrite", "delay", "WiFi", "HTTPClient", "WiFiClientSecure", "deserializeJson"];
-      builtins.forEach(builtin => {
-        const regex = new RegExp(`\\b(${builtin})\\b`, "g");
-        codePart = codePart.replace(regex, '<span style="color: #4FC1FF;">$1</span>');
-      });
-
-      codePart = codePart.replace(/(#include|#define)/g, '<span style="color: #C586C0; font-weight: bold;">$1</span>');
-      codePart = codePart.replace(/("[^"]*")/g, '<span style="color: #CE9178;">$1</span>');
-      codePart = codePart.replace(/\b(OUTPUT|INPUT|HIGH|LOW|WL_CONNECTED)\b/g, '<span style="color: #DCDCAA; font-weight: bold;">$1</span>');
-
-      return codePart + commentPart;
+      if (mPreproc) {
+        return `<span style="color: #C586C0; font-weight: bold;">${match}</span>`;
+      }
+      if (mKeyword) {
+        return `<span style="color: #569CD6; font-weight: bold;">${match}</span>`;
+      }
+      if (mBuiltin) {
+        const isConstant = /^(OUTPUT|INPUT|HIGH|LOW|WL_CONNECTED)$/.test(match);
+        const color = isConstant ? "#DCDCAA" : "#4FC1FF";
+        const weight = isConstant ? "bold" : "normal";
+        return `<span style="color: ${color}; font-weight: ${weight};">${match}</span>`;
+      }
+      if (mNumber) {
+        return `<span style="color: #B5CEA8;">${match}</span>`;
+      }
+      return match;
     });
-
-    return highlightedLines.join("\n");
   };
 
   const saveSettings = async (e: React.FormEvent) => {
