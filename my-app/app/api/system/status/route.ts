@@ -110,8 +110,8 @@ export async function GET() {
     return NextResponse.json({
       mysql: {
         online: mysqlOnline,
-        host: process.env.MYSQL_HOST || "localhost",
-        database: process.env.MYSQL_DATABASE || "rmutp_access",
+        host: process.env.POSTGRES_HOST || "localhost",
+        database: process.env.POSTGRES_DATABASE || "postgres",
         error: mysqlError,
       },
       esp32: devicesList.length > 0 ? {

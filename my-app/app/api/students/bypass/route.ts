@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       await pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [student.id]);
     }
 
-    // Log the bypass entry event inside MySQL access_logs
+    // Log the bypass entry event inside PostgreSQL (Supabase) access_logs
     await pool.query(
       `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES ($1, $2, $3, $4, $5)`,
       [

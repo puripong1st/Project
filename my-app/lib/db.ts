@@ -2,12 +2,18 @@
 import { Pool, PoolConfig } from "pg";
 import bcrypt from "bcryptjs";
 
+// Force Node.js to accept self-signed SSL certificates from Supabase
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 let pool: Pool | null = null;
 
 export function getPool(): Pool {
   if (!pool) {
     const config: PoolConfig = {
       connectionString: process.env.POSTGRES_URL,
+      ssl: {
+        rejectUnauthorized: false
+      }
     };
     pool = new Pool(config);
   }
