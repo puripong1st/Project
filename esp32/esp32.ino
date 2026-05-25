@@ -1,389 +1,356 @@
-/**
- * RMUTP ACCS — ESP32 Door Lock Controller
- * ----------------------------------------------------
- * พัฒนาสำหรับบอร์ดควบคุมสิทธิ์การเข้าออกห้อง คณะครุศาสตร์ มทร.พระนคร
- *
- * คุณสมบัติ:
- * 1. รองรับการเชื่อมต่อ Wi-Fi พร้อมระบบกู้คืนการเชื่อมต่ออัตโนมัติ (Auto Reconnect)
- * 2. รัน HTTP Server บนพอร์ต 80 เพื่อรับคำสั่งจาก Next.js API
- * 3. Endpoint:
- *    - POST /door/open : สั่งปลดล็อกกลอนแม่เหล็กไฟฟ้า (Relay) พร้อมเสียง Buzzer แจ้งเตือน
- *    - GET /status      : ให้ระบบหลังบ้านตรวจสอบสถานะการออนไลน์และสถานะประตู
- *    - POST /display   : รับคำสั่งแสดงผลข้อมูลนักศึกษา/สถานะอนุมัติลงบน Serial/หน้าจอ
- *
- * Wokwi Simulator:
- *    - เปิดด้วย VS Code Extension "Wokwi Simulator"
- *    - Port Forwarding: localhost:8180 → ESP32:80 (ตั้งค่าใน wokwi.toml)
- *    - ตั้งค่า .env.local: ESP32_WOKWI=true
- *
- * ไลบรารีที่จำเป็น (ติดตั้งผ่าน Arduino IDE Library Manager):
- * - ArduinoJson (โดย Benoit Blanchon)
- * - WebServer (มาพร้อมบอร์ด ESP32)
- */
-
-// =========================================
-// โหมดจำลอง Wokwi (comment out เมื่อใช้ฮาร์ดแวร์จริง)
-// =========================================
-#define WOKWI_SIM // ← ลบบรรทัดนี้เมื่อ Flash บอร์ดจริง
-
-#include <ArduinoJson.h>
-#include <WebServer.h>
+/*
+  ==============================================================
+  RMUTP Door Access Controller - Firmware for ESP32
+  ห้องปฏิบัติการเรียนการสอน: Classroom CE-401
+  ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
+  ==============================================================
+*/
+#define WOKWI_SIM        // <-- ต้องมีบรรทัดนี้อยู่บนสุดของโค้ดใน Wokwi
+#include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
+#include <HTTPClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+#include <SPI.h>
 
-// ==========================================
-// 1. การตั้งค่า Wi-Fi และเครือข่าย
-// ==========================================
-#ifdef WOKWI_SIM
 // Wokwi Simulator ใช้ WiFi เสมือน "Wokwi-GUEST" เท่านั้น (ไม่ใช้รหัสผ่าน)
 const char *ssid = "Wokwi-GUEST";
 const char *password = "";
-#else
-// WiFi จริง — ใส่ชื่อและรหัสผ่าน WiFi ของคุณที่นี่
-const char *ssid = "true_home5G_0df";
-const char *password = "8dwzuaaw";
-#endif
 
-// ==========================================
-// API Key สำหรับยืนยันตัวตนจาก Next.js (Vulnerability 1 Fix)
-// ต้องตรงกับ ESP32_API_KEY ใน .env.local ของ Next.js
-// ==========================================
-const char *VALID_API_KEY = "rmutp_secure_door_unlock_token_2026";
+// --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
+const char *server_url = "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-401";
+const char *api_key = "rmutp_secure_door_unlock_token_2026";
 
-// ตั้งค่า Static IP (แนะนำสำหรับการใช้งานระดับองค์กร เพื่อป้องกัน IP เปลี่ยนแปลง)
-IPAddress local_IP(192, 168, 1, 100); // IP ของบอร์ด ESP32 ที่ตั้งค่าใน .env
-IPAddress gateway(192, 168, 1, 1);
-IPAddress subnet(255, 255, 255, 0);
-IPAddress dns(8, 8, 8, 8);
+// --- การต่อขาอุปกรณ์ (Hardware Pins) ---
+#define TFT_CS   15
+#define TFT_RST   4
+#define TFT_DC    2
+#define RELAY_PIN 12      // รีเลย์ประตู (GPIO 12)
+#define LED_WIFI 14       // WiFi Status LED (GPIO 14)
+#define LED_REJECT 26     // Reject LED (GPIO 26)
+#define BUZZER_PIN 27     // Buzzer (GPIO 27)
 
-// ==========================================
-// 2. การกำหนดขาเชื่อมต่ออุปกรณ์ (Pinout Mappings)
-// ==========================================
-#define RELAY_PIN                                                              \
-  4 // ขาควบคุมรีเลย์กลอนแม่เหล็ก Solenoid (Active HIGH/LOW ตั้งค่าด้านล่าง)
-#define BUZZER_PIN 5     // ขาควบคุมบัซเซอร์แจ้งเตือนแบบมีเสียง
-#define STATUS_LED_PIN 2 // ไฟ LED บนบอร์ดแสดงสถานะการเชื่อมต่อ Wi-Fi
-#define REJECT_LED_PIN                                                         \
-  26 // ไฟ LED แดง — กระพริบเมื่อถูกปฏิเสธ/ผิด API Key (Wokwi: ต่อที่ D26)
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
-// โหมดการทำงานของรีเลย์
-#define RELAY_ACTIVE HIGH // ปลดล็อกด้วยไฟบวก (HIGH) หรือ โหมดตัดไฟ (LOW)
-#define RELAY_IDLE LOW    // สถานะล็อกปกติ
+const int polling_delay = 2000; // ความเร็วในการดึงคำสั่ง (2 วินาที)
 
-// เวลาเปิดประตูค้างไว้ (มิลลิวินาที)
-const int DOOR_OPEN_DURATION = 4000; // 4 วินาที
+// ตัวแปรเก็บสเตตัสเดิมเพื่อลดการวาดหน้าจอซ้ำซ้อน (ลดการกะพริบ)
+int last_queue_count = -1;
+String last_approved_name = "";
+String last_active_token = "";
 
-// สร้างอินสแตนซ์ของ Web Server บนพอร์ต 80
-WebServer server(80);
+// ฟังก์ชันวาดรูปโครงสร้าง QR Code จำลอง
+void drawSimulatedQRCode(int x, int y, int size) {
+  tft.fillRect(x, y, size, size, ILI9341_WHITE);
 
-// ==========================================
-// 3. ฟังก์ชันควบคุมสัญญาณเสียง (Buzzer Tones)
-// ==========================================
-void toneSuccess() {
-  digitalWrite(BUZZER_PIN, HIGH);
-  delay(150);
-  digitalWrite(BUZZER_PIN, LOW);
-  delay(80);
-  digitalWrite(BUZZER_PIN, HIGH);
-  delay(300);
-  digitalWrite(BUZZER_PIN, LOW);
+  // มุมซ้ายบน
+  tft.fillRect(x + 4, y + 4, 24, 24, ILI9341_BLACK);
+  tft.fillRect(x + 8, y + 8, 16, 16, ILI9341_WHITE);
+  tft.fillRect(x + 12, y + 12, 8, 8, ILI9341_BLACK);
+
+  // มุมขวาบน
+  tft.fillRect(x + size - 28, y + 4, 24, 24, ILI9341_BLACK);
+  tft.fillRect(x + size - 24, y + 8, 16, 16, ILI9341_WHITE);
+  tft.fillRect(x + size - 20, y + 12, 8, 8, ILI9341_BLACK);
+
+  // มุมซ้ายล่าง
+  tft.fillRect(x + 4, y + size - 28, 24, 24, ILI9341_BLACK);
+  tft.fillRect(x + 8, y + size - 24, 16, 16, ILI9341_WHITE);
+  tft.fillRect(x + 12, y + size - 20, 8, 8, ILI9341_BLACK);
+
+  // จุดพิกเซลจำลองในพื้นที่ตรงกลาง
+  tft.fillRect(x + 35, y + 15, 6, 10, ILI9341_BLACK);
+  tft.fillRect(x + 50, y + 5, 8, 8, ILI9341_BLACK);
+  tft.fillRect(x + 45, y + 25, 12, 4, ILI9341_BLACK);
+  tft.fillRect(x + 35, y + 45, 18, 6, ILI9341_BLACK);
+  tft.fillRect(x + 65, y + 35, 6, 12, ILI9341_BLACK);
+  tft.fillRect(x + 35, y + 65, 8, 8, ILI9341_BLACK);
+  tft.fillRect(x + 55, y + 55, 14, 6, ILI9341_BLACK);
+  tft.fillRect(x + 75, y + 70, 8, 14, ILI9341_BLACK);
+  tft.fillRect(x + 45, y + 80, 10, 8, ILI9341_BLACK);
+  tft.fillRect(x + 15, y + 45, 8, 8, ILI9341_BLACK);
+  tft.fillRect(x + 75, y + 15, 12, 12, ILI9341_BLACK);
 }
 
-void toneReject() {
-  for (int i = 0; i < 3; i++) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    digitalWrite(REJECT_LED_PIN, HIGH); // กระพริบ LED แดงพร้อมกัน
-    delay(100);
-    digitalWrite(BUZZER_PIN, LOW);
-    digitalWrite(REJECT_LED_PIN, LOW);
-    delay(50);
+void drawMainScreen(int queueCount, String lastApproved) {
+  // เคลียร์จอสีเทาเข้ม
+  tft.fillScreen(0x0841); 
+
+  // ส่วนหัว (Header) สีม่วงหรูหรา
+  tft.fillRect(0, 0, 320, 45, 0x380E); // Deep purple
+  tft.drawRect(0, 45, 320, 2, 0xF97F); // Pink border line
+
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+  tft.setCursor(20, 8);
+  tft.print("RMUTP DOOR ACCESS");
+
+  tft.setTextSize(1);
+  tft.setTextColor(0xF97F);
+  tft.setCursor(20, 28);
+  tft.print("Classroom CE-401 | Smart Door Lock");
+
+  // --- การ์ดฝั่งซ้าย: สถานะระบบ ---
+  tft.drawRoundRect(10, 55, 150, 175, 8, 0x421B);
+  
+  tft.setTextSize(1);
+  tft.setTextColor(0x5AEB); // Cyan
+  tft.setCursor(20, 68);
+  tft.print("SYSTEM: ");
+  tft.setTextColor(ILI9341_GREEN);
+  tft.print("ONLINE");
+
+  // ตราสัญลักษณ์ประตูล็อก (DOOR LOCKED)
+  tft.fillRect(20, 83, 130, 26, 0x8000); // สีแดงเข้ม
+  tft.drawRect(20, 83, 130, 26, 0xF800); // เส้นขอบสีแดงสว่าง
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(45, 92);
+  tft.print("DOOR LOCKED");
+
+  // ตัวเลขนักศึกษาที่รออนุมัติ (Queue Count)
+  tft.setTextColor(0xD6BA); // สีเงิน
+  tft.setCursor(20, 120);
+  tft.print("PENDING QUEUE:");
+  
+  tft.fillRect(20, 132, 130, 35, 0x18C3); // พื้นหลังสีกรมท่า
+  tft.drawRect(20, 132, 130, 35, 0x5AEB);
+  
+  tft.setTextSize(2);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(40, 142);
+  tft.print(queueCount);
+  tft.setTextSize(1);
+  tft.setTextColor(0x5AEB);
+  tft.print(" WAITING");
+
+  // ผู้เข้าใช้งานล่าสุด (Last Approved)
+  tft.setTextSize(1);
+  tft.setTextColor(0xD6BA);
+  tft.setCursor(20, 180);
+  tft.print("LAST APPROVED:");
+  
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(20, 195);
+  if (lastApproved.length() > 0) {
+    // ตัดความยาวหากชื่อยาวเกินไป
+    if (lastApproved.length() > 18) {
+      tft.print(lastApproved.substring(0, 16) + "..");
+    } else {
+      tft.print(lastApproved);
+    }
+  } else {
+    tft.print("- None -");
+  }
+
+  // --- การ์ดฝั่งขวา: จอจำลอง QR CODE ---
+  tft.drawRoundRect(170, 55, 140, 175, 8, 0x421B);
+  
+  // วาด QR Code จำลอง
+  drawSimulatedQRCode(190, 70, 100);
+
+  // ฉลากประกอบ
+  tft.setTextSize(1);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(200, 180);
+  tft.print("SCAN QR CODE");
+  tft.setTextColor(0xF97F);
+  tft.setCursor(195, 195);
+  tft.print("TO REQUEST ENTRY");
+}
+
+void drawUnlockedScreen(String approvedUser) {
+  // เคลียร์หน้าจอสีเขียวหรูหรา
+  tft.fillScreen(0x02E0); // Deep forest green
+
+  // วาดกรอบหน้าต่างแจ้งเตือนกลางจอ
+  tft.drawRoundRect(15, 15, 290, 210, 10, ILI9341_WHITE);
+  tft.drawRoundRect(16, 16, 288, 208, 10, 0xBEF6);
+
+  // วาดวงกลมและสัญลักษณ์ถูก (Checkmark)
+  tft.fillCircle(160, 70, 30, ILI9341_WHITE);
+  tft.fillCircle(160, 70, 26, 0x02E0);
+  
+  tft.setTextSize(3);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(150, 60);
+  tft.print("v");
+
+  // หัวข้อความสำเร็จ
+  tft.setTextSize(3);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(45, 115);
+  tft.print("ACCESS GRANTED");
+
+  tft.setTextSize(1);
+  tft.setTextColor(0xBEF6);
+  tft.setCursor(65, 155);
+  tft.print("CLASSROOM CE-401 IS UNLOCKED");
+
+  // แสดงชื่อผู้ได้รับอนุญาต
+  tft.setTextSize(2);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setCursor(30, 185);
+  if (approvedUser.length() > 0) {
+    tft.print(approvedUser);
+  } else {
+    tft.print("STUDENT ACCESS");
   }
 }
 
-void toneError() {
-  digitalWrite(BUZZER_PIN, HIGH);
-  delay(1000);
-  digitalWrite(BUZZER_PIN, LOW);
-}
-
-// ==========================================
-// 3. ฟังก์ชันตรวจสอบ API Key (Vulnerability 1 Fix)
-// ==========================================
-bool validateApiKey() {
-  if (!server.hasHeader("X-API-Key")) {
-    Serial.println("[SECURITY] Rejected: Missing X-API-Key header!");
-    toneReject();
-    server.send(
-        401, "application/json",
-        "{\"success\":false,\"message\":\"Unauthorized: Missing API Key\"}");
-    return false;
-  }
-  if (server.header("X-API-Key") != String(VALID_API_KEY)) {
-    Serial.println("[SECURITY] Rejected: Invalid X-API-Key!");
-    toneReject();
-    server.send(
-        401, "application/json",
-        "{\"success\":false,\"message\":\"Unauthorized: Invalid API Key\"}");
-    return false;
-  }
-  return true;
-}
-
-// ==========================================
-// 4. API Endpoints Handlers
-// ==========================================
-
-// GET /status — ส่งสถานะการออนไลน์และบอร์ดไปยังระบบ Next.js
-void handleGetStatus() {
-  StaticJsonDocument<200> doc;
-  doc["online"] = true;
-  doc["door_status"] =
-      (digitalRead(RELAY_PIN) == RELAY_ACTIVE) ? "open" : "closed";
-  doc["device"] = "ESP32 Door Controller";
-  doc["faculty"] = "Education";
-  doc["university"] = "RMUTP";
-
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-
-  Serial.println("[API] GET /status - Requested status payload sent.");
-}
-
-// POST /door/open — คำสั่งปลดล็อกประตูจากแอดมินหลังบ้าน
-void handlePostDoorOpen() {
-  // ตรวจสอบ API Key ก่อนทุกครั้ง (Vulnerability 1 Fix)
-  if (!validateApiKey())
-    return;
-
-  if (server.hasArg("plain") == false) {
-    server.send(400, "application/json",
-                "{\"success\":false,\"message\":\"Body missing\"}");
-    return;
-  }
-
-  String body = server.arg("plain");
-  StaticJsonDocument<500> doc;
-  DeserializationError error = deserializeJson(doc, body);
-
-  if (error) {
-    server.send(400, "application/json",
-                "{\"success\":false,\"message\":\"Invalid JSON\"}");
-    return;
-  }
-
-  const char *studentId = doc["studentId"] | "Unknown";
-  const char *timestamp = doc["timestamp"] | "-";
-
-  Serial.println("");
-  Serial.println("================================================");
-  Serial.print("🔓 [COMMAND RECEIVED] Door opening triggered by API!");
-  Serial.print("Student ID: ");
-  Serial.println(studentId);
-  Serial.print("Timestamp: ");
-  Serial.println(timestamp);
-  Serial.println("================================================");
-
-  // อนุมัติสิทธิ์การตอบกลับกลับไปยัง Next.js ก่อน เพื่อไม่ให้เกิด Timeout
-  server.send(
-      200, "application/json",
-      "{\"success\":true,\"message\":\"🔓 ประตูเปิดสำเร็จ กำลังปลดล็อกรีเลย์\"}");
-
-  // สั่งงานรีเลย์และระบบเสียงแจ้งเตือนแบบเรียลไทม์
-  digitalWrite(RELAY_PIN, RELAY_ACTIVE);
-  toneSuccess();
-
-  // รอตามระยะเวลาเปิดค้างที่ตั้งค่าไว้
-  delay(DOOR_OPEN_DURATION);
-
-  // ล็อกประตูกลับคืนสถานะปกติ
-  digitalWrite(RELAY_PIN, RELAY_IDLE);
-  Serial.println("🔒 [LOCK RESTORED] Solenoid locked back to safe status.");
-}
-
-// POST /display — รับข้อมูลอัปเดตหน้าจอ LCD/TFT
-void handlePostDisplay() {
-  // ตรวจสอบ API Key ก่อนทุกครั้ง (Vulnerability 1 Fix)
-  if (!validateApiKey())
-    return;
-
-  if (server.hasArg("plain") == false) {
-    server.send(400, "application/json",
-                "{\"success\":false,\"message\":\"Body missing\"}");
-    return;
-  }
-
-  String body = server.arg("plain");
-  StaticJsonDocument<500> doc;
-  DeserializationError error = deserializeJson(doc, body);
-
-  if (error) {
-    server.send(400, "application/json",
-                "{\"success\":false,\"message\":\"Invalid JSON\"}");
-    return;
-  }
-
-  const char *type = doc["type"] | "idle";
-  const char *message = doc["message"] | "";
-  const char *studentName = doc["studentName"] | "";
-
-  Serial.println("");
-  Serial.println("┌──────────────── DISPLAY UPDATE ────────────────┐");
-  Serial.print("│ Type   : ");
-  Serial.println(type);
-  Serial.print("│ Name   : ");
-  Serial.println(studentName);
-  Serial.print("│ Message: ");
-  Serial.println(message);
-  Serial.println("└────────────────────────────────────────────────┘");
-
-  // ควบคุมเสียงตามประเภทของการอัปเดตหน้าจอ
-  if (strcmp(type, "approved") == 0) {
-    // เสียงอนุมัติ (ถ้าไม่ได้มาจากการเปิดทาง HTTP หลัก)
-  } else if (strcmp(type, "rejected") == 0) {
-    toneReject();
-  }
-
-  // หากติดตั้งหน้าจอเพิ่มเติม (เช่น I2C LCD 1602 หรือ TFT ST7735):
-  // สามารถเอาโค้ดล้างจอและเขียนตัวหนังสือมาใส่ในบล็อกนี้ได้เลยครับ!
-
-  server.send(
-      200, "application/json",
-      "{\"success\":true,\"message\":\"Display status updated successfully\"}");
-}
-
-// กรณีเรียก Endpoint ที่ไม่มีในระบบ
-void handleNotFound() {
-  server.send(404, "application/json",
-              "{\"success\":false,\"message\":\"Endpoint not found\"}");
-}
-
-// ==========================================
-// 5. การเริ่มต้นระบบ (Setup)
-// ==========================================
 void setup() {
   Serial.begin(115200);
-  delay(10);
-
-  // กำหนดโหมดเอาต์พุตของขา Pins
+  
+  // ตั้งค่าพินเอาท์พุท
   pinMode(RELAY_PIN, OUTPUT);
+  pinMode(LED_WIFI, OUTPUT);
+  pinMode(LED_REJECT, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(STATUS_LED_PIN, OUTPUT);
-  pinMode(REJECT_LED_PIN, OUTPUT);
+  
+  digitalWrite(RELAY_PIN, LOW);   // ล็อกประตูก่อนเสมอ
+  digitalWrite(LED_WIFI, LOW);
+  digitalWrite(LED_REJECT, LOW);
 
-  // ตั้งสถานะเริ่มต้น
-  digitalWrite(RELAY_PIN, RELAY_IDLE);
-  digitalWrite(BUZZER_PIN, LOW);
-  digitalWrite(STATUS_LED_PIN, LOW);
-  digitalWrite(REJECT_LED_PIN, LOW);
+  // เริ่มต้นหน้าจอ TFT
+  tft.begin();
+  tft.setRotation(1); // แสดงผลแนวนอน (Landscape)
 
-  Serial.println("");
-  Serial.println("================================================");
-  Serial.println("     RMUTP Door Access Controller System v2.0   ");
-  Serial.println("================================================");
+  // วาดหน้าจอกำลังเชื่อมต่อ WiFi
+  tft.fillScreen(0x0841);
+  tft.fillRect(0, 0, 320, 45, 0x380E);
+  tft.drawRect(0, 45, 320, 2, 0xF97F);
 
-#ifdef WOKWI_SIM
-  Serial.println("[MODE] Running in WOKWI SIMULATOR mode");
-  Serial.println("[MODE] Static IP skipped (Wokwi uses DHCP auto)");
-  Serial.println("[MODE] Port forwarding: localhost:8180 -> ESP32:80");
-  Serial.println("[MODE] Set ESP32_WOKWI=true in Next.js .env.local");
-#else
-  // กำหนด Static IP (หากต้องการใช้งาน DHCP ให้ลบบรรทัดข้างล่างนี้ออก)
-  if (!WiFi.config(local_IP, gateway, subnet, dns)) {
-    Serial.println("[Wi-Fi] Static IP Configuration Failed. Using DHCP.");
-  }
-#endif
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+  tft.setCursor(20, 12);
+  tft.print("RMUTP DOOR ACCESS");
 
-  // เชื่อมต่อ Wi-Fi
-  Serial.print("[Wi-Fi] Connecting to: ");
-  Serial.println(ssid);
+  tft.setTextSize(2);
+  tft.setTextColor(0x5AEB); // cyan
+  tft.setCursor(40, 100);
+  tft.print("CONNECTING WIFI...");
+  
+  tft.setTextSize(1);
+  tft.setTextColor(0xD6BA);
+  tft.setCursor(40, 140);
+  tft.print("Connecting to Virtual SSID: Wokwi-GUEST");
+
+  Serial.print("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
-
-  int retryCount = 0;
+  
+  // ไฟสถานะกะพริบระหว่างต่อ WiFi
+  bool wifi_led_state = false;
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    wifi_led_state = !wifi_led_state;
+    digitalWrite(LED_WIFI, wifi_led_state ? HIGH : LOW);
+    delay(400);
     Serial.print(".");
-    // กระพริบไฟบอร์ดระหว่างรอการเชื่อมต่อ
-    digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-
-    retryCount++;
-    if (retryCount > 40) { // หากเชื่อมต่อล้มเหลวนานเกิน 20 วินาที
-      Serial.println("");
-      Serial.println("[Wi-Fi] Connect Timeout! Playing alert buzzer...");
-      toneError();
-      retryCount = 0;
-    }
   }
+  
+  digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อต่อสำเร็จ
+  Serial.println("\nWiFi connected successfully!");
 
-  // เชื่อม Wi-Fi สำเร็จ
-  digitalWrite(STATUS_LED_PIN, HIGH); // เปิดไฟค้างเพื่อบอกสถานะออนไลน์ปกติ
-  Serial.println("");
-  Serial.println("[Wi-Fi] Connected Successfully!");
-  Serial.print("[Wi-Fi] ESP32 Local IP Address: ");
-  Serial.println(WiFi.localIP());
-#ifdef WOKWI_SIM
-  Serial.println("[Wokwi] =====================================");
-  Serial.println("[Wokwi] Next.js can reach this ESP32 via:");
-  Serial.println("[Wokwi]   http://localhost:8180");
-  Serial.println("[Wokwi] Set in .env.local:");
-  Serial.println("[Wokwi]   ESP32_WOKWI=true");
-  Serial.println("[Wokwi]   ESP32_WOKWI_URL=http://localhost:8180");
-  Serial.println("[Wokwi] =====================================");
-#endif
+  // เสียงบี๊บยินดีต้อนรับเมื่อระบบสแตนด์บาย
+  tone(BUZZER_PIN, 1200, 200);
+  delay(250);
+  tone(BUZZER_PIN, 1600, 200);
 
-  // กำหนดเส้นทาง API ของ Web Server
-  server.on("/status", HTTP_GET, handleGetStatus);
-  server.on("/door/open", HTTP_POST, handlePostDoorOpen);
-  server.on("/display", HTTP_POST, handlePostDisplay);
-  server.onNotFound(handleNotFound);
-
-  // กำหนดให้ WebServer ดักจับ Custom Header X-API-Key (Vulnerability 1 Fix)
-  const char *headerkeys[] = {"X-API-Key"};
-  size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
-  server.collectHeaders(headerkeys, headerkeyssize);
-
-  // เริ่มทำงาน HTTP Server
-  server.begin();
-  Serial.println("[HTTP] Web Server running on port 80.");
-
-  // เสียงบี๊บยินดีต้อนรับบอร์ดรันสำเร็จ
-  digitalWrite(BUZZER_PIN, HIGH);
-  delay(100);
-  digitalWrite(BUZZER_PIN, LOW);
-  delay(50);
-  digitalWrite(BUZZER_PIN, HIGH);
-  delay(100);
-  digitalWrite(BUZZER_PIN, LOW);
+  // วาดหน้าจอหลักสแตนด์บายเริ่มต้น
+  drawMainScreen(0, "");
 }
 
-// ==========================================
-// 6. วนลูปการทำงานหลัก (Loop)
-// ==========================================
 void loop() {
-  // รันให้ Web Server คอยดักฟังคำขอ
-  server.handleClient();
-
-  // ตรวจสอบการหลุดการเชื่อมต่อของ Wi-Fi เป็นระยะๆ
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[Wi-Fi] Connection lost! Reconnecting...");
-    digitalWrite(STATUS_LED_PIN, LOW);
-    WiFi.disconnect();
-    WiFi.begin(ssid, password);
-
-    // รอรีบูทกลับมา
-    int timeout = 0;
-    while (WiFi.status() != WL_CONNECTED && timeout < 20) {
-      delay(500);
-      digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-      timeout++;
+  if (WiFi.status() == WL_CONNECTED) {
+    digitalWrite(LED_WIFI, HIGH); // มั่นใจว่าไฟ WiFi สว่างอยู่
+    
+    HTTPClient http;
+    // เชื่อมต่อ Vercel แบบ HTTPS
+    if (String(server_url).startsWith("https://")) {
+      WiFiClientSecure *client = new WiFiClientSecure;
+      if (client) {
+        client->setInsecure(); // ข้ามการเช็ก CA Certificate เพื่อประมวลผลเร็ว
+        http.begin(*client, server_url);
+      } else {
+        Serial.println("Unable to create WiFiClientSecure");
+        return;
+      }
+    } else {
+      http.begin(server_url);
     }
 
-    if (WiFi.status() == WL_CONNECTED) {
-      digitalWrite(STATUS_LED_PIN, HIGH);
-      Serial.print("[Wi-Fi] Reconnected successfully! IP: ");
-      Serial.println(WiFi.localIP());
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("x-api-key", api_key);
+
+    int httpCode = http.GET();
+    if (httpCode == 200) {
+      String payload = http.getString();
+      StaticJsonDocument<768> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+
+      if (!error) {
+        const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
+        int pending_count = doc["pending_count"];
+        const char *last_approved = doc["last_approved"];
+        const char *active_token = doc["active_token"];
+
+        String approvedName = last_approved ? String(last_approved) : "";
+        String activeTokenStr = active_token ? String(active_token) : "";
+
+        Serial.print("Door Trigger: ");
+        Serial.print(door_trigger);
+        Serial.print(" | Queue: ");
+        Serial.println(pending_count);
+
+        // กรณีได้รับคำสั่งปลดล็อกบอร์ด (ACCESS GRANTED!)
+        if (String(door_trigger) == "open") {
+          Serial.println("🔓 UNLOCK COMMAND RECEIVED! Opening door...");
+          
+          // สลับหน้าจอเป็นปลดล็อกแล้ว
+          drawUnlockedScreen(approvedName);
+
+          // ส่งสัญญาณเสียงและแสง
+          digitalWrite(RELAY_PIN, HIGH); // สับสวิตช์รีเลย์ปลดล็อกกลอนจริง! (ไฟเขียว led-door จะสว่างผ่าน NO)
+          
+          // เล่นเพลง 3 ระดับเสียงต้อนรับอย่างหรูหรา
+          tone(BUZZER_PIN, 1000, 150);
+          delay(180);
+          tone(BUZZER_PIN, 1500, 150);
+          delay(180);
+          tone(BUZZER_PIN, 2000, 300);
+
+          delay(4190); // หน่วงเวลาเปิดประตูกว้าง 5 วินาทีหักลบเวลาก่อนหน้า
+          
+          digitalWrite(RELAY_PIN, LOW); // ปิดรีเลย์ ล็อกประตูตามเดิม
+          Serial.println("🔒 Door locked.");
+
+          // เสียงปิดล็อก
+          tone(BUZZER_PIN, 800, 300);
+
+          // ล้างตัวแปรสถานะเพื่อบีบให้หน้าจอวาดหน้าหลักใหม่
+          last_queue_count = -1;
+          last_approved_name = "FORCE_REDRAW";
+        } 
+        // อัปเดตข้อมูลหน้าจอเฉพาะกรณีที่มีการเปลี่ยนแปลง (ลดการกะพริบของจอ)
+        else if (pending_count != last_queue_count || approvedName != last_approved_name || activeTokenStr != last_active_token) {
+          last_queue_count = pending_count;
+          last_approved_name = approvedName;
+          last_active_token = activeTokenStr;
+          
+          drawMainScreen(pending_count, approvedName);
+        }
+      }
+    } else {
+      Serial.print("HTTP Error: ");
+      Serial.println(httpCode);
     }
+    http.end();
+  } else {
+    // กรณีเน็ตหลุด ไฟสถานะ WiFi จะกะพริบเตือน
+    digitalWrite(LED_WIFI, LOW);
+    delay(250);
+    digitalWrite(LED_WIFI, HIGH);
+    delay(250);
   }
-
-  // ลดการทำงาน CPU เล็กน้อย (1 มิลลิวินาที) เพื่อป้องกันความร้อนบอร์ดสูง
-  delay(1);
+  
+  delay(polling_delay);
 }
