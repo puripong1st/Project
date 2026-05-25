@@ -11,8 +11,8 @@
 
 [wokwi]
 version = 1
-elf = "esp32.ino.elf"
-firmware = "esp32.ino.bin"
+elf = "build/esp32.ino.elf"
+firmware = "build/esp32.ino.bin"
 
 # Wokwi จะรัน VS Code Task "Build ESP32 Firmware" ก่อน Start Simulator อัตโนมัติ
 # (ต้องมี Arduino CLI ในเครื่องก่อน — ดูวิธีติดตั้งด้านล่าง)

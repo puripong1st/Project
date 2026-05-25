@@ -237,7 +237,5 @@
       []
     ]
   ],
-  "dependencies": {
-    "wokwi-shared-wi-fi": "1"
-  }
+  "dependencies": {}
 }
