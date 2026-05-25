@@ -328,6 +328,7 @@ export default function AdminDashboard() {
     discord_webhook_logs: "",
     auto_fill_enabled: true,
     auto_fill_mode: "auto",
+    student_id_display_mode: "full",
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [rawSettings, setRawSettings] = useState<Record<string, string>>({});
@@ -369,6 +370,7 @@ export default function AdminDashboard() {
             discord_webhook_logs: data.settings.discord_webhook_logs || "",
             auto_fill_enabled: data.settings.auto_fill_enabled === "1",
             auto_fill_mode: data.settings.auto_fill_mode || "auto",
+            student_id_display_mode: data.settings.student_id_display_mode || "full",
           });
 
           // Parse dynamic configured rooms
@@ -3284,6 +3286,30 @@ void loop() {
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 16, marginTop: 8, marginBottom: 16 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        ความปลอดภัยหน้าจอหลัก ESP32 (รหัสนักศึกษาอนุมัติล่าสุด)
+                      </span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <select
+                          className="rmutp-input"
+                          value={settings.student_id_display_mode}
+                          onChange={e => setSettings(s => ({ ...s, student_id_display_mode: e.target.value }))}
+                          style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", width: "100%", outline: "none", fontSize: 12.5 }}
+                        >
+                          <option value="full">โชว์รหัสนักศึกษาแบบเต็ม (Full ID - เช่น 036650504008-4)</option>
+                          <option value="masked">โชว์รหัสนักศึกษาแบบเซ็นเซอร์ (Masked ID - เช่น 03665050******)</option>
+                          <option value="hidden">ปิดการแสดงรหัสนักศึกษาไปเลย (Hidden / Redacted)</option>
+                        </select>
+                        <p style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4, margin: "2px 0 0 2px" }}>
+                          * การตั้งค่านี้จะควบคุมการแสดงผลฟิลด์ ID ของนักศึกษาที่ได้รับสิทธิ์คนล่าสุดในหน้าจอกล่อง LATEST APPROVED ของบอร์ด ESP32 เพื่อความเป็นส่วนตัวและความมั่นคงปลอดภัย
+                        </p>
+                      </div>
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>

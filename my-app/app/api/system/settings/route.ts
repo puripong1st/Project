@@ -36,9 +36,16 @@ export async function POST(req: NextRequest) {
       discord_webhook_logs,
       auto_fill_enabled,
       auto_fill_mode,
+      student_id_display_mode,
     } = body;
 
     // ชำระล้างและตรวจสอบข้อมูลเบื้องต้น
+    if (student_id_display_mode !== undefined) {
+      const mode = String(student_id_display_mode).trim();
+      if (["full", "masked", "hidden"].includes(mode)) {
+        await updateSystemSetting("student_id_display_mode", mode);
+      }
+    }
     if (auto_approve_enabled !== undefined) {
       await updateSystemSetting("auto_approve_enabled", auto_approve_enabled === "1" || auto_approve_enabled === true ? "1" : "0");
     }

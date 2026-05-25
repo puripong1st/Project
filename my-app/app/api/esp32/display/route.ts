@@ -58,6 +58,29 @@ export async function GET(req: NextRequest) {
 
     const lastStudent = (lastApproved as { name: string; student_id: string; approved_at: Date }[])[0];
 
+    // Fetch student ID display mode configuration (full, masked, or hidden)
+    const { rows: modeRows } = await pool.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'student_id_display_mode'"
+    );
+    const displayMode = modeRows[0]?.setting_value || "full";
+
+    let displayStudentId = "";
+    if (lastStudent) {
+      const rawId = lastStudent.student_id;
+      if (displayMode === "hidden") {
+        displayStudentId = "HIDDEN";
+      } else if (displayMode === "masked") {
+        if (rawId.length <= 6) {
+          displayStudentId = "****";
+        } else {
+          const visibleLen = Math.max(1, rawId.length - 6);
+          displayStudentId = rawId.substring(0, visibleLen) + "*".repeat(rawId.length - visibleLen);
+        }
+      } else {
+        displayStudentId = rawId; // full mode
+      }
+    }
+
     const activeToken = await getOrCreateActiveQRToken();
 
     // ─── IoT Polling Heartbeat ───
@@ -96,7 +119,7 @@ export async function GET(req: NextRequest) {
         last_approved: lastStudent
           ? {
               name: lastStudent.name,
-              student_id: lastStudent.student_id,
+              student_id: displayStudentId,
               time: lastStudent.approved_at,
             }
           : null,
