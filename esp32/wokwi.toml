@@ -24,3 +24,5 @@ build_task = "Build ESP32 Firmware"
 [[net.forward]]
 from = "localhost:8180"
 to   = "target:80"
+[libraries]
+"QRCode" = "0.0.1"

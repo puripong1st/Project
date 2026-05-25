@@ -489,7 +489,6 @@ export default function AdminDashboard() {
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-
 #define WOKWI_SIM        // <-- ต้องมีบรรทัดนี้อยู่บนสุดของโค้ดใน Wokwi
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
 #include <HTTPClient.h>
@@ -498,14 +497,16 @@ export default function AdminDashboard() {
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <SPI.h>
+#include "qrcode.h"      // ติดตั้งผ่าน Library Manager (ricmoo/QRCode)
 
 // Wokwi Simulator ใช้ WiFi เสมือน "Wokwi-GUEST" เท่านั้น (ไม่ใช้รหัสผ่าน)
-const char* ssid     = "Wokwi-GUEST";
-const char* password = "";
+const char *ssid = "Wokwi-GUEST";
+const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
-const char* server_url   = "${origin}/api/esp32/display?room=${roomCode}";
-const char* api_key      = "rmutp_secure_door_unlock_token_2026";
+const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
+const char *api_key = "rmutp_secure_door_unlock_token_2026";
+const char *room_code = "${roomCode}";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
 #define TFT_CS   15
@@ -518,161 +519,227 @@ const char* api_key      = "rmutp_secure_door_unlock_token_2026";
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
-const int polling_delay  = 2000; // ความเร็วในการดึงคำสั่ง (2 วินาที)
+const int polling_delay = 2000; // ความเร็วในการดึงคำสั่ง (2 วินาที)
 
 // ตัวแปรเก็บสเตตัสเดิมเพื่อลดการวาดหน้าจอซ้ำซ้อน (ลดการกะพริบ)
 int last_queue_count = -1;
 String last_approved_name = "";
 String last_active_token = "";
+String ip_address_str = "0.0.0.0";
 
-// ฟังก์ชันวาดรูปโครงสร้าง QR Code จำลอง
-void drawSimulatedQRCode(int x, int y, int size) {
-  tft.fillRect(x, y, size, size, ILI9341_WHITE);
-
-  // มุมซ้ายบน
-  tft.fillRect(x + 4, y + 4, 24, 24, ILI9341_BLACK);
-  tft.fillRect(x + 8, y + 8, 16, 16, ILI9341_WHITE);
-  tft.fillRect(x + 12, y + 12, 8, 8, ILI9341_BLACK);
-
-  // มุมขวาบน
-  tft.fillRect(x + size - 28, y + 4, 24, 24, ILI9341_BLACK);
-  tft.fillRect(x + size - 24, y + 8, 16, 16, ILI9341_WHITE);
-  tft.fillRect(x + size - 20, y + 12, 8, 8, ILI9341_BLACK);
-
-  // มุมซ้ายล่าง
-  tft.fillRect(x + 4, y + size - 28, 24, 24, ILI9341_BLACK);
-  tft.fillRect(x + 8, y + size - 24, 16, 16, ILI9341_WHITE);
-  tft.fillRect(x + 12, y + size - 20, 8, 8, ILI9341_BLACK);
-
-  // จุดพิกเซลจำลองในพื้นที่ตรงกลาง
-  tft.fillRect(x + 35, y + 15, 6, 10, ILI9341_BLACK);
-  tft.fillRect(x + 50, y + 5, 8, 8, ILI9341_BLACK);
-  tft.fillRect(x + 45, y + 25, 12, 4, ILI9341_BLACK);
-  tft.fillRect(x + 35, y + 45, 18, 6, ILI9341_BLACK);
-  tft.fillRect(x + 65, y + 35, 6, 12, ILI9341_BLACK);
-  tft.fillRect(x + 35, y + 65, 8, 8, ILI9341_BLACK);
-  tft.fillRect(x + 55, y + 55, 14, 6, ILI9341_BLACK);
-  tft.fillRect(x + 75, y + 70, 8, 14, ILI9341_BLACK);
-  tft.fillRect(x + 45, y + 80, 10, 8, ILI9341_BLACK);
-  tft.fillRect(x + 15, y + 45, 8, 8, ILI9341_BLACK);
-  tft.fillRect(x + 75, y + 15, 12, 12, ILI9341_BLACK);
-}
-
-void drawMainScreen(int queueCount, String lastApproved) {
-  tft.fillScreen(0x0841); 
-
-  tft.fillRect(0, 0, 320, 45, 0x380E); // Deep purple
-  tft.drawRect(0, 45, 320, 2, 0xF97F); // Pink border line
-
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(2);
-  tft.setCursor(20, 8);
-  tft.print("RMUTP DOOR ACCESS");
-
-  tft.setTextSize(1);
-  tft.setTextColor(0xF97F);
-  tft.setCursor(20, 28);
-  tft.print("Classroom ${roomCode} | Smart Door Lock");
-
-  // --- การ์ดฝั่งซ้าย: สถานะระบบ ---
-  tft.drawRoundRect(10, 55, 150, 175, 8, 0x421B);
+// ฟังก์ชันสำหรับสร้างและวาดภาพ QR Code แท้ๆ ที่สแกนได้ด้วยโทรศัพท์มือถือ 100%!
+void drawQRCode(String qrText, int startX, int startY, int boxSize) {
+  QRCode qrcode;
   
-  tft.setTextSize(1);
-  tft.setTextColor(0x5AEB); // Cyan
-  tft.setCursor(20, 68);
-  tft.print("SYSTEM: ");
-  tft.setTextColor(ILI9341_GREEN);
-  tft.print("ONLINE");
-
-  // ตราสัญลักษณ์ประตูล็อก (DOOR LOCKED)
-  tft.fillRect(20, 83, 130, 26, 0x8000); // สีแดงเข้ม
-  tft.drawRect(20, 83, 130, 26, 0xF800); // เส้นขอบสีแดงสว่าง
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(45, 92);
-  tft.print("DOOR LOCKED");
-
-  // ตัวเลขนักศึกษาที่รออนุมัติ (Queue Count)
-  tft.setTextColor(0xD6BA); // สีเงิน
-  tft.setCursor(20, 120);
-  tft.print("PENDING QUEUE:");
-  
-  tft.fillRect(20, 132, 130, 35, 0x18C3); // พื้นหลังสีกรมท่า
-  tft.drawRect(20, 132, 130, 35, 0x5AEB);
-  
-  tft.setTextSize(2);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(40, 142);
-  tft.print(queueCount);
-  tft.setTextSize(1);
-  tft.setTextColor(0x5AEB);
-  tft.print(" WAITING");
-
-  // ผู้เข้าใช้งานล่าสุด (Last Approved)
-  tft.setTextSize(1);
-  tft.setTextColor(0xD6BA);
-  tft.setCursor(20, 180);
-  tft.print("LAST APPROVED:");
-  
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(20, 195);
-  if (lastApproved.length() > 0) {
-    if (lastApproved.length() > 18) {
-      tft.print(lastApproved.substring(0, 16) + "..");
-    } else {
-      tft.print(lastApproved);
-    }
-  } else {
-    tft.print("- None -");
+  // ใช้ QR Code Version 7 (45x45 modules) รองรับ URL ยาวสูงสุด 154 ตัวอักษร
+  int qrVersion = 7;
+  if (qrText.length() > 154) {
+    qrVersion = 9; // ถ้าข้อความยาวมากเป็นพิเศษ ให้สลับเป็น Version 9 (53x53 modules)
   }
 
-  // --- การ์ดฝั่งขวา: จอจำลอง QR CODE ---
-  tft.drawRoundRect(170, 55, 140, 175, 8, 0x421B);
-  
-  // วาด QR Code จำลอง
-  drawSimulatedQRCode(190, 70, 100);
+  uint8_t qrcodeData[qrcode_getBufferSize(qrVersion)];
+  qrcode_initText(&qrcode, qrcodeData, qrVersion, ECC_LOW, qrText.c_str());
 
-  // ฉลากประกอบ
-  tft.setTextSize(1);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(200, 180);
-  tft.print("SCAN QR CODE");
-  tft.setTextColor(0xF97F);
-  tft.setCursor(195, 195);
-  tft.print("TO REQUEST ENTRY");
+  // ขยายพิกเซลบล็อก (Scale) ให้ใหญ่พอที่จะใช้โทรศัพท์สแกนได้คมชัด
+  int scale = 2; 
+  int qrRealSize = qrcode.size * scale;
+  
+  // คำนวณขอบขาว (Quiet Zone) ให้อยู่กึ่งกลางกล่องเฟรมพอดี
+  int paddingX = (boxSize - qrRealSize) / 2;
+  int paddingY = (boxSize - qrRealSize) / 2;
+
+  // วาดพื้นหลังสีขาวบริสุทธิ์
+  tft.fillRect(startX, startY, boxSize, boxSize, ILI9341_WHITE);
+
+  // วาดโมดูลจุดสีดำของรหัส QR
+  for (uint8_t y = 0; y < qrcode.size; y++) {
+    for (uint8_t x = 0; x < qrcode.size; x++) {
+      if (qrcode_getModule(&qrcode, x, y)) {
+        tft.fillRect(startX + paddingX + (x * scale), startY + paddingY + (y * scale), scale, scale, ILI9341_BLACK);
+      }
+    }
+  }
 }
 
-void drawUnlockedScreen(String approvedUser) {
-  tft.fillScreen(0x02E0); // Deep forest green
-
-  tft.drawRoundRect(15, 15, 290, 210, 10, ILI9341_WHITE);
-  tft.drawRoundRect(16, 16, 288, 208, 10, 0xBEF6);
-
-  tft.fillCircle(160, 70, 30, ILI9341_WHITE);
-  tft.fillCircle(160, 70, 26, 0x02E0);
+// 1. หน้าจอหลักโหมดสแตนด์บาย (Idle Mode) — ดีไซน์พรีเมียมถอดแบบมาจาก Next.js esp32-preview
+void drawMainScreen(int queueCount, String lastApprovedName, String timeStr, String qrText) {
+  // พื้นหลังสีน้ำเงินดำหรูหรา #06070D
+  tft.fillScreen(tft.color565(6, 7, 13)); 
   
+  // --- ส่วนหัว (Top Status Bar) #0E111C ---
+  tft.fillRect(0, 0, 320, 20, tft.color565(14, 17, 28));
+  tft.drawFastHLine(0, 20, 320, tft.color565(40, 40, 50)); // เส้นใต้เมนู
+  
+  tft.setTextSize(1);
+  tft.setTextColor(tft.color565(226, 232, 240)); // สีตัวอักษรขาวสว่าง #E2E8F0
+  tft.setCursor(8, 6);
+  tft.print("RMUTP DOOR ACCESS  ");
+  
+  // ปุ่มตราสัญลักษณ์ ACTIVE สีเขียวมะนาว
+  tft.setTextColor(tft.color565(16, 185, 129)); // #10B981
+  tft.print("ACTIVE");
+  
+  // นาฬิกาดิจิทัลเรียลไทม์ฝั่งขวา
+  tft.setCursor(265, 6);
+  tft.print(timeStr);
+
+  // --- กล่องแสดงผล QR Code สแกนผ่านทางด้านซ้าย ---
+  // วาดเฟรมกรอบโค้งสองชั้นสีกระจกเขียวเรืองแสงแบบ Glassmorphism
+  tft.drawRoundRect(10, 32, 120, 120, 6, tft.color565(16, 185, 129));
+  tft.drawRoundRect(11, 33, 118, 118, 5, tft.color565(16, 185, 129));
+  
+  // แสดงผลภาพคีย์ QR Code ที่สแกนได้จริง
+  if (qrText.length() > 0) {
+    drawQRCode(qrText, 13, 35, 114);
+  } else {
+    // หากข้อมูลยังโหลดไม่เสร็จสิ้น
+    tft.fillRect(13, 35, 114, 114, ILI9341_WHITE);
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setCursor(40, 85);
+    tft.print("Loading QR...");
+  }
+
+  // คำแนะนำภาษาอังกฤษสีเหลืองทองเรืองแสง
+  tft.setTextColor(tft.color565(255, 215, 0)); // #FFD700
+  tft.setCursor(24, 162);
+  tft.print("SCAN FOR ACCESS");
+
+  // --- การ์ดฝั่งขวา: รายละเอียดห้องและคิวผู้ขออนุมัติ ---
+  tft.setTextSize(1);
+  tft.setTextColor(tft.color565(240, 244, 240)); // สีขาวงาช้าง #F0F4F0
+  tft.setCursor(145, 36);
+  tft.print("ROOM: ");
+  tft.print(room_code);
+
+  tft.setTextColor(tft.color565(59, 130, 246)); // สีฟ้าพรีเมียม #3B82F6
+  tft.setCursor(145, 48);
+  tft.print("LAB DOOR CONTROLLER");
+
+  // การ์ดแสดงคิวสีเหลืองเหล้าองุ่น PENDING REQUESTS
+  tft.fillRoundRect(145, 65, 165, 50, 6, tft.color565(24, 16, 1));
+  tft.drawRoundRect(145, 65, 165, 50, 6, tft.color565(245, 158, 11)); // ขอบสีส้มเหลือง
+  
+  tft.setTextColor(tft.color565(245, 158, 11)); 
+  tft.setCursor(153, 75);
+  tft.print("PENDING REQUESTS");
+  tft.setTextColor(tft.color565(156, 163, 175)); // สีเทา
+  tft.setCursor(153, 90);
+  tft.print("QUEUE COUNTER");
+
+  // ตัวเลขคิวใหญ่พิเศษขนาด 3 เท่า
   tft.setTextSize(3);
+  tft.setTextColor(tft.color565(245, 158, 11)); 
+  tft.setCursor(275, 78);
+  tft.print(queueCount);
+
+  // การ์ดผู้ได้รับการอนุมัติล่าสุด LATEST APPROVED
+  tft.setTextSize(1);
+  if (lastApprovedName.length() > 0) {
+    tft.fillRoundRect(145, 125, 165, 45, 6, tft.color565(1, 18, 12)); // แถบพื้นหลังเขียวเข้ม
+    tft.drawRoundRect(145, 125, 165, 45, 6, tft.color565(16, 185, 129)); // ขอบเขียวสว่าง
+    
+    tft.setTextColor(tft.color565(16, 185, 129)); 
+    tft.setCursor(153, 133);
+    tft.print("LATEST APPROVED");
+    
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setCursor(153, 148);
+    // ตัดประโยคชื่อหากยาวเกินความกว้างหน้าจอ LCD
+    if (lastApprovedName.length() > 22) {
+      tft.print(lastApprovedName.substring(0, 20) + "..");
+    } else {
+      tft.print(lastApprovedName);
+    }
+  } else {
+    // กรอบประวัติว่างกรณีไม่มีข้อมูล
+    tft.drawRoundRect(145, 125, 165, 45, 6, tft.color565(60, 70, 60));
+    tft.setTextColor(tft.color565(107, 122, 112));
+    tft.setCursor(160, 143);
+    tft.print("NO RECENT ACCESS");
+  }
+
+  // --- แถบข้อมูลด้านล่างสุด (Bottom Status Bar) #0A0B10 ---
+  tft.fillRect(0, 220, 320, 20, tft.color565(10, 11, 16));
+  tft.drawFastHLine(0, 220, 320, tft.color565(30, 30, 40));
+  
+  tft.setTextSize(1);
+  tft.setTextColor(tft.color565(107, 122, 112));
+  tft.setCursor(8, 226);
+  tft.print("RMUTP Faculty of Education");
+  
+  // แสดงค่าหมายเลขไอพีแอดเดรสของอุปกรณ์
+  tft.setTextColor(tft.color565(16, 185, 129)); 
+  tft.setCursor(240, 226);
+  tft.print(ip_address_str);
+}
+
+// 2. หน้าจอกำลังตรวจสอบข้อมูล (Scanning/Processing Mode)
+void drawScanningScreen() {
+  tft.fillScreen(tft.color565(3, 8, 15)); // สีน้ำเงินมหาสมุทรเข้ม #03080F
+  
+  // วงแหวนเรืองแสงสีฟ้าจำลองตัวอ่านกำลังประมวลผล
+  tft.drawCircle(160, 70, 30, tft.color565(59, 130, 246));
+  tft.drawCircle(160, 70, 31, tft.color565(59, 130, 246)); 
+  tft.fillCircle(160, 70, 8, tft.color565(59, 130, 246));
+
+  tft.setTextSize(3);
+  tft.setTextColor(tft.color565(59, 130, 246)); // #3B82F6
+  tft.setCursor(45, 125);
+  tft.print("PROCESSING...");
+
+  tft.setTextSize(1);
   tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(150, 60);
+  tft.setCursor(75, 165);
+  tft.print("VERIFYING REQUEST WITH SERVER");
+
+  tft.setTextColor(tft.color565(107, 122, 112));
+  tft.setCursor(85, 185);
+  tft.print("SECURE CLOUD ACCESS VALIDATION");
+}
+
+// 3. หน้าจอปลดล็อกผ่านสำเร็จ (Access Granted Mode) — สีเขียวสะท้อนแสงหรูหราดีไซน์พรีเมียม
+void drawUnlockedScreen(String approvedName, String studentId) {
+  tft.fillScreen(tft.color565(3, 12, 5)); // สีเขียวเข้มสไตล์ฟอเรสต์ #030C05
+  
+  // วงกลมไฟสีเขียวสลักตราถูก
+  tft.fillCircle(160, 65, 32, tft.color565(6, 78, 59)); // กรอบใน
+  tft.drawCircle(160, 65, 32, tft.color565(16, 185, 129)); // เส้นขอบสีเขียวเรืองแสง
+  tft.drawCircle(160, 65, 33, tft.color565(16, 185, 129)); 
+  
+  // เครื่องหมาย ถูก (v) 
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(3);
+  tft.setCursor(151, 55);
   tft.print("v");
 
   tft.setTextSize(3);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(45, 115);
+  tft.setTextColor(tft.color565(16, 185, 129)); 
+  tft.setCursor(35, 115);
   tft.print("ACCESS GRANTED");
 
   tft.setTextSize(1);
-  tft.setTextColor(0xBEF6);
-  tft.setCursor(65, 155);
-  tft.print("CLASSROOM ${roomCode} IS UNLOCKED");
+  tft.setTextColor(tft.color565(255, 215, 0)); 
+  tft.setCursor(65, 148);
+  tft.print("DOOR UNLOCKED (ACCESSING)...");
 
-  tft.setTextSize(2);
-  tft.setTextColor(ILI9341_YELLOW);
-  tft.setCursor(30, 185);
-  if (approvedUser.length() > 0) {
-    tft.print(approvedUser);
-  } else {
-    tft.print("STUDENT ACCESS");
-  }
+  // ตลับแคปซูลสำหรับครอบชื่อผู้เข้าใช้ห้องปฏิบัติการ
+  tft.fillRoundRect(30, 168, 260, 26, 13, tft.color565(30, 30, 40));
+  tft.drawRoundRect(30, 168, 260, 26, 13, tft.color565(50, 50, 60));
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  
+  // คำนวณตำแหน่งกึ่งกลาง (Center Alignment) สำหรับชื่อ
+  int nameX = 160 - (approvedName.length() * 3);
+  if (nameX < 35) nameX = 35;
+  tft.setCursor(nameX, 177);
+  tft.print(approvedName);
+
+  // รหัสประจำตัวของนักศึกษา
+  tft.setTextColor(tft.color565(156, 163, 175)); 
+  int idX = 160 - (studentId.length() * 3);
+  if (idX < 35) idX = 35;
+  tft.setCursor(idX, 202);
+  tft.print(studentId);
 }
 
 void setup() {
@@ -690,9 +757,9 @@ void setup() {
   tft.begin();
   tft.setRotation(1);
 
-  tft.fillScreen(0x0841);
-  tft.fillRect(0, 0, 320, 45, 0x380E);
-  tft.drawRect(0, 45, 320, 2, 0xF97F);
+  tft.fillScreen(tft.color565(6, 7, 13));
+  tft.fillRect(0, 0, 320, 45, tft.color565(14, 17, 28));
+  tft.drawRect(0, 45, 320, 2, tft.color565(16, 185, 129));
 
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(2);
@@ -700,14 +767,14 @@ void setup() {
   tft.print("RMUTP DOOR ACCESS");
 
   tft.setTextSize(2);
-  tft.setTextColor(0x5AEB);
+  tft.setTextColor(tft.color565(59, 130, 246)); 
   tft.setCursor(40, 100);
   tft.print("CONNECTING WIFI...");
   
   tft.setTextSize(1);
-  tft.setTextColor(0xD6BA);
+  tft.setTextColor(tft.color565(156, 163, 175));
   tft.setCursor(40, 140);
-  tft.print("Connecting to Virtual SSID: Wokwi-GUEST");
+  tft.print("SSID Virtual Router: Wokwi-GUEST");
 
   Serial.print("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
@@ -722,18 +789,29 @@ void setup() {
   
   digitalWrite(LED_WIFI, HIGH);
   Serial.println("\\nWiFi connected successfully!");
+  
+  ip_address_str = WiFi.localIP().toString();
 
-  tone(BUZZER_PIN, 1200, 200);
-  delay(250);
-  tone(BUZZER_PIN, 1600, 200);
+  tone(BUZZER_PIN, 1200, 150);
+  delay(180);
+  tone(BUZZER_PIN, 1600, 250);
 
-  drawMainScreen(0, "");
+  drawMainScreen(0, "", "12:00:00", "");
 }
 
 void loop() {
   if (WiFi.status() == WL_CONNECTED) {
-    digitalWrite(LED_WIFI, HIGH);
+    digitalWrite(LED_WIFI, HIGH); 
     
+    String time_str = "12:00:00";
+    unsigned long sec = millis() / 1000;
+    unsigned long hh = (sec / 3600) % 24;
+    unsigned long mm = (sec / 60) % 60;
+    unsigned long ss = sec % 60;
+    char timeBuf[10];
+    sprintf(timeBuf, "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
+    time_str = String(timeBuf);
+
     HTTPClient http;
     if (String(server_url).startsWith("https://")) {
       WiFiClientSecure *client = new WiFiClientSecure;
@@ -760,13 +838,32 @@ void loop() {
       if (!error) {
         const char *door_trigger = doc["door_trigger"];
         int pending_count = doc["pending_count"];
-        const char *last_approved = doc["last_approved"];
+        
+        String approvedName = "";
+        String studentId = "";
+        if (doc.containsKey("last_approved") && !doc["last_approved"].isNull()) {
+          approvedName = doc["last_approved"]["name"].as<String>();
+          studentId = doc["last_approved"]["student_id"].as<String>();
+        }
+        
         const char *active_token = doc["active_token"];
+        const char *register_url = doc["register_url"];
+        const char *requested_room = doc["requested_room"];
+        
+        String qrText = "";
+        if (active_token && register_url && requested_room) {
+          String regUrl = String(register_url);
+          int idx = regUrl.indexOf("/?room=");
+          String baseUrl = "";
+          if (idx != -1) {
+            baseUrl = regUrl.substring(0, idx);
+          } else {
+            baseUrl = "https://project-sigma-ivory-21.vercel.app";
+          }
+          qrText = baseUrl + "/?scan=" + String(active_token) + "&room=" + String(requested_room);
+        }
 
-        String approvedName = last_approved ? String(last_approved) : "";
-        String activeTokenStr = active_token ? String(active_token) : "";
-
-        Serial.print("Door Trigger: ");
+        Serial.print("Door command: ");
         Serial.print(door_trigger);
         Serial.print(" | Queue: ");
         Serial.println(pending_count);
