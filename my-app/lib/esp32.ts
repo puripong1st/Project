@@ -199,6 +199,39 @@ export async function getESP32Status(roomCode?: string): Promise<{
       mode,
     };
   } catch {
+    // ─── [IoT Cloud Polling Heartbeat Fallback] ───
+    // ถ้ายิงตรงไปหา IP ของบอร์ดไม่ได้ (เช่น ตอนอยู่บน Vercel แล้วบอร์ดใช้ IP วง LAN)
+    // ให้เช็คจากประวัติการยิงดึงข้อมูลล่าสุด (Heartbeat) ของห้องนั้นๆ ในดาต้าเบสแทน
+    try {
+      const pool = getPool();
+      const sanitizedRoom = (roomCode || "default").trim();
+      const [rows] = await pool.query(
+        "SELECT setting_value FROM system_settings WHERE setting_key = ?",
+        [`room_last_seen_${sanitizedRoom}`]
+      );
+      const settings = rows as { setting_value: string }[];
+      if (settings.length > 0) {
+        const lastSeenStr = settings[0].setting_value;
+        const lastSeen = new Date(lastSeenStr).getTime();
+        const now = new Date().getTime();
+        const diffSeconds = (now - lastSeen) / 1000;
+        
+        // ถ้าบอร์ดพึ่งมีการทำ Polling เข้ามาภายใน 15 วินาทีล่าสุด ถือว่าออนไลน์แน่นอน! (ไฟเขียว)
+        if (diffSeconds <= 15) {
+          return {
+            online: true,
+            doorStatus: "closed", // คาดการณ์สถานะล็อกปกติ
+            ip: WOKWI_MODE ? "localhost:8180" : ipLabel,
+            mock: false,
+            wokwi: WOKWI_MODE,
+            mode,
+          };
+        }
+      }
+    } catch (dbErr) {
+      console.error("[Status Heartbeat Fallback] Database check failed:", dbErr);
+    }
+
     return {
       online: false,
       ip: WOKWI_MODE ? "localhost:8180" : ipLabel,

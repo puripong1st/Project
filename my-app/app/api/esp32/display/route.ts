@@ -58,6 +58,20 @@ export async function GET(req: NextRequest) {
 
     const activeToken = await getOrCreateActiveQRToken();
 
+    // ─── IoT Polling Heartbeat ───
+    // ทุกครั้งที่บอร์ด ESP32 เข้ามาดึงข้อมูล (Polling) เราจะทำบันทึก Heartbeat ล่าสุดไว้ในระบบ
+    // เพื่อให้ฝั่งหน้าจอแอดมิน (Dashboard) แสดงสถานะไฟเขียว CONNECTED ได้อัตโนมัติถึงแม้จะอยู่คนละวงเครือข่ายก็ตาม
+    try {
+      await pool.query(
+        `INSERT INTO system_settings (setting_key, setting_value) 
+         VALUES (?, ?) 
+         ON DUPLICATE KEY UPDATE setting_value = ?`,
+        [`room_last_seen_${room}`, new Date().toISOString(), new Date().toISOString()]
+      );
+    } catch (heartbeatErr) {
+      console.error("[IoT Polling Heartbeat] Failed to update heartbeat:", heartbeatErr);
+    }
+
     // Only expose the active_token if the caller authenticates with ESP32 API key
     const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";
     const callerKey = req.headers.get("x-api-key") || "";
