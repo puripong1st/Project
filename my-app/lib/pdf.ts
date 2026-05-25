@@ -179,10 +179,10 @@ export async function generateStudentsPDF(
     // ─── Table Header ─────────────────────────────────────────
     const tableTop = metadataY + 52;
     
-    // Sum of colWidths = 25 + 95 + 115 + 115 + 115 + 25 + 110 + 110 + 50 = 760 points
-    const colWidths = [25, 95, 115, 115, 115, 25, 110, 110, 50];
-    const cols = ["ลำดับ", "รหัสนักศึกษา", "ชื่อ - นามสกุล", "คณะวิชา", "สาขาวิชา", "ปี", "วันเวลาลงทะเบียน", "วันเวลาดำเนินการ", "สถานะ"];
-    const colAligns: ("center" | "left")[] = ["center", "center", "left", "left", "left", "center", "center", "center", "center"];
+    // Sum of colWidths = 20 + 80 + 105 + 90 + 90 + 20 + 70 + 110 + 110 + 45 = 740 points (Leaving 20px dynamic margin space)
+    const colWidths = [20, 80, 105, 90, 90, 20, 70, 110, 110, 45];
+    const cols = ["ลำดับ", "รหัสนักศึกษา", "ชื่อ - นามสกุล", "คณะวิชา", "สาขาวิชา", "ปี", "ห้องเรียน", "วันลงทะเบียน", "วันดำเนินการ", "สถานะ"];
+    const colAligns: ("center" | "left")[] = ["center", "center", "left", "left", "left", "center", "center", "center", "center", "center"];
 
     let xPos = margin;
 
@@ -239,9 +239,10 @@ export async function generateStudentsPDF(
         (index + 1).toString(),
         student.student_id,
         `${student.title}${student.first_name} ${student.last_name}`,
-        limitText(student.faculty, 22),
-        limitText(student.branch, 22),
+        limitText(student.faculty, 16),
+        limitText(student.branch, 16),
         student.year.toString(),
+        student.requested_room && student.requested_room !== "default" ? student.requested_room : "default",
         formatThaiDateTime(student.registered_at), 
         formatThaiDateTime(student.approved_at),  
         student.status === "approved" ? "อนุมัติ" : student.status === "rejected" ? "ปฏิเสธ" : "รออนุมัติ",
@@ -251,7 +252,7 @@ export async function generateStudentsPDF(
       doc.font(fonts.regular).fontSize(7.5).fillColor("#1F2937");
       
       rowData.forEach((val, i) => {
-        const isStatusCol = i === 8;
+        const isStatusCol = i === 9;
         const color = isStatusCol ? statusColor : "#1F2937";
         doc.font(isStatusCol ? fonts.bold : fonts.regular).fillColor(color);
 
@@ -408,6 +409,7 @@ export async function generateSingleStudentPDF(
     renderRow("รหัสประจำตัว:", student.student_id, "#7C3AED");
     renderRow("ชื่อ - นามสกุล:", `${student.title}${student.first_name} ${student.last_name}`);
     renderRow("ระดับชั้นปีที่:", `ชั้นปีที่ ${student.year}`);
+    renderRow("ห้องเรียนที่ขอสิทธิ์:", student.requested_room && student.requested_room !== "default" ? `ห้องปฏิบัติการ ${student.requested_room}` : "ห้องปฏิบัติการทั่วไป (default)", "#DB2777");
     renderRow("คณะวิชาที่สังกัด:", student.faculty);
     renderRow("สาขาวิชา / ภาควิชา:", student.branch);
     renderRow("วันที่ยื่นลงทะเบียน:", formatThaiDateTime(student.registered_at));
@@ -417,7 +419,7 @@ export async function generateSingleStudentPDF(
     if (student.status === "approved") {
       renderRow("ผู้อนุมัติสิทธิ์:", student.approver_name || `Admin ID: ${student.approved_by || "ระบบ"}`);
       renderRow("วันที่อนุมัติ:", formatThaiDateTime(student.approved_at));
-      renderRow("สิทธิ์การเปิดประตู:", "ได้รับสิทธิ์เปิดประตูห้องผ่านเครื่อง LAFVIN / ESP32");
+      renderRow("สิทธิ์การเปิดประตู:", `ได้รับสิทธิ์เปิดประตูห้องปฏิบัติการ ${student.requested_room || "default"} สำเร็จ`);
     } else if (student.status === "rejected") {
       renderRow("ผู้ดำเนินการปฏิเสธ:", student.approver_name || `Admin ID: ${student.approved_by || "ระบบ"}`);
       renderRow("วันที่ดำเนินการ:", formatThaiDateTime(student.approved_at));
