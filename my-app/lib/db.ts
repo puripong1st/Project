@@ -20,7 +20,18 @@ export function getPool(): Pool {
   return pool;
 }
 
+let dbInitialized = false;
+
 export async function initDatabase(): Promise<void> {
+  if (dbInitialized) return;
+  
+  // Fast Path Optimization: If database is already initialized, skip all 15 CREATE TABLE queries to prevent high latency!
+  if (process.env.SKIP_DB_INIT === "true" || process.env.NODE_ENV === "production") {
+    dbInitialized = true;
+    console.log("[DB] Fast Path: Skipping schema table checks (Database already seeded & active)");
+    return;
+  }
+
   console.log(`[DB] Production mode: Connecting directly to PostgreSQL`);
 
   const initPool = getPool();
