@@ -1,7 +1,7 @@
 /*
   ==============================================================
   RMUTP Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom CE-402
+  ห้องปฏิบัติการเรียนการสอน: Classroom CE-401
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
@@ -21,9 +21,9 @@ const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
 const char *server_url =
-    "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-402";
+    "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-401";
 const char *api_key = "rmutp_secure_door_unlock_token_2026";
-const char *room_code = "CE-402";
+const char *room_code = "CE-401";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
 #define TFT_CS 15
@@ -300,18 +300,21 @@ void drawRejectedScreen() {
 void setup() {
   Serial.begin(115200);
 
+  // กำหนดรูปแบบอินพุตเอาต์พุตพิน
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_WIFI, OUTPUT);
   pinMode(LED_REJECT, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
 
-  digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(RELAY_PIN, LOW); // ค่าดีฟอลต์ประตูล็อกเสมอ
   digitalWrite(LED_WIFI, LOW);
   digitalWrite(LED_REJECT, LOW);
 
+  // สตาร์ตการทำงานหน้าจอ TFT LCD
   tft.begin();
-  tft.setRotation(1);
+  tft.setRotation(1); // แนวนอน (Landscape)
 
+  // วาดหน้าจอกำลังล็อกอินเครือข่าย Wi-Fi
   tft.fillScreen(tft.color565(6, 7, 13));
   tft.fillRect(0, 0, 320, 45, tft.color565(14, 17, 28));
   tft.drawRect(0, 45, 320, 2, tft.color565(16, 185, 129));
@@ -334,6 +337,7 @@ void setup() {
   Serial.print("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
 
+  // ระบบกะพริบไฟสถานะระหว่างรอ WiFi
   bool wifi_led_state = false;
   while (WiFi.status() != WL_CONNECTED) {
     wifi_led_state = !wifi_led_state;
@@ -342,15 +346,18 @@ void setup() {
     Serial.print(".");
   }
 
-  digitalWrite(LED_WIFI, HIGH);
+  digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
   Serial.println("\nWiFi connected successfully!");
 
+  // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
 
+  // เสียงดนตรีบูตระบบเสร็จสิ้นพร้อมใช้ (Sweet boot melody)
   tone(BUZZER_PIN, 1200, 150);
   delay(180);
   tone(BUZZER_PIN, 1600, 250);
 
+  // วาดแผงหน้าจอหลักเริ่มต้น
   drawMainScreen(0, "", "12:00:00", "");
 }
 
