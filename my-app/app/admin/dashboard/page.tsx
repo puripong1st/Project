@@ -924,6 +924,10 @@ void loop() {
       if (!error) {
         const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
         int pending_count = doc["pending_count"];
+        const char *server_time_text = doc["server_time_text"];
+        if (server_time_text && strlen(server_time_text) >= 8) {
+          time_str = String(server_time_text).substring(0, 8);
+        }
         
         // อ่านประวัติและชื่อล่าสุด
         String approvedName = "";

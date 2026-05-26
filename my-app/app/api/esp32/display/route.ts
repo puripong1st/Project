@@ -118,6 +118,16 @@ export async function GET(req: NextRequest) {
       activeTokenVal = activeToken;
     }
 
+    const now = new Date();
+    const serverTimeIso = now.toISOString();
+    const serverTimeText = now.toLocaleTimeString("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+
     return NextResponse.json(
       {
         // Display info for ESP32
@@ -134,7 +144,9 @@ export async function GET(req: NextRequest) {
               time: lastStudent.approved_at,
             }
           : null,
-        server_time: new Date().toISOString(),
+        server_time: serverTimeIso,
+        server_time_text: serverTimeText,
+        timezone: "Asia/Bangkok",
         status: "online",
         door_trigger: doorTrigger,
         requested_room: room,
