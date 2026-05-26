@@ -317,7 +317,9 @@ export default function AdminDashboard() {
 
   const playSoftChime = useCallback(() => {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextClass) return;
       const ctx = new AudioContextClass();
       const now = ctx.currentTime;
@@ -384,13 +386,7 @@ export default function AdminDashboard() {
   const [roomWebhookApproveInput, setRoomWebhookApproveInput] = useState("");
   const [roomWebhookLogsInput, setRoomWebhookLogsInput] = useState("");
   const [roomDetailsLoading, setRoomDetailsLoading] = useState(false);
-  const [originUrl, setOriginUrl] = useState("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOriginUrl(window.location.origin);
-    }
-  }, []);
+  const [originUrl] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
 
   // Multi-Room dynamic states
   const [roomsList, setRoomsList] = useState<{ room: string; ip: string }[]>([]);
@@ -526,7 +522,7 @@ export default function AdminDashboard() {
       } else {
         showToast("❌ ไม่สามารถคัดลอกได้โดยอัตโนมัติ กรุณาก็อปปี้ด้วยตนเอง", "error");
       }
-    } catch (err) {
+    } catch {
       showToast("❌ ไม่สามารถคัดลอกได้ กรุณาก็อปปี้ด้วยตนเอง", "error");
     }
   };
@@ -1071,7 +1067,7 @@ void loop() {
 
   const highlightArduinoCode = (code: string) => {
     // 1. Escape HTML first
-    let safeCode = code
+    const safeCode = code
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
@@ -1153,7 +1149,7 @@ void loop() {
       } else {
         showToast(data.error || "ไม่สามารถบันทึกได้", "error");
       }
-    } catch (err) {
+    } catch {
       showToast("เกิดข้อผิดพลาดการบันทึกข้อมูล", "error");
     } finally {
       setSettingsLoading(false);
@@ -1244,7 +1240,7 @@ void loop() {
 
   // Unified Date Range selection (Initialized to 2026-05-23 which is system launch)
   const [startDate, setStartDate] = useState("2026-05-23");
-  const [endDate, setEndDate] = useState("2026-05-23");
+  const [endDate, setEndDate] = useState(() => new Date().toLocaleDateString("en-CA"));
 
   const [logFilter, setLogFilter] = useState("all");
   const [logSearch, setLogSearch] = useState("");
@@ -1289,12 +1285,6 @@ void loop() {
     tick();
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, []);
-
-  // Set end date to today dynamically on client-side mount to prevent Hydration Mismatch
-  useEffect(() => {
-    const today = new Date().toLocaleDateString("en-CA");
-    setEndDate(today);
   }, []);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
@@ -1391,12 +1381,15 @@ void loop() {
 
   useEffect(() => {
     if (settingsLoaded || roomsList.length > 0 || !systemStatus?.esp32Devices?.length) return;
-    setRoomsList(
-      systemStatus.esp32Devices.map(device => ({
-        room: device.room,
-        ip: device.ip || "192.168.1.100",
-      }))
-    );
+    const esp32Devices = systemStatus.esp32Devices;
+    queueMicrotask(() => {
+      setRoomsList(
+        esp32Devices.map(device => ({
+          room: device.room,
+          ip: device.ip || "192.168.1.100",
+        }))
+      );
+    });
   }, [settingsLoaded, roomsList.length, systemStatus?.esp32Devices]);
 
   // Auto-pruning expired logs (>90 days) on startup
@@ -1699,7 +1692,7 @@ void loop() {
       return logDate === todayStrStr && log.action === "door_opened" && (log.notes?.includes("Bypass") || log.notes?.includes("สแกนซ้ำ"));
     }).length;
 
-    const onlineBoards = systemStatus?.esp32Devices?.filter((dev: any) => dev.online).length || 0;
+    const onlineBoards = systemStatus?.esp32Devices?.filter(dev => dev.online).length || 0;
     const totalBoards = systemStatus?.esp32Devices?.length || 0;
 
     return {
@@ -1903,7 +1896,7 @@ void loop() {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setRoomDetailsTab(tab.id as any)}
+                  onClick={() => setRoomDetailsTab(tab.id as typeof roomDetailsTab)}
                   style={{
                     flex: 1,
                     padding: "11px 12px",
@@ -2833,7 +2826,7 @@ void loop() {
                     <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "80px 40px", background: "var(--bg-secondary)", borderRadius: 20, border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
                       <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>ไม่พบรายการห้องปฏิบัติการ</h3>
                       <p style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 6 }}>
-                        กรุณาไปที่แท็บ "ตั้งค่าระบบ & Webhook" เพื่อเพิ่มห้องควบคุมในระบบ
+                        กรุณาไปที่แท็บ &quot;ตั้งค่าระบบ & Webhook&quot; เพื่อเพิ่มห้องควบคุมในระบบ
                       </p>
                     </div>
                   ) : (

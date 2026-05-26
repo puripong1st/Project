@@ -1,12 +1,12 @@
 export const dynamic = "force-dynamic";
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getPool, getSystemSettings, updateSystemSettings } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
 
 // GET /api/system/settings — ดึงค่าการตั้งค่าระบบทั้งหมด (เฉพาะ owner เท่านั้น)
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/system/settings — อัปเดตค่าการตั้งค่าระบบ (เฉพาะ owner เท่านั้น)
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

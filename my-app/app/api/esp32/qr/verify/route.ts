@@ -1,7 +1,7 @@
 // app/api/esp32/qr/verify/route.ts — Validate and consume dynamic scan token
 // Security hardened: rate-limiting, constant-time comparison, IP logging
 import { NextRequest, NextResponse } from "next/server";
-import { consumeQRToken, validateQRToken } from "@/lib/qr";
+import { validateQRToken } from "@/lib/qr";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {

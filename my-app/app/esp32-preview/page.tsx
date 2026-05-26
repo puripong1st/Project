@@ -329,16 +329,10 @@ function ESP32PreviewPageInner() {
   const searchParams = useSearchParams();
   const initialRoom = searchParams.get("room") || "CE-401";
   const [simRoom, setSimRoom] = useState(initialRoom);
-  const [originUrl, setOriginUrl] = useState("");
+  const [originUrl] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
   
   // Real-Time automatic event triggers from DB
   const lastApprovedTimeRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOriginUrl(window.location.origin);
-    }
-  }, []);
 
   const fetchDisplay = async (roomCode: string) => {
     setRefreshing(true);
@@ -369,8 +363,10 @@ function ESP32PreviewPageInner() {
   };
 
   useEffect(() => {
-    fetchDisplay(simRoom);
-    fetchESP32Status(simRoom);
+    queueMicrotask(() => {
+      fetchDisplay(simRoom);
+      fetchESP32Status(simRoom);
+    });
     const i1 = setInterval(() => fetchDisplay(simRoom), 4000); // Poll every 4 seconds to be snappy
     const i2 = setInterval(() => fetchESP32Status(simRoom), 4000);
     return () => { clearInterval(i1); clearInterval(i2); };

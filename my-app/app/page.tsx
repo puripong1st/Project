@@ -279,7 +279,7 @@ function RegistrationPageInner() {
 
     // If session is active and approved within 5 minutes, grant instant authorization to skip QR token check
     if (isBypassValid) {
-      setQrAuthorized(true);
+      queueMicrotask(() => setQrAuthorized(true));
       return;
     }
 
@@ -292,14 +292,16 @@ function RegistrationPageInner() {
     } catch {}
 
     if (isSessionVerified) {
-      setQrAuthorized(true);
+      queueMicrotask(() => setQrAuthorized(true));
       return;
     }
 
     const scanToken = searchParams.get("scan");
     if (!scanToken) {
-      setQrAuthorized(false);
-      setBlockedMessage("ไม่พบข้อมูลการสแกน QR Code กรุณาสแกน QR Code ที่ติดตั้งอยู่หน้าห้องปฏิบัติการเพื่อลงทะเบียนเข้าใช้ห้อง");
+      queueMicrotask(() => {
+        setQrAuthorized(false);
+        setBlockedMessage("ไม่พบข้อมูลการสแกน QR Code กรุณาสแกน QR Code ที่ติดตั้งอยู่หน้าห้องปฏิบัติการเพื่อลงทะเบียนเข้าใช้ห้อง");
+      });
       return;
     }
 
@@ -340,14 +342,16 @@ function RegistrationPageInner() {
     
     // ตั้งค่าเริ่มต้นของ Timer นับถอยหลังเป็น 120 วินาที
     if (timeLeft === null) {
-      setTimeLeft(120);
+      queueMicrotask(() => setTimeLeft(120));
       return;
     }
     
     if (timeLeft <= 0) {
       // เมื่อเวลาหมด (ครบ 120 วินาที)
-      setQrAuthorized(false);
-      setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
+      queueMicrotask(() => {
+        setQrAuthorized(false);
+        setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
+      });
       try {
         sessionStorage.removeItem(`rmutp_qr_verified_${room}`);
       } catch {}
@@ -385,8 +389,10 @@ function RegistrationPageInner() {
     const sId = form.student_id.trim();
 
     if (fName.length < 2 || lName.length < 2 || sId.length < 8) {
-      setMatchedHistory(null);
-      setShowAutoFillPrompt(false);
+      queueMicrotask(() => {
+        setMatchedHistory(null);
+        setShowAutoFillPrompt(false);
+      });
       return;
     }
 

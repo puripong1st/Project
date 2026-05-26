@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
        LEFT JOIN students s ON al.student_id = s.id
        LEFT JOIN admin_users a ON al.performed_by = a.id`;
     
-    const params: any[] = [];
+    const params: Array<string | number> = [];
     let paramIndex = 1;
     if (room && room !== "all") {
       query += ` WHERE al.room_code = $${paramIndex++}`;

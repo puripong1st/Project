@@ -45,7 +45,9 @@ export async function GET(
       // 1. If admin is logged in
       if (admin.role !== "owner") {
         // Door Operator: strip sensitive fields to prevent IDOR data leakage
-        const { ip_address, bypass_token, ...safeStudent } = student;
+        const safeStudent = Object.fromEntries(
+          Object.entries(student).filter(([key]) => key !== "ip_address" && key !== "bypass_token")
+        );
         return NextResponse.json({ student: safeStudent });
       }
       // Owner: return full record
