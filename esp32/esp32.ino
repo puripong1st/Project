@@ -23,7 +23,7 @@ const char *password = "";
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
 const char *server_url =
     "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-402";
-const char *api_key = "rmutp_secure_door_unlock_token_2026";
+const char *api_key = "YOUR_ESP32_API_KEY_HERE";
 const char *room_code = "CE-402";
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---

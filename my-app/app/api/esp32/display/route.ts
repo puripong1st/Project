@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Only expose the active_token if the caller authenticates with ESP32 API key
-    const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";
+    const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_placeholder";
     const callerKey = req.headers.get("x-api-key") || "";
     const isAuthenticatedDevice = callerKey === esp32ApiKey;
 

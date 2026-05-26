@@ -779,7 +779,7 @@ void updateDisplayFromAPI() {
     
     // ตั้งค่า Header สำหรับอุปกรณ์ ESP32 ยืนยันตัวตน
     http.addHeader("Content-Type", "application/json");
-    http.addHeader("x-api-key", "rmutp_secure_door_unlock_token_2026");
+    http.addHeader("x-api-key", "YOUR_ESP32_API_KEY_HERE");
     
     int httpCode = http.GET();
     if (httpCode == 200) {

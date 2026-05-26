@@ -555,7 +555,7 @@ const char *password = "";
 
 // --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
 const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
-const char *api_key = "rmutp_secure_door_unlock_token_2026";
+const char *api_key = "YOUR_ESP32_API_KEY_HERE";
 const char *room_code = "${roomCode}";
 
 

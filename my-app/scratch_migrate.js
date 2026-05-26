@@ -1,15 +1,39 @@
 // scratch_migrate.js
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+const fs = require("fs");
+const path = require("path");
 const { Pool } = require("pg");
+const { parse } = require("pg-connection-string");
 
-const connectionString = "postgres://postgres.wvuvdnutidctmyojacrn:0CXFSbjybuigR79a@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&supa=base-pooler.x";
+// Load .env.local manually if it exists
+const envPath = path.join(__dirname, ".env.local");
+if (fs.existsSync(envPath)) {
+  fs.readFileSync(envPath, "utf-8").split("\n").forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) return;
+    const firstEq = trimmed.indexOf("=");
+    if (firstEq === -1) return;
+    const key = trimmed.substring(0, firstEq).trim();
+    let val = trimmed.substring(firstEq + 1).trim();
+    if (val.startsWith('"') && val.endsWith('"')) {
+      val = val.substring(1, val.length - 1);
+    }
+    process.env[key] = val;
+  });
+}
+
+const connectionString = process.env.POSTGRES_URL;
 
 async function migrate() {
+  if (!connectionString) {
+    console.error("Error: POSTGRES_URL environment variable is not defined.");
+    process.exit(1);
+  }
+
   console.log("Connecting to Supabase PostgreSQL database...");
-  const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false }
-  });
+  const connectionConfig = parse(connectionString);
+  connectionConfig.ssl = { rejectUnauthorized: false };
+
+  const pool = new Pool(connectionConfig);
 
   try {
     console.log("Running Alter Table migrations to ensure all columns exist...");

@@ -21,11 +21,11 @@ const WOKWI_URL = process.env.ESP32_WOKWI_URL || "http://localhost:8180";
 const BASE_URL   = WOKWI_MODE ? WOKWI_URL : `http://${ESP32_IP}:${ESP32_PORT}`;
 
 // Pre-shared API key for authenticating Next.js → ESP32 calls
-const ESP32_API_KEY = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";
+const ESP32_API_KEY = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_placeholder";
 
 function verifyApiKeySecurity() {
   if (
-    ESP32_API_KEY === "rmutp_secure_door_unlock_token_2026" &&
+    ESP32_API_KEY === "rmutp_secure_door_unlock_token_placeholder" &&
     process.env.NODE_ENV === "production"
   ) {
     console.error(

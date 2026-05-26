@@ -45,7 +45,11 @@ export function getPool(): Pool {
     }
 
     const config: PoolConfig = {
-      ...connectionConfig,
+      host: connectionConfig.host || undefined,
+      port: connectionConfig.port ? parseInt(connectionConfig.port, 10) : undefined,
+      database: connectionConfig.database || undefined,
+      user: connectionConfig.user || undefined,
+      password: connectionConfig.password || undefined,
       ssl: sslConfig,
       // OPTIMIZATION: Increase pool size + enable TCP keepAlive for Supabase Pooler
       max: 20,                         // More concurrent connections (Supabase pooler supports this)
@@ -187,9 +191,9 @@ export async function initDatabase(): Promise<void> {
       { key: "configured_rooms", value: "CE-401,CE-402" },
       { key: "room_ip_CE-401", value: "192.168.1.100" },
       { key: "room_ip_CE-402", value: "192.168.1.101" },
-      { key: "room_webhook_register_CE-401", value: "https://discord.com/api/webhooks/1507982864132870266/4x9kmjb2a6MyNN1PU-DTXuTDP-yKRXS-2CrB4MH6kgm0YCw3gkQpzNIajWlYT6Oe5mb0" },
-      { key: "room_webhook_approve_CE-401", value: "https://discord.com/api/webhooks/1507982955207987313/ir0bWNmwvS4sAMtRBrZ8RzKQQN2y69HiFi9HHKYucnvUpJ4c4ZCIkhgWvLu63j6Vs-_4" },
-      { key: "room_webhook_logs_CE-401", value: "https://discord.com/api/webhooks/1507983021817725062/sXAZeB6hmEAR-awMiU484AFKO9IKOPZFkXWgfPiHUefpnCkUuNZDwHXrF7-tsAIILWCr" },
+      { key: "room_webhook_register_CE-401", value: "" },
+      { key: "room_webhook_approve_CE-401", value: "" },
+      { key: "room_webhook_logs_CE-401", value: "" },
       { key: "student_id_display_mode", value: "full" },
     ];
 

@@ -160,7 +160,7 @@ ESP32_IP=192.168.1.100
 ESP32_PORT=80
 ESP32_MOCK_MODE=true  # ตั้งเป็น false เมื่อใช้ฮาร์ดแวร์จริง
 ESP32_WOKWI=true      # ตั้งเป็น true เมื่อใช้ Wokwi Simulator
-ESP32_API_KEY=rmutp_secure_door_unlock_token_2026
+ESP32_API_KEY=YOUR_ESP32_API_KEY_HERE
 
 # Next.js
 NEXT_PUBLIC_APP_URL=http://localhost:3000
