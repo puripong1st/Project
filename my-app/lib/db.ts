@@ -15,25 +15,50 @@ const globalForDb = globalThis as unknown as {
 // Settings cache: 30s so frequent ESP32 polls don't hammer DB unnecessarily
 const SETTINGS_CACHE_TTL_MS = 30_000;
 
+function readEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  if (!value) return undefined;
+
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1).trim();
+  }
+
+  return value;
+}
+
+function readCaCert(): string | undefined {
+  const ca = readEnv("SUPABASE_CA_CERT")?.replace(/\\n/g, "\n");
+  if (!ca || ca.includes("YOUR_PEM_ENCODED_CA_CERTIFICATE_HERE")) {
+    return undefined;
+  }
+  return ca;
+}
+
 export function getPool(): Pool {
   if (!globalForDb.pool) {
     const isProd = process.env.NODE_ENV === "production";
-    const connectionString = process.env.POSTGRES_URL;
+    const connectionString = readEnv("POSTGRES_URL");
+    const connectionConfig = connectionString ? parse(connectionString) : ({} as ReturnType<typeof parse>);
 
-    if (!connectionString) {
+    const host = connectionConfig.host || readEnv("POSTGRES_HOST");
+    const database = connectionConfig.database || readEnv("POSTGRES_DATABASE") || "postgres";
+    const user = connectionConfig.user || readEnv("POSTGRES_USER");
+    const password = connectionConfig.password || readEnv("POSTGRES_PASSWORD");
+    const portValue = connectionConfig.port || readEnv("POSTGRES_PORT");
+
+    if (!host || !user || !password) {
       throw new Error(
-        "Database configuration error: POSTGRES_URL is missing. " +
-        "Set POSTGRES_URL in Vercel Project Settings > Environment Variables."
+        "Database configuration error: PostgreSQL environment variables are missing. " +
+        "Set POSTGRES_URL, or set POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DATABASE in Vercel Project Settings > Environment Variables."
       );
     }
-    
-    // Parse the connection string first to prevent pg's internal connection-string parser
-    // from overriding or conflicting with our explicit ssl configuration.
-    const connectionConfig = parse(connectionString);
-    
+
     let sslConfig: PoolConfig["ssl"] = undefined;
 
-    const ca = process.env.SUPABASE_CA_CERT?.replace(/\\n/g, "\n");
+    const ca = readCaCert();
     if (ca) {
       sslConfig = {
         rejectUnauthorized: true,
@@ -49,14 +74,14 @@ export function getPool(): Pool {
     }
 
     const config: PoolConfig = {
-      host: connectionConfig.host || undefined,
-      port: connectionConfig.port ? parseInt(connectionConfig.port, 10) : undefined,
-      database: connectionConfig.database || undefined,
-      user: connectionConfig.user || undefined,
-      password: connectionConfig.password || undefined,
+      host,
+      port: portValue ? parseInt(portValue, 10) : undefined,
+      database,
+      user,
+      password,
       ssl: sslConfig,
       // Keep the pool small for serverless deployments; each warm lambda has its own pool.
-      max: parseInt(process.env.POSTGRES_POOL_MAX || "5", 10),
+      max: parseInt(readEnv("POSTGRES_POOL_MAX") || "5", 10),
       min: 0,
       idleTimeoutMillis: 60000,        // Keep idle connections alive for 60s (reduce reconnect overhead)
       connectionTimeoutMillis: 3000,   // Raise slightly to avoid spurious timeouts on cold start
