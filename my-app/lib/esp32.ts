@@ -189,7 +189,6 @@ export async function getESP32Status(roomCode?: string): Promise<{
   wokwi: boolean;
   mode: ESP32ConnectionMode;
 }> {
-  verifyApiKeySecurity();
   const mode = getESP32Mode();
   if (MOCK_MODE) {
     const resolvedUrl = await getESP32Url(roomCode);
