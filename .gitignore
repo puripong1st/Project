@@ -1,2 +1,20 @@
 # ESP32
 esp32/build/
+
+# Agents
+.agents/
+
+# IDEs
+.vscode/
+
+# Tools & Agents
+.antigravitycli/
+skills-lock.json
+my-app/.claude/
+
+# Logs
+*.log
+my-app/dev.log
+
+# Database / Sensitive configs
+my-app/aiven_mysql_config.txt

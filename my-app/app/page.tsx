@@ -1115,6 +1115,8 @@ function RegistrationPageInner() {
                 {/* Title */}
                 <div>
                   <select
+                    id="student_title"
+                    aria-label="คำนำหน้าชื่อ"
                     className="rmutp-input"
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -1130,6 +1132,8 @@ function RegistrationPageInner() {
                 {/* First Name */}
                 <div>
                   <input
+                    id="student_first_name"
+                    aria-label="ชื่อจริง"
                     className="rmutp-input"
                     placeholder="ชื่อจริง"
                     value={form.first_name}
@@ -1141,6 +1145,8 @@ function RegistrationPageInner() {
                 {/* Last Name */}
                 <div>
                   <input
+                    id="student_last_name"
+                    aria-label="นามสกุล"
                     className="rmutp-input"
                     placeholder="นามสกุล"
                     value={form.last_name}
@@ -1163,13 +1169,15 @@ function RegistrationPageInner() {
 
             {/* Student ID */}
             <div style={{ marginBottom: 18 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
+              <label htmlFor="student_id" style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 รหัสประจำตัวนักศึกษา *
                 <span style={{ color: "var(--text-secondary)", fontWeight: 500, marginLeft: 6, fontSize: 11.5 }}>
                   (รูปแบบ: XXXXXXXXXXXX-X หรือรหัสวิทยบริการ)
                 </span>
               </label>
               <input
+                id="student_id"
+                aria-invalid={error ? "true" : "false"}
                 className="rmutp-input"
                 placeholder="กรอกรหัสนักศึกษา เช่น 076158050650-8"
                 value={form.student_id}
@@ -1237,10 +1245,11 @@ function RegistrationPageInner() {
 
             {/* Year */}
             <div style={{ marginBottom: 18 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
+              <label htmlFor="student_year" style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 ชั้นปีที่ศึกษา *
               </label>
               <select
+                id="student_year"
                 className="rmutp-input"
                 value={form.year}
                 onChange={e => setForm(f => ({ ...f, year: e.target.value }))}
@@ -1255,10 +1264,11 @@ function RegistrationPageInner() {
 
             {/* Faculty */}
             <div style={{ marginBottom: 18 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
+              <label htmlFor="student_faculty" style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 คณะ *
               </label>
               <select
+                id="student_faculty"
                 className="rmutp-input"
                 value={form.faculty}
                 onChange={e => handleFacultyChange(e.target.value)}
@@ -1273,10 +1283,11 @@ function RegistrationPageInner() {
 
             {/* Branch */}
             <div style={{ marginBottom: 28 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
+              <label htmlFor="student_branch" style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 สาขาวิชา *
               </label>
               <select
+                id="student_branch"
                 className="rmutp-input"
                 value={form.branch}
                 onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}

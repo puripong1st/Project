@@ -2783,10 +2783,11 @@ void loop() {
 
                     {/* Status filter select */}
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                      <label htmlFor="filter_status" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                         กรองสถานะสิทธิ์คำขอ *
                       </label>
                       <select
+                        id="filter_status"
                         className="rmutp-input"
                         value={filterStatus}
                         onChange={e => setFilter(e.target.value)}
@@ -3385,10 +3386,11 @@ void loop() {
                       ))}
 
                       <div style={{ marginBottom: 20 }}>
-                        <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                        <label htmlFor="new_admin_role" style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                           ขอบเขตสิทธิ์ในการทำงาน (Role) *
                         </label>
                         <select
+                          id="new_admin_role"
                           className="rmutp-input"
                           value={newAdmin.role}
                           onChange={e => setNewAdmin(a => ({ ...a, role: e.target.value }))}
@@ -3537,14 +3539,15 @@ void loop() {
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 16, marginTop: 8, marginBottom: 16 }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <label htmlFor="student_id_display_mode" style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                         ความปลอดภัยหน้าจอหลัก ESP32 (รหัสนักศึกษาอนุมัติล่าสุด)
-                      </span>
+                      </label>
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         <select
+                          id="student_id_display_mode"
                           className="rmutp-input"
                           value={settings.student_id_display_mode}
                           onChange={e => setSettings(s => ({ ...s, student_id_display_mode: e.target.value }))}

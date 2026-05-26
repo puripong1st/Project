@@ -33,6 +33,35 @@
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* ── Focus Visible outlines for WCAG 2.4.7 compliance ── */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--rmutp-purple);
+  outline-offset: 2px;
+}
+
+.rmutp-input:focus-visible {
+  outline: none;
+  border-color: var(--rmutp-purple);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+}
+
+/* ── Screen Reader Visually Hidden class ── */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 html, body {
   height: 100%;
   background-color: var(--bg-primary);
