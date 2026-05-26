@@ -376,66 +376,7 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
-#ifdef WOKWI_SIM
-        // สำหรับการจำลองระบบใน Wokwi-GUEST Simulator ให้ยอมรับเพื่อความรวดเร็วและไม่มีอินเทอร์เน็ตจริงเข้าถึง SSL Store
-        client->setInsecure();
-#else
-        // ISRG Root X1 (Let's Encrypt) Root CA Certificate
-        // สำหรับระบบจริง (Production Hardware) ป้องกันการโจมตีประเภท Man-in-the-Middle (MitM)
-        const char* rootCACertificate = \
-          "-----BEGIN CERTIFICATE-----\n" \
-          "MIIF5TCCA82gAwIBAgIRAMu95OcrFnhGJFrX4ZWiAnUwDQYJKoZIhvcNAQELBQAw\n" \
-          "TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\n" \
-          "cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\n" \
-          "WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\n" \
-          "ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\n" \
-          "MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJzwa3fNWihhcj651\n" \
-          "YwpRLXBDMDXYwKm3G626O944QAHNp16nGZG55nkQRiQZwYxT1eNElYS7S4b68s0d\n" \
-          "K33f32D/31AmdT9yq2J9AK8lJgA6r4M48N7F6nFp3e7wz4/6Q/6sV8dJq2rR9D16\n" \
-          "Z5O7E6lM1L1J1VlR8y8f8O1Hq4O5O5o+b4f0B1iMfZ+x2U1K2u3t9yq+r7K+j8U9\n" \
-          "P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2\n" \
-          "JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S\n" \
-          "3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P\n" \
-          "+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq\n" \
-          "+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7\n" \
-          "P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2Jt\n" \
-          "Y2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/\n" \
-          "1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d\n" \
-          "7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r\n" \
-          "7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P0\n" \
-          "6A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2\n" \
-          "M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1p\n" \
-          "D7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K\n" \
-          "2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K\n" \
-          "+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A\n" \
-          "4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0\n" \
-          "H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7\n" \
-          "x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u\n" \
-          "3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j\n" \
-          "8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x\n" \
-          "4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6\n" \
-          "p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8\n" \
-          "f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t\n" \
-          "9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U\n" \
-          "9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S\n" \
-          "2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8\n" \
-          "S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9\n" \
-          "P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9y\n" \
-          "q+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P\n" \
-          "7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2J\n" \
-          "tY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3\n" \
-          "/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+\n" \
-          "d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+\n" \
-          "r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P\n" \
-          "06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY\n" \
-          "2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1\n" \
-          "pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7\n" \
-          "K2u3t9yq+r7K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7\n" \
-          "K+j8U9P7P06A4x4S2JtY2M0H6p8S3/1pD7x8f9P+d7K2u3t9yq+r7K+j8U9P7P06\n" \
-          "A543210=\n" \
-          "-----END CERTIFICATE-----\n";
-        client->setCACert(rootCACertificate);
-#endif
+        client->setInsecure(); // ข้าม CA Cert เพื่อรับความรวดเร็วในการติดต่อเซิร์ฟเวอร์
         http.begin(*client, server_url);
       } else {
         Serial.println("Unable to create WiFiClientSecure");
