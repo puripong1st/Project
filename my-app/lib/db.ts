@@ -1,9 +1,7 @@
 // lib/db.ts — PostgreSQL connection pool with auto table creation + seed
 import { Pool, PoolConfig } from "pg";
 import bcrypt from "bcryptjs";
-
-// Force Node.js to accept self-signed SSL certificates from Supabase
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+import { parse } from "pg-connection-string";
 
 // Use globalThis to persist the pg Pool instance across module hot-reloads in Next.js development mode
 const globalForDb = globalThis as unknown as {
@@ -19,11 +17,36 @@ const SETTINGS_CACHE_TTL_MS = 30_000;
 
 export function getPool(): Pool {
   if (!globalForDb.pool) {
+    const isProd = process.env.NODE_ENV === "production";
+    
+    // Parse the connection string first to prevent pg's internal connection-string parser
+    // from overriding or conflicting with our explicit ssl configuration.
+    const connectionConfig = parse(process.env.POSTGRES_URL || "");
+    
+    let sslConfig: PoolConfig["ssl"] = undefined;
+
+    if (isProd) {
+      const ca = process.env.SUPABASE_CA_CERT;
+      if (!ca) {
+        throw new Error(
+          "Production Database Connection Error: SUPABASE_CA_CERT environment variable is missing. " +
+          "A valid CA certificate is required to establish a secure TLS connection with the database in production. " +
+          "Do not set NODE_TLS_REJECT_UNAUTHORIZED=0 or rejectUnauthorized=false in production."
+        );
+      }
+      sslConfig = {
+        rejectUnauthorized: true,
+        ca: ca,
+      };
+    } else {
+      sslConfig = {
+        rejectUnauthorized: false,
+      };
+    }
+
     const config: PoolConfig = {
-      connectionString: process.env.POSTGRES_URL,
-      ssl: {
-        rejectUnauthorized: false
-      },
+      ...connectionConfig,
+      ssl: sslConfig,
       // OPTIMIZATION: Increase pool size + enable TCP keepAlive for Supabase Pooler
       max: 20,                         // More concurrent connections (Supabase pooler supports this)
       min: 2,                          // Keep 2 warm connections alive at all times
