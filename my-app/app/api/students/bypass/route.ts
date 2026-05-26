@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, StudentRow } from "@/lib/db";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
+import { rateLimit } from "@/lib/rate-limit";
 
 let initialized = false;
 async function ensureInit() {
@@ -38,6 +39,21 @@ export async function POST(req: NextRequest) {
     }
 
     const student = students[0];
+    const room = student.requested_room || "default";
+
+    // Durable Rate Limit (Vercel/Serverless friendly): student_id + room (e.g. max 1 attempt per 30 seconds)
+    const rateLimitResult = await rateLimit({
+      key: `bypass:${student.student_id}:${room}`,
+      limit: 1,
+      windowMs: 30 * 1000,
+    });
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "คุณเปิดประตูซ้ำถี่เกินไป กรุณารอสักครู่" },
+        { status: 429 }
+      );
+    }
 
     // Student MUST be approved by an administrator to bypass
     if (student.status !== "approved") {

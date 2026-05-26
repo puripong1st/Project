@@ -2,38 +2,7 @@
 // Security hardened: rate-limiting, constant-time comparison, IP logging
 import { NextRequest, NextResponse } from "next/server";
 import { consumeQRToken, validateQRToken } from "@/lib/qr";
-
-// ─── In-Memory Rate Limiter ───
-// Prevents brute-force token guessing attacks
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute window
-const RATE_LIMIT_MAX_ATTEMPTS = 10;   // max 10 attempts per IP per minute
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-
-  entry.count++;
-  if (entry.count > RATE_LIMIT_MAX_ATTEMPTS) {
-    return true;
-  }
-  return false;
-}
-
-// Periodic cleanup of stale entries (every 5 minutes)
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of rateLimitMap.entries()) {
-    if (now > entry.resetAt) {
-      rateLimitMap.delete(ip);
-    }
-  }
-}, 5 * 60_000);
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,8 +11,14 @@ export async function POST(req: NextRequest) {
       || req.headers.get("x-real-ip")
       || "unknown";
 
-    // Rate limit check
-    if (isRateLimited(clientIp)) {
+    // Rate limit check: 10 attempts per IP per minute
+    const rateLimitResult = await rateLimit({
+      key: `qr_verify:${clientIp}`,
+      limit: 10,
+      windowMs: 60_000,
+    });
+
+    if (!rateLimitResult.success) {
       return NextResponse.json({
         success: false,
         error: "คุณส่งคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่อีกครั้ง",

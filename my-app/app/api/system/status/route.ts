@@ -24,8 +24,9 @@ export async function GET() {
     let isDiscordWebhookConfigured = false;
     let roomCodes: string[] = ["CE-401", "CE-402"];
 
-    const pool = getPool();
+    let pool: ReturnType<typeof getPool> | null = null;
     try {
+      pool = getPool();
       const { rows: dbTest } = await pool.query("SELECT 1");
       if (dbTest) mysqlOnline = true;
 
@@ -82,7 +83,7 @@ export async function GET() {
     const devicesList = await Promise.all(
       roomCodes.map(async (roomCode) => {
         let ip = "192.168.1.100";
-        if (mysqlOnline) {
+        if (mysqlOnline && pool) {
           try {
             const { rows: ipRows } = await pool.query(
               "SELECT setting_value FROM system_settings WHERE setting_key = $1",

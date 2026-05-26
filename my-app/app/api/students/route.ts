@@ -6,6 +6,7 @@ import { sendDiscordNotification } from "@/lib/discord";
 import { RMUTP_FACULTIES } from "@/lib/faculties";
 import { openDoor } from "@/lib/esp32";
 import { consumeQRToken } from "@/lib/qr";
+import { rateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 
 let initialized = false;
@@ -75,6 +76,24 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await ensureInit();
+
+    // Extract client IP
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+
+    // Durable Rate Limit (Vercel/Serverless friendly): 5 attempts per IP per minute
+    const rateLimitResult = await rateLimit({
+      key: `register:${ip}`,
+      limit: 5,
+      windowMs: 60 * 1000,
+    });
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "คุณส่งคำขอลงทะเบียนมากเกินไป กรุณาลองใหม่ในอีก 1 นาที" },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { title, first_name, last_name, student_id, year, faculty, branch, requested_room, token } = body;
 
@@ -131,9 +150,6 @@ export async function POST(req: NextRequest) {
       [sanitizedStudentId]
     );
     const existingStudents = existing as StudentRow[];
-
-    // Get client IP
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
 
     // ─── Auto-Approve Verification ───
     const settings = await getSystemSettings();

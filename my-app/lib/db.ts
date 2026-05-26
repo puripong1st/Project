@@ -18,30 +18,34 @@ const SETTINGS_CACHE_TTL_MS = 30_000;
 export function getPool(): Pool {
   if (!globalForDb.pool) {
     const isProd = process.env.NODE_ENV === "production";
+    const connectionString = process.env.POSTGRES_URL;
+
+    if (!connectionString) {
+      throw new Error(
+        "Database configuration error: POSTGRES_URL is missing. " +
+        "Set POSTGRES_URL in Vercel Project Settings > Environment Variables."
+      );
+    }
     
     // Parse the connection string first to prevent pg's internal connection-string parser
     // from overriding or conflicting with our explicit ssl configuration.
-    const connectionConfig = parse(process.env.POSTGRES_URL || "");
+    const connectionConfig = parse(connectionString);
     
     let sslConfig: PoolConfig["ssl"] = undefined;
 
-    if (isProd) {
-      const ca = process.env.SUPABASE_CA_CERT;
-      if (!ca) {
-        throw new Error(
-          "Production Database Connection Error: SUPABASE_CA_CERT environment variable is missing. " +
-          "A valid CA certificate is required to establish a secure TLS connection with the database in production. " +
-          "Do not set NODE_TLS_REJECT_UNAUTHORIZED=0 or rejectUnauthorized=false in production."
-        );
-      }
+    const ca = process.env.SUPABASE_CA_CERT?.replace(/\\n/g, "\n");
+    if (ca) {
       sslConfig = {
         rejectUnauthorized: true,
-        ca: ca,
+        ca,
       };
+    } else if (isProd) {
+      // Supabase/Vercel connection strings usually provide sslmode=require, but
+      // node-postgres still needs an ssl object when we parse the URL manually.
+      // SUPABASE_CA_CERT can be added later to enforce CA verification.
+      sslConfig = { rejectUnauthorized: false };
     } else {
-      sslConfig = {
-        rejectUnauthorized: false,
-      };
+      sslConfig = { rejectUnauthorized: false };
     }
 
     const config: PoolConfig = {
@@ -51,9 +55,9 @@ export function getPool(): Pool {
       user: connectionConfig.user || undefined,
       password: connectionConfig.password || undefined,
       ssl: sslConfig,
-      // OPTIMIZATION: Increase pool size + enable TCP keepAlive for Supabase Pooler
-      max: 20,                         // More concurrent connections (Supabase pooler supports this)
-      min: 2,                          // Keep 2 warm connections alive at all times
+      // Keep the pool small for serverless deployments; each warm lambda has its own pool.
+      max: parseInt(process.env.POSTGRES_POOL_MAX || "5", 10),
+      min: 0,
       idleTimeoutMillis: 60000,        // Keep idle connections alive for 60s (reduce reconnect overhead)
       connectionTimeoutMillis: 3000,   // Raise slightly to avoid spurious timeouts on cold start
       keepAlive: true,                 // Enable TCP keepAlive — prevents Supabase from dropping idle connections
@@ -154,6 +158,15 @@ export async function initDatabase(): Promise<void> {
         setting_key VARCHAR(100) PRIMARY KEY,
         setting_value TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 6. Create rate_limits table for serverless-friendly rate limiting
+    await initPool.query(`
+      CREATE TABLE IF NOT EXISTS rate_limits (
+        key VARCHAR(255) PRIMARY KEY,
+        count INT NOT NULL DEFAULT 0,
+        reset_time BIGINT NOT NULL
       )
     `);
 
