@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, getSystemSettings, updateSystemSetting } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
@@ -11,7 +13,14 @@ export async function GET(req: NextRequest) {
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
 
     const settings = await getSystemSettings();
-    return NextResponse.json({ settings });
+    return NextResponse.json(
+      { settings },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        },
+      }
+    );
   } catch (error) {
     console.error("[System Settings] GET error:", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาดในการดึงข้อมูลตั้งค่า" }, { status: 500 });

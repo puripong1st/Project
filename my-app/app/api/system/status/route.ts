@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 // app/api/system/status/route.ts — Return dynamic status of system dependencies & all IoT boards
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
@@ -119,37 +121,44 @@ export async function GET() {
     const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL || "";
     const discordConfigured = isDiscordWebhookConfigured || !!discordWebhookUrl;
 
-    return NextResponse.json({
-      mysql: {
-        online: mysqlOnline,
-        host: process.env.POSTGRES_HOST || "localhost",
-        database: process.env.POSTGRES_DATABASE || "postgres",
-        error: mysqlError,
+    return NextResponse.json(
+      {
+        mysql: {
+          online: mysqlOnline,
+          host: process.env.POSTGRES_HOST || "localhost",
+          database: process.env.POSTGRES_DATABASE || "postgres",
+          error: mysqlError,
+        },
+        esp32: devicesList.length > 0 ? {
+          online: devicesList[0].online,
+          doorStatus: devicesList[0].doorStatus,
+          ip: devicesList[0].ip,
+          mock: devicesList[0].mock,
+          room: devicesList[0].room,
+        } : {
+          online: false,
+          doorStatus: "closed",
+          ip: "192.168.1.100",
+          mock: false,
+          room: "ไม่มีห้อง",
+        },
+        esp32Devices: devicesList,
+        discord: {
+          configured: discordConfigured,
+        },
+        logSummary: {
+          total: totalLogs,
+          active: activeLogs,
+          expired: expiredLogs,
+          retentionDays: 90,
+        },
       },
-      esp32: devicesList.length > 0 ? {
-        online: devicesList[0].online,
-        doorStatus: devicesList[0].doorStatus,
-        ip: devicesList[0].ip,
-        mock: devicesList[0].mock,
-        room: devicesList[0].room,
-      } : {
-        online: false,
-        doorStatus: "closed",
-        ip: "192.168.1.100",
-        mock: false,
-        room: "ไม่มีห้อง",
-      },
-      esp32Devices: devicesList,
-      discord: {
-        configured: discordConfigured,
-      },
-      logSummary: {
-        total: totalLogs,
-        active: activeLogs,
-        expired: expiredLogs,
-        retentionDays: 90,
-      },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        },
+      }
+    );
   } catch (error) {
     console.error("[System Status GET Error]:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
