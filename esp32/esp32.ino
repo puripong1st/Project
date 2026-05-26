@@ -368,7 +368,11 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
-        client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA ของเซิร์ฟเวอร์คลาวด์จริงเพื่อความปลอดภัย (ป้องกัน MitM)
+        #ifdef WOKWI_SIM
+          client->setInsecure(); // ข้ามการเช็ค SSL CA Cert ชั่วคราวบน Wokwi Simulator (เนื่องจาก Simulator ไม่มีนาฬิกา Real-time ที่ซิงค์ตรงทำให้เช็คใบรับรองไม่ผ่าน)
+        #else
+          client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริงเพื่อความปลอดภัยสูงสุด
+        #endif
         http.begin(*client, server_url);
       } else {
         Serial.println("Unable to create WiFiClientSecure");

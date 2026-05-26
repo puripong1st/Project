@@ -544,7 +544,7 @@ const char *room_code = "${roomCode}";
 
 // ตั้งค่า UNIQUE API Key สำหรับบอร์ดห้องนี้
 // สามารถตั้งค่าจับคู่บน Vercel environment variables -> ESP32_API_KEY
-const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
+const char *api_key = "rmutp-door-access-super-secret-key-2026-esp32";
 
 // Root CA Certificate สำหรับตรวจสอบใบรับรอง HTTPS Vercel (ISRG Root X1)
 const char *root_ca_cert = \\
@@ -928,7 +928,11 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
-        client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA ของเซิร์ฟเวอร์คลาวด์จริงเพื่อความปลอดภัย (ป้องกัน MitM)
+        #ifdef WOKWI_SIM
+          client->setInsecure(); // ข้ามการเช็ค SSL CA Cert ใน Simulator
+        #else
+          client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริง
+        #endif
         http.begin(*client, server_url);
       } else {
         Serial.println("Unable to create WiFiClientSecure");
