@@ -1,36 +1,29 @@
-// lib/pdf.ts — PDF generator using pdfkit (RMUTP Purple & Education Pink Theme)
 import PDFDocument from "pdfkit";
-import { StudentRow } from "./db";
 import fs from "fs";
 import path from "path";
+import { StudentRow } from "./db";
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "รอการอนุมัติ (Pending)",
-  approved: "อนุมัติแล้ว (Approved)",
-  rejected: "ปฏิเสธการเข้าถึง (Rejected)",
+const COLORS = {
+  ink: "#111827",
+  muted: "#6B7280",
+  line: "#E5E7EB",
+  soft: "#F8FAFC",
+  purple: "#6D28D9",
+  purpleSoft: "#F5F3FF",
+  pink: "#DB2777",
+  green: "#059669",
+  greenSoft: "#ECFDF5",
+  amber: "#D97706",
+  amberSoft: "#FFFBEB",
+  red: "#DC2626",
+  redSoft: "#FEF2F2",
 };
 
-function formatThaiDateTime(date: Date | string | null): string {
-  if (!date) return "-";
-  const d = new Date(date);
-  const day = d.getDate().toString().padStart(2, "0");
-  const month = (d.getMonth() + 1).toString().padStart(2, "0");
-  const year = d.getFullYear() + 543; // Buddhist Era
-  const hours = d.getHours().toString().padStart(2, "0");
-  const minutes = d.getMinutes().toString().padStart(2, "0");
-  const seconds = d.getSeconds().toString().padStart(2, "0");
-  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds} น.`;
-}
-
-function formatThaiDateString(dateStr: string | undefined): string {
-  if (!dateStr) return "-";
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) return dateStr;
-  const year = parseInt(parts[0]) + 543;
-  const month = parts[1];
-  const day = parts[2];
-  return `${day}/${month}/${year}`;
-}
+const STATUS_META: Record<StudentRow["status"], { label: string; color: string; bg: string }> = {
+  pending: { label: "รออนุมัติ", color: COLORS.amber, bg: COLORS.amberSoft },
+  approved: { label: "อนุมัติแล้ว", color: COLORS.green, bg: COLORS.greenSoft },
+  rejected: { label: "ปฏิเสธ", color: COLORS.red, bg: COLORS.redSoft },
+};
 
 interface FontSetup {
   regular: string;
@@ -38,44 +31,123 @@ interface FontSetup {
   isCustom: boolean;
 }
 
-// Setup Thai fonts from local project directory or fallback to local system fonts
 function setupFonts(doc: PDFKit.PDFDocument): FontSetup {
   try {
     const localFontPath = path.join(process.cwd(), "public", "fonts", "tahoma.ttf");
     const localFontBoldPath = path.join(process.cwd(), "public", "fonts", "tahomabd.ttf");
-
-    if (fs.existsSync(localFontPath)) {
-      doc.registerFont("ThaiFont", localFontPath);
-      if (fs.existsSync(localFontBoldPath)) {
-        doc.registerFont("ThaiFont-Bold", localFontBoldPath);
-      } else {
-        doc.registerFont("ThaiFont-Bold", localFontPath);
-      }
-      return { regular: "ThaiFont", bold: "ThaiFont-Bold", isCustom: true };
-    }
-
     const sysFontPath = "C:\\Windows\\Fonts\\tahoma.ttf";
     const sysFontBoldPath = "C:\\Windows\\Fonts\\tahomabd.ttf";
-    if (fs.existsSync(sysFontPath)) {
-      doc.registerFont("ThaiFont", sysFontPath);
-      if (fs.existsSync(sysFontBoldPath)) {
-        doc.registerFont("ThaiFont-Bold", sysFontBoldPath);
-      } else {
-        doc.registerFont("ThaiFont-Bold", sysFontPath);
-      }
+
+    const regularPath = fs.existsSync(localFontPath) ? localFontPath : sysFontPath;
+    const boldPath = fs.existsSync(localFontBoldPath) ? localFontBoldPath : sysFontBoldPath;
+
+    if (fs.existsSync(regularPath)) {
+      doc.registerFont("ThaiFont", regularPath);
+      doc.registerFont("ThaiFont-Bold", fs.existsSync(boldPath) ? boldPath : regularPath);
       return { regular: "ThaiFont", bold: "ThaiFont-Bold", isCustom: true };
     }
-  } catch (e) {
-    console.warn("Failed to load Tahoma font, falling back to Helvetica:", e);
+  } catch (error) {
+    console.warn("Failed to load Thai PDF font:", error);
   }
+
   return { regular: "Helvetica", bold: "Helvetica-Bold", isCustom: false };
 }
 
-// Helper to filter out Thai characters if fallback font is active to prevent PDFKit crashes
-function safeText(text: string, fonts: FontSetup): string {
-  if (fonts.isCustom) return text || "-";
+function safeText(value: string | number | null | undefined, fonts: FontSetup): string {
+  const text = value === null || value === undefined || value === "" ? "-" : String(value);
+  return fonts.isCustom ? text : text.replace(/[^\x00-\x7F]/g, "?");
+}
+
+function formatThaiDateTime(date: Date | string | null | undefined): string {
+  if (!date) return "-";
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "-";
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  const year = d.getFullYear() + 543;
+  const hours = d.getHours().toString().padStart(2, "0");
+  const minutes = d.getMinutes().toString().padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes} น.`;
+}
+
+function formatThaiDate(dateStr?: string): string {
+  if (!dateStr) return "-";
+  const [year, month, day] = dateStr.split("-");
+  if (!year || !month || !day) return dateStr;
+  return `${day}/${month}/${Number(year) + 543}`;
+}
+
+function roomLabel(room?: string | null): string {
+  return room && room !== "default" ? room : "default";
+}
+
+function studentName(student: StudentRow): string {
+  return `${student.title || ""}${student.first_name} ${student.last_name}`.trim();
+}
+
+function truncate(text: string | null | undefined, length: number): string {
   if (!text) return "-";
-  return text.replace(/[^\x00-\x7F]/g, "?");
+  return text.length > length ? `${text.slice(0, length - 1)}…` : text;
+}
+
+function addFooter(doc: PDFKit.PDFDocument, fonts: FontSetup, margin: number): void {
+  const range = doc.bufferedPageRange();
+  const width = doc.page.width;
+
+  for (let i = 0; i < range.count; i++) {
+    doc.switchToPage(i);
+    doc.rect(0, doc.page.height - 34, width, 34).fill("#F9FAFB");
+    doc
+      .font(fonts.regular)
+      .fontSize(8)
+      .fillColor(COLORS.muted)
+      .text(
+        safeText(`RMUTP Door Access System | หน้า ${i + 1} จาก ${range.count}`, fonts),
+        margin,
+        doc.page.height - 22,
+        { width: width - margin * 2, align: "center" }
+      );
+  }
+}
+
+function header(doc: PDFKit.PDFDocument, fonts: FontSetup, title: string, subtitle: string, margin: number): void {
+  const width = doc.page.width;
+  const contentWidth = width - margin * 2;
+
+  doc.rect(0, 0, width, 84).fill(COLORS.ink);
+  doc.rect(0, 84, width, 4).fill(COLORS.pink);
+  doc
+    .font(fonts.bold)
+    .fontSize(15)
+    .fillColor("#FFFFFF")
+    .text("RAJAMANGALA UNIVERSITY OF TECHNOLOGY PHRA NAKHON", margin, 18, {
+      width: contentWidth,
+      align: "center",
+    });
+  doc
+    .font(fonts.regular)
+    .fontSize(10)
+    .fillColor("#E5E7EB")
+    .text(safeText("คณะครุศาสตร์อุตสาหกรรม - ระบบควบคุมประตูอัตโนมัติ", fonts), margin, 39, {
+      width: contentWidth,
+      align: "center",
+    });
+  doc
+    .font(fonts.bold)
+    .fontSize(13)
+    .fillColor("#FFFFFF")
+    .text(safeText(title, fonts), margin, 58, { width: contentWidth, align: "center" });
+  doc
+    .font(fonts.regular)
+    .fontSize(8)
+    .fillColor("#CBD5E1")
+    .text(safeText(subtitle, fonts), margin, 96, { width: contentWidth, align: "center" });
+}
+
+function infoBox(doc: PDFKit.PDFDocument, fonts: FontSetup, x: number, y: number, w: number, label: string, value: string): void {
+  doc.roundedRect(x, y, w, 40, 6).fill(COLORS.soft).strokeColor(COLORS.line).stroke();
+  doc.font(fonts.regular).fontSize(7.5).fillColor(COLORS.muted).text(safeText(label, fonts), x + 10, y + 8);
+  doc.font(fonts.bold).fontSize(10).fillColor(COLORS.ink).text(safeText(value, fonts), x + 10, y + 21, { width: w - 20 });
 }
 
 export async function generateStudentsPDF(
@@ -89,463 +161,210 @@ export async function generateStudentsPDF(
     const doc = new PDFDocument({
       size: "A4",
       layout: "landscape",
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
+      margins: { top: 36, bottom: 46, left: 34, right: 34 },
       lang: "th",
-      autoFirstPage: true,
+      bufferPages: true,
     });
 
     const chunks: Buffer[] = [];
-    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("data", chunk => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     const fonts = setupFonts(doc);
-    const pageWidth = doc.page.width; 
-    const margin = 40;
-    const contentWidth = pageWidth - margin * 2; 
+    const margin = 34;
+    const width = doc.page.width;
+    const contentWidth = width - margin * 2;
+    const filterLabel = filter === "all" ? "ทุกสถานะ" : STATUS_META[filter as StudentRow["status"]]?.label || filter;
+    const dateRange = startDate || endDate ? `${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}` : "ทั้งหมด";
 
-    // ─── Header Banner (Purple Landscape) ───────────────────────
-    doc
-      .rect(0, 0, pageWidth, 110)
-      .fill("#7C3AED"); 
+    header(doc, fonts, "รายงานทะเบียนผู้ขอใช้สิทธิ์ผ่านประตู", "Door Access Audit Report", margin);
 
-    doc
-      .rect(0, 110, pageWidth, 5)
-      .fill("#DB2777");
+    const metaTop = 122;
+    const boxWidth = (contentWidth - 30) / 4;
+    infoBox(doc, fonts, margin, metaTop, boxWidth, "ผู้จัดทำ", exportedBy);
+    infoBox(doc, fonts, margin + boxWidth + 10, metaTop, boxWidth, "วันที่ออกรายงาน", formatThaiDateTime(new Date()));
+    infoBox(doc, fonts, margin + (boxWidth + 10) * 2, metaTop, boxWidth, "ตัวกรอง", filterLabel);
+    infoBox(doc, fonts, margin + (boxWidth + 10) * 3, metaTop, boxWidth, "ช่วงวันที่", dateRange);
 
-    // Title Texts
-    doc
-      .font(fonts.bold)
-      .fontSize(16)
-      .fillColor("#FFFFFF")
-      .text("RAJAMANGALA UNIVERSITY OF TECHNOLOGY PHRA NAKHON", margin, 20, {
-        width: contentWidth,
-        align: "center",
-      });
+    const summaryTop = metaTop + 56;
+    const summary = [
+      { label: "รวม", value: students.length, color: COLORS.purple },
+      { label: "อนุมัติ", value: students.filter(s => s.status === "approved").length, color: COLORS.green },
+      { label: "รออนุมัติ", value: students.filter(s => s.status === "pending").length, color: COLORS.amber },
+      { label: "ปฏิเสธ", value: students.filter(s => s.status === "rejected").length, color: COLORS.red },
+    ];
 
-    doc
-      .font(fonts.regular)
-      .fontSize(11)
-      .fillColor("#F5F3FF")
-      .text(safeText("มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร — คณะครุศาสตร์ (Education)", fonts), margin, 42, {
-        width: contentWidth,
-        align: "center",
-      });
-
-    doc
-      .font(fonts.bold)
-      .fontSize(14)
-      .fillColor("#FFFFFF")
-      .text(safeText("รายงานประวัติการเข้าใช้งานและจัดทำสิทธิ์ระบบควบคุมประตูอัตโนมัติ (Door Access Audit)", fonts), margin, 65, {
-        width: contentWidth,
-        align: "center",
-      });
-
-    // ─── Metadata block ─────────────────────────────────────────
-    const metadataY = 135;
-    doc.fillColor("#374151").font(fonts.regular).fontSize(9);
-
-    // Metadata Left Column
-    doc.text(safeText(`วันที่จัดทำรายงาน: ${formatThaiDateTime(new Date())}`, fonts), margin, metadataY);
-    const filterLabels: Record<string, string> = {
-      all: "รายชื่อทั้งหมดในฐานข้อมูล",
-      pending: "เฉพาะผู้ที่อยู่ระหว่างรออนุมัติสิทธิ์",
-      approved: "เฉพาะผู้ได้รับอนุมัติผ่านเข้าออกแล้ว",
-      rejected: "เฉพาะผู้ที่ไม่ได้รับอนุญาต/ถูกปฏิเสธ",
-    };
-    doc.text(safeText(`ประเภทตัวกรอง: ${filterLabels[filter] || filter}`, fonts), margin, metadataY + 15);
-
-    // Metadata Right Column
-    doc.text(safeText(`ผู้จัดทำเอกสาร: ${exportedBy}`, fonts), margin + contentWidth / 2 + 80, metadataY);
-    doc.text(safeText(`รวมรายการทั้งสิ้น: ${students.length} รายการ`, fonts), margin + contentWidth / 2 + 80, metadataY + 15);
-
-    // Date Range Metadata Line (if present)
-    if (startDate && endDate) {
-      doc.text(safeText(`ช่วงเวลาสิทธิ์ในรายงาน: ตั้งแต่วันที่ ${formatThaiDateString(startDate)} ถึงวันที่ ${formatThaiDateString(endDate)}`, fonts), margin, metadataY + 30);
-    } else if (startDate) {
-      doc.text(safeText(`ช่วงเวลาสิทธิ์ในรายงาน: ตั้งแต่วันที่ ${formatThaiDateString(startDate)} เป็นต้นไป`, fonts), margin, metadataY + 30);
-    } else if (endDate) {
-      doc.text(safeText(`ช่วงเวลาสิทธิ์ในรายงาน: จนถึงวันที่ ${formatThaiDateString(endDate)}`, fonts), margin, metadataY + 30);
-    }
-
-    // Decorative Separator
-    doc
-      .moveTo(margin, metadataY + 42)
-      .lineTo(margin + contentWidth, metadataY + 42)
-      .strokeColor("#E5E7EB")
-      .lineWidth(1)
-      .stroke();
-
-    // ─── Table Header ─────────────────────────────────────────
-    const tableTop = metadataY + 52;
-    
-    // Sum of colWidths = 20 + 80 + 105 + 90 + 90 + 20 + 70 + 110 + 110 + 45 = 740 points (Leaving 20px dynamic margin space)
-    const colWidths = [20, 80, 105, 90, 90, 20, 70, 110, 110, 45];
-    const cols = ["ลำดับ", "รหัสนักศึกษา", "ชื่อ - นามสกุล", "คณะวิชา", "สาขาวิชา", "ปี", "ห้องเรียน", "วันลงทะเบียน", "วันดำเนินการ", "สถานะ"];
-    const colAligns: ("center" | "left")[] = ["center", "center", "left", "left", "left", "center", "center", "center", "center", "center"];
-
-    let xPos = margin;
-
-    // Header background
-    doc.rect(margin, tableTop, contentWidth, 24).fill("#4C1D95");
-
-    doc.font(fonts.bold).fontSize(9).fillColor("#FFFFFF");
-    cols.forEach((col, i) => {
-      doc.text(safeText(col, fonts), xPos + 4, tableTop + 7, {
-        width: colWidths[i] - 8,
-        align: colAligns[i],
-      });
-      xPos += colWidths[i];
+    summary.forEach((item, index) => {
+      const x = margin + index * 92;
+      doc.roundedRect(x, summaryTop, 80, 30, 6).fill("#FFFFFF").strokeColor(COLORS.line).stroke();
+      doc.font(fonts.bold).fontSize(12).fillColor(item.color).text(String(item.value), x + 9, summaryTop + 5);
+      doc.font(fonts.regular).fontSize(8).fillColor(COLORS.muted).text(safeText(item.label, fonts), x + 9, summaryTop + 18);
     });
 
-    // ─── Table Rows ───────────────────────────────────────────
-    let yPos = tableTop + 24;
+    const tableTop = summaryTop + 48;
+    const colWidths = [28, 86, 122, 118, 112, 34, 62, 96, 96, 62];
+    const cols = ["#", "รหัสนักศึกษา", "ชื่อ - นามสกุล", "คณะ", "สาขา", "ปี", "ห้อง", "ลงทะเบียน", "ดำเนินการ", "สถานะ"];
+    const aligns: ("left" | "center")[] = ["center", "center", "left", "left", "left", "center", "center", "center", "center", "center"];
+
+    const drawTableHeader = (y: number) => {
+      let x = margin;
+      doc.rect(margin, y, contentWidth, 24).fill(COLORS.ink);
+      doc.font(fonts.bold).fontSize(8).fillColor("#FFFFFF");
+      cols.forEach((col, i) => {
+        doc.text(safeText(col, fonts), x + 4, y + 7, { width: colWidths[i] - 8, align: aligns[i] });
+        x += colWidths[i];
+      });
+    };
+
+    drawTableHeader(tableTop);
+    let y = tableTop + 24;
+
+    if (students.length === 0) {
+      doc.roundedRect(margin, y + 18, contentWidth, 52, 6).fill(COLORS.soft).strokeColor(COLORS.line).stroke();
+      doc
+        .font(fonts.bold)
+        .fontSize(12)
+        .fillColor(COLORS.muted)
+        .text(safeText("ไม่พบข้อมูลตามตัวกรองที่เลือก", fonts), margin, y + 37, { width: contentWidth, align: "center" });
+    }
 
     students.forEach((student, index) => {
-      if (yPos > doc.page.height - 80) {
+      if (y > doc.page.height - 76) {
         doc.addPage();
-        yPos = 50;
-
-        // Draw header on new page
-        xPos = margin;
-        doc.rect(margin, yPos, contentWidth, 24).fill("#4C1D95");
-        doc.font(fonts.bold).fontSize(9).fillColor("#FFFFFF");
-        cols.forEach((col, i) => {
-          doc.text(safeText(col, fonts), xPos + 4, yPos + 7, {
-            width: colWidths[i] - 8,
-            align: colAligns[i],
-          });
-          xPos += colWidths[i];
-        });
-        yPos += 24;
+        y = 42;
+        drawTableHeader(y);
+        y += 24;
       }
 
+      const status = STATUS_META[student.status];
       const rowHeight = 24;
-      const bgColor = index % 2 === 0 ? "#F5F3FF" : "#FFFFFF";
-      doc.rect(margin, yPos, contentWidth, rowHeight).fill(bgColor);
+      doc.rect(margin, y, contentWidth, rowHeight).fill(index % 2 === 0 ? "#FFFFFF" : COLORS.soft);
+      doc.rect(margin, y, 3, rowHeight).fill(status.color);
 
-      const statusColor =
-        student.status === "approved" ? "#10B981" :
-        student.status === "rejected" ? "#EF4444" : "#F59E0B";
-      
-      doc.rect(margin, yPos, 4, rowHeight).fill(statusColor);
-
-      const limitText = (str: string, len: number) => {
-        if (!str) return "-";
-        return str.length > len ? str.substring(0, len - 2) + "..." : str;
-      };
-
-      const rowData = [
-        (index + 1).toString(),
+      const row = [
+        String(index + 1),
         student.student_id,
-        `${student.title}${student.first_name} ${student.last_name}`,
-        limitText(student.faculty, 16),
-        limitText(student.branch, 16),
-        student.year.toString(),
-        student.requested_room && student.requested_room !== "default" ? student.requested_room : "default",
-        formatThaiDateTime(student.registered_at), 
-        formatThaiDateTime(student.approved_at),  
-        student.status === "approved" ? "อนุมัติ" : student.status === "rejected" ? "ปฏิเสธ" : "รออนุมัติ",
+        studentName(student),
+        truncate(student.faculty, 20),
+        truncate(student.branch, 20),
+        String(student.year),
+        roomLabel(student.requested_room),
+        formatThaiDateTime(student.registered_at),
+        formatThaiDateTime(student.approved_at),
+        status.label,
       ];
 
-      xPos = margin;
-      doc.font(fonts.regular).fontSize(7.5).fillColor("#1F2937");
-      
-      rowData.forEach((val, i) => {
-        const isStatusCol = i === 9;
-        const color = isStatusCol ? statusColor : "#1F2937";
-        doc.font(isStatusCol ? fonts.bold : fonts.regular).fillColor(color);
-
-        doc.text(safeText(val, fonts), xPos + 4, yPos + 8, {
-          width: colWidths[i] - 8,
-          align: colAligns[i],
-          lineBreak: false,
-        });
-        xPos += colWidths[i];
+      let x = margin;
+      row.forEach((value, i) => {
+        const isStatus = i === row.length - 1;
+        doc
+          .font(isStatus ? fonts.bold : fonts.regular)
+          .fontSize(7.3)
+          .fillColor(isStatus ? status.color : COLORS.ink)
+          .text(safeText(value, fonts), x + 4, y + 8, {
+            width: colWidths[i] - 8,
+            align: aligns[i],
+            lineBreak: false,
+          });
+        x += colWidths[i];
       });
 
-      yPos += rowHeight;
+      doc.moveTo(margin, y + rowHeight).lineTo(margin + contentWidth, y + rowHeight).strokeColor(COLORS.line).lineWidth(0.5).stroke();
+      y += rowHeight;
     });
 
-    // Draw table bottom border
-    doc.rect(margin, yPos, contentWidth, 1).fill("#DB2777");
-
-    // ─── Page Footer ──────────────────────────────────────────
-    const pages = doc.bufferedPageRange();
-    for (let i = 0; i < pages.count; i++) {
-      doc.switchToPage(i);
-      doc.rect(0, doc.page.height - 35, pageWidth, 35).fill("#F9FAFB");
-      doc
-        .font(fonts.regular)
-        .fontSize(8)
-        .fillColor("#6B7280")
-        .text(
-          safeText(`ระบบจัดการและจัดทำประวัติสิทธิ์ผ่านประตู คณะครุศาสตร์ มทร.พระนคร (RMUTP Door Access System) | หน้าที่ ${i + 1} จากทั้งหมด ${pages.count} หน้า`, fonts),
-          margin,
-          doc.page.height - 23,
-          { width: contentWidth, align: "center" }
-        );
-    }
-
+    addFooter(doc, fonts, margin);
     doc.end();
   });
 }
 
-export async function generateSingleStudentPDF(
-  student: StudentRow,
-  exportedBy: string
-): Promise<Buffer> {
+export async function generateSingleStudentPDF(student: StudentRow, exportedBy: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: "A4",
-      margins: { top: 40, bottom: 40, left: 45, right: 45 },
+      margins: { top: 40, bottom: 46, left: 42, right: 42 },
       lang: "th",
-      autoFirstPage: true,
+      bufferPages: true,
     });
 
     const chunks: Buffer[] = [];
-    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("data", chunk => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     const fonts = setupFonts(doc);
-    const pageWidth = doc.page.width;
-    const margin = 45;
-    const contentWidth = pageWidth - margin * 2;
+    const margin = 42;
+    const contentWidth = doc.page.width - margin * 2;
+    const status = STATUS_META[student.status];
 
-    // ─── Header Gradient Banner ──────────────────────────────
-    doc
-      .rect(0, 0, pageWidth, 120)
-      .fill("#7C3AED"); // Purple
-    doc
-      .rect(0, 120, pageWidth, 5)
-      .fill("#DB2777"); // Pink Line
+    header(doc, fonts, "เอกสารประวัติผู้ขอใช้สิทธิ์ผ่านประตู", "Individual Door Access Record", margin);
 
-    // Title inside header
-    doc
-      .font(fonts.bold)
-      .fontSize(16)
-      .fillColor("#FFFFFF")
-      .text("RAJAMANGALA UNIVERSITY OF TECHNOLOGY PHRA NAKHON", margin, 20, {
-        width: contentWidth,
-        align: "center",
-      });
+    const cardTop = 130;
+    doc.roundedRect(margin, cardTop, contentWidth, 88, 8).fill("#FFFFFF").strokeColor(COLORS.line).stroke();
+    doc.circle(margin + 38, cardTop + 44, 22).fill(COLORS.purpleSoft);
+    doc.font(fonts.bold).fontSize(16).fillColor(COLORS.purple).text("ID", margin + 28, cardTop + 34);
+    doc.font(fonts.bold).fontSize(17).fillColor(COLORS.ink).text(safeText(studentName(student), fonts), margin + 74, cardTop + 24, { width: contentWidth - 210 });
+    doc.font(fonts.regular).fontSize(10).fillColor(COLORS.muted).text(safeText(student.student_id, fonts), margin + 74, cardTop + 50);
+    doc.roundedRect(margin + contentWidth - 130, cardTop + 30, 104, 28, 6).fill(status.bg).strokeColor(status.color).stroke();
+    doc.font(fonts.bold).fontSize(10).fillColor(status.color).text(safeText(status.label, fonts), margin + contentWidth - 130, cardTop + 39, { width: 104, align: "center" });
 
-    doc
-      .font(fonts.regular)
-      .fontSize(11)
-      .fillColor("#F5F3FF")
-      .text(safeText("มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร — คณะครุศาสตร์", fonts), margin, 42, {
-        width: contentWidth,
-        align: "center",
-      });
-
-    doc
-      .font(fonts.bold)
-      .fontSize(15)
-      .fillColor("#FFFFFF")
-      .text(safeText("เอกสารประวัติข้อมูลผู้ขอเข้าใช้ห้องเรียน / ห้องปฏิบัติการ", fonts), margin, 65, {
-        width: contentWidth,
-        align: "center",
-      });
-
-    // ─── Card Content ──────────────────────────────────────────
-    const cardTop = 150;
-
-    const statusColor =
-      student.status === "approved" ? "#10B981" :
-      student.status === "rejected" ? "#EF4444" : "#F59E0B";
-
-    const statusBg =
-      student.status === "approved" ? "#ECFDF5" :
-      student.status === "rejected" ? "#FEF2F2" : "#FFFBEB";
-
-    const statusText = STATUS_LABELS[student.status] || student.status;
-
-    // Background Card Box
-    doc
-      .roundedRect(margin, cardTop, contentWidth, 310, 12)
-      .strokeColor("#E5E7EB")
-      .lineWidth(1)
-      .stroke();
-
-    // Fill Header Area of Card
-    doc
-      .roundedRect(margin + 1, cardTop + 1, contentWidth - 2, 45, 10)
-      .fill("#F9FAFB");
-
-    doc
-      .rect(margin + 1, cardTop + 35, contentWidth - 2, 12)
-      .fill("#F9FAFB");
-
-    doc
-      .font(fonts.bold)
-      .fontSize(12)
-      .fillColor("#4C1D95")
-      .text(safeText("รายละเอียดส่วนบุคคลและสถานะการลงทะเบียน", fonts), margin + 20, cardTop + 16);
-
-    // Status badge rendering
-    doc
-      .roundedRect(margin + contentWidth - 170, cardTop + 12, 150, 22, 4)
-      .fill(statusBg);
-    doc
-      .font(fonts.bold)
-      .fontSize(8)
-      .fillColor(statusColor)
-      .text(safeText(statusText, fonts), margin + contentWidth - 170, cardTop + 19, { width: 150, align: "center" });
-
-    // Grid details
-    const labelX = margin + 20;
-    const valX = labelX + 110;
-    let detailY = cardTop + 65;
-    const lineHeight = 20;
-
-    const renderRow = (label: string, value: string, highlightColor?: string) => {
-      doc.font(fonts.bold).fontSize(9).fillColor("#4B5563").text(safeText(label, fonts), labelX, detailY);
-      doc.font(fonts.regular).fontSize(9.5).fillColor(highlightColor || "#1F2937").text(safeText(value, fonts), valX, detailY);
-      detailY += lineHeight;
-    };
-
-    renderRow("รหัสประจำตัว:", student.student_id, "#7C3AED");
-    renderRow("ชื่อ - นามสกุล:", `${student.title}${student.first_name} ${student.last_name}`);
-    renderRow("ระดับชั้นปีที่:", `ชั้นปีที่ ${student.year}`);
-    renderRow("ห้องเรียนที่ขอสิทธิ์:", student.requested_room && student.requested_room !== "default" ? `ห้องปฏิบัติการ ${student.requested_room}` : "ห้องปฏิบัติการทั่วไป (default)", "#DB2777");
-    renderRow("คณะวิชาที่สังกัด:", student.faculty);
-    renderRow("สาขาวิชา / ภาควิชา:", student.branch);
-    renderRow("วันที่ยื่นลงทะเบียน:", formatThaiDateTime(student.registered_at));
-    
-    renderRow("สถานะคำขอ:", student.status === "approved" ? "ได้รับอนุมัติ (อนุมัติสิทธิ์เข้าห้อง)" : student.status === "rejected" ? "ถูกปฏิเสธสิทธิ์" : "อยู่ระหว่างรอพิจารณาอนุมัติ", statusColor);
-
-    if (student.status === "approved") {
-      renderRow("ผู้อนุมัติสิทธิ์:", student.approver_name || `Admin ID: ${student.approved_by || "ระบบ"}`);
-      renderRow("วันที่อนุมัติ:", formatThaiDateTime(student.approved_at));
-      renderRow("สิทธิ์การเปิดประตู:", `ได้รับสิทธิ์เปิดประตูห้องปฏิบัติการ ${student.requested_room || "default"} สำเร็จ`);
-    } else if (student.status === "rejected") {
-      renderRow("ผู้ดำเนินการปฏิเสธ:", student.approver_name || `Admin ID: ${student.approved_by || "ระบบ"}`);
-      renderRow("วันที่ดำเนินการ:", formatThaiDateTime(student.approved_at));
-      renderRow("สาเหตุการปฏิเสธ:", student.rejection_reason || "ไม่ได้ระบุเหตุผล", "#EF4444");
-    }
-
-    renderRow("เครื่องที่สมัคร (IP):", student.ip_address || "ไม่ได้บันทึกไว้");
-
-    // ─── Administrative Section ────────────────────────────────
-    const adminY = 480;
-    doc
-      .roundedRect(margin, adminY, contentWidth, 120, 8)
-      .strokeColor("#F3F4F6")
-      .fill("#F9FAFB");
-
-    doc
-      .font(fonts.bold)
-      .fontSize(9.5)
-      .fillColor("#DB2777")
-      .text(safeText("ข้อมูลและแนวปฏิบัติสิทธิ์ความปลอดภัย", fonts), margin + 15, adminY + 15);
-
-    const guidelines = [
-      "1. ผู้ใช้ต้องใช้ข้อมูลจริงในการขอรับสิทธิ์เข้าห้องปฏิบัติการ คณะครุศาสตร์",
-      "2. เมื่อได้รับอนุมัติ สิทธิ์จะผูกกับรหัสนี้ และสามารถเรียกเปิดประตูด้วยอุปกรณ์ตามสิทธิ์",
-      "3. ห้ามแบ่งปันบัญชีสิทธิ์หรือเปิดประตูให้บุคคลอื่นที่ไม่มีสิทธิ์เข้าใช้ตามลำพัง",
-      "4. ข้อมูลการลงทะเบียนนี้ถูกบันทึกในฐานข้อมูล PostgreSQL (Supabase) และจะเข้ารหัสเพื่อความปลอดภัยระดับสูงสุด"
+    const detailsTop = cardTop + 112;
+    const rows: Array<[string, string]> = [
+      ["รหัสนักศึกษา", student.student_id],
+      ["ชั้นปี", `ปี ${student.year}`],
+      ["คณะ", student.faculty],
+      ["สาขา", student.branch],
+      ["ห้องที่ขอใช้สิทธิ์", roomLabel(student.requested_room)],
+      ["วันที่ลงทะเบียน", formatThaiDateTime(student.registered_at)],
+      ["วันที่ดำเนินการ", formatThaiDateTime(student.approved_at)],
+      ["ผู้ดำเนินการ", student.approver_name || (student.approved_by ? `Admin ID: ${student.approved_by}` : "-")],
+      ["IP ผู้สมัคร", student.ip_address || "-"],
     ];
 
-    let guideY = adminY + 32;
-    doc.font(fonts.regular).fontSize(7.5).fillColor("#4B5563");
-    guidelines.forEach(line => {
-      doc.text(safeText(line, fonts), margin + 15, guideY);
-      guideY += 13;
-    });
-
-    // ─── Signatures ─────────────────────────────────────────────
-    const sigY = 630;
-    
-    // Line for Approver Signature
-    doc
-      .moveTo(margin + 40, sigY + 50)
-      .lineTo(margin + 180, sigY + 50)
-      .strokeColor("#D1D5DB")
-      .stroke();
-
-    doc
-      .font(fonts.regular)
-      .fontSize(8.5)
-      .fillColor("#4B5563")
-      .text(safeText("ลงชื่อ ...........................................................", fonts), margin + 40, sigY + 45);
-    
-    doc
-      .font(fonts.bold)
-      .fontSize(8)
-      .fillColor("#374151")
-      .text(safeText("เจ้าหน้าที่ผู้มีสิทธิ์อนุมัติห้อง", fonts), margin + 40, sigY + 58, { width: 140, align: "center" });
-
-    if (student.status === "approved" && student.approver_name) {
-      doc
-        .font(fonts.regular)
-        .fontSize(8)
-        .fillColor("#10B981")
-        .text(safeText(`( ${student.approver_name} )`, fonts), margin + 40, sigY + 70, { width: 140, align: "center" });
-    } else {
-      doc
-        .font(fonts.regular)
-        .fontSize(7.5)
-        .fillColor("#9CA3AF")
-        .text(safeText("( ........................................................... )", fonts), margin + 40, sigY + 70, { width: 140, align: "center" });
+    if (student.status === "rejected") {
+      rows.push(["เหตุผลการปฏิเสธ", student.rejection_reason || "-"]);
     }
 
-    // Line for Student Signature
-    doc
-      .moveTo(margin + contentWidth - 180, sigY + 50)
-      .lineTo(margin + contentWidth - 40, sigY + 50)
-      .strokeColor("#D1D5DB")
-      .stroke();
+    doc.font(fonts.bold).fontSize(13).fillColor(COLORS.ink).text(safeText("รายละเอียดคำขอ", fonts), margin, detailsTop);
+    let y = detailsTop + 24;
+    rows.forEach(([label, value], index) => {
+      const rowHeight = label === "เหตุผลการปฏิเสธ" ? 44 : 30;
+      doc.rect(margin, y, contentWidth, rowHeight).fill(index % 2 === 0 ? COLORS.soft : "#FFFFFF");
+      doc.font(fonts.bold).fontSize(9).fillColor(COLORS.muted).text(safeText(label, fonts), margin + 12, y + 9, { width: 130 });
+      doc.font(fonts.regular).fontSize(9.5).fillColor(COLORS.ink).text(safeText(value, fonts), margin + 152, y + 9, { width: contentWidth - 170 });
+      doc.moveTo(margin, y + rowHeight).lineTo(margin + contentWidth, y + rowHeight).strokeColor(COLORS.line).lineWidth(0.5).stroke();
+      y += rowHeight;
+    });
 
+    const noteTop = y + 24;
+    doc.roundedRect(margin, noteTop, contentWidth, 78, 8).fill(COLORS.purpleSoft).strokeColor("#DDD6FE").stroke();
+    doc.font(fonts.bold).fontSize(11).fillColor(COLORS.purple).text(safeText("หมายเหตุการใช้งาน", fonts), margin + 16, noteTop + 14);
     doc
       .font(fonts.regular)
-      .fontSize(8.5)
-      .fillColor("#4B5563")
-      .text(safeText("ลงชื่อ ...........................................................", fonts), margin + contentWidth - 180, sigY + 45);
-
-    doc
-      .font(fonts.bold)
-      .fontSize(8)
-      .fillColor("#374151")
-      .text(safeText("นักศึกษาผู้ขอสิทธิ์เข้าใช้ห้อง", fonts), margin + contentWidth - 180, sigY + 58, { width: 140, align: "center" });
-    
-    doc
-      .font(fonts.regular)
-      .fontSize(8)
-      .fillColor("#1F2937")
-      .text(safeText(`( ${student.title}${student.first_name} ${student.last_name} )`, fonts), margin + contentWidth - 180, sigY + 70, { width: 140, align: "center" });
-
-    // Stamp circle
-    doc
-      .circle(margin + contentWidth / 2, sigY + 40, 30)
-      .strokeColor("rgba(219, 39, 119, 0.15)")
-      .lineWidth(2)
-      .stroke();
-    
-    doc
-      .font(fonts.bold)
-      .fontSize(6)
-      .fillColor("#DB2777")
-      .text(safeText("ครุศาสตร์ มทร.พ", fonts), margin + contentWidth / 2 - 20, sigY + 32, { width: 40, align: "center" })
-      .text("OFFICIAL STAMP", margin + contentWidth / 2 - 25, sigY + 42, { width: 50, align: "center" });
-
-    // ─── Footer ───────────────────────────────────────────────
-    doc
-      .rect(0, doc.page.height - 35, pageWidth, 35)
-      .fill("#F3F4F6");
-
-    doc
-      .font(fonts.regular)
-      .fontSize(8)
-      .fillColor("#6B7280")
+      .fontSize(9)
+      .fillColor(COLORS.ink)
       .text(
-        safeText(`ประวัติข้อมูลจัดทำขึ้นอัตโนมัติโดยระบบจัดการ RMUTP Door Access System | เอกสารฉบับทางการ | ออกรายงานโดย: ${exportedBy}`, fonts),
-        margin,
-        doc.page.height - 23,
-        { width: contentWidth, align: "center" }
+        safeText("เอกสารนี้สร้างจากระบบ RMUTP Door Access System เพื่อใช้ตรวจสอบประวัติการขอสิทธิ์เข้าห้องและการดำเนินการของผู้ดูแลระบบ", fonts),
+        margin + 16,
+        noteTop + 34,
+        { width: contentWidth - 32, lineGap: 3 }
       );
 
+    const signTop = noteTop + 118;
+    const signWidth = 180;
+    [
+      { x: margin + 34, label: "ผู้อนุมัติ / เจ้าหน้าที่", name: student.status === "approved" ? student.approver_name || "" : "" },
+      { x: margin + contentWidth - signWidth - 34, label: "ผู้ขอใช้สิทธิ์", name: studentName(student) },
+    ].forEach(item => {
+      doc.moveTo(item.x, signTop + 38).lineTo(item.x + signWidth, signTop + 38).strokeColor(COLORS.line).stroke();
+      doc.font(fonts.bold).fontSize(8.5).fillColor(COLORS.ink).text(safeText(item.label, fonts), item.x, signTop + 46, { width: signWidth, align: "center" });
+      doc.font(fonts.regular).fontSize(8).fillColor(COLORS.muted).text(safeText(item.name || "(................................)", fonts), item.x, signTop + 60, { width: signWidth, align: "center" });
+    });
+
+    doc.font(fonts.regular).fontSize(8).fillColor(COLORS.muted).text(safeText(`ออกเอกสารโดย: ${exportedBy}`, fonts), margin, doc.page.height - 68, { width: contentWidth, align: "right" });
+
+    addFooter(doc, fonts, margin);
     doc.end();
   });
 }

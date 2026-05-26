@@ -1084,7 +1084,7 @@ void loop() {
     });
   };
 
-  const saveSettings = async (e: React.FormEvent) => {
+  const saveSettings = async (e: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
     setSettingsLoading(true);
 
@@ -1581,10 +1581,18 @@ void loop() {
   // React Client-Side Filters for the Merged Tab
   const filteredStudents = allStudents.filter(s => {
     const regDate = s.registered_at.split("T")[0]; // YYYY-MM-DD
+    if (filterStatus !== "all" && s.status !== filterStatus) return false;
     if (startDate && regDate < startDate) return false;
     if (endDate && regDate > endDate) return false;
     return true;
   });
+
+  const exportSummary = {
+    total: filteredStudents.length,
+    approved: filteredStudents.filter(s => s.status === "approved").length,
+    pending: filteredStudents.filter(s => s.status === "pending").length,
+    rejected: filteredStudents.filter(s => s.status === "rejected").length,
+  };
 
   const filteredLogs = logs.filter(log => {
     if (logFilter !== "all" && log.action !== logFilter) return false;
@@ -1654,6 +1662,70 @@ void loop() {
         @media (min-width: 768px) {
           .desktop-hide-trigger {
             display: none !important;
+          }
+        }
+        .dashboard-section-card {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          box-shadow: var(--shadow-sm);
+        }
+        .settings-map {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+          gap: 10px;
+        }
+        .settings-map-item {
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: #fff;
+          padding: 12px 14px;
+          display: flex;
+          gap: 10px;
+          align-items: flex-start;
+          min-height: 86px;
+        }
+        .settings-map-index {
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: var(--rmutp-purple-pale);
+          color: var(--rmutp-purple-dark);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 800;
+          flex: 0 0 auto;
+        }
+        .export-hub {
+          display: grid;
+          grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr);
+          gap: 18px;
+          padding: 22px;
+          margin-bottom: 24px;
+        }
+        .export-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .export-stat {
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: var(--bg-primary);
+          padding: 12px;
+        }
+        .field-label {
+          display: block;
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--text-primary);
+          margin-bottom: 6px;
+        }
+        @media (max-width: 900px) {
+          .export-hub {
+            grid-template-columns: 1fr;
           }
         }
       ` }} />
@@ -2777,8 +2849,78 @@ void loop() {
             {tab === "all" && isOwner && (
               <div className="animate-fade-in">
 
+                {/* Export PDF Hub */}
+                <div className="dashboard-section-card export-hub">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "var(--rmutp-purple-pale)", color: "var(--rmutp-purple-dark)", fontSize: 11.5, fontWeight: 800, marginBottom: 10 }}>
+                        <CalendarIcon /> PDF Export
+                      </div>
+                      <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6 }}>ส่งออกรายงานตามช่วงเวลา</h3>
+                      <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+                        เลือกช่วงวันที่และสถานะก่อนส่งออก ระบบจะกรองทั้งตารางด้านล่างและไฟล์ PDF ให้ตรงกัน ลดความสับสนก่อนดาวน์โหลด
+                      </p>
+                    </div>
+
+                    <div className="export-summary-grid">
+                      {[
+                        { label: "รวมในรายงาน", value: exportSummary.total, color: "var(--rmutp-purple-dark)" },
+                        { label: "อนุมัติแล้ว", value: exportSummary.approved, color: "#059669" },
+                        { label: "รออนุมัติ", value: exportSummary.pending, color: "#D97706" },
+                        { label: "ปฏิเสธ", value: exportSummary.rejected, color: "#DC2626" },
+                      ].map(item => (
+                        <div className="export-stat" key={item.label}>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: item.color, lineHeight: 1 }}>{item.value}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 5 }}>{item.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, alignItems: "end" }}>
+                    <div>
+                      <label className="field-label">วันที่เริ่มต้น</label>
+                      <input type="date" className="rmutp-input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">วันที่สิ้นสุด</label>
+                      <input type="date" className="rmutp-input" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label htmlFor="filter_status" className="field-label">สถานะในรายงาน</label>
+                      <select id="filter_status" className="rmutp-input" value={filterStatus} onChange={e => setFilter(e.target.value)}>
+                        <option value="all">ทุกสถานะ</option>
+                        <option value="pending">รออนุมัติ</option>
+                        <option value="approved">อนุมัติแล้ว</option>
+                        <option value="rejected">ปฏิเสธ</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={() => handleExportPDFWithDateRange(filterStatus, startDate, endDate)}
+                      disabled={pdfLoading || exportSummary.total === 0}
+                      className="btn-primary"
+                      style={{ minHeight: 46, width: "100%", borderRadius: 8, fontSize: 13, gap: 8 }}
+                    >
+                      {pdfLoading ? (
+                        <>
+                          <span className="animate-spin" style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} />
+                          <span>กำลังสร้าง PDF...</span>
+                        </>
+                      ) : (
+                        <>
+                          <SaveIcon />
+                          <span>ดาวน์โหลด PDF</span>
+                        </>
+                      )}
+                    </button>
+                    <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--text-secondary)", background: "var(--bg-primary)", border: "1px solid var(--border)", padding: "10px 12px", borderRadius: 8 }}>
+                      ไฟล์จะใช้รูปแบบรายงานใหม่ที่มีหัวเอกสารชัดเจน ตารางอ่านง่าย และแยกสถานะด้วยสีในแต่ละแถว
+                    </div>
+                  </div>
+                </div>
+
                 {/* ── Unified Date-Range PDF Export Hub Card ── */}
-                <div className="premium-card" style={{ padding: 26, marginBottom: 24 }}>
+                <div className="premium-card" style={{ display: "none", padding: 26, marginBottom: 24 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
                     <CalendarIcon /> ตั้งค่าช่วงเวลาเพื่อประมวลผล & บันทึกรายงาน PDF
                   </h3>
@@ -3454,6 +3596,38 @@ void loop() {
             {/* ── System & Discord Settings Tab (Owner Only) ────────────── */}
             {tab === "settings" && isOwner && (
               <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
+                <div className="dashboard-section-card" style={{ padding: 22 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>System Settings</div>
+                      <h2 style={{ fontSize: 22, lineHeight: 1.2, fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>ตั้งค่าระบบแบบแยกหมวด</h2>
+                      <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, margin: "8px 0 0" }}>
+                        แบ่งการตั้งค่าเป็นงานที่ชัดเจน: สิทธิ์อัตโนมัติ, การแจ้งเตือน, ห้องเรียน/บอร์ด ESP32 และการบันทึกทั้งหมดในจุดเดียว
+                      </p>
+                    </div>
+                    <button onClick={saveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
+                      {settingsLoading ? "กำลังบันทึก..." : "บันทึกทั้งหมด"}
+                    </button>
+                  </div>
+
+                  <div className="settings-map">
+                    {[
+                      { index: "01", title: "สิทธิ์อัตโนมัติ", detail: "เวลาเปิดบริการ วันทำการ Auto approve และ Auto-fill" },
+                      { index: "02", title: "Discord ส่วนกลาง", detail: "ค่าเริ่มต้นสำหรับ register, approve และ logs" },
+                      { index: "03", title: "ห้องและ ESP32", detail: "รหัสห้อง IP บอร์ด และปุ่มทดสอบการเชื่อมต่อ" },
+                      { index: "04", title: "บันทึกถาวร", detail: "ตรวจทานแล้วกดบันทึกเพื่อใช้ค่ากับระบบจริง" },
+                    ].map(item => (
+                      <div className="settings-map-item" key={item.index}>
+                        <span className="settings-map-index">{item.index}</span>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>{item.title}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-secondary)", lineHeight: 1.45 }}>{item.detail}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24, alignItems: "start" }}>
 
                   {/* Card 1: Automated Approvals & Auto-fill */}

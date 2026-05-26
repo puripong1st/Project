@@ -4,88 +4,87 @@
   "editor": "wokwi",
   "parts": [
     {
-      "id": "esp",
       "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
       "top": 160,
       "left": 0,
       "attrs": {}
     },
     {
-      "id": "lcd",
       "type": "wokwi-ili9341",
-      "top": -180,
-      "left": -200,
-      "attrs": {
-        "rotation": "90"
-      }
-    },
-    {
-      "id": "relay",
-      "type": "wokwi-relay-module",
-      "top": 160,
-      "left": 310,
+      "id": "lcd",
+      "top": -187.1,
+      "left": 183.6,
+      "rotate": 90,
       "attrs": {}
     },
     {
-      "id": "led-door",
+      "type": "wokwi-relay-module",
+      "id": "relay",
+      "top": 153.8,
+      "left": 412.8,
+      "attrs": {}
+    },
+    {
       "type": "wokwi-led",
-      "top": 60,
-      "left": 360,
+      "id": "led-door",
+      "top": 63.6,
+      "left": 503,
       "attrs": {
         "color": "green",
         "label": "DOOR LOCK (Solenoid)"
       }
     },
     {
-      "id": "led-wifi",
       "type": "wokwi-led",
-      "top": 260,
-      "left": 360,
+      "id": "led-wifi",
+      "top": 303.6,
+      "left": 464.6,
       "attrs": {
         "color": "blue",
         "label": "WiFi Status"
       }
     },
     {
-      "id": "led-reject",
       "type": "wokwi-led",
-      "top": 320,
-      "left": 360,
+      "id": "led-reject",
+      "top": 236.4,
+      "left": 522.2,
       "attrs": {
         "color": "red",
         "label": "REJECT"
       }
     },
     {
-      "id": "buzzer",
       "type": "wokwi-buzzer",
+      "id": "buzzer",
       "top": 380,
       "left": 0,
       "attrs": {}
     },
     {
+      "type": "wokwi-resistor",
       "id": "r-door",
-      "type": "wokwi-resistor",
-      "top": 100,
-      "left": 320,
+      "top": 128.75,
+      "left": 556.8,
       "attrs": {
         "value": "220"
       }
     },
     {
+      "type": "wokwi-resistor",
       "id": "r-wifi",
-      "type": "wokwi-resistor",
-      "top": 260,
-      "left": 290,
+      "top": 397.55,
+      "left": 316.8,
       "attrs": {
         "value": "220"
       }
     },
     {
-      "id": "r-reject",
       "type": "wokwi-resistor",
-      "top": 320,
-      "left": 290,
+      "id": "r-reject",
+      "top": 263.15,
+      "left": 403.2,
       "attrs": {
         "value": "220"
       }
