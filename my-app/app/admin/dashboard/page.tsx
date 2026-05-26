@@ -1218,7 +1218,7 @@ void loop() {
   const [systemStatus, setSystemStatus] = useState<{
     mysql: { online: boolean; host: string; database: string; error: string };
     esp32: { online: boolean; doorStatus: string; ip: string; mock: boolean; room?: string };
-    esp32Devices?: { room: string; online: boolean; ip: string; doorStatus: string; mock: boolean; mode: string }[];
+    esp32Devices?: { room: string; online: boolean; ip: string; doorStatus: string; mock: boolean; mode: string; activeToken?: string }[];
     discord: { configured: boolean };
     logSummary: { total: number; active: number; expired: number; retentionDays: number };
   } | null>(null);
