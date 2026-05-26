@@ -12,9 +12,36 @@ async function ensureInit() {
   }
 }
 
+// In-memory store for rate limiting (Vulnerability 4 fix)
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
+
 export async function POST(req: NextRequest) {
   try {
     await ensureInit();
+
+    // Get IP address from headers
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+    const now = Date.now();
+    const limitRecord = loginAttempts.get(ip);
+
+    if (limitRecord) {
+      if (now < limitRecord.resetTime) {
+        if (limitRecord.count >= 5) {
+          return NextResponse.json(
+            { error: "พยายามล็อกอินมากเกินไป กรุณาลองใหม่ในอีก 1 นาที" },
+            { status: 429 }
+          );
+        }
+        limitRecord.count += 1;
+      } else {
+        // Reset window
+        loginAttempts.set(ip, { count: 1, resetTime: now + 60 * 1000 });
+      }
+    } else {
+      // First attempt
+      loginAttempts.set(ip, { count: 1, resetTime: now + 60 * 1000 });
+    }
+
     const { username, password } = await req.json();
 
     if (!username || !password) {

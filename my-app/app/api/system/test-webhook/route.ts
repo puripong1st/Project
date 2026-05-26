@@ -10,6 +10,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Vulnerability 5 fix: strictly require "owner" role to test webhooks (prevent SSRF/inconsistent privs)
+    if (admin.role !== "owner") {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { url, type, room } = body;
 

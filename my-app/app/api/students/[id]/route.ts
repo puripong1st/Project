@@ -12,7 +12,7 @@ async function ensureInit() {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -52,6 +52,17 @@ export async function GET(
       return NextResponse.json({ student });
     } else {
       // 2. If student is polling publicly to see their status:
+      // Bypassing/checking token parameter to prevent IDOR (Insecure Direct Object Reference)
+      const { searchParams } = new URL(req.url);
+      const clientToken = searchParams.get("token");
+
+      if (!clientToken || clientToken !== student.bypass_token) {
+        return NextResponse.json(
+          { error: "ไม่ได้รับอนุญาตให้ดึงข้อมูลส่วนตัวของนักศึกษารหัสนี้" },
+          { status: 401 }
+        );
+      }
+
       // Strip critical secrets (bypass_token, ip_address) to prevent hijacking
       const safePublicStudent = {
         id: student.id,

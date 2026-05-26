@@ -612,7 +612,8 @@ function RegistrationPageInner() {
 
     const checkStatus = async () => {
       try {
-        const res = await fetch(`/api/students/${success.id}`);
+        const token = success.bypass_token || localStorage.getItem("rmutp_temp_bypass_token") || "";
+        const res = await fetch(`/api/students/${success.id}?token=${encodeURIComponent(token)}`);
         if (res.ok) {
           const data = await res.json();
           if (data.student) {

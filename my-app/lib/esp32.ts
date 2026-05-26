@@ -19,6 +19,15 @@ const BASE_URL   = WOKWI_MODE ? WOKWI_URL : `http://${ESP32_IP}:${ESP32_PORT}`;
 // Pre-shared API key for authenticating Next.js → ESP32 calls (Vulnerability 1 fix)
 const ESP32_API_KEY = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";
 
+if (
+  ESP32_API_KEY === "rmutp_secure_door_unlock_token_2026" &&
+  process.env.NODE_ENV === "production"
+) {
+  throw new Error(
+    "CRITICAL SECURITY ERROR: ESP32_API_KEY is configured with the default insecure key in production environment!"
+  );
+}
+
 export type ESP32ConnectionMode = "mock" | "wokwi" | "physical";
 
 /** Returns which connection mode is active (useful for UI status panels) */
