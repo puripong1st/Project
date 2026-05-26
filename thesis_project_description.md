@@ -42,13 +42,13 @@ graph TD
     end
 
     %% การเชื่อมต่อและความสัมพันธ์
-    UI_Student -->|HTTPS / REST API| Next_Server
-    UI_Admin -->|HTTPS / REST API| Next_Server
-    Next_Server -->|PgBouncer Pooler| Supa_Db
-    ESP32 -->|HTTPS Client Polling (Root CA Secured)| Next_Server
-    ESP32 -->|GPIO Trigger| Relay
-    Relay -->|สลับสถานะไฟฟ้า 12V| Magnetic_Lock
-    Next_Server -->|Webhooks Notifications| Discord["🤖 Discord Security Alerts Bot"]
+    UI_Student -->|"HTTPS / REST API"| Next_Server
+    UI_Admin -->|"HTTPS / REST API"| Next_Server
+    Next_Server -->|"PgBouncer Pooler"| Supa_Db
+    ESP32 -->|"HTTPS Client Polling (Root CA Secured)"| Next_Server
+    ESP32 -->|"GPIO Trigger"| Relay
+    Relay -->|"สลับสถานะไฟฟ้า 12V"| Magnetic_Lock
+    Next_Server -->|"Webhooks Notifications"| Discord["🤖 Discord Security Alerts Bot"]
 ```
 
 ### 2.1 ส่วนควบคุมผู้ใช้งาน (Frontend Technology)
