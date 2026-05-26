@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const activeToken = await getOrCreateActiveQRToken();
+    const activeToken = await getOrCreateActiveQRToken(room);
 
     // ─── IoT Polling Heartbeat ───
     // ทุกครั้งที่บอร์ด ESP32 เข้ามาดึงข้อมูล (Polling) เราจะทำบันทึก Heartbeat ล่าสุดไว้ในระบบ
