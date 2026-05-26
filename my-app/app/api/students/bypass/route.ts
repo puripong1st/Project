@@ -24,12 +24,14 @@ export async function POST(req: NextRequest) {
 
     const pool = getPool();
 
-    // Query student matching exact credentials securely
+    // Query student matching exact credentials securely, computing time difference directly in PostgreSQL to avoid local timezone parsing bugs!
     const { rows } = await pool.query(
-      "SELECT * FROM students WHERE id = $1 AND student_id = $2 AND bypass_token = $3",
+      `SELECT *, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - approved_at)) as diff_seconds 
+       FROM students 
+       WHERE id = $1 AND student_id = $2 AND bypass_token = $3`,
       [id, student_id.trim(), bypass_token.trim()]
     );
-    const students = rows as StudentRow[];
+    const students = rows as (StudentRow & { diff_seconds: number | null })[];
 
     if (students.length === 0) {
       return NextResponse.json({ error: "ข้อมูลตรวจสอบสิทธิ์อุปกรณ์ไม่ถูกต้อง" }, { status: 404 });
@@ -42,19 +44,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ไม่สามารถ Bypass ได้เนื่องจากสิทธิ์ของคุณถูกระงับหรือยังไม่อนุมัติ" }, { status: 403 });
     }
 
-    // The 5-minute bypass window is calculated strictly from the original administrator approval time
-    const approvedAt = student.approved_at ? new Date(student.approved_at).getTime() : 0;
-    const recentTime = approvedAt;
-
-    if (recentTime === 0) {
+    if (student.diff_seconds === null) {
       return NextResponse.json({ error: "ไม่พบประวัติการอนุมัติล่าสุดเพื่อประมวลผล Bypass" }, { status: 400 });
     }
 
-    const now = new Date().getTime();
-    const diffSeconds = (now - recentTime) / 1000;
+    const diffSeconds = Number(student.diff_seconds);
 
     // Check if within 5 minutes limit (300 seconds)
-    if (diffSeconds > 300) {
+    // Absolute value check handles very minor db/server clock differences safely
+    if (Math.abs(diffSeconds) > 300) {
       return NextResponse.json({ 
         expired: true, 
         error: "เกินกำหนดเวลา 5 นาทีแล้ว กรุณากรอกข้อมูลลงทะเบียนเพื่อยื่นสิทธิ์ใหม่" 
@@ -62,9 +60,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate detailed bypass metrics
-    const lastEventTimeStr = new Date(recentTime).toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok" });
-    const minutesAgo = Math.floor(diffSeconds / 60);
-    const secondsAgo = Math.floor(diffSeconds % 60);
+    const approvedAt = student.approved_at ? new Date(student.approved_at) : new Date();
+    const lastEventTimeStr = approvedAt.toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok" });
+    const minutesAgo = Math.floor(Math.abs(diffSeconds) / 60);
+    const secondsAgo = Math.floor(Math.abs(diffSeconds) % 60);
     const reasonText = `⚡ ผ่านเข้าห้องเรียนสำเร็จด้วยสิทธิ์ Bypass อัตโนมัติ (สแกนซ้ำภายใน 5 นาที)\n• มีประวัติเปิดประตูหรือได้รับอนุมัติล่าสุดเมื่อเวลา: ${lastEventTimeStr} น.\n• ระยะเวลาที่ผ่านไป: ${minutesAgo} นาที ${secondsAgo} วินาที (ไม่เกิน 300 วินาที)\n• ระบบอนุญาตให้ปลดล็อกประตูได้ทันทีโดยไม่ต้องลงทะเบียนซ้ำ`;
 
     // Trigger physical door unlock via ESP32 API
