@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       // Log this maintenance action in the audit trail
       await pool.query(
         `INSERT INTO access_logs (action, performed_by, esp32_response, notes) 
-         VALUES ('rejected', $1, 'System Cleanup', $2)`,
+         VALUES ('maintenance_cleanup', $1, 'System Cleanup', $2)`,
         [
           admin.id,
           `บำรุงรักษาระบบ: ล้างข้อมูลประวัติจราจรคอมพิวเตอร์ที่หมดอายุอายุเกิน 90 วันสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       // Insert fresh audit trail record about this massive purge!
       await pool.query(
         `INSERT INTO access_logs (action, performed_by, esp32_response, notes) 
-         VALUES ('rejected', $1, 'System Format', $2)`,
+         VALUES ('maintenance_purge', $1, 'System Format', $2)`,
         [
           admin.id,
           `การล้างข้อมูลครั้งใหญ่: ผู้ดูแลระบบสูงสุดได้ยืนยันรหัสผ่านและล้างข้อมูลประวัติเข้าออกทั้งหมดในระบบสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`

@@ -253,7 +253,23 @@ const ACTION_METADATA: Record<string, { label: string; icon: React.ReactNode; co
   door_opened: { label: "ผ่านประตูสำเร็จ", icon: <UnlockIcon />, color: "#10B981" },
   door_failed: { label: "ผ่านประตูล้มเหลว", icon: <AlertIcon />, color: "#F59E0B" },
   export_pdf: { label: "จัดทำรายงาน PDF", icon: <SaveIcon />, color: "#3B82F6" },
+  maintenance_cleanup: { label: "บำรุงรักษาระบบ", icon: <TerminalIcon />, color: "#7C3AED" },
+  maintenance_purge: { label: "ล้างประวัติระบบ", icon: <TrashIcon />, color: "#D97706" },
 };
+
+function getLogActionMetadata(log: AccessLog) {
+  if (log.action === "rejected" && log.esp32_response === "System Cleanup") {
+    return ACTION_METADATA.maintenance_cleanup;
+  }
+  if (log.action === "rejected" && log.esp32_response === "System Format") {
+    return ACTION_METADATA.maintenance_purge;
+  }
+  return ACTION_METADATA[log.action] || { label: log.action, icon: <TerminalIcon />, color: "var(--text-primary)" };
+}
+
+function isAccessRejectedLog(log: AccessLog): boolean {
+  return log.action === "rejected" && !["System Cleanup", "System Format"].includes(log.esp32_response || "");
+}
 
 function renderLogNotes(notes?: string) {
   if (!notes) return <span style={{ color: "var(--text-muted)" }}>-</span>;
@@ -3405,7 +3421,7 @@ void loop() {
                   <div className="stat-card" style={{ borderLeft: "4px solid #EF4444", padding: "14px 20px" }}>
                     <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700 }}>ปฏิเสธสิทธิ์/เตือนความปลอดภัย</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#DC2626", marginTop: 4 }}>
-                      {filteredLogs.filter(l => l.action === "rejected" || l.action === "door_failed").length} ครั้ง
+                      {filteredLogs.filter(l => isAccessRejectedLog(l) || l.action === "door_failed").length} ครั้ง
                     </div>
                   </div>
                 </div>
@@ -3514,7 +3530,7 @@ void loop() {
                           </tr>
                         ) : (
                           displayedLogs.map((log, i) => {
-                            const act = ACTION_METADATA[log.action] || { label: log.action, icon: <TerminalIcon />, color: "var(--text-primary)" };
+                            const act = getLogActionMetadata(log);
                             return (
                               <tr key={log.id}>
                                 <td style={{ color: "var(--text-muted)", fontSize: 12, textAlign: "center" }}>{(logCurrentPage - 1) * logPageSize + i + 1}</td>
