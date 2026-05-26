@@ -229,8 +229,9 @@ export async function getESP32Status(roomCode?: string): Promise<{
         const now = new Date().getTime();
         const diffSeconds = (now - lastSeen) / 1000;
         
-        // ถ้าบอร์ดพึ่งมีการทำ Polling เข้ามาภายใน 15 วินาทีล่าสุด ถือว่าออนไลน์แน่นอน! (ไฟเขียว)
-        if (diffSeconds <= 15) {
+        // เพิ่มช่วงเวลาเป็น 120 วินาที (2 นาที) เพื่อรองรับปัญหาเวลาเซิร์ฟเวอร์กับดาต้าเบสคลาดเคลื่อนกัน (Clock Drift)
+        // และป้องกันบอร์ดออฟไลน์ปลอมกรณีสัญญาณเครือข่ายจำลองหน่วงตัว
+        if (diffSeconds <= 120) {
           return {
             online: true,
             doorStatus: "closed", // คาดการณ์สถานะล็อกปกติ
