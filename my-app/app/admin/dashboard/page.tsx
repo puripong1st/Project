@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Student {
@@ -311,6 +311,51 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "guide" | "iot">("pending");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [pending, setPending] = useState<Student[]>([]);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [pendingRoomFilter, setPendingRoomFilter] = useState<string>("all");
+  const lastPendingCountRef = useRef(0);
+
+  const playSoftChime = useCallback(() => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const now = ctx.currentTime;
+
+      // Soft Bell main tone
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(880, now); // A5 tone
+      osc1.frequency.exponentialRampToValueAtTime(1320, now + 0.12); // Ramp to E6
+
+      gain1.gain.setValueAtTime(0.12, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+
+      // Warm undertone
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(523.25, now); // C5 chord tone
+
+      gain2.gain.setValueAtTime(0.06, now);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.6);
+      osc2.stop(now + 0.6);
+    } catch (err) {
+      console.error("Web Audio API not supported or deferred:", err);
+    }
+  }, []);
+
   const [allStudents, setAll] = useState<Student[]>([]);
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -1096,6 +1141,7 @@ void loop() {
   };
 
   const [unlockingRoom, setUnlockingRoom] = useState<string | null>(null);
+  const [recentlyUnlockedRooms, setRecentlyUnlockedRooms] = useState<Record<string, boolean>>({});
 
   const handleDirectUnlockRoom = async (roomCode: string) => {
     setUnlockingRoom(roomCode);
@@ -1108,6 +1154,11 @@ void loop() {
       const data = await res.json();
       if (res.ok && data.success) {
         showToast(`🔓 ปลดล็อกประตูห้อง ${roomCode} สำเร็จ!`, "success");
+        // Trigger a 5-second glowing active unlock animation in the client UI
+        setRecentlyUnlockedRooms(prev => ({ ...prev, [roomCode]: true }));
+        setTimeout(() => {
+          setRecentlyUnlockedRooms(prev => ({ ...prev, [roomCode]: false }));
+        }, 5000);
         fetchSystemStatus(); // update online status and locked status
       } else {
         showToast(data.error || `ไม่สามารถเปิดประตูห้อง ${roomCode} ได้`, "error");
@@ -1224,10 +1275,23 @@ void loop() {
 
   // Fetch pending list
   const fetchPending = useCallback(async () => {
-    const r = await fetch("/api/students/pending");
-    const d = await r.json();
-    setPending(d.students || []);
-  }, []);
+    try {
+      const r = await fetch("/api/students/pending");
+      const d = await r.json();
+      const list = d.students || [];
+      setPending(list);
+      
+      // Trigger auditory bell chime if queue size increases
+      if (list.length > lastPendingCountRef.current) {
+        if (audioEnabled) {
+          playSoftChime();
+        }
+      }
+      lastPendingCountRef.current = list.length;
+    } catch (err) {
+      console.error("Failed to fetch pending list", err);
+    }
+  }, [audioEnabled, playSoftChime]);
 
   // Fetch all students directory
   const fetchAll = useCallback(async () => {
@@ -1259,6 +1323,15 @@ void loop() {
     const interval = setInterval(fetchPending, 10000);
     return () => clearInterval(interval);
   }, [fetchPending]);
+
+  // Polling logs to keep daily stats updated
+  useEffect(() => {
+    setTimeout(() => {
+      fetchLogs();
+    }, 0);
+    const interval = setInterval(fetchLogs, 10000);
+    return () => clearInterval(interval);
+  }, [fetchLogs]);
 
   // Polling System Status
   useEffect(() => {
@@ -1534,6 +1607,45 @@ void loop() {
   const totalFilteredLogs = filteredLogs.length;
   const totalLogPages = Math.ceil(totalFilteredLogs / logPageSize) || 1;
   const displayedLogs = filteredLogs.slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize);
+
+  const filteredPending = pending.filter(s => {
+    if (pendingRoomFilter === "all") return true;
+    return s.requested_room === pendingRoomFilter;
+  });
+
+  // Calculate daily statistics on client
+  const getStats = () => {
+    const localBangkok = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+    const y = localBangkok.getFullYear();
+    const m = String(localBangkok.getMonth() + 1).padStart(2, "0");
+    const d = String(localBangkok.getDate()).padStart(2, "0");
+    const todayStrStr = `${y}-${m}-${d}`;
+
+    const doorOpensToday = logs.filter(log => {
+      if (!log.timestamp) return false;
+      // en-CA locale returns YYYY-MM-DD format
+      const logDate = new Date(log.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+      return logDate === todayStrStr && log.action === "door_opened";
+    }).length;
+
+    const bypassToday = logs.filter(log => {
+      if (!log.timestamp) return false;
+      const logDate = new Date(log.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+      return logDate === todayStrStr && log.action === "door_opened" && (log.notes?.includes("Bypass") || log.notes?.includes("สแกนซ้ำ"));
+    }).length;
+
+    const onlineBoards = systemStatus?.esp32Devices?.filter((dev: any) => dev.online).length || 0;
+    const totalBoards = systemStatus?.esp32Devices?.length || 0;
+
+    return {
+      doorOpensToday,
+      bypassToday,
+      onlineBoards,
+      totalBoards
+    };
+  };
+
+  const stats = getStats();
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
@@ -2145,121 +2257,192 @@ void loop() {
           {/* Inner Content Area */}
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
 
-            {/* ── Enterprise System Status Grid ── */}
+            {/* ── Premium Metric Summary Cards Grid ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }} className="animate-fade-in">
+              {/* Card 1: Pending Queue */}
+              <div className="premium-card hover-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(245, 158, 11, 0.1)", border: "1.5px solid rgba(245, 158, 11, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#F59E0B" }}>
+                  <ClockIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700 }}>คิวรอตรวจสอบ</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: pending.length > 0 ? "#F59E0B" : "var(--text-primary)", display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
+                    <span>{pending.length}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>คน</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Online Boards */}
+              <div className="premium-card hover-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(16, 185, 129, 0.1)", border: "1.5px solid rgba(16, 185, 129, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#10B981" }}>
+                  <TVIcon />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700 }}>ห้องออนไลน์ (IoT)</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
+                    <span>{stats.onlineBoards}</span>
+                    <span style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 600 }}>/ {stats.totalBoards} บอร์ด</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Accesses Today */}
+              <div className="premium-card hover-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(59, 130, 246, 0.1)", border: "1.5px solid rgba(59, 130, 246, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#3B82F6" }}>
+                  <UnlockIcon />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700 }}>ปลดล็อกสำเร็จวันนี้</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
+                    <span>{stats.doorOpensToday}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>ครั้ง</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Bypass Today */}
+              <div className="premium-card hover-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(219, 39, 119, 0.1)", border: "1.5px solid rgba(219, 39, 119, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--edu-pink)" }}>
+                  <KeyIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700 }}>ผ่านทางลัด (Bypass) วันนี้</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
+                    <span>{stats.bypassToday}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>ครั้ง</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Sleek System Health Bar ── */}
             {systemStatus && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }} className="animate-fade-in">
-
-                {/* 1. Database card */}
-                <div className="stat-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
-                      </svg>
-                      ฐานข้อมูล PostgreSQL (Supabase)
-                    </span>
-                    <span className={`badge ${systemStatus.mysql.online ? 'badge-approved' : 'badge-rejected'}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <span className={systemStatus.mysql.online ? 'animate-pulse-ring' : ''} style={{ width: 6, height: 6, borderRadius: "50%", background: systemStatus.mysql.online ? "#059669" : "#DC2626", display: "inline-block" }} />
-                      {systemStatus.mysql.online ? "ONLINE" : "OFFLINE"}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>{systemStatus.mysql.database}</h3>
-                    <p style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "monospace", marginTop: 4 }}>Host: {systemStatus.mysql.host}</p>
-                  </div>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", padding: "12px 18px", background: "rgba(124, 58, 237, 0.03)", borderRadius: 14, border: "1px solid var(--border)", marginBottom: 24, alignItems: "center" }} className="animate-fade-in">
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--rmutp-purple)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  🏥 สเตตัสระบบกลาง:
+                </span>
+                
+                {/* Database status */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
+                  <span className="badge badge-approved" style={{ display: "inline-flex", padding: "2px 8px", fontSize: 10, background: systemStatus.mysql.online ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)", color: systemStatus.mysql.online ? "#10B981" : "#EF4444", borderColor: systemStatus.mysql.online ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)" }}>
+                    <span className={systemStatus.mysql.online ? 'animate-pulse-ring' : ''} style={{ width: 6, height: 6, borderRadius: "50%", background: systemStatus.mysql.online ? "#10B981" : "#EF4444", display: "inline-block", marginRight: 4 }} />
+                    ฐานข้อมูล Supabase: {systemStatus.mysql.online ? "ONLINE" : "OFFLINE"}
+                  </span>
                 </div>
 
-                {/* 2. ESP32 lock controller card */}
-                <div className="stat-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-                      </svg>
-                      ฮาร์ดแวร์ ESP32
-                    </span>
-                    <span className={`badge ${systemStatus.esp32.online ? 'badge-approved' : 'badge-rejected'}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <span className={systemStatus.esp32.online ? 'animate-pulse-ring' : ''} style={{ width: 6, height: 6, borderRadius: "50%", background: systemStatus.esp32.online ? "#059669" : "#DC2626", display: "inline-block" }} />
-                      {systemStatus.esp32.online ? "CONNECTED" : "DISCONNECTED"}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>บอร์ดควบคุมห้อง {systemStatus.esp32.room || "ทั่วไป"}</span>
-                      {systemStatus.esp32.mock && (
-                        <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#FFFBEB", color: "#D97706", border: "1px solid rgba(217, 119, 6, 0.2)", fontWeight: 800 }}>MOCK</span>
-                      )}
-                    </h3>
-                    <p style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "monospace", marginTop: 4 }}>
-                      IP: {systemStatus.esp32.ip || "-"} | กลอน: {systemStatus.esp32.doorStatus === "open" ? "🔓 เปิดอยู่" : "🔒 ปิดสนิท"}
-                    </p>
-                  </div>
+                {/* Discord webhook status */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
+                  <span className="badge" style={{ display: "inline-flex", padding: "2px 8px", fontSize: 10, background: systemStatus.discord.configured ? "rgba(59, 130, 246, 0.08)" : "rgba(245, 158, 11, 0.08)", color: systemStatus.discord.configured ? "#3B82F6" : "#F59E0B", borderColor: systemStatus.discord.configured ? "rgba(59, 130, 246, 0.2)" : "rgba(245, 158, 11, 0.2)" }}>
+                    แจ้งเตือน Discord: {systemStatus.discord.configured ? "เชื่อมต่อแล้ว" : "ไม่ได้กำหนดค่า"}
+                  </span>
                 </div>
 
-                {/* 3. Discord alert card */}
-                <div className="stat-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                      </svg>
-                      แจ้งเตือน Discord
-                    </span>
-                    <span className={`badge ${systemStatus.discord.configured ? 'badge-approved' : 'badge-pending'}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: systemStatus.discord.configured ? "#059669" : "#D97706", display: "inline-block" }} />
-                      {systemStatus.discord.configured ? "CONFIGURED" : "PENDING"}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
-                      {systemStatus.discord.configured ? "ระบบแจ้งเตือนหลัก" : "ยังไม่ได้กำหนดค่า"}
-                    </h3>
-                    <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>ความปลอดภัย: ส่งพิกัดภาพ+บันทึกผู้ใช้ทันที</p>
-                  </div>
+                {/* Active user status */}
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 600 }}>
+                  <span>ผู้ล็อกอินปัจจุบัน:</span>
+                  <strong style={{ color: "var(--text-primary)" }}>{user?.full_name}</strong>
+                  <span style={{ fontSize: 9.5, padding: "2px 6px", background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--rmutp-purple)", fontWeight: 800 }}>
+                    {user?.role === "owner" ? "Owner (สูงสุด)" : "Door Operator"}
+                  </span>
                 </div>
-
-                {/* 4. Active admin operator card */}
-                <div className="stat-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                      </svg>
-                      ผู้ควบคุมระบบปัจจุบัน
-                    </span>
-                    <span className="badge badge-approved" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--rmutp-purple-pale)", color: "var(--rmutp-purple)", borderColor: "var(--rmutp-purple-light)" }}>
-                      ACTIVE
-                    </span>
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {user?.full_name || "-"}
-                    </h3>
-                    <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
-                      สิทธิ์: {user?.role === "owner" ? "Owner (สูงสุด)" : "Door Operator (ทั่วไป)"}
-                    </p>
-                  </div>
-                </div>
-
               </div>
             )}
 
             {/* ── Pending Tab ── */}
             {tab === "pending" && (
               <div className="animate-fade-in">
-                {pending.length === 0 ? (
+                {/* Dynamic Classroom Selector Tabs & Sound Control */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 16 }}>
+                  {/* Classroom Selector */}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", background: "rgba(124, 58, 237, 0.04)", padding: 6, borderRadius: 14, border: "1px solid rgba(124, 58, 237, 0.08)" }}>
+                    <button
+                      onClick={() => setPendingRoomFilter("all")}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 10,
+                        border: "none",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        background: pendingRoomFilter === "all" ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                        color: pendingRoomFilter === "all" ? "#ffffff" : "var(--text-secondary)",
+                        boxShadow: pendingRoomFilter === "all" ? "0 4px 12px rgba(124, 58, 237, 0.2)" : "none",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      🚪 ทุกห้องเรียน ({pending.length})
+                    </button>
+                    {roomsList.map(r => {
+                      const count = pending.filter(s => s.requested_room === r.room).length;
+                      return (
+                        <button
+                          key={r.room}
+                          onClick={() => setPendingRoomFilter(r.room)}
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: 10,
+                            border: "none",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            background: pendingRoomFilter === r.room ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                            color: pendingRoomFilter === r.room ? "#ffffff" : "var(--text-secondary)",
+                            boxShadow: pendingRoomFilter === r.room ? "0 4px 12px rgba(124, 58, 237, 0.2)" : "none",
+                            transition: "all 0.2s ease"
+                          }}
+                        >
+                          ห้อง {r.room} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Audio Controls */}
+                  <button
+                    onClick={() => {
+                      setAudioEnabled(!audioEnabled);
+                      if (!audioEnabled) {
+                        playSoftChime(); // Play test sound on enable so user knows it works!
+                      }
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 16px",
+                      borderRadius: 12,
+                      border: "1px solid " + (audioEnabled ? "rgba(16, 185, 129, 0.2)" : "var(--border)"),
+                      background: audioEnabled ? "rgba(16, 185, 129, 0.05)" : "var(--bg-secondary)",
+                      color: audioEnabled ? "#10B981" : "var(--text-secondary)",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      boxShadow: "var(--shadow-sm)"
+                    }}
+                  >
+                    <span>{audioEnabled ? "🔊 เสียงเตือนคิว: เปิด" : "🔇 เสียงเตือนคิว: ปิด"}</span>
+                  </button>
+                </div>
+
+                {filteredPending.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--bg-secondary)", borderRadius: 20, border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                     <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--rmutp-purple-pale)", border: "2px solid var(--rmutp-purple-light)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "var(--rmutp-purple)" }}>
                       <SuccessBadgeIcon />
                     </div>
-                    <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>ตรวจสอบรายการรออนุมัติเสร็จสิ้น</h3>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
+                      {pending.length === 0 ? "ตรวจสอบรายการรออนุมัติเสร็จสิ้น" : "ไม่มีคิวค้างสำหรับห้องเรียนนี้"}
+                    </h3>
                     <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginTop: 6 }}>
-                      ไม่มีคำขอเปิดประตูค้างอยู่ ระบบจะคอยอัปเดตข้อมูลผู้ยื่นคำขอใหม่ทุกๆ 10 วินาที
+                      {pending.length === 0 
+                        ? "ไม่มีคำขอเปิดประตูค้างอยู่ ระบบจะคอยอัปเดตข้อมูลผู้ยื่นคำขอใหม่ทุกๆ 10 วินาที" 
+                        : "ไม่มีคำขอรออนุมัติสำหรับรหัสห้องที่ท่านเลือกกรองอยู่ในขณะนี้"}
                     </p>
                   </div>
                 ) : (
                   <div style={{ display: "grid", gap: 16 }}>
-                    {pending.map(s => (
+                    {filteredPending.map(s => (
                       <div key={s.id} className="premium-card hover-card" style={{ padding: 22 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                           <div style={{ flex: 1, minWidth: 260 }}>
@@ -2393,9 +2576,39 @@ void loop() {
                       const doorOpen = liveDev ? liveDev.doorStatus === "open" : false;
                       const isMock = liveDev ? liveDev.mock : false;
                       const activeIp = liveDev ? liveDev.ip : roomItem.ip;
+                      const isRecentlyUnlocked = recentlyUnlockedRooms[roomItem.room] === true;
 
                       return (
-                        <div key={roomItem.room} className="premium-card hover-card animate-scale-in" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, background: "var(--bg-secondary)", border: isOnline ? "1.5px solid rgba(16,185,129,0.2)" : "1px solid var(--border)" }}>
+                        <div
+                          key={roomItem.room}
+                          className="premium-card hover-card animate-scale-in"
+                          style={{
+                            padding: 24,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 16,
+                            background: isRecentlyUnlocked 
+                              ? "rgba(16, 185, 129, 0.03)" 
+                              : "var(--bg-secondary)",
+                            border: isRecentlyUnlocked 
+                              ? "2px solid #10B981" 
+                              : isOnline 
+                                ? "1.5px solid rgba(16, 185, 129, 0.25)" 
+                                : "1px solid var(--border)",
+                            boxShadow: isRecentlyUnlocked 
+                              ? "0 8px 30px rgba(16, 185, 129, 0.15)" 
+                              : isOnline 
+                                ? "0 8px 24px rgba(16, 185, 129, 0.04)" 
+                                : "var(--shadow-sm)",
+                            transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                            position: "relative",
+                            overflow: "hidden"
+                          }}
+                        >
+                          {/* Recently unlocked animated pulse background glow */}
+                          {isRecentlyUnlocked && (
+                            <div className="animate-ping" style={{ position: "absolute", inset: 0, background: "rgba(16, 185, 129, 0.02)", pointerEvents: "none" }} />
+                          )}
 
                           {/* Card Top row info */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
@@ -2419,13 +2632,30 @@ void loop() {
                             </span>
                           </div>
 
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 14, background: "rgba(0,0,0,0.01)", borderRadius: 12, border: "1px solid var(--border)", textAlign: "left" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, background: "rgba(124, 58, 237, 0.02)", borderRadius: 12, border: "1px solid var(--border)", textAlign: "left" }}>
 
                             {/* Door lock state */}
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>กลอนประตูบอร์ด:</span>
-                              <span style={{ fontSize: 13, fontWeight: 800, color: doorOpen ? "#059669" : "var(--text-primary)" }}>
-                                {doorOpen ? "🔓 ปลดล็อกอยู่" : "🔒 ปิดล็อกแน่นหนา"}
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 800,
+                                  color: isRecentlyUnlocked || doorOpen ? "#10B981" : "var(--text-primary)",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6
+                                }}
+                              >
+                                {isRecentlyUnlocked ? (
+                                  <span className="animate-bounce" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                    <span>🔓 UNLOCKED (เปิดด่วน)</span>
+                                  </span>
+                                ) : doorOpen ? (
+                                  "🔓 ปลดล็อกอยู่"
+                                ) : (
+                                  "🔒 ปิดล็อกแน่นหนา"
+                                )}
                               </span>
                             </div>
 
@@ -2439,7 +2669,7 @@ void loop() {
                           </div>
 
                           {/* Quick remote controls */}
-                          <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 10 }}>
+                          <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 10, zIndex: 10 }}>
 
                             <button
                               type="button"
@@ -2460,12 +2690,30 @@ void loop() {
                               onClick={() => handleDirectUnlockRoom(roomItem.room)}
                               disabled={unlockingRoom === roomItem.room}
                               className="btn-primary"
-                              style={{ flex: 1, padding: "10px", borderRadius: 10, fontSize: 11.5, display: "flex", gap: 4, alignItems: "center", justifyContent: "center", fontWeight: 700, background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)", border: "none" }}
+                              style={{
+                                flex: 1,
+                                padding: "10px",
+                                borderRadius: 10,
+                                fontSize: 11.5,
+                                display: "flex",
+                                gap: 4,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontWeight: 700,
+                                background: isRecentlyUnlocked 
+                                  ? "#10B981" 
+                                  : "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                                border: "none",
+                                boxShadow: isRecentlyUnlocked ? "0 4px 12px rgba(16, 185, 129, 0.3)" : "none",
+                                transition: "all 0.3s ease"
+                              }}
                             >
                               {unlockingRoom === roomItem.room ? (
                                 <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%" }} />
+                              ) : isRecentlyUnlocked ? (
+                                <span>✔ ปลดล็อกสำเร็จ</span>
                               ) : (
-                                <span>🔓 ปลดล็อกด่วน</span>
+                                <span>⚡ ปลดล็อกด่วน</span>
                               )}
                             </button>
 
