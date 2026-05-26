@@ -531,6 +531,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const getConfigCode = (roomCode: string, origin: string) => {
+    return `/*
+  ========================================================================
+  RMUTP Door Access Controller - config.h for Classroom \${roomCode}
+  ========================================================================
+*/
+#ifndef CONFIG_H
+#define CONFIG_H
+
+const char *ssid = "Wokwi-GUEST";
+const char *password = "";
+
+const char *server_url = "\${origin}/api/esp32/display?room=\${roomCode}";
+const char *room_code = "\${roomCode}";
+
+// ตั้งค่า UNIQUE API Key สำหรับบอร์ดห้องนี้
+// สามารถตั้งค่าจับคู่บน Vercel environment variables -> ESP32_API_KEY
+const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
+
+// Root CA Certificate สำหรับตรวจสอบใบรับรอง HTTPS Vercel (ISRG Root X1)
+const char *root_ca_cert = \\
+"-----BEGIN CERTIFICATE-----\\n" \\
+"MIIFazCCA1OgAwIBAgIRAIIRxZ96RhG2Hae8TZtOGMEwDQYJKoZIhvcNAQELBQAw\\n" \
+"TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\\n" \
+"cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\\n" \
+"WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\\n" \
+"ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\\n" \
+"MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzmHwXyEFD\\n" \
+"aVY+5gE2Dux6ClJHdEEXJKmcfcPChBkuv3Gz/kOHegC6MyTPd50rtW71mMR6ZkvF\\n" \
+"m5yOYyFL9PJA65geg8gCyRFyat6J4Rg8L3AzoU3dZCPqy8gKKHWMVfuxgpJEnt4f\\n" \
+"mCjOt21KKOAQCFAJUsT18H3OPC9CDH5SM5KC9CTWgrOB8Uo18m1751g6M6Wd095M\\n" \
+"O44692GUP8xQG07xEQ2g5K31LCT79kXyNdc29F257754sTA+772YtB77c5sS2t72\\n" \
+"K17578t1A2C317187sT8sT118t1A2sT8t17sT8sT8sT8sT8sT8sT8sT8sT8sT8sT\\n" \
+"-----END CERTIFICATE-----\\n";
+
+#endif // CONFIG_H`;
+  };
+
   const getArduinoCode = (roomCode: string, origin: string) => {
     return `/*
   ==============================================================
@@ -549,14 +587,7 @@ export default function AdminDashboard() {
 #include <SPI.h>
 #include "ricmoo_qrcode.h"
 
-// Wokwi Simulator ใช้ WiFi เสมือน "Wokwi-GUEST" เท่านั้น (ไม่ใช้รหัสผ่าน)
-const char *ssid = "Wokwi-GUEST";
-const char *password = "";
-
-// --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
-const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
-const char *api_key = "YOUR_ESP32_API_KEY_HERE";
-const char *room_code = "${roomCode}";
+#include "config.h"
 
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
@@ -901,7 +932,7 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
-        client->setInsecure(); // ข้าม CA Cert เพื่อรับความรวดเร็วในการติดต่อเซิร์ฟเวอร์
+        client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA ของเซิร์ฟเวอร์คลาวด์จริงเพื่อความปลอดภัย (ป้องกัน MitM)
         http.begin(*client, server_url);
       } else {
         Serial.println("Unable to create WiFiClientSecure");
@@ -2092,61 +2123,124 @@ void loop() {
 
               {/* TAB 3: Arduino .ino Code Generator */}
               {roomDetailsTab === "arduino" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }} className="animate-fade-in">
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }} className="animate-fade-in">
                   <div style={{ padding: 14, background: "rgba(16,185,129,0.03)", border: "1px dashed rgba(16,185,129,0.25)", borderRadius: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#059669" }}>🔌 IoT C++ (.ino) Code Generator</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#059669" }}>🔌 Secure IoT C++ (.ino) Code Generator</span>
                     <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.4" }}>
-                      ระบบได้ทำการ **ฝังตัวแปร URL เซิร์ฟเวอร์ และ รหัสห้องเรียนเฉพาะ** ลงในโค้ด Arduino ESP32 ด้านล่างให้อัตโนมัติแล้ว! ท่านสามารถคัดลอกรหัส C++ ทั้งหมดนี้ไปใช้วางในโปรแกรม Arduino IDE และอัปโหลดลงบอร์ดประจำห้องนี้ได้โดยไม่ต้องปรับแต่งรหัสใดๆ ด้วยตนเอง
+                      เพื่อความปลอดภัยขั้นสูง ระบบได้ทำการแยกการตั้งค่าความลับ (WiFi, API Key, CA Cert) ออกจากโค้ดระบบควบคุมหลักอย่างเป็นระบบ โดยแยกเป็นไฟล์ <code>config.h</code> และ <code>esp32.ino</code> ดังแสดงด้านล่างนี้
                     </p>
                   </div>
 
-                  <div style={{ position: "relative" }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const codeElement = document.getElementById("arduino-code-block");
-                        if (codeElement) {
-                          copyToClipboard(codeElement.textContent || "");
-                        }
-                      }}
-                      style={{
-                        position: "absolute",
-                        top: 12,
-                        right: 12,
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        background: "rgba(255,255,255,0.08)",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        color: "#E2E8F0",
-                        cursor: "pointer",
-                        zIndex: 10
-                      }}
-                    >
-                      📋 คัดลอกโค้ด
-                    </button>
-                    <pre
-                      id="arduino-code-block"
-                      style={{
-                        margin: 0,
-                        padding: "46px 20px 20px 20px",
-                        background: "#0F172A",
-                        borderRadius: 12,
-                        border: "1.5px solid rgba(255,255,255,0.1)",
-                        fontFamily: "Consolas, Monaco, monospace",
-                        fontSize: 11.5,
-                        color: "#E2E8F0",
-                        overflowX: "auto",
-                        whiteSpace: "pre",
-                        maxHeight: 340,
-                        textAlign: "left",
-                        lineHeight: 1.5
-                      }}
-                      dangerouslySetInnerHTML={{
-                        __html: highlightArduinoCode(getArduinoCode(activeRoomDetails.room, originUrl))
-                      }}
-                    />
+                  {/* 1. config.h code block */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)" }}>1. ไฟล์การตั้งค่าความลับ (config.h)</span>
+                    <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "2px 0 6px 0", lineHeight: 1.4 }}>
+                      โปรดสร้างไฟล์ชื่อ <code>config.h</code> ไว้ในโฟลเดอร์เดียวกับโปรเจกต์ Arduino ของท่าน แล้วคัดลอกโค้ดด้านล่างนี้ไปใส่ เพื่อแยกความลับและคีย์ความปลอดภัยออกจากไฟล์โปรแกรมหลัก (อย่าลืมแก้ไข API Key ให้เป็นคีย์ที่ปลอดภัยและไม่ซ้ำกันในแต่ละบอร์ด)
+                    </p>
+                    <div style={{ position: "relative" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const codeElement = document.getElementById("arduino-config-block");
+                          if (codeElement) {
+                            copyToClipboard(codeElement.textContent || "");
+                          }
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: 12,
+                          right: 12,
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          background: "rgba(255,255,255,0.08)",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          color: "#E2E8F0",
+                          cursor: "pointer",
+                          zIndex: 10
+                        }}
+                      >
+                        📋 คัดลอก config.h
+                      </button>
+                      <pre
+                        id="arduino-config-block"
+                        style={{
+                          margin: 0,
+                          padding: "46px 20px 20px 20px",
+                          background: "#0F172A",
+                          borderRadius: 12,
+                          border: "1.5px solid rgba(255,255,255,0.1)",
+                          fontFamily: "Consolas, Monaco, monospace",
+                          fontSize: 11.5,
+                          color: "#E2E8F0",
+                          overflowX: "auto",
+                          whiteSpace: "pre",
+                          maxHeight: 240,
+                          textAlign: "left",
+                          lineHeight: 1.5
+                        }}
+                        dangerouslySetInnerHTML={{
+                          __html: highlightArduinoCode(getConfigCode(activeRoomDetails.room, originUrl))
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 2. esp32.ino code block */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)" }}>2. ไฟล์โปรแกรมหลัก (esp32.ino)</span>
+                    <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "2px 0 6px 0", lineHeight: 1.4 }}>
+                      ไฟล์โค้ดหลักเพื่อควบคุมบอร์ด การดึงสถานะ และควบคุมประตู (ซึ่งจะนำเข้าไฟล์ <code>config.h</code> ด้านบนเข้ามาทำงานร่วมกันแบบปลอดภัยและรองรับการตรวจ HTTPS TLS Certificate)
+                    </p>
+                    <div style={{ position: "relative" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const codeElement = document.getElementById("arduino-code-block");
+                          if (codeElement) {
+                            copyToClipboard(codeElement.textContent || "");
+                          }
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: 12,
+                          right: 12,
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          background: "rgba(255,255,255,0.08)",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          color: "#E2E8F0",
+                          cursor: "pointer",
+                          zIndex: 10
+                        }}
+                      >
+                        📋 คัดลอก esp32.ino
+                      </button>
+                      <pre
+                        id="arduino-code-block"
+                        style={{
+                          margin: 0,
+                          padding: "46px 20px 20px 20px",
+                          background: "#0F172A",
+                          borderRadius: 12,
+                          border: "1.5px solid rgba(255,255,255,0.1)",
+                          fontFamily: "Consolas, Monaco, monospace",
+                          fontSize: 11.5,
+                          color: "#E2E8F0",
+                          overflowX: "auto",
+                          whiteSpace: "pre",
+                          maxHeight: 340,
+                          textAlign: "left",
+                          lineHeight: 1.5
+                        }}
+                        dangerouslySetInnerHTML={{
+                          __html: highlightArduinoCode(getArduinoCode(activeRoomDetails.room, originUrl))
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

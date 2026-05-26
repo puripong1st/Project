@@ -110,6 +110,17 @@ export async function GET(req: NextRequest) {
 
     // Only expose the active_token if the caller authenticates with ESP32 API key
     const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_placeholder";
+    
+    if (
+      process.env.NODE_ENV === "production" &&
+      (!process.env.ESP32_API_KEY || process.env.ESP32_API_KEY === "rmutp_secure_door_unlock_token_placeholder")
+    ) {
+      throw new Error(
+        "Production Security Error: ESP32_API_KEY is using the default placeholder value. " +
+        "You MUST configure a secure, unique ESP32_API_KEY environment variable in your production environment."
+      );
+    }
+    
     const callerKey = req.headers.get("x-api-key") || "";
     const isAuthenticatedDevice = callerKey === esp32ApiKey;
 

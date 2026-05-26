@@ -18,3 +18,7 @@ my-app/dev.log
 
 # Database / Sensitive configs
 my-app/aiven_mysql_config.txt
+
+# ESP32 Secrets / Board configurations
+esp32/config.h
+esp32C1/config.h

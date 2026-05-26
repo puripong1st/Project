@@ -16,15 +16,7 @@
 #include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
 
 
-// Wokwi Simulator ใช้ WiFi เสมือน "Wokwi-GUEST" เท่านั้น (ไม่ใช้รหัสผ่าน)
-const char *ssid = "Wokwi-GUEST";
-const char *password = "";
-
-// --- ตั้งค่าระบบเชื่อมโยง IoT Cloud ---
-const char *server_url =
-    "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-402";
-const char *api_key = "YOUR_ESP32_API_KEY_HERE";
-const char *room_code = "CE-402";
+#include "config.h"
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
 #define TFT_CS 15
@@ -376,7 +368,7 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
-        client->setInsecure(); // ข้าม CA Cert เพื่อรับความรวดเร็วในการติดต่อเซิร์ฟเวอร์
+        client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA ของเซิร์ฟเวอร์คลาวด์จริงเพื่อความปลอดภัย (ป้องกัน MitM)
         http.begin(*client, server_url);
       } else {
         Serial.println("Unable to create WiFiClientSecure");

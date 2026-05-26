@@ -28,8 +28,9 @@ function verifyApiKeySecurity() {
     ESP32_API_KEY === "rmutp_secure_door_unlock_token_placeholder" &&
     process.env.NODE_ENV === "production"
   ) {
-    console.error(
-      "CRITICAL SECURITY WARNING: ESP32_API_KEY is configured with the default insecure key in production environment! Please set a unique ESP32_API_KEY environment variable on Vercel."
+    throw new Error(
+      "Production Security Error: ESP32_API_KEY is using the default placeholder value. " +
+      "You MUST configure a secure, unique ESP32_API_KEY environment variable in your production environment."
     );
   }
 }

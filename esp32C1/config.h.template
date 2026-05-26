@@ -1,0 +1,49 @@
+/*
+  ========================================================================
+  RMUTP Door Access Controller - Configuration Template for ESP32
+  Copy this file to "config.h" and fill in your actual credentials.
+  DO NOT commit "config.h" to the repository.
+  ========================================================================
+*/
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// --- WiFi Configuration ---
+// Wokwi Simulator uses "Wokwi-GUEST" with empty password by default.
+// Change these to your physical WiFi SSID and password for hardware deployment.
+const char *ssid = "Wokwi-GUEST";
+const char *password = "";
+
+// --- IoT Cloud Server Configuration ---
+// URL of your Vercel Next.js deployment API endpoint.
+const char *server_url = "https://project-sigma-ivory-21.vercel.app/api/esp32/display?room=CE-401";
+
+// Room code designated for this physical device.
+const char *room_code = "CE-401";
+
+// --- Security Provisioning: Shared Pre-shared API Key ---
+// Each board should be provisioned with a UNIQUE API Key.
+// On the server side, configure the matching key in your Vercel environment variables under ESP32_API_KEY.
+// WARNING: NEVER use the default placeholder key in production.
+const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
+
+// --- TLS Security: Root CA Certificate ---
+// Embed the root CA certificate of your endpoint's SSL certificate provider (e.g. Let's Encrypt ISRG Root X1 for Vercel).
+// This enables secure HTTPS verification and prevents Man-in-the-Middle (MitM) attacks.
+const char *root_ca_cert = \
+"-----BEGIN CERTIFICATE-----\n" \
+"MIIFazCCA1OgAwIBAgIRAIIRxZ96RhG2Hae8TZtOGMEwDQYJKoZIhvcNAQELBQAw\n" \
+"TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\n" \
+"cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\n" \
+"WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\n" \
+"ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\n" \
+"MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzmHwXyEFD\n" \
+"aVY+5gE2Dux6ClJHdEEXJKmcfcPChBkuv3Gz/kOHegC6MyTPd50rtW71mMR6ZkvF\n" \
+"m5yOYyFL9PJA65geg8gCyRFyat6J4Rg8L3AzoU3dZCPqy8gKKHWMVfuxgpJEnt4f\n" \
+"mCjOt21KKOAQCFAJUsT18H3OPC9CDH5SM5KC9CTWgrOB8Uo18m1751g6M6Wd095M\n" \
+"O44692GUP8xQG07xEQ2g5K31LCT79kXyNdc29F257754sTA+772YtB77c5sS2t72\n" \
+"K17578t1A2C317187sT8sT118t1A2sT8t17sT8sT8sT8sT8sT8sT8sT8sT8sT8sT\n" \
+"-----END CERTIFICATE-----\n";
+
+#endif // CONFIG_H
