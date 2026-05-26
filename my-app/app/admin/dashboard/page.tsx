@@ -534,7 +534,7 @@ export default function AdminDashboard() {
   const getConfigCode = (roomCode: string, origin: string) => {
     return `/*
   ========================================================================
-  RMUTP Door Access Controller - config.h for Classroom \${roomCode}
+  RMUTP Door Access Controller - config.h for Classroom ${roomCode}
   ========================================================================
 */
 #ifndef CONFIG_H
@@ -543,8 +543,8 @@ export default function AdminDashboard() {
 const char *ssid = "Wokwi-GUEST";
 const char *password = "";
 
-const char *server_url = "\${origin}/api/esp32/display?room=\${roomCode}";
-const char *room_code = "\${roomCode}";
+const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
+const char *room_code = "${roomCode}";
 
 // ตั้งค่า UNIQUE API Key สำหรับบอร์ดห้องนี้
 // สามารถตั้งค่าจับคู่บน Vercel environment variables -> ESP32_API_KEY
