@@ -62,12 +62,73 @@ const TOKEN_ROTATION_SECONDS = 60;
 /** The total duration (in seconds) a QR token remains valid for verification and consumption.
  * This is set to 5 minutes to accommodate slow mobile data, scan latency, and form fill-in time. */
 const TOKEN_EXPIRY_SECONDS = 300;
+const OFFLINE_GRANT_EXPIRY_SECONDS = 600;
 const TOKEN_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const lastTokenCleanupByRoom = new Map<string, number>();
 
 /** Minimum entropy: 32 hex chars = 128 bits (brute-force resistant) */
 function generateSecureToken(): string {
   return crypto.randomBytes(16).toString("hex"); // 32 chars, 128-bit entropy
+}
+
+function base64url(input: Buffer | string): string {
+  return Buffer.from(input).toString("base64url");
+}
+
+function getOfflineGrantSecret(): string {
+  const secret = process.env.JWT_SECRET || "";
+  if (!secret || (process.env.NODE_ENV === "production" && secret === "rmutp-secret-key")) {
+    throw new Error("Offline grant signing secret is missing or insecure.");
+  }
+  return secret || "rmutp-dev-offline-grant-secret";
+}
+
+function hashNonce(nonce: string): string {
+  return crypto.createHash("sha256").update(nonce).digest("hex");
+}
+
+function signPayload(payload: string): string {
+  return crypto.createHmac("sha256", getOfflineGrantSecret()).update(payload).digest("base64url");
+}
+
+export interface OfflineGrantPayload {
+  room: string;
+  nonce: string;
+  issued_at: number;
+  expires_at: number;
+}
+
+export function createOfflineGrant(roomCode: string): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: OfflineGrantPayload = {
+    room: (roomCode || "default").trim(),
+    nonce: crypto.randomBytes(16).toString("hex"),
+    issued_at: now,
+    expires_at: now + OFFLINE_GRANT_EXPIRY_SECONDS,
+  };
+  const encodedPayload = base64url(JSON.stringify(payload));
+  return `${encodedPayload}.${signPayload(encodedPayload)}`;
+}
+
+function parseOfflineGrant(grant: string): OfflineGrantPayload | null {
+  const parts = grant.split(".");
+  if (parts.length !== 2) return null;
+
+  const [encodedPayload, signature] = parts;
+  const expected = signPayload(encodedPayload);
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as OfflineGrantPayload;
+    if (!payload.room || !payload.nonce || !payload.issued_at || !payload.expires_at) return null;
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -115,7 +176,7 @@ export async function getOrCreateActiveQRToken(roomCode: string = "default"): Pr
  * This prevents race conditions when multiple users scan simultaneously.
  * Returns true only if exactly one caller wins the atomic update.
  */
-export async function consumeQRToken(token: string): Promise<boolean> {
+export async function consumeQRToken(token: string, expectedRoomCode?: string): Promise<boolean> {
   if (!token || typeof token !== "string") return false;
 
   const trimmed = token.trim();
@@ -131,14 +192,19 @@ export async function consumeQRToken(token: string): Promise<boolean> {
   // Atomic single-statement consume: only one concurrent caller can succeed.
   // The WHERE clause checks is_consumed=FALSE AND expiry simultaneously.
   // affectedRows=1 means THIS caller won the race, affectedRows=0 means someone else did.
+  const sanitizedRoom = expectedRoomCode?.trim();
+  const roomClause = sanitizedRoom ? "AND room_code = $3" : "";
+  const params = sanitizedRoom ? [trimmed, TOKEN_EXPIRY_SECONDS, sanitizedRoom] : [trimmed, TOKEN_EXPIRY_SECONDS];
+
   const { rows, rowCount } = await pool.query(
     `UPDATE dynamic_qr_tokens 
      SET is_consumed = TRUE 
      WHERE token = $1 
        AND is_consumed = FALSE 
        AND created_at >= CURRENT_TIMESTAMP - INTERVAL '1 second' * $2
+       ${roomClause}
      RETURNING room_code`,
-    [trimmed, TOKEN_EXPIRY_SECONDS]
+    params
   );
 
   const affected = rowCount || 0;
@@ -163,7 +229,7 @@ export async function consumeQRToken(token: string): Promise<boolean> {
  * This is used for the initial page load check so that the actual consumption
  * is reserved for the final student registration form submission.
  */
-export async function validateQRToken(token: string): Promise<boolean> {
+export async function validateQRToken(token: string, roomCode?: string): Promise<boolean> {
   if (!token || typeof token !== "string") return false;
 
   const trimmed = token.trim();
@@ -173,10 +239,55 @@ export async function validateQRToken(token: string): Promise<boolean> {
 
   const pool = getPool();
 
+  const sanitizedRoom = roomCode?.trim();
+  const roomClause = sanitizedRoom ? "AND room_code = $3" : "";
+  const params = sanitizedRoom ? [trimmed, TOKEN_EXPIRY_SECONDS, sanitizedRoom] : [trimmed, TOKEN_EXPIRY_SECONDS];
+
   const { rows } = await pool.query(
-    "SELECT 1 FROM dynamic_qr_tokens WHERE token = $1 AND is_consumed = FALSE AND created_at >= CURRENT_TIMESTAMP - INTERVAL '1 second' * $2 LIMIT 1",
-    [trimmed, TOKEN_EXPIRY_SECONDS]
+    `SELECT 1 FROM dynamic_qr_tokens
+     WHERE token = $1
+       AND is_consumed = FALSE
+       AND created_at >= CURRENT_TIMESTAMP - INTERVAL '1 second' * $2
+       ${roomClause}
+     LIMIT 1`,
+    params
   );
 
   return (rows as unknown[]).length > 0;
+}
+
+export async function consumeOfflineGrant(grant: string, roomCode: string): Promise<boolean> {
+  if (!grant || typeof grant !== "string") return false;
+
+  const payload = parseOfflineGrant(grant.trim());
+  if (!payload) return false;
+
+  const sanitizedRoom = (roomCode || "default").trim();
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.room !== sanitizedRoom || payload.expires_at < now || payload.issued_at > now + 30) {
+    return false;
+  }
+
+  const nonceHash = hashNonce(payload.nonce);
+  const pool = getPool();
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS offline_grants (
+      nonce_hash VARCHAR(64) PRIMARY KEY,
+      room_code VARCHAR(50) NOT NULL,
+      used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      expires_at TIMESTAMP NOT NULL
+    )
+  `);
+  await pool.query(
+    "DELETE FROM offline_grants WHERE expires_at < CURRENT_TIMESTAMP - INTERVAL '1 hour'"
+  );
+
+  const { rowCount } = await pool.query(
+    `INSERT INTO offline_grants (nonce_hash, room_code, expires_at)
+     VALUES ($1, $2, to_timestamp($3))
+     ON CONFLICT (nonce_hash) DO NOTHING`,
+    [nonceHash, sanitizedRoom, payload.expires_at]
+  );
+
+  return (rowCount || 0) === 1;
 }

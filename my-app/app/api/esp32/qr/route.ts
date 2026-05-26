@@ -2,6 +2,22 @@
 // Uses database-backed dynamic one-time tokens (no legacy HMAC rotation)
 import { NextRequest, NextResponse } from "next/server";
 import { generateQRCodeBuffer, getOrCreateActiveQRToken } from "@/lib/qr";
+import { getAdminFromCookie } from "@/lib/auth";
+
+const DEFAULT_ESP32_API_KEY = "rmutp_secure_door_unlock_token_placeholder";
+
+function getConfiguredEsp32ApiKey(): string {
+  const key = process.env.ESP32_API_KEY || DEFAULT_ESP32_API_KEY;
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!process.env.ESP32_API_KEY || key === DEFAULT_ESP32_API_KEY)
+  ) {
+    throw new Error(
+      "Production Security Error: ESP32_API_KEY is missing or using the default placeholder value."
+    );
+  }
+  return key;
+}
 
 /**
  * Detect the network IP address for the QR code URL.
@@ -30,6 +46,16 @@ function getNetworkUrl(req: NextRequest): string {
 
 export async function GET(req: NextRequest) {
   try {
+    const esp32ApiKey = getConfiguredEsp32ApiKey();
+    const callerKey = req.headers.get("x-api-key") || "";
+    const isAuthenticatedDevice = callerKey === esp32ApiKey;
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    const admin = isAuthenticatedDevice ? null : await getAdminFromCookie();
+
+    if (!isAuthenticatedDevice && !isDevelopment && !admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const room = (searchParams.get("room") || "default").trim();
 
@@ -47,9 +73,6 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-        "Access-Control-Allow-Origin": "*",
-        // SECURITY: Do NOT expose token or URL in headers.
-        // ESP32 can poll /api/esp32/display for the active_token if needed.
       },
     });
   } catch (error) {

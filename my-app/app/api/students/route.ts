@@ -5,7 +5,7 @@ import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
 import { RMUTP_FACULTIES } from "@/lib/faculties";
 import { openDoor } from "@/lib/esp32";
-import { consumeQRToken } from "@/lib/qr";
+import { consumeOfflineGrant, consumeQRToken } from "@/lib/qr";
 import { rateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, first_name, last_name, student_id, year, faculty, branch, requested_room, token, offline_id, offline_created_at } = body;
+    const { title, first_name, last_name, student_id, year, faculty, branch, requested_room, token, offline_id, offline_created_at, offline_grant } = body;
     const offlineId = typeof offline_id === "string" ? offline_id.trim().slice(0, 80) : "";
     const offlineCreatedAt = typeof offline_created_at === "string" ? offline_created_at : "";
     const isOfflineReplay = !!offlineId && !!offlineCreatedAt;
@@ -137,7 +137,9 @@ export async function POST(req: NextRequest) {
     // ตรวจสอบและ Consume Token ทันทีเสี้ยววินาทีที่ยื่นฟอร์มสมัคร 
     // หาก Token นี้ไม่มีในระบบ, หมดอายุ (เกิน 60s), หรือเคยถูกใช้งาน (Consume) ไปแล้ว ให้ปฏิเสธการลงทะเบียนทันที!
     // สิ่งนี้ช่วยป้องกันการแชร์ลิงก์ให้คนอื่นไปกดสมัครต่อ หรือการเปิดลิงก์เดิมลงทะเบียนซ้ำได้อย่างเด็ดขาด 100%!
-    const isTokenValid = isOfflineReplay ? true : await consumeQRToken(token || "");
+    const isTokenValid = isOfflineReplay
+      ? await consumeOfflineGrant(typeof offline_grant === "string" ? offline_grant : "", sanitizedRequestedRoom)
+      : await consumeQRToken(token || "", sanitizedRequestedRoom);
     if (!isTokenValid) {
       return NextResponse.json(
         { error: "ลิงก์สแกน QR Code นี้หมดอายุแล้วหรือถูกใช้งานโดยผู้อื่นไปแล้ว กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องปฏิบัติการ" },

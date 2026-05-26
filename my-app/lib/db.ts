@@ -207,6 +207,15 @@ export async function initDatabase(): Promise<void> {
       )
     `);
 
+    await initPool.query(`
+      CREATE TABLE IF NOT EXISTS offline_grants (
+        nonce_hash VARCHAR(64) PRIMARY KEY,
+        room_code VARCHAR(50) NOT NULL,
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      )
+    `);
+
     // Create indexes if not exists using PL/pgSQL
     await initPool.query(`
       DO $$

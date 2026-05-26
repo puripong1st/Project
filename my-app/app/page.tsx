@@ -263,6 +263,7 @@ function RegistrationPageInner() {
   const [qrAuthorized, setQrAuthorized] = useState<boolean | null>(null); // null = checking, true = authorized, false = blocked
   const [blockedMessage, setBlockedMessage] = useState<string>("");
   const [timeLeft, setTimeLeft] = useState<number | null>(null); // ตัวแปรนับถอยหลังหมดอายุ 120 วินาที
+  const [offlineGrant, setOfflineGrant] = useState("");
   const authChecked = useRef(false);
 
   useEffect(() => {
@@ -320,13 +321,19 @@ function RegistrationPageInner() {
         const res = await fetch("/api/esp32/qr/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: scanToken }),
+          body: JSON.stringify({ token: scanToken, room }),
         });
         const data = await res.json();
         if (res.ok && data.success) {
           try {
             sessionStorage.setItem(`rmutp_qr_verified_${room}`, "1");
+            if (data.offline_grant) {
+              sessionStorage.setItem(`rmutp_offline_grant_${room}`, data.offline_grant);
+            }
           } catch {}
+          if (data.offline_grant) {
+            setOfflineGrant(data.offline_grant);
+          }
           setQrAuthorized(true);
         } else {
           setQrAuthorized(false);
@@ -692,6 +699,12 @@ function RegistrationPageInner() {
     }
 
     if (!isOnline) {
+      const grant = offlineGrant || sessionStorage.getItem(`rmutp_offline_grant_${room}`) || "";
+      if (!grant) {
+        setLoading(false);
+        setError("ไม่สามารถบันทึกแบบออฟไลน์ได้ เนื่องจากไม่พบหลักฐานการสแกน QR Code กรุณาเชื่อมต่ออินเทอร์เน็ตและสแกนใหม่");
+        return;
+      }
       const offlineId = createOfflineId();
       const offlineCreatedAt = new Date().toISOString();
       const entry: OfflineEntry = {
@@ -703,6 +716,7 @@ function RegistrationPageInner() {
           token: searchParams.get("scan") || "",
           offline_id: offlineId,
           offline_created_at: offlineCreatedAt,
+          offline_grant: grant,
         },
         timestamp: offlineCreatedAt,
         retries: 0,
