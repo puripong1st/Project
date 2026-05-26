@@ -1758,58 +1758,94 @@ void loop() {
             <div style={{ minHeight: 260, maxHeight: 480, overflowY: "auto", paddingRight: 4, paddingBottom: 24 }}>
 
               {/* TAB 1: API & URLs */}
-              {roomDetailsTab === "api" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }} className="animate-fade-in">
-                  {[
-                    {
-                      label: "📡 1. API ดึงค่าสเตตัสบอร์ด & ทริกเปิดประตู (Display Polling API)",
-                      desc: "สำหรับฝั่งบอร์ด ESP32 คอยยิงดึงสถานะจอและแฟล็กปลดล็อกทุกๆ 2 วินาที",
-                      url: `${originUrl}/api/esp32/display?room=${activeRoomDetails.room}`
-                    },
-                    {
-                      label: "🖼️ 2. API รูปภาพ QR Code ประจำห้อง (Dynamic PNG QR)",
-                      desc: "ส่งกลับผลลัพธ์เป็นไฟล์รูปภาพสแกน PNG ล่าสุดสำหรับนำไปใช้วาดบน LCD",
-                      url: `${originUrl}/api/esp32/qr?room=${activeRoomDetails.room}`
-                    },
-                    {
-                      label: "📝 3. ลิงก์ตรงหน้าลงทะเบียนนักศึกษา (Student Registration URL)",
-                      desc: "ใช้สแกนลงทะเบียนขอผ่านทางของห้องปฏิบัติการนี้โดยเฉพาะข้ามเครือข่าย",
-                      url: `${originUrl}/?scan=${systemStatus?.esp32?.online ? "active" : ""}&room=${activeRoomDetails.room}`
-                    }
-                  ].map((item, idx) => (
-                    <div key={idx} style={{ padding: 16, background: "rgba(255,255,255,0.01)", borderRadius: 12, border: "1px solid var(--border)", textAlign: "left" }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>{item.label}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10 }}>{item.desc}</div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                        <code style={{ flex: 1, padding: "10px 14px", background: "#0F172A", borderRadius: 8, fontSize: 11, color: "#38BDF8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "1.5px solid var(--border)", fontFamily: "Consolas, Monaco, monospace", fontWeight: 700 }}>
-                          {item.url}
-                        </code>
-                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              window.open(item.url, '_blank');
-                              showToast("🌐 เปิดหน้าทดสอบ API เรียบร้อย", "success");
-                            }}
-                            className="btn-ghost"
-                            style={{ padding: "8px 12px", fontSize: 11, borderRadius: 8, fontWeight: 700, borderColor: "var(--rmutp-purple-light)", color: "var(--rmutp-purple-dark)" }}
-                          >
-                            🧪 ทดสอบ API
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(item.url)}
-                            className="btn-ghost"
-                            style={{ padding: "8px 12px", fontSize: 11, borderRadius: 8, fontWeight: 700 }}
-                          >
-                            ก็อปปี้
-                          </button>
+              {roomDetailsTab === "api" && (() => {
+                const liveRoomDev = systemStatus?.esp32Devices?.find(d => d.room === activeRoomDetails.room);
+                const currentToken = liveRoomDev?.activeToken || "";
+                const registrationUrl = `${originUrl}/?scan=${currentToken}&room=${activeRoomDetails.room}`;
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }} className="animate-fade-in">
+                    {[
+                      {
+                        label: "📡 1. API ดึงค่าสเตตัสบอร์ด & ทริกเปิดประตู (Display Polling API)",
+                        desc: "สำหรับฝั่งบอร์ด ESP32 คอยยิงดึงสถานะจอและแฟล็กปลดล็อกทุกๆ 2 วินาที",
+                        url: `${originUrl}/api/esp32/display?room=${activeRoomDetails.room}`,
+                        btnLabel: "🧪 ทดสอบ API"
+                      },
+                      {
+                        label: "🖼️ 2. API รูปภาพ QR Code ประจำห้อง (Dynamic PNG QR)",
+                        desc: "ส่งกลับผลลัพธ์เป็นไฟล์รูปภาพสแกน PNG ล่าสุดสำหรับนำไปใช้วาดบน LCD",
+                        url: `${originUrl}/api/esp32/qr?room=${activeRoomDetails.room}`,
+                        btnLabel: "🧪 ทดสอบ API"
+                      },
+                      {
+                        label: "📝 3. ลิงก์ตรงหน้าลงทะเบียนนักศึกษา (Student Registration URL) [Dynamic Token Sync]",
+                        desc: "ใช้สแกนลงทะเบียนขอผ่านทางของห้องปฏิบัติการนี้โดยเฉพาะ ซิงก์กับ QR Code บนบอร์ดหน้าห้องเรียน",
+                        url: registrationUrl,
+                        btnLabel: "🚀 ทดสอบสแกนสด",
+                        isRegistration: true
+                      }
+                    ].map((item, idx) => (
+                      <div key={idx} style={{ padding: 16, background: "rgba(255,255,255,0.01)", borderRadius: 12, border: "1px solid var(--border)", textAlign: "left" }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>{item.label}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10 }}>{item.desc}</div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <code style={{ flex: 1, padding: "10px 14px", background: "#0F172A", borderRadius: 8, fontSize: 11, color: "#38BDF8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "1.5px solid var(--border)", fontFamily: "Consolas, Monaco, monospace", fontWeight: 700 }}>
+                            {item.url}
+                          </code>
+                          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                window.open(item.url, '_blank');
+                                showToast(item.isRegistration ? "🚀 เปิดหน้าทดสอบสแกนลงทะเบียนสำเร็จ" : "🌐 เปิดหน้าทดสอบ API เรียบร้อย", "success");
+                              }}
+                              className="btn-ghost"
+                              style={{ 
+                                padding: "8px 12px", 
+                                fontSize: 11, 
+                                borderRadius: 8, 
+                                fontWeight: 700, 
+                                borderColor: item.isRegistration ? "var(--edu-pink)" : "var(--rmutp-purple-light)", 
+                                color: item.isRegistration ? "var(--edu-pink)" : "var(--rmutp-purple-dark)" 
+                              }}
+                            >
+                              {item.btnLabel}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(item.url)}
+                              className="btn-ghost"
+                              style={{ padding: "8px 12px", fontSize: 11, borderRadius: 8, fontWeight: 700 }}
+                            >
+                              ก็อปปี้
+                            </button>
+                          </div>
                         </div>
+
+                        {item.isRegistration && (
+                          <div style={{ marginTop: 14, padding: "12px 14px", background: "rgba(139,92,246,0.03)", border: "1.5px dashed rgba(139,92,246,0.15)", borderRadius: 10 }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--rmutp-purple)", display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                              🛡️ ระบบความปลอดภัยและกฎการหมุนเวียน Token:
+                            </div>
+                            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 10.5, color: "var(--text-secondary)", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: 4 }}>
+                              <li>
+                                <strong style={{ color: "var(--text-primary)" }}>การหมุนเวียนคีย์ (Rotation):</strong> ลิงก์และ QR Code จะซิงก์กันเสมอ และหมุนเวียนเปลี่ยนคีย์ใหม่โดยอัตโนมัติทุกๆ <span style={{ color: "var(--edu-pink)", fontWeight: 700 }}>60 วินาที</span> ตามหน้าจอหลักของบอร์ดหน้าห้องเรียน
+                              </li>
+                              <li>
+                                <strong style={{ color: "var(--text-primary)" }}>อายุการใช้กรอก (Expiry):</strong> แต่ละคีย์มีอายุการกรอกลงทะเบียนได้ไม่เกิน <span style={{ color: "var(--rmutp-purple)", fontWeight: 700 }}>5 นาที (300 วินาที)</span> เพื่อให้เวลาผู้ใช้กรอกแบบฟอร์ม
+                              </li>
+                              <li>
+                                <strong style={{ color: "var(--text-primary)" }}>ใช้งานครั้งเดียว (One-Time Token):</strong> เมื่ออนุมัติหรือส่งข้อมูลสำเร็จ คีย์นั้นจะใช้ไม่ได้อีกทันทีเพื่อความปลอดภัย หากแอดมินต้องการทดสอบใหม่ ให้กลับมาที่หน้านี้แล้วกดปุ่ม <span style={{ color: "var(--edu-pink)", fontWeight: 700 }}>🚀 ทดสอบสแกนสด</span> อีกครั้ง
+                              </li>
+                            </ul>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* TAB 2: Discord Webhook */}
               {roomDetailsTab === "webhook" && (

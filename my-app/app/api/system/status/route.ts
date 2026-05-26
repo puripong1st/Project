@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { getESP32Status } from "@/lib/esp32";
 import { getAdminFromCookie } from "@/lib/auth";
+import { getOrCreateActiveQRToken } from "@/lib/qr";
 
 export async function GET() {
   try {
@@ -94,6 +95,15 @@ export async function GET() {
           } catch {}
         }
 
+        let activeToken = "";
+        if (mysqlOnline) {
+          try {
+            activeToken = await getOrCreateActiveQRToken(roomCode);
+          } catch (tokErr) {
+            console.error(`[Status API] Failed to fetch active token for room: ${roomCode}`, tokErr);
+          }
+        }
+
         try {
           const status = await getESP32Status(roomCode);
           return {
@@ -103,6 +113,7 @@ export async function GET() {
             doorStatus: status.online ? (status.doorStatus || "closed") : "closed",
             mock: status.mock,
             mode: status.mode,
+            activeToken: activeToken,
           };
         } catch {
           return {
@@ -112,6 +123,7 @@ export async function GET() {
             doorStatus: "closed",
             mock: false,
             mode: "physical" as const,
+            activeToken: activeToken,
           };
         }
       })
