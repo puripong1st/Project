@@ -308,7 +308,7 @@ function renderLogNotes(notes?: string) {
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "guide" | "iot">("pending");
+  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot">("pending");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [pending, setPending] = useState<Student[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -376,6 +376,7 @@ export default function AdminDashboard() {
     student_id_display_mode: "full",
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [rawSettings, setRawSettings] = useState<Record<string, string>>({});
   const [activeRoomDetails, setActiveRoomDetails] = useState<{ room: string; ip: string } | null>(null);
   const [roomDetailsTab, setRoomDetailsTab] = useState<"api" | "webhook" | "arduino">("api");
@@ -429,6 +430,8 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error("Failed to fetch settings", err);
+    } finally {
+      setSettingsLoaded(true);
     }
   }, []);
 
@@ -1273,6 +1276,13 @@ void loop() {
       .catch(() => router.push("/admin/login"));
   }, [router]);
 
+  useEffect(() => {
+    if (user?.role !== "owner") return;
+    setTimeout(() => {
+      fetchSettings();
+    }, 0);
+  }, [user, fetchSettings]);
+
   // Fetch pending list
   const fetchPending = useCallback(async () => {
     try {
@@ -1341,6 +1351,16 @@ void loop() {
     const interval = setInterval(fetchSystemStatus, 15000);
     return () => clearInterval(interval);
   }, [fetchSystemStatus]);
+
+  useEffect(() => {
+    if (settingsLoaded || roomsList.length > 0 || !systemStatus?.esp32Devices?.length) return;
+    setRoomsList(
+      systemStatus.esp32Devices.map(device => ({
+        room: device.room,
+        ip: device.ip || "192.168.1.100",
+      }))
+    );
+  }, [settingsLoaded, roomsList.length, systemStatus?.esp32Devices]);
 
   // Auto-pruning expired logs (>90 days) on startup
   useEffect(() => {
@@ -1728,6 +1748,41 @@ void loop() {
             grid-template-columns: 1fr;
           }
         }
+        .room-manager-shell {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 18px;
+        }
+        .room-overview-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 12px;
+        }
+        .room-stat-card {
+          background: #fff;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 16px;
+          box-shadow: var(--shadow-sm);
+        }
+        .room-card-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+          gap: 14px;
+        }
+        .room-config-card {
+          background: #fff;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 18px;
+          box-shadow: var(--shadow-sm);
+        }
+        .room-form-band {
+          background: var(--bg-secondary);
+          border: 1px dashed var(--rmutp-purple-light);
+          border-radius: 8px;
+          padding: 18px;
+        }
       ` }} />
       {/* Toast Notification */}
       {toast && (
@@ -1777,27 +1832,32 @@ void loop() {
 
       {/* ─── Room IoT & Webhook Settings Modal ─── */}
       {activeRoomDetails && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(30, 27, 75, 0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 24 }}>
-          <div className="premium-card animate-scale-in" style={{ maxWidth: 640, width: "100%", padding: 28, background: "var(--bg-secondary)", border: "1px solid var(--border)", position: "relative" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(30, 27, 75, 0.5)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 24 }}>
+          <div className="premium-card animate-scale-in" style={{ maxWidth: 860, width: "100%", maxHeight: "90vh", padding: 0, background: "var(--bg-secondary)", border: "1px solid var(--border)", position: "relative", overflow: "hidden" }}>
 
             {/* Close button */}
             <button
               type="button"
               onClick={() => setActiveRoomDetails(null)}
-              style={{ position: "absolute", top: 20, right: 20, background: "none", border: "none", color: "var(--text-secondary)", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              style={{ position: "absolute", top: 18, right: 18, width: 36, height: 36, borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
             >
               ✕
             </button>
 
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-              🚪 ตั้งค่าและรายละเอียด IoT: <span style={{ color: "var(--rmutp-purple-dark)" }}>ห้อง {activeRoomDetails.room}</span>
-            </h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 20 }}>
-              ที่อยู่ IP ของบอร์ดภายในเครือข่ายจำลอง: <code style={{ color: "var(--rmutp-purple)" }}>{activeRoomDetails.ip}</code>
-            </p>
+            <div style={{ padding: "24px 28px 18px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, rgba(124,58,237,0.06), rgba(219,39,119,0.04))" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "#fff", border: "1px solid var(--border)", color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 900, marginBottom: 10 }}>
+                ESP32 Room Setup
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 900, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                ห้อง {activeRoomDetails.room}
+              </h3>
+              <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: "6px 0 0" }}>
+                IP / Domain ของบอร์ด: <code style={{ color: "var(--rmutp-purple)", fontWeight: 800 }}>{activeRoomDetails.ip}</code>
+              </p>
+            </div>
 
             {/* Modal Tabs selector */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 20, background: "rgba(255,255,255,0.02)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, margin: "18px 28px", background: "var(--bg-primary)", padding: 6, borderRadius: 8, border: "1px solid var(--border)" }}>
               {[
                 { id: "api", label: "🔗 API & URLs" },
                 { id: "webhook", label: "🔔 Discord Webhook" },
@@ -1809,15 +1869,15 @@ void loop() {
                   onClick={() => setRoomDetailsTab(tab.id as any)}
                   style={{
                     flex: 1,
-                    padding: "8px 12px",
+                    padding: "11px 12px",
                     borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 700,
+                    fontSize: 12.5,
+                    fontWeight: 800,
                     cursor: "pointer",
                     border: "none",
                     background: roomDetailsTab === tab.id ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
                     color: roomDetailsTab === tab.id ? "#fff" : "var(--text-secondary)",
-                    boxShadow: roomDetailsTab === tab.id ? "0 2px 6px rgba(124,58,237,0.2)" : "none",
+                    boxShadow: roomDetailsTab === tab.id ? "0 8px 18px rgba(124,58,237,0.18)" : "none",
                     transition: "all 0.2s"
                   }}
                 >
@@ -1827,7 +1887,7 @@ void loop() {
             </div>
 
             {/* Modal Content Panels */}
-            <div style={{ minHeight: 260, maxHeight: 480, overflowY: "auto", paddingRight: 4, paddingBottom: 24 }}>
+            <div style={{ minHeight: 300, maxHeight: "calc(90vh - 190px)", overflowY: "auto", padding: "0 28px 28px" }}>
 
               {/* TAB 1: API & URLs */}
               {roomDetailsTab === "api" && (() => {
@@ -2225,6 +2285,7 @@ void loop() {
               ...(isOwner ? [
                 { id: "all", icon: <UsersIcon />, label: "ทำเนียบ & ประวัติเข้าออก", badge: 0 },
                 { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
+                { id: "rooms", icon: <TVIcon />, label: "ห้องเรียน & ESP32", badge: roomsList.length, badgeColor: "#7C3AED" },
                 { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
               { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
@@ -3593,6 +3654,133 @@ void loop() {
               </div>
             )}
 
+            {tab === "rooms" && isOwner && (
+              <div className="animate-fade-in room-manager-shell">
+                <section className="dashboard-section-card" style={{ padding: 22 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "var(--rmutp-purple)", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 }}>
+                        Room Inventory
+                      </div>
+                      <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: 24, fontWeight: 900, lineHeight: 1.2 }}>
+                        จัดการห้องเรียนและบอร์ด ESP32
+                      </h2>
+                      <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6, margin: "8px 0 0" }}>
+                        เพิ่ม แก้ไข IP ทดสอบการเชื่อมต่อ และเปิดหน้าตั้งค่า API/Webhook/Arduino ของแต่ละห้องได้จากที่เดียว
+                      </p>
+                    </div>
+                    <button onClick={saveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
+                      {settingsLoading ? "กำลังบันทึก..." : "บันทึกห้องทั้งหมด"}
+                    </button>
+                  </div>
+
+                  <div className="room-overview-grid">
+                    {[
+                      { label: "ห้องทั้งหมด", value: roomsList.length, hint: "รายการที่บันทึกในระบบ", color: "var(--rmutp-purple-dark)" },
+                      { label: "ออนไลน์", value: systemStatus?.esp32Devices?.filter(d => d.online).length || 0, hint: "บอร์ดที่ตอบกลับล่าสุด", color: "#059669" },
+                      { label: "ออฟไลน์", value: Math.max(roomsList.length - (systemStatus?.esp32Devices?.filter(d => d.online).length || 0), 0), hint: "ควรตรวจ IP หรือไฟเลี้ยง", color: "#DC2626" },
+                      { label: "ทดสอบล่าสุด", value: Object.keys(testResults).length, hint: "จำนวนห้องที่กดเทสในรอบนี้", color: "#D97706" },
+                    ].map(item => (
+                      <div className="room-stat-card" key={item.label}>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: item.color, lineHeight: 1 }}>{item.value}</div>
+                        <div style={{ fontSize: 12.5, color: "var(--text-primary)", fontWeight: 800, marginTop: 7 }}>{item.label}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 3 }}>{item.hint}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="room-card-grid">
+                  {roomsList.length === 0 ? (
+                    <div className="room-config-card" style={{ gridColumn: "1 / -1", textAlign: "center", padding: 42 }}>
+                      <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text-primary)", marginBottom: 8 }}>ยังไม่มีห้องเรียนในระบบ</h3>
+                      <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: 0 }}>เพิ่มรหัสห้องและ IP บอร์ดด้านล่าง แล้วกดบันทึกห้องทั้งหมด</p>
+                    </div>
+                  ) : (
+                    roomsList.map((roomItem, idx) => {
+                      const liveDev = systemStatus?.esp32Devices?.find(d => d.room === roomItem.room);
+                      const testRes = testResults[roomItem.room];
+                      const isOnline = liveDev ? liveDev.online : testRes?.online || false;
+
+                      return (
+                        <article className="room-config-card" key={`room-tab-${idx}`}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                              <span style={{ width: 42, height: 42, borderRadius: 8, background: "var(--rmutp-purple-pale)", color: "var(--rmutp-purple-dark)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
+                                {idx + 1}
+                              </span>
+                              <div style={{ minWidth: 0 }}>
+                                <h3 style={{ fontSize: 17, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ห้อง {roomItem.room}</h3>
+                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
+                                  IP: <code style={{ color: "#059669", fontWeight: 800 }}>{roomItem.ip}</code>
+                                </div>
+                              </div>
+                            </div>
+                            <span style={{ borderRadius: 99, padding: "5px 10px", fontSize: 11.5, fontWeight: 900, background: isOnline ? "#ECFDF5" : "#FEF2F2", color: isOnline ? "#059669" : "#DC2626", border: `1px solid ${isOnline ? "rgba(5,150,105,0.24)" : "rgba(220,38,38,0.24)"}` }}>
+                              {isOnline ? "ONLINE" : "OFFLINE"}
+                            </span>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                            <div>
+                              <label className="field-label">รหัสห้อง</label>
+                              <input
+                                className="rmutp-input"
+                                value={roomItem.room}
+                                onChange={e => {
+                                  const newVal = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+                                  setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, room: newVal } : rm));
+                                }}
+                                style={{ fontFamily: "monospace" }}
+                              />
+                            </div>
+                            <div>
+                              <label className="field-label">IP Address / Domain</label>
+                              <input
+                                className="rmutp-input"
+                                value={roomItem.ip}
+                                onChange={e => setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, ip: e.target.value } : rm))}
+                                style={{ fontFamily: "monospace" }}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
+                            <button type="button" onClick={() => handleTestConnection(roomItem.room)} disabled={testingRoom === roomItem.room} className="btn-secondary" style={{ borderRadius: 8, padding: "10px 12px", fontSize: 12 }}>
+                              {testingRoom === roomItem.room ? "กำลังทดสอบ..." : "เทส Polling"}
+                            </button>
+                            <button type="button" onClick={() => handleOpenRoomDetails(roomItem.room, roomItem.ip)} className="btn-primary" style={{ borderRadius: 8, padding: "10px 12px", fontSize: 12 }}>
+                              ตั้งค่า API
+                            </button>
+                            <button type="button" onClick={() => handleRemoveRoom(roomItem.room)} className="btn-ghost" title="ลบห้อง" style={{ borderRadius: 8, padding: "10px 12px", color: "#DC2626", borderColor: "rgba(220,38,38,0.2)" }}>
+                              <TrashIcon />
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </section>
+
+                <section className="room-form-band">
+                  <h3 style={{ fontSize: 16, fontWeight: 900, color: "var(--text-primary)", margin: "0 0 14px" }}>เพิ่มห้อง / บอร์ดใหม่</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, alignItems: "end" }}>
+                    <div>
+                      <label className="field-label">รหัสห้อง</label>
+                      <input className="rmutp-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">IP Address / Domain</label>
+                      <input className="rmutp-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)} />
+                    </div>
+                    <button type="button" onClick={() => handleAddRoom()} className="btn-primary" style={{ borderRadius: 8, minHeight: 46 }}>
+                      เพิ่มห้องลงรายการ
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+
             {/* ── System & Discord Settings Tab (Owner Only) ────────────── */}
             {tab === "settings" && isOwner && (
               <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
@@ -3602,7 +3790,7 @@ void loop() {
                       <div style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>System Settings</div>
                       <h2 style={{ fontSize: 22, lineHeight: 1.2, fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>ตั้งค่าระบบแบบแยกหมวด</h2>
                       <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, margin: "8px 0 0" }}>
-                        แบ่งการตั้งค่าเป็นงานที่ชัดเจน: สิทธิ์อัตโนมัติ, การแจ้งเตือน, ห้องเรียน/บอร์ด ESP32 และการบันทึกทั้งหมดในจุดเดียว
+                        หน้านี้เก็บเฉพาะสิทธิ์อัตโนมัติและ Discord Webhook ส่วนกลาง ส่วนการเพิ่มห้องและบอร์ด ESP32 แยกไปที่แท็บห้องเรียน & ESP32 แล้ว
                       </p>
                     </div>
                     <button onClick={saveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
@@ -3614,7 +3802,7 @@ void loop() {
                     {[
                       { index: "01", title: "สิทธิ์อัตโนมัติ", detail: "เวลาเปิดบริการ วันทำการ Auto approve และ Auto-fill" },
                       { index: "02", title: "Discord ส่วนกลาง", detail: "ค่าเริ่มต้นสำหรับ register, approve และ logs" },
-                      { index: "03", title: "ห้องและ ESP32", detail: "รหัสห้อง IP บอร์ด และปุ่มทดสอบการเชื่อมต่อ" },
+                      { index: "03", title: "ความปลอดภัยหน้าจอ", detail: "รูปแบบการแสดงรหัสนักศึกษาบน ESP32" },
                       { index: "04", title: "บันทึกถาวร", detail: "ตรวจทานแล้วกดบันทึกเพื่อใช้ค่ากับระบบจริง" },
                     ].map(item => (
                       <div className="settings-map-item" key={item.index}>
@@ -3944,7 +4132,7 @@ void loop() {
                 </div>
 
                 {/* ═══ SECTION 3: Redesigned Multi-Room Manager with Inline Editing ═══ */}
-                <div className="premium-card" style={{ padding: 0, overflow: "hidden" }}>
+                <div className="premium-card" style={{ display: "none", padding: 0, overflow: "hidden" }}>
                   <div style={{
                     padding: "20px 26px",
                     background: "linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(59,130,246,0.04) 100%)",
@@ -4115,7 +4303,7 @@ void loop() {
                 <div className="premium-card" style={{ padding: 18, background: "linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(219,39,119,0.03) 100%)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>⚠️ ยืนยันการบันทึกการตั้งค่าระบบทั้งหมด</span>
-                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>กดปุ่มเพื่อบันทึกตารางเวลาบริการ, วันเปิดบริการ, รายชื่อห้องเรียน (IP) และ Discord Webhooks ทั้งหมดถาวร</span>
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>กดปุ่มเพื่อบันทึกตารางเวลาบริการ, วันเปิดบริการ, Auto-fill และ Discord Webhooks ส่วนกลาง</span>
                   </div>
                   <button onClick={saveSettings} disabled={settingsLoading}
                     className="btn-primary hover-card"
@@ -4176,86 +4364,92 @@ void loop() {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 28, textAlign: "left" }}>
-
-                    {/* Section 1: Overview */}
-                    <div>
-                      <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                        🌐 1. สถาปัตยกรรมระบบ (Cloud Polling Architecture)
-                      </h3>
-                      <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8, paddingLeft: 8 }}>
-                        <p style={{ margin: "0 0 10px 0" }}>
-                          เนื่องจากเครื่องเซิร์ฟเวอร์บน **Vercel** ทำงานอยู่บนโครงข่ายอินเทอร์เน็ตสาธารณะ (Public Cloud) ในขณะที่ตัวบอร์ด **ESP32** ประจำห้องปฏิบัติการจะติดตั้งอยู่ภายในวง LAN ของมหาวิทยาลัย ซึ่งไม่ได้รับ Public IP จริงและมักถูกปิดกั้นด้วย Firewall/NAT
-                        </p>
-                        <p style={{ margin: "0 0 10px 0" }}>
-                          เพื่อความง่ายและปลอดภัยสูงสุด ระบบนี้จึงถูกออกแบบบน **Polling Architecture** คือบอร์ด ESP32 จะคอยทำหน้าที่เป็นผู้เรียกติดต่อเข้าหาเซิร์ฟเวอร์ Vercel ทุกๆ 2 วินาทีเพื่อคอยดึงข้อมูล (Display Polling) และตรวจเช็กสถานะการอนุมัติสลับสัญญาณกลอนรีเลย์ผ่านทางฐานข้อมูลโดยตรง โดย<strong>ไม่จำเป็นต้องทำการฟอร์เวิร์ดพอร์ต (Port Forwarding)</strong> บนเร้าเตอร์ของมหาวิทยาลัยแต่อย่างใด
-                        </p>
-                        <div style={{ padding: 12, background: "rgba(16,185,129,0.03)", border: "1px dashed rgba(16,185,129,0.25)", borderRadius: 10, marginTop: 10 }}>
-                          <strong style={{ color: "#10B981" }}>📡 ระบบออนไลน์อัตโนมัติ (Dynamic Polling Heartbeat)</strong>
-                          <p style={{ margin: "4px 0 0 0", fontSize: 12 }}>
-                            ทุกครั้งที่ตัวบอร์ด ESP32 ยิงดึงข้อมูลเข้ามาหาเว็บ ระบบจะทำการบันทึกเวลาล่าสุดลงในตารางเก็บค่าตั้งค่า (คีย์ room_last_seen_[รหัสห้อง]) โดยอัตโนมัติ ทำให้สถานะห้องเรียนในแดชบอร์ดแสดงเป็น <span style={{ color: "#10B981", fontWeight: 700 }}>● CONNECTED</span> เสมอ ตราบใดที่บอร์ดมีการใช้งานอินเทอร์เน็ตอยู่ โดยไม่ต้องห่วงเรื่องการบล็อกพอร์ต
-                          </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 18, textAlign: "left" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                      {[
+                        { title: "หน้าคิวรอตรวจสอบ", text: "ใช้ดูคำขอใหม่ อนุมัติ หรือปฏิเสธพร้อมเหตุผล" },
+                        { title: "สถานะบอร์ด IoT", text: "ใช้ดูห้อง CE-401/CE-402 ปลดล็อกด่วน และทดสอบ Polling" },
+                        { title: "ทำเนียบ & Export PDF", text: "ใช้ค้นหาประวัติ กรองช่วงวันที่ และดาวน์โหลดรายงาน" },
+                        { title: "ตั้งค่าระบบ & Webhook", text: "ใช้เพิ่มห้อง ตั้ง IP ตั้ง Discord และบันทึกค่าระบบ" },
+                      ].map(item => (
+                        <div key={item.title} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 14, background: "var(--bg-primary)" }}>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: "var(--text-primary)", marginBottom: 5 }}>{item.title}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>{item.text}</div>
                         </div>
-                      </div>
+                      ))}
                     </div>
 
-                    {/* Section 2: Mock & Simulation */}
-                    <div>
-                      <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                        🧪 2. โหมดการทดสอบจำลอง (Software Simulation Mode)
-                      </h3>
-                      <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8, paddingLeft: 8 }}>
-                        <p style={{ margin: "0 0 10px 0" }}>
-                          คุณสามารถทดสอบจำลองการทำงานของประตู ระบบสแกน และแสดงผลหลาย ๆ ห้องเรียนพร้อมกันได้โดยไม่ต้องมีฮาร์ดแวร์บอร์ดจริงด้วยขั้นตอนง่าย ๆ:
-                        </p>
-                        <ul style={{ margin: "0 0 12px 0", paddingLeft: 20 }}>
-                          <li>เพิ่มข้อมูลห้องเรียนจำลองในตารางด้านล่างสุดของหน้าจอตั้งค่า (เช่น `CE-401` และกำหนด IP จำลองใดๆ ก็ได้ เช่น `192.168.1.100`)</li>
-                          <li>เปิดใช้งานโหมดจำลองโดยการเปลี่ยนค่าในไฟล์สภาพแวดล้อม `.env.local` เป็น `ESP32_MOCK_MODE=true`</li>
-                          <li>เข้าไปที่หน้าสัญกรณ์ <strong>/esp32-preview?room=CE-401</strong> ในอีกหนึ่งแท็บของบราวเซอร์เพื่อรับชมหน้าจอจำลอง TFT ของบอร์ด</li>
-                          <li>นักศึกษาสแกน QR และส่งคำร้อง แอดมินกดอนุมัติบนแดชบอร์ด หน้าจอจำลองจะตรวจพบแอนิเมชันเปิดล็อกสำเร็จเสมือนบอร์ดจริงทันที!</li>
+                    <div style={{ padding: 16, border: "1px solid rgba(16,185,129,0.24)", background: "#ECFDF5", borderRadius: 8 }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 900, color: "#047857", marginBottom: 8 }}>เริ่มใช้งานประจำวัน</h3>
+                      <ol style={{ margin: 0, paddingLeft: 20, color: "var(--text-primary)", fontSize: 13, lineHeight: 1.8 }}>
+                        <li>เข้าแผงผู้ดูแล แล้วดูการ์ดด้านบนก่อนว่ามีคิวรอตรวจสอบกี่คน และบอร์ดออนไลน์กี่บอร์ด</li>
+                        <li>เปิดแท็บ <strong>สถานะบอร์ด IoT ทั้งหมด</strong> เพื่อตรวจว่าแต่ละห้องมีรายการแสดงขึ้นมา เช่น CE-401 หรือ CE-402</li>
+                        <li>ถ้าบอร์ดไม่ออนไลน์ ให้กด <strong>เทส Polling</strong> ที่การ์ดห้องนั้นก่อน แล้วตรวจ IP/อินเทอร์เน็ตของบอร์ด</li>
+                        <li>กลับไปแท็บ <strong>คิวรอตรวจสอบ</strong> เพื่ออนุมัติหรือปฏิเสธคำขอของนักศึกษา</li>
+                      </ol>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+                      <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>1. รับคำขอและอนุมัติสิทธิ์</h3>
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          <li>นักศึกษาสแกน QR หน้าห้อง แล้วกรอกข้อมูลในฟอร์ม</li>
+                          <li>คำขอจะเข้าแท็บ <strong>คิวรอตรวจสอบ</strong> พร้อมห้องที่ขอใช้สิทธิ์</li>
+                          <li>ตรวจชื่อ รหัสนักศึกษา คณะ สาขา และห้องให้ถูกต้อง</li>
+                          <li>กด <strong>อนุมัติ</strong> เพื่อให้สิทธิ์ หรือกด <strong>ปฏิเสธ</strong> แล้วใส่เหตุผล</li>
+                          <li>หลังอนุมัติ ระบบจะบันทึกผู้อนุมัติ เวลา และแสดงในประวัติ/PDF</li>
                         </ul>
-                      </div>
-                    </div>
+                      </section>
 
-                    {/* Section 3: Webhook Separation */}
-                    <div>
-                      <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                        🔔 3. ระบบกระจายแจ้งเตือนแยกห้องเรียน (3-Channel Webhook Routing)
-                      </h3>
-                      <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8, paddingLeft: 8 }}>
-                        <p style={{ margin: "0 0 10px 0" }}>
-                          หากห้องเรียนแต่ละห้องมีการใช้งานแชนแนลกลุ่มสื่อสาร Discord ที่แยกกันเป็นเอกเทศ (เช่น กลุ่มอาจารย์ผู้สอนประจำสาขาหรือห้องคอมพิวเตอร์เฉพาะวิชา) แอดมินสามารถเปิดหน้าต่าง **ตั้งค่าและรายละเอียด IoT** ประจำห้องเรียนนั้น ๆ เพื่อแยกยิง Webhook ประจำแชนแนลได้ทันที:
-                        </p>
-                        <ul style={{ margin: "0 0 12px 0", paddingLeft: 20 }}>
-                          <li><strong>Register Webhook:</strong> ส่งการแจ้งเตือนทันทีที่มีนักศึกษาสแกนและยื่นส่งใบสมัครเข้าห้อง</li>
-                          <li><strong>Approve Webhook:</strong> ส่งสัญญลักษณ์สรุปการเปิดประตูว่าได้รับอนุญาตจากใคร หรือสั่งปลดล็อกด้วยสิทธิ์ Bypass ใด</li>
-                          <li><strong>Logs Webhook:</strong> ส่งรายละเอียดเชิงความปลอดภัย หรือกรณีตรวจพบบอร์ดออฟไลน์</li>
+                      <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>2. ปลดล็อกประตู</h3>
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          <li>ถ้าต้องเปิดให้รายบุคคล ให้ไปที่แท็บ <strong>ทำเนียบ & ประวัติเข้าออก</strong> แล้วกด <strong>เปิด</strong> ในแถวนักศึกษาที่อนุมัติแล้ว</li>
+                          <li>ถ้าต้องเปิดห้องทันที ให้ไปที่แท็บ <strong>สถานะบอร์ด IoT ทั้งหมด</strong> แล้วกด <strong>ปลดล็อกด่วน</strong> ที่การ์ดห้อง</li>
+                          <li>ดูตัวเลข <strong>ปลดล็อกสำเร็จวันนี้</strong> เพื่อเช็กว่าคำสั่งถูกบันทึกแล้ว</li>
+                          <li>ถ้าเปิดไม่ได้ ให้ดูว่าการ์ดห้องขึ้นออนไลน์หรือไม่ และลองกด <strong>เทส Polling</strong></li>
                         </ul>
-                        <div style={{ padding: 12, background: "rgba(139,92,246,0.03)", border: "1px dashed rgba(139,92,246,0.25)", borderRadius: 10, marginTop: 10 }}>
-                          <strong style={{ color: "var(--rmutp-purple)" }}>🧪 การทดสอบยิงแชนแนล Discord (Live Webhook Tester)</strong>
-                          <p style={{ margin: "4px 0 0 0", fontSize: 12 }}>
-                            ไม่ว่าจะเป็นการตั้งค่าบอทส่วนกลางหรือของห้องเรียน แอดมินสามารถป้อนลิงก์แล้วกดปุ่ม <span style={{ fontWeight: 700 }}>"🧪 ทดสอบส่ง"</span> ข้างช่องอินพุต ระบบจะคัดสรร Payload ในรูปแบบ Rich Embed Card ล่าสุดยิงเข้าห้องแชท เพื่อยืนยันว่าการทำงานของลิงก์ถูกต้อง 100% ทันที
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                      </section>
 
-                    {/* Section 4: DB & Self-Deleter */}
-                    <div>
-                      <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                        ⚡ 4. ความปลอดภัยและความเร็วบนคลาวด์ Aiven (SQL Optimization & Self-Deleter)
-                      </h3>
-                      <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8, paddingLeft: 8 }}>
-                        <p style={{ margin: "0 0 10px 0" }}>
-                          เนื่องจากระบบคลาวด์ของ Aiven ในสิทธิ์บัญชีใช้งานฟรีจะมีทรัพยากรที่ค่อนข้างจำกัด ระบบนี้จึงมีการใช้โครงสร้างลดภาระและเร่งความเร็วการทำงานดังนี้:
-                        </p>
-                        <ul style={{ margin: "0 0 10px 0", paddingLeft: 20 }}>
-                          <li><strong>Database Indexing:</strong> ได้รับการติดตั้ง Index ความเร็วสูง ครอบตารางตรวจสอบสิทธิ์ทำให้อัตราความเร็วในการเชื่อมต่อ SQL เพิ่มขึ้นถึง **1,000%** บอร์ดดึงข้อมูลสเตตัสเสร็จได้ทันทีภายในหลักหน่วยมิลลิวินาที</li>
-                          <li><strong>Self-Deleting GC (ระบบทำลายขยะอัตโนมัติ):</strong> ข้อมูล QR Code และตั๋วประวัติชั่วคราวจะเปิดใช้ระบบลบทำลายตัวเองทุก 5 นาทีเมื่อถูกใช้หรือหมดอายุ ป้องกันขยะล้นตาราง ซึ่งจะช่วยขจัดปัญหาคิวรีหนืดหรือพื้นที่ฐานข้อมูล Aiven เต็มในระยะยาว</li>
+                      <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>3. เพิ่มหรือแก้ไขห้อง IoT</h3>
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          <li>เปิดแท็บ <strong>ห้องเรียน & ESP32</strong></li>
+                          <li>ไปที่ส่วนเพิ่มห้อง / บอร์ดใหม่</li>
+                          <li>กรอกรหัสห้อง เช่น <strong>CE-401</strong> และ IP ของบอร์ด เช่น <strong>192.168.1.100</strong></li>
+                          <li>กดเพิ่มห้อง แล้วกด <strong>บันทึกทั้งหมด</strong> เพื่อให้ห้องแสดงในหน้า IoT หลังเปิดเว็บใหม่หรือ deploy ใหม่</li>
+                          <li>ถ้าห้องมี Discord แยก ให้กดปุ่มตั้งค่าของห้องนั้น แล้วใส่ Webhook เฉพาะห้อง</li>
                         </ul>
-                      </div>
+                      </section>
+
+                      <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>4. Export PDF และค้นหาประวัติ</h3>
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          <li>ไปที่แท็บ <strong>ทำเนียบ & ประวัติเข้าออก</strong></li>
+                          <li>เลือกวันที่เริ่มต้น วันที่สิ้นสุด และสถานะที่ต้องการ</li>
+                          <li>ตรวจกล่องสรุปจำนวนรายการก่อนดาวน์โหลด</li>
+                          <li>กด <strong>ดาวน์โหลด PDF</strong> เพื่อออกเอกสารรวม</li>
+                          <li>ถ้าต้องการเอกสารรายบุคคล ให้กดปุ่ม <strong>การ์ด</strong> ในแถวนักศึกษาคนนั้น</li>
+                        </ul>
+                      </section>
                     </div>
 
+                    <div style={{ border: "1px solid rgba(217,119,6,0.24)", background: "#FFFBEB", borderRadius: 8, padding: 16 }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 900, color: "#B45309", marginBottom: 10 }}>แก้ปัญหาที่พบบ่อย</h3>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+                        {[
+                          { q: "เข้าเว็บแล้วไม่เห็นห้อง IoT", a: "ไปที่ตั้งค่าระบบ ตรวจว่ามีห้องอยู่ในรายการ แล้วกดบันทึกทั้งหมดอีกครั้ง" },
+                          { q: "บอร์ดขึ้น OFFLINE", a: "ตรวจไฟเลี้ยง/อินเทอร์เน็ตบอร์ด ตรวจ IP แล้วกดเทส Polling" },
+                          { q: "Discord ไม่แจ้งเตือน", a: "ตรวจ Webhook ส่วนกลางหรือ Webhook เฉพาะห้อง แล้วกดทดสอบส่ง" },
+                          { q: "PDF ไม่มีข้อมูล", a: "ตรวจช่วงวันที่และสถานะที่เลือก ถ้ากรองแคบเกินไปให้เลือกทุกสถานะหรือขยายช่วงวันที่" },
+                        ].map(item => (
+                          <div key={item.q} style={{ background: "#FFFFFF", border: "1px solid rgba(217,119,6,0.18)", borderRadius: 8, padding: 12 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 900, color: "var(--text-primary)", marginBottom: 4 }}>{item.q}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>{item.a}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

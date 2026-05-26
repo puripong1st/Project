@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
     const faculty = searchParams.get("faculty");
     const search = searchParams.get("search");
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "300", 10) || 300, 1), 500);
 
     const pool = getPool();
     let query = `
@@ -54,7 +55,8 @@ export async function GET(req: NextRequest) {
       query += ` AND (s.first_name ILIKE $${p1} OR s.last_name ILIKE $${p2} OR s.student_id ILIKE $${p3})`;
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
-    query += " ORDER BY s.registered_at DESC";
+    query += ` ORDER BY s.registered_at DESC LIMIT $${paramIndex++}`;
+    params.push(limit);
 
     const { rows } = await pool.query(query, params);
     return NextResponse.json({ students: rows as StudentRow[] });
@@ -121,7 +123,7 @@ export async function POST(req: NextRequest) {
 
     // Check duplicate student_id securely for intelligent re-entry / re-submission
     const { rows: existing } = await pool.query(
-      "SELECT * FROM students WHERE student_id = $1",
+      "SELECT id, status, student_id FROM students WHERE student_id = $1 LIMIT 1",
       [sanitizedStudentId]
     );
     const existingStudents = existing as StudentRow[];

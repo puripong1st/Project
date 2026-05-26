@@ -4,6 +4,10 @@
 //   ESP32_MOCK_MODE=true           → Pure software mock (no hardware needed)
 //   ESP32_WOKWI=true               → Connect to Wokwi Simulator via localhost:8180
 //   (neither)                      → Connect to physical ESP32 at ESP32_IP:ESP32_PORT
+//
+// OPTIMIZATION (2026-05): openDoor now returns immediately after writing to DB queue
+//   LAN direct-connect is attempted in background (non-blocking fire-and-forget)
+//   getESP32Status skips LAN ping for private IPs on cloud environments
 
 import { getSystemSettings, getPool } from "./db";
 
@@ -16,7 +20,7 @@ const WOKWI_MODE = process.env.ESP32_WOKWI === "true";
 const WOKWI_URL = process.env.ESP32_WOKWI_URL || "http://localhost:8180";
 const BASE_URL   = WOKWI_MODE ? WOKWI_URL : `http://${ESP32_IP}:${ESP32_PORT}`;
 
-// Pre-shared API key for authenticating Next.js → ESP32 calls (Vulnerability 1 fix)
+// Pre-shared API key for authenticating Next.js → ESP32 calls
 const ESP32_API_KEY = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";
 
 function verifyApiKeySecurity() {
@@ -41,6 +45,35 @@ export function getESP32Mode(): ESP32ConnectionMode {
 
 /** Returns the active base URL being used */
 export function getESP32BaseUrl(): string { return BASE_URL; }
+
+/**
+ * Detect if a URL/IP is a private LAN IP address.
+ * When running on cloud (Vercel), we cannot reach private IPs, so we skip direct ping.
+ */
+function isPrivateLanUrl(url: string): boolean {
+  // Extract host from URL or treat as IP
+  const host = url.replace(/^https?:\/\//, "").split(/[/:]/)[0];
+  return (
+    /^192\.168\./.test(host) ||
+    /^10\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    host === "localhost" ||
+    host === "127.0.0.1"
+  );
+}
+
+/**
+ * Detect if we are running in a cloud/serverless environment (Vercel, etc.)
+ * In cloud environments, we cannot reach private LAN IPs.
+ */
+function isCloudEnvironment(): boolean {
+  return !!(
+    process.env.VERCEL ||
+    process.env.VERCEL_ENV ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.FUNCTION_NAME // GCP
+  );
+}
 
 /**
  * Resolves the URL for a specific classroom dynamically.
@@ -78,7 +111,7 @@ export interface ESP32Response {
   timestamp?: string;
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2000): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 1500): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -88,28 +121,41 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
-async function retryFetch(url: string, options: RequestInit = {}, retries = 3): Promise<Response> {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fetchWithTimeout(url, options, 2000);
-    } catch (error) {
-      if (i === retries - 1) throw error;
-      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+/**
+ * Fire-and-forget LAN direct attempt — runs completely in background.
+ * Does NOT block or retry. Failure is silent (already handled by DB queue).
+ */
+function tryLanDirectBackground(url: string, studentId: string | undefined, roomCode: string): void {
+  // Run in background, no await, no retry
+  fetchWithTimeout(`${url}/door/open`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": ESP32_API_KEY,
+    },
+    body: JSON.stringify({ studentId, timestamp: new Date().toISOString() }),
+  }, 1500).then(res => {
+    if (res.ok) {
+      console.log(`[ESP32 LAN] Direct connection succeeded for room: ${roomCode}`);
     }
-  }
-  throw new Error("Max retries reached");
+  }).catch(() => {
+    // Silent: DB queue already handles delivery — LAN direct is just a fast-path bonus
+  });
 }
 
 /**
- * Send door open command to ESP32 / Wokwi
+ * Send door open command to ESP32 / Wokwi.
+ * 
+ * OPTIMIZED: Returns immediately after writing IoT cloud DB queue (<20ms).
+ * LAN direct-connect is attempted in background only if not on cloud environment.
  */
 export async function openDoor(studentId?: string, roomCode?: string): Promise<ESP32Response> {
   verifyApiKeySecurity();
   const sanitizedRoom = (roomCode || "default").trim();
 
   // ─── [IoT Cloud Platform Architecture] ───
-  // เขียนคิวคำสั่งเปิดประตู "unlock" ลงฐานข้อมูล MySQL เสมอ เพื่อให้บอร์ด ESP32 ที่เชื่อมต่อนอกวง LAN 
-  // (ผ่านเน็ตสาธารณะ Wi-Fi/4G) มาร้องขอรับทราบ (Polling) คำสั่งเปิดประตูไปรันได้ทันทีข้ามโลก 100%
+  // เขียนคิวคำสั่งเปิดประตู "unlock" ลงฐานข้อมูล เพื่อให้ ESP32 ที่เชื่อมต่อนอกวง LAN
+  // (ผ่านเน็ตสาธารณะ Wi-Fi/4G) มาร้องขอรับทราบ (Polling) คำสั่งเปิดประตู
   try {
     const pool = getPool();
     await pool.query(
@@ -125,7 +171,6 @@ export async function openDoor(studentId?: string, roomCode?: string): Promise<E
 
   if (MOCK_MODE) {
     console.log(`[ESP32 Mock] Simulating door open for room: ${sanitizedRoom} student:`, studentId);
-    await new Promise((r) => setTimeout(r, 500));
     return {
       success: true,
       message: `🔓 [MOCK] ประตูห้อง ${sanitizedRoom} เปิดสำเร็จ (โหมดทดสอบ)`,
@@ -134,52 +179,30 @@ export async function openDoor(studentId?: string, roomCode?: string): Promise<E
     };
   }
 
-  const modeLabel = WOKWI_MODE ? "[Wokwi]" : "[ESP32]";
-  try {
-    const url = await getESP32Url(sanitizedRoom);
-    // พยายามยิงตรงไปหาบอร์ดตัวจริง (เผื่ออยู่ในวง LAN ท้องถิ่นเดียวกันหรือมี Port forward)
-    const response = await retryFetch(`${url}/door/open`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": ESP32_API_KEY,
-      },
-      body: JSON.stringify({ studentId, timestamp: new Date().toISOString() }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        success: true,
-        message: data.message || "เปิดประตูผ่านเครือข่าย LAN สำเร็จ",
-        wokwi: WOKWI_MODE,
-        timestamp: new Date().toISOString(),
-      };
-    }
-    
-    // หากบอร์ดตอบผิดพลาด แต่คำสั่งลง DB เรียบร้อยแล้ว ให้มองเป็นคิวสำเร็จสำหรับบอร์ดข้ามอินเทอร์เน็ต
-    return {
-      success: true,
-      message: `ส่งคำสั่งเปิดประตูเข้าคิวระบบคลาวด์เรียบร้อยแล้ว (บอร์ดข้ามอินเทอร์เน็ตจะรับทราบผลและเปิดใน 2 วินาที)`,
-      wokwi: WOKWI_MODE,
-      timestamp: new Date().toISOString(),
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Connection failed";
-    console.log(`${modeLabel} LAN Direct connection skipped/failed: ${msg} -> พึ่งพาคำสั่งผ่านระบบ IoT Cloud Queue`);
-    
-    // Fallback ปลอดภัย: บอร์ดอยู่นอกวง LAN/ติดไฟร์วอลล์ แต่เราลงแฟล็กเปิดประตูในคลาวด์เรียบร้อยแล้ว ถือว่าส่งคำสั่งสำเร็จ!
-    return {
-      success: true,
-      message: `ส่งคำสั่งเปิดประตูเข้าคิวระบบคลาวด์สำเร็จ (บอร์ดห้อง ${sanitizedRoom} กำลัง Long-Polling ดึงข้อมูล)`,
-      wokwi: WOKWI_MODE,
-      timestamp: new Date().toISOString(),
-    };
+  // ─── [Optimized: Non-blocking LAN Direct Background Attempt] ───
+  // ถ้าไม่ได้รันบนระบบคลาวด์ และบอร์ดอยู่ในวง LAN เดียวกัน ลองยิงตรงใน background (fire-and-forget)
+  // ไม่บล็อกการทำงาน — คิวใน DB คือระบบหลักและได้บันทึกแล้ว
+  if (!isCloudEnvironment()) {
+    // Only attempt LAN direct if NOT on Vercel/cloud (where it would always timeout)
+    getESP32Url(sanitizedRoom).then(url => {
+      if (!isPrivateLanUrl(url)) return; // Only try LAN IPs in background
+      tryLanDirectBackground(url, studentId, sanitizedRoom);
+    }).catch(() => {});
   }
+
+  return {
+    success: true,
+    message: `ส่งคำสั่งเปิดประตูเข้าคิวระบบคลาวด์เรียบร้อยแล้ว (บอร์ดห้อง ${sanitizedRoom} จะรับทราบและเปิดประตูใน 2 วินาที)`,
+    wokwi: WOKWI_MODE,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 /**
- * Get ESP32 / Wokwi status
+ * Get ESP32 / Wokwi status.
+ *
+ * OPTIMIZED: When running in cloud env with private LAN IPs, skip direct ping entirely
+ * and rely solely on Heartbeat timestamp from DB (instant, <10ms).
  */
 export async function getESP32Status(roomCode?: string): Promise<{
   online: boolean;
@@ -190,6 +213,8 @@ export async function getESP32Status(roomCode?: string): Promise<{
   mode: ESP32ConnectionMode;
 }> {
   const mode = getESP32Mode();
+  const sanitizedRoom = (roomCode || "default").trim();
+
   if (MOCK_MODE) {
     const resolvedUrl = await getESP32Url(roomCode);
     const ipLabel = resolvedUrl.replace("http://", "").replace("https://", "");
@@ -199,60 +224,66 @@ export async function getESP32Status(roomCode?: string): Promise<{
   const url = await getESP32Url(roomCode);
   const ipLabel = url.replace("http://", "").replace("https://", "");
 
-  try {
-    const response = await fetchWithTimeout(`${url}/status`, {}, 1000);
-    const data = await response.json();
-    return {
-      online: true,
-      doorStatus: data.door_status,
-      ip: WOKWI_MODE ? "localhost:8180" : ipLabel,
-      mock: false,
-      wokwi: WOKWI_MODE,
-      mode,
-    };
-  } catch {
-    // ─── [IoT Cloud Polling Heartbeat Fallback] ───
-    // ถ้ายิงตรงไปหา IP ของบอร์ดไม่ได้ (เช่น ตอนอยู่บน Vercel แล้วบอร์ดใช้ IP วง LAN)
-    // ให้เช็คจากประวัติการยิงดึงข้อมูลล่าสุด (Heartbeat) ของห้องนั้นๆ ในดาต้าเบสแทน
-    try {
-      const pool = getPool();
-      const sanitizedRoom = (roomCode || "default").trim();
-      const { rows } = await pool.query(
-        "SELECT setting_value FROM system_settings WHERE setting_key = $1",
-        [`room_last_seen_${sanitizedRoom}`]
-      );
-      const settings = rows as { setting_value: string }[];
-      if (settings.length > 0) {
-        const lastSeenStr = settings[0].setting_value;
-        const lastSeen = new Date(lastSeenStr).getTime();
-        const now = new Date().getTime();
-        const diffSeconds = (now - lastSeen) / 1000;
-        
-        // เพิ่มช่วงเวลาเป็น 120 วินาที (2 นาที) เพื่อรองรับปัญหาเวลาเซิร์ฟเวอร์กับดาต้าเบสคลาดเคลื่อนกัน (Clock Drift)
-        // และป้องกันบอร์ดออฟไลน์ปลอมกรณีสัญญาณเครือข่ายจำลองหน่วงตัว
-        if (diffSeconds <= 120) {
-          return {
-            online: true,
-            doorStatus: "closed", // คาดการณ์สถานะล็อกปกติ
-            ip: WOKWI_MODE ? "localhost:8180" : ipLabel,
-            mock: false,
-            wokwi: WOKWI_MODE,
-            mode,
-          };
-        }
-      }
-    } catch (dbErr) {
-      console.error("[Status Heartbeat Fallback] Database check failed:", dbErr);
-    }
+  // ─── [Optimization: Skip LAN ping when on cloud with private IP] ───
+  // Vercel/cloud cannot reach private LAN IPs (192.168.x.x, 10.x.x.x, etc.)
+  // Attempting to connect would always timeout after 1+ second — skip and use Heartbeat DB
+  const shouldSkipDirectPing = isCloudEnvironment() && isPrivateLanUrl(url);
 
-    return {
-      online: false,
-      ip: WOKWI_MODE ? "localhost:8180" : ipLabel,
-      mock: false,
-      wokwi: WOKWI_MODE,
-      mode,
-    };
+  if (!shouldSkipDirectPing) {
+    try {
+      const response = await fetchWithTimeout(`${url}/status`, {}, 1000);
+      const data = await response.json();
+      return {
+        online: true,
+        doorStatus: data.door_status,
+        ip: WOKWI_MODE ? "localhost:8180" : ipLabel,
+        mock: false,
+        wokwi: WOKWI_MODE,
+        mode,
+      };
+    } catch {
+      // Fall through to Heartbeat check below
+    }
   }
+
+  // ─── [IoT Cloud Polling Heartbeat Fallback] ───
+  // เช็คจากประวัติการดึงข้อมูลล่าสุด (Heartbeat) ของห้องนั้นๆ ในฐานข้อมูลแทน
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = $1",
+      [`room_last_seen_${sanitizedRoom}`]
+    );
+    const settings = rows as { setting_value: string }[];
+    if (settings.length > 0) {
+      const lastSeenStr = settings[0].setting_value;
+      const lastSeen = new Date(lastSeenStr).getTime();
+      const now = new Date().getTime();
+      const diffSeconds = (now - lastSeen) / 1000;
+      
+      // ถ้าบอร์ดเพิ่ง Heartbeat มาไม่เกิน 120 วินาที ถือว่าออนไลน์
+      if (diffSeconds <= 120) {
+        return {
+          online: true,
+          doorStatus: "closed",
+          ip: WOKWI_MODE ? "localhost:8180" : ipLabel,
+          mock: false,
+          wokwi: WOKWI_MODE,
+          mode,
+        };
+      }
+    }
+  } catch (dbErr) {
+    console.error("[Status Heartbeat Fallback] Database check failed:", dbErr);
+  }
+
+  return {
+    online: false,
+    ip: WOKWI_MODE ? "localhost:8180" : ipLabel,
+    mock: false,
+    wokwi: WOKWI_MODE,
+    mode,
+  };
 }
 
 /**
@@ -280,7 +311,7 @@ export async function updateESP32Display(
         "X-API-Key": ESP32_API_KEY,
       },
       body: JSON.stringify(payload),
-    });
+    }, 1500);
     return response.ok;
   } catch {
     return false;

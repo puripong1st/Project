@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getPool, getSystemSettings, updateSystemSetting } from "@/lib/db";
+import { getPool, getSystemSettings, updateSystemSettings } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
 
@@ -48,50 +48,52 @@ export async function POST(req: NextRequest) {
       student_id_display_mode,
     } = body;
 
+    const updates: Record<string, string> = {};
+
     // ชำระล้างและตรวจสอบข้อมูลเบื้องต้น
     if (student_id_display_mode !== undefined) {
       const mode = String(student_id_display_mode).trim();
       if (["full", "masked", "hidden"].includes(mode)) {
-        await updateSystemSetting("student_id_display_mode", mode);
+        updates.student_id_display_mode = mode;
       }
     }
     if (auto_approve_enabled !== undefined) {
-      await updateSystemSetting("auto_approve_enabled", auto_approve_enabled === "1" || auto_approve_enabled === true ? "1" : "0");
+      updates.auto_approve_enabled = auto_approve_enabled === "1" || auto_approve_enabled === true ? "1" : "0";
     }
     if (auto_fill_enabled !== undefined) {
-      await updateSystemSetting("auto_fill_enabled", auto_fill_enabled === "1" || auto_fill_enabled === true ? "1" : "0");
+      updates.auto_fill_enabled = auto_fill_enabled === "1" || auto_fill_enabled === true ? "1" : "0";
     }
     if (auto_fill_mode !== undefined) {
       const mode = String(auto_fill_mode).trim();
       if (["auto", "manual"].includes(mode)) {
-        await updateSystemSetting("auto_fill_mode", mode);
+        updates.auto_fill_mode = mode;
       }
     }
     if (auto_approve_start_time !== undefined) {
       const timeRegex = /^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
       if (auto_approve_start_time === "" || timeRegex.test(auto_approve_start_time)) {
-        await updateSystemSetting("auto_approve_start_time", auto_approve_start_time);
+        updates.auto_approve_start_time = auto_approve_start_time;
       }
     }
     if (auto_approve_end_time !== undefined) {
       const timeRegex = /^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
       if (auto_approve_end_time === "" || timeRegex.test(auto_approve_end_time)) {
-        await updateSystemSetting("auto_approve_end_time", auto_approve_end_time);
+        updates.auto_approve_end_time = auto_approve_end_time;
       }
     }
     if (auto_approve_days !== undefined) {
       // ป้องกันค่าแปลกปลอมกรองเอาเฉพาะ 0-6 คั่นด้วยจุลภาค
       const days = String(auto_approve_days).split(",").map(Number).filter(d => !isNaN(d) && d >= 0 && d <= 6).join(",");
-      await updateSystemSetting("auto_approve_days", days);
+      updates.auto_approve_days = days;
     }
     if (discord_webhook_register !== undefined) {
-      await updateSystemSetting("discord_webhook_register", String(discord_webhook_register).trim());
+      updates.discord_webhook_register = String(discord_webhook_register).trim();
     }
     if (discord_webhook_approve !== undefined) {
-      await updateSystemSetting("discord_webhook_approve", String(discord_webhook_approve).trim());
+      updates.discord_webhook_approve = String(discord_webhook_approve).trim();
     }
     if (discord_webhook_logs !== undefined) {
-      await updateSystemSetting("discord_webhook_logs", String(discord_webhook_logs).trim());
+      updates.discord_webhook_logs = String(discord_webhook_logs).trim();
     }
 
     // อัปเดตการตั้งค่าเพิ่มเติม (custom settings) เช่น รายชื่อห้องเรียน และ IP แยกห้อง
@@ -99,10 +101,12 @@ export async function POST(req: NextRequest) {
     if (custom_settings && typeof custom_settings === "object") {
       for (const [key, value] of Object.entries(custom_settings)) {
         if (typeof key === "string" && typeof value === "string") {
-          await updateSystemSetting(key, value.trim());
+          updates[key] = value.trim();
         }
       }
     }
+
+    await updateSystemSettings(updates);
 
     // บันทึก log ในระบบ
     const pool = getPool();

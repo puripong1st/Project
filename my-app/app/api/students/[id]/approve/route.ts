@@ -1,6 +1,6 @@
 // app/api/students/[id]/approve/route.ts — Approve student + open door
 import { NextRequest, NextResponse } from "next/server";
-import { getPool, initDatabase, StudentRow } from "@/lib/db";
+import { getPool, initDatabase } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
@@ -29,44 +29,50 @@ export async function POST(
 
     const pool = getPool();
 
-    // Get student
-    const { rows } = await pool.query("SELECT * FROM students WHERE id = $1", [studentId]);
-    const students = rows as StudentRow[];
-    if (students.length === 0) {
-      return NextResponse.json({ error: "ไม่พบข้อมูลนักศึกษา" }, { status: 404 });
-    }
-    const student = students[0];
-    if (student.status !== "pending") {
-      return NextResponse.json({ error: "นักศึกษานี้ไม่ได้อยู่ในสถานะรอการอนุมัติ" }, { status: 400 });
-    }
-
-    // Update status to approved
-    await pool.query(
-      "UPDATE students SET status = 'approved', approved_by = $1, approved_at = CURRENT_TIMESTAMP WHERE id = $2",
+    const { rows } = await pool.query(
+      `UPDATE students
+       SET status = 'approved', approved_by = $1, approved_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND status = 'pending'
+       RETURNING id, first_name, last_name, student_id, requested_room`,
       [admin.id, studentId]
     );
+    const students = rows as {
+      id: number;
+      first_name: string;
+      last_name: string;
+      student_id: string;
+      requested_room: string;
+    }[];
+    if (students.length === 0) {
+      const existing = await pool.query("SELECT status FROM students WHERE id = $1", [studentId]);
+      if (existing.rows.length === 0) {
+        return NextResponse.json({ error: "ไม่พบข้อมูลนักศึกษา" }, { status: 404 });
+      }
+      return NextResponse.json({ error: "นักศึกษานี้ไม่ได้อยู่ในสถานะรอการอนุมัติ" }, { status: 400 });
+    }
+    const student = students[0];
 
     // Open door via ESP32
     const esp32Result = await openDoor(student.student_id, student.requested_room);
 
-    // Update last door open
-    if (esp32Result.success) {
-      await pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [studentId]);
-    }
-
-    // Log access
-    await pool.query(
+    const writes: Promise<unknown>[] = [
+      pool.query(
       `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        studentId,
-        esp32Result.success ? "door_opened" : "door_failed",
-        admin.id,
-        esp32Result.message,
-        `อนุมัติโดย: ${admin.full_name}`,
-        student.requested_room || 'default'
-      ]
-    );
+        [
+          studentId,
+          esp32Result.success ? "door_opened" : "door_failed",
+          admin.id,
+          esp32Result.message,
+          `อนุมัติโดย: ${admin.full_name}`,
+          student.requested_room || "default"
+        ]
+      ),
+    ];
+    if (esp32Result.success) {
+      writes.push(pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [studentId]));
+    }
+    await Promise.all(writes);
 
     // Discord notification
     const eventType = esp32Result.success ? "student_approved" : "door_failed";

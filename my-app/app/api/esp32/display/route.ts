@@ -1,4 +1,5 @@
 // app/api/esp32/display/route.ts — JSON display state for ESP32 polling
+// OPTIMIZED: All independent DB queries run in parallel with Promise.all
 import { NextRequest, NextResponse } from "next/server";
 import { initDatabase, getPool } from "@/lib/db";
 import { getOrCreateActiveQRToken } from "@/lib/qr";
@@ -23,46 +24,58 @@ export async function GET(req: NextRequest) {
 
     const pool = getPool();
 
+    // ─── [OPTIMIZATION: Run all independent DB queries in parallel] ───
+    // แทนที่จะรันทีละ query แบบ sequential (รวม ~150-300ms)
+    // รัน query ทั้งหมดพร้อมกันใน Promise.all (รวมเหลือแค่ ~50-100ms)
+    const [
+      settingRows,
+      pendingRows,
+      lastApproved,
+      modeRows,
+    ] = await Promise.all([
+      // 1. Check for pending unlock command (IoT Cloud Polling)
+      pool.query(
+        "SELECT setting_value FROM system_settings WHERE setting_key = $1",
+        [`room_cmd_${room}`]
+      ),
+      // 2. Count pending students for this room
+      pool.query(
+        "SELECT COUNT(*) as count FROM students WHERE status = 'pending' AND requested_room = $1",
+        [room]
+      ),
+      // 3. Get last approved student
+      pool.query(
+        `SELECT CONCAT(first_name, ' ', last_name) as name, student_id, approved_at
+         FROM students WHERE status = 'approved' AND approved_at IS NOT NULL AND requested_room = $1
+         ORDER BY approved_at DESC LIMIT 1`,
+        [room]
+      ),
+      // 4. Fetch student ID display mode
+      pool.query(
+        "SELECT setting_value FROM system_settings WHERE setting_key = 'student_id_display_mode'"
+      ),
+    ]);
+
     // ─── [IoT Cloud Polling command check] ───
-    // ตรวจสอบว่าแอดมินพึ่งกดยอมรับอนุมัติเปิดประตูสำหรับห้องนี้หรือไม่
     let doorTrigger = "idle";
-    const { rows: settingRows } = await pool.query(
-      "SELECT setting_value FROM system_settings WHERE setting_key = $1",
-      [`room_cmd_${room}`]
-    );
-    const settings = settingRows as { setting_value: string }[];
+    const settings = settingRows.rows as { setting_value: string }[];
     if (settings.length > 0 && settings[0].setting_value === "unlock") {
       doorTrigger = "open";
-      // ทำการล้างสถานะในทันที (Consume) เพื่อป้องกันการเปิดซ้ำซ้อนใน Polling รอบถัดไป
-      await pool.query(
+      // Consume the command immediately to prevent re-trigger on next poll
+      // Run fire-and-forget (no await) so it doesn't delay the response
+      pool.query(
         "UPDATE system_settings SET setting_value = 'consumed', updated_at = CURRENT_TIMESTAMP WHERE setting_key = $1",
         [`room_cmd_${room}`]
-      );
-      console.log(`[IoT Cloud API] Command 'unlock' consumed by device for room: ${room}`);
+      ).then(() => {
+        console.log(`[IoT Cloud API] Command 'unlock' consumed by device for room: ${room}`);
+      }).catch(err => {
+        console.error("[IoT Cloud API] Failed to consume unlock command:", err);
+      });
     }
 
-    // Count pending students for this specific room
-    const { rows: pendingRows } = await pool.query(
-      "SELECT COUNT(*) as count FROM students WHERE status = 'pending' AND requested_room = $1",
-      [room]
-    );
-    const pendingCount = (pendingRows as { count: number }[])[0].count;
-
-    // Get last approved student for this specific room
-    const { rows: lastApproved } = await pool.query(
-      `SELECT CONCAT(first_name, ' ', last_name) as name, student_id, approved_at
-       FROM students WHERE status = 'approved' AND approved_at IS NOT NULL AND requested_room = $1
-       ORDER BY approved_at DESC LIMIT 1`,
-      [room]
-    );
-
-    const lastStudent = (lastApproved as { name: string; student_id: string; approved_at: Date }[])[0];
-
-    // Fetch student ID display mode configuration (full, masked, or hidden)
-    const { rows: modeRows } = await pool.query(
-      "SELECT setting_value FROM system_settings WHERE setting_key = 'student_id_display_mode'"
-    );
-    const displayMode = modeRows[0]?.setting_value || "full";
+    const pendingCount = (pendingRows.rows as { count: number }[])[0].count;
+    const lastStudent = (lastApproved.rows as { name: string; student_id: string; approved_at: Date }[])[0];
+    const displayMode = modeRows.rows[0]?.setting_value || "full";
 
     let displayStudentId = "";
     if (lastStudent) {
@@ -81,21 +94,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Generate active QR token (this has its own cache logic)
     const activeToken = await getOrCreateActiveQRToken(room);
 
-    // ─── IoT Polling Heartbeat ───
-    // ทุกครั้งที่บอร์ด ESP32 เข้ามาดึงข้อมูล (Polling) เราจะทำบันทึก Heartbeat ล่าสุดไว้ในระบบ
-    // เพื่อให้ฝั่งหน้าจอแอดมิน (Dashboard) แสดงสถานะไฟเขียว CONNECTED ได้อัตโนมัติถึงแม้จะอยู่คนละวงเครือข่ายก็ตาม
-    try {
-      await pool.query(
-        `INSERT INTO system_settings (setting_key, setting_value) 
-         VALUES ($1, $2) 
-         ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value`,
-        [`room_last_seen_${room}`, new Date().toISOString()]
-      );
-    } catch (heartbeatErr) {
+    // ─── IoT Polling Heartbeat — fire-and-forget (non-blocking) ───
+    // ไม่ต้อง await เพราะ Heartbeat ไม่ใช่ข้อมูลวิกฤต — ส่งไปในพื้นหลัง
+    pool.query(
+      `INSERT INTO system_settings (setting_key, setting_value) 
+       VALUES ($1, $2) 
+       ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value`,
+      [`room_last_seen_${room}`, new Date().toISOString()]
+    ).catch(heartbeatErr => {
       console.error("[IoT Polling Heartbeat] Failed to update heartbeat:", heartbeatErr);
-    }
+    });
 
     // Only expose the active_token if the caller authenticates with ESP32 API key
     const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_2026";

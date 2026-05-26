@@ -6,7 +6,16 @@ import bcrypt from "bcryptjs";
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // Use globalThis to persist the pg Pool instance across module hot-reloads in Next.js development mode
-const globalForDb = globalThis as unknown as { pool?: Pool };
+const globalForDb = globalThis as unknown as {
+  pool?: Pool;
+  settingsCache?: {
+    value: Record<string, string>;
+    expiresAt: number;
+  };
+};
+
+// Settings cache: 30s so frequent ESP32 polls don't hammer DB unnecessarily
+const SETTINGS_CACHE_TTL_MS = 30_000;
 
 export function getPool(): Pool {
   if (!globalForDb.pool) {
@@ -15,9 +24,13 @@ export function getPool(): Pool {
       ssl: {
         rejectUnauthorized: false
       },
-      max: 10,                 // Maximum active connections
-      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-      connectionTimeoutMillis: 2000, // Connection timeout
+      // OPTIMIZATION: Increase pool size + enable TCP keepAlive for Supabase Pooler
+      max: 20,                         // More concurrent connections (Supabase pooler supports this)
+      min: 2,                          // Keep 2 warm connections alive at all times
+      idleTimeoutMillis: 60000,        // Keep idle connections alive for 60s (reduce reconnect overhead)
+      connectionTimeoutMillis: 3000,   // Raise slightly to avoid spurious timeouts on cold start
+      keepAlive: true,                 // Enable TCP keepAlive — prevents Supabase from dropping idle connections
+      keepAliveInitialDelayMillis: 10000, // Start keepAlive after 10s of inactivity
     };
     globalForDb.pool = new Pool(config);
     console.log("[DB] Established global singleton database connection pool");
@@ -234,13 +247,26 @@ export interface AccessLogRow {
   requested_room?: string;
 }
 
-export async function getSystemSettings(): Promise<Record<string, string>> {
+export function clearSystemSettingsCache(): void {
+  globalForDb.settingsCache = undefined;
+}
+
+export async function getSystemSettings(options: { force?: boolean } = {}): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (!options.force && globalForDb.settingsCache && globalForDb.settingsCache.expiresAt > now) {
+    return globalForDb.settingsCache.value;
+  }
+
   const pool = getPool();
   const { rows } = await pool.query("SELECT setting_key, setting_value FROM system_settings");
   const settings: Record<string, string> = {};
   for (const row of rows as { setting_key: string; setting_value: string }[]) {
     settings[row.setting_key] = row.setting_value;
   }
+  globalForDb.settingsCache = {
+    value: settings,
+    expiresAt: now + SETTINGS_CACHE_TTL_MS,
+  };
   return settings;
 }
 
@@ -250,4 +276,22 @@ export async function updateSystemSetting(key: string, value: string): Promise<v
     "INSERT INTO system_settings (setting_key, setting_value) VALUES ($1, $2) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP",
     [key, value]
   );
+  clearSystemSettingsCache();
+}
+
+export async function updateSystemSettings(settings: Record<string, string>): Promise<void> {
+  const entries = Object.entries(settings);
+  if (entries.length === 0) return;
+
+  const keys = entries.map(([key]) => key);
+  const values = entries.map(([, value]) => value);
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO system_settings (setting_key, setting_value)
+     SELECT * FROM UNNEST($1::text[], $2::text[])
+     ON CONFLICT (setting_key)
+     DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP`,
+    [keys, values]
+  );
+  clearSystemSettingsCache();
 }

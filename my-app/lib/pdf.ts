@@ -96,6 +96,8 @@ function addFooter(doc: PDFKit.PDFDocument, fonts: FontSetup, margin: number): v
 
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(i);
+    const originalBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
     doc.rect(0, doc.page.height - 34, width, 34).fill("#F9FAFB");
     doc
       .font(fonts.regular)
@@ -105,8 +107,9 @@ function addFooter(doc: PDFKit.PDFDocument, fonts: FontSetup, margin: number): v
         safeText(`RMUTP Door Access System | หน้า ${i + 1} จาก ${range.count}`, fonts),
         margin,
         doc.page.height - 22,
-        { width: width - margin * 2, align: "center" }
+        { width: width - margin * 2, align: "center", lineBreak: false }
       );
+    doc.page.margins.bottom = originalBottomMargin;
   }
 }
 
