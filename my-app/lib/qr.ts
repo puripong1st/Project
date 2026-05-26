@@ -148,12 +148,12 @@ export async function consumeQRToken(token: string): Promise<boolean> {
   const consumed = rows as { room_code: string }[];
   const roomCode = consumed[0]?.room_code || "default";
 
-  // Instantly generate a new active token for the exact same room
+  // Generate the next active token in the background so form submission does not wait on a second write.
   const newToken = generateSecureToken();
-  await pool.query(
+  pool.query(
     "INSERT INTO dynamic_qr_tokens (token, room_code) VALUES ($1, $2)",
     [newToken, roomCode]
-  );
+  ).catch((err) => console.error("[QR] Failed to pre-create next token:", err));
 
   return true;
 }

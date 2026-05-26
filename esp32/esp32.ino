@@ -373,7 +373,8 @@ void loop() {
 
     HTTPClient http;
     if (String(server_url).startsWith("https://")) {
-      WiFiClientSecure *client = new WiFiClientSecure;
+      static WiFiClientSecure secureClient;
+      WiFiClientSecure *client = &secureClient;
       if (client) {
 #ifdef WOKWI_SIM
         // สำหรับการจำลองระบบใน Wokwi-GUEST Simulator ให้ยอมรับเพื่อความรวดเร็วและไม่มีอินเทอร์เน็ตจริงเข้าถึง SSL Store
@@ -444,6 +445,7 @@ void loop() {
       http.begin(server_url);
     }
 
+    http.setTimeout(1200);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("x-api-key", api_key);
 

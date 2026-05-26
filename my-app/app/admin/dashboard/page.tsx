@@ -898,7 +898,8 @@ void loop() {
 
     HTTPClient http;
     if (String(server_url).startsWith("https://")) {
-      WiFiClientSecure *client = new WiFiClientSecure;
+      static WiFiClientSecure secureClient;
+      WiFiClientSecure *client = &secureClient;
       if (client) {
         client->setInsecure(); // ข้าม CA Cert เพื่อรับความรวดเร็วในการติดต่อเซิร์ฟเวอร์
         http.begin(*client, server_url);
@@ -910,6 +911,7 @@ void loop() {
       http.begin(server_url);
     }
 
+    http.setTimeout(1200);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("x-api-key", api_key);
 
@@ -2276,16 +2278,15 @@ void loop() {
             {[
               { id: "pending", icon: <ClockIcon />, label: "รายการรออนุมัติ", badge: pendingCount },
               {
-                id: "iot",
+                id: "rooms",
                 icon: <TVIcon />,
-                label: "📡 สถานะบอร์ด IoT ทั้งหมด",
-                badge: systemStatus?.esp32Devices?.filter(d => d.online).length || 0,
-                badgeColor: "#10B981"
+                label: "\u0e2b\u0e49\u0e2d\u0e07\u0e40\u0e23\u0e35\u0e22\u0e19 & ESP32",
+                badge: roomsList.length,
+                badgeColor: "#7C3AED"
               },
               ...(isOwner ? [
                 { id: "all", icon: <UsersIcon />, label: "ทำเนียบ & ประวัติเข้าออก", badge: 0 },
                 { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
-                { id: "rooms", icon: <TVIcon />, label: "ห้องเรียน & ESP32", badge: roomsList.length, badgeColor: "#7C3AED" },
                 { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
               { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
@@ -3669,9 +3670,22 @@ void loop() {
                         เพิ่ม แก้ไข IP ทดสอบการเชื่อมต่อ และเปิดหน้าตั้งค่า API/Webhook/Arduino ของแต่ละห้องได้จากที่เดียว
                       </p>
                     </div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fetchSystemStatus();
+                          showToast("รีเฟรชสถานะบอร์ดแล้ว", "success");
+                        }}
+                        className="btn-secondary"
+                        style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}
+                      >
+                        รีเฟรชสถานะบอร์ด
+                      </button>
                     <button onClick={saveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
                       {settingsLoading ? "กำลังบันทึก..." : "บันทึกห้องทั้งหมด"}
                     </button>
+                    </div>
                   </div>
 
                   <div className="room-overview-grid">
@@ -3745,9 +3759,18 @@ void loop() {
                             </div>
                           </div>
 
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8 }}>
                             <button type="button" onClick={() => handleTestConnection(roomItem.room)} disabled={testingRoom === roomItem.room} className="btn-secondary" style={{ borderRadius: 8, padding: "10px 12px", fontSize: 12 }}>
                               {testingRoom === roomItem.room ? "กำลังทดสอบ..." : "เทส Polling"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDirectUnlockRoom(roomItem.room)}
+                              disabled={unlockingRoom === roomItem.room}
+                              className="btn-secondary"
+                              style={{ borderRadius: 8, padding: "10px 12px", fontSize: 12, borderColor: "rgba(16,185,129,0.35)", color: "#059669" }}
+                            >
+                              {unlockingRoom === roomItem.room ? "กำลังปลดล็อก..." : "ปลดล็อกด่วน"}
                             </button>
                             <button type="button" onClick={() => handleOpenRoomDetails(roomItem.room, roomItem.ip)} className="btn-primary" style={{ borderRadius: 8, padding: "10px 12px", fontSize: 12 }}>
                               ตั้งค่า API
@@ -4405,7 +4428,7 @@ void loop() {
                         <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>2. ปลดล็อกประตู</h3>
                         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
                           <li>ถ้าต้องเปิดให้รายบุคคล ให้ไปที่แท็บ <strong>ทำเนียบ & ประวัติเข้าออก</strong> แล้วกด <strong>เปิด</strong> ในแถวนักศึกษาที่อนุมัติแล้ว</li>
-                          <li>ถ้าต้องเปิดห้องทันที ให้ไปที่แท็บ <strong>สถานะบอร์ด IoT ทั้งหมด</strong> แล้วกด <strong>ปลดล็อกด่วน</strong> ที่การ์ดห้อง</li>
+                          <li>ถ้าต้องเปิดห้องทันที ให้ไปที่แท็บ <strong>ห้องเรียน & ESP32</strong> แล้วกด <strong>ปลดล็อกด่วน</strong> ที่การ์ดห้อง</li>
                           <li>ดูตัวเลข <strong>ปลดล็อกสำเร็จวันนี้</strong> เพื่อเช็กว่าคำสั่งถูกบันทึกแล้ว</li>
                           <li>ถ้าเปิดไม่ได้ ให้ดูว่าการ์ดห้องขึ้นออนไลน์หรือไม่ และลองกด <strong>เทส Polling</strong></li>
                         </ul>

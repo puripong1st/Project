@@ -16,6 +16,10 @@ async function ensureInit() {
   }
 }
 
+function runBackground(task: Promise<unknown>, label: string): void {
+  task.catch((err) => console.error(`[Students] Background ${label} failed:`, err));
+}
+
 // GET /api/students — list all students (admin only)
 export async function GET(req: NextRequest) {
   try {
@@ -165,7 +169,7 @@ export async function POST(req: NextRequest) {
           [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, sanitizedRequestedRoom, existingStudent.id]
         );
 
-        await pool.query(
+        runBackground(pool.query(
           `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES ($1, $2, $3, $4, $5)`,
           [
             existingStudent.id,
@@ -174,7 +178,7 @@ export async function POST(req: NextRequest) {
             esp32Result.message,
             sanitizedRequestedRoom
           ]
-        );
+        ), "auto-approve existing access log");
 
         sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
           studentName: `${sanitizedTitle}${sanitizedFirstName} ${sanitizedLastName}`,
@@ -209,10 +213,10 @@ export async function POST(req: NextRequest) {
           [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, sanitizedRequestedRoom, existingStudent.id]
         );
 
-        await pool.query(
+        runBackground(pool.query(
           "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES ($1, 'registered', $2, $3)",
           [existingStudent.id, `ส่งคำขอลงทะเบียนเข้าห้องอีกครั้ง นอกเวลาให้บริการอัตโนมัติ (จาก IP: ${ip})`, sanitizedRequestedRoom]
-        );
+        ), "pending existing access log");
 
         sendDiscordNotification("student_registered", {
           studentName: `${sanitizedTitle} ${sanitizedFirstName} ${sanitizedLastName}`,
@@ -247,7 +251,7 @@ export async function POST(req: NextRequest) {
 
       const esp32Result = await openDoor(sanitizedStudentId, sanitizedRequestedRoom);
 
-      await pool.query(
+      runBackground(pool.query(
         `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES ($1, $2, $3, $4, $5)`,
         [
           insertId,
@@ -256,7 +260,7 @@ export async function POST(req: NextRequest) {
           esp32Result.message,
           sanitizedRequestedRoom
         ]
-      );
+      ), "auto-approve new access log");
 
       sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
         studentName: `${sanitizedTitle}${sanitizedFirstName} ${sanitizedLastName}`,
@@ -283,10 +287,10 @@ export async function POST(req: NextRequest) {
       );
       const insertId = result[0].id;
 
-      await pool.query(
+      runBackground(pool.query(
         "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES ($1, 'registered', $2, $3)",
         [insertId, `ลงทะเบียนนอกช่วงเวลาบริการจาก IP: ${ip} (รออนุมัติปกติ)`, sanitizedRequestedRoom]
-      );
+      ), "pending new access log");
 
       sendDiscordNotification("student_registered", {
         studentName: `${sanitizedTitle} ${sanitizedFirstName} ${sanitizedLastName}`,

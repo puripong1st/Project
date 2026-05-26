@@ -373,7 +373,8 @@ void loop() {
 
     HTTPClient http;
     if (String(server_url).startsWith("https://")) {
-      WiFiClientSecure *client = new WiFiClientSecure;
+      static WiFiClientSecure secureClient;
+      WiFiClientSecure *client = &secureClient;
       if (client) {
         client->setInsecure(); // ข้าม CA Cert เพื่อรับความรวดเร็วในการติดต่อเซิร์ฟเวอร์
         http.begin(*client, server_url);
@@ -385,6 +386,7 @@ void loop() {
       http.begin(server_url);
     }
 
+    http.setTimeout(1200);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("x-api-key", api_key);
 

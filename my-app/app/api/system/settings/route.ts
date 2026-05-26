@@ -110,10 +110,10 @@ export async function POST(req: NextRequest) {
 
     // บันทึก log ในระบบ
     const pool = getPool();
-    await pool.query(
+    pool.query(
       "INSERT INTO access_logs (action, performed_by, notes, room_code) VALUES ('approved', $1, $2, 'system')",
       [admin.id, `อัปเดตการตั้งค่าระบบและการแจ้งเตือน Discord Webhook โดยแอดมิน: ${admin.full_name}`]
-    );
+    ).catch((err) => console.error("[System Settings] Background audit log failed:", err));
 
     // ยิงแจ้งเตือนเข้าระบบ Discord logs
     try {

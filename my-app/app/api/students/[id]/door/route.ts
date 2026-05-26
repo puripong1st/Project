@@ -13,6 +13,10 @@ async function ensureInit() {
   }
 }
 
+function runBackground(task: Promise<unknown>, label: string): void {
+  task.catch((err) => console.error(`[Door] Background ${label} failed:`, err));
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -41,13 +45,16 @@ export async function POST(
     const esp32Result = await openDoor(student.student_id, student.requested_room);
 
     if (esp32Result.success) {
-      await pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [studentId]);
+      runBackground(
+        pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [studentId]),
+        "last_door_open update"
+      );
     }
 
-    await pool.query(
+    runBackground(pool.query(
       `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code) VALUES ($1, $2, $3, $4, $5, $6)`,
       [studentId, esp32Result.success ? "door_opened" : "door_failed", admin.id, esp32Result.message, `สั่งเปิดประตูโดย: ${admin.full_name}`, student.requested_room || 'default']
-    );
+    ), "access log");
 
     sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
       studentName: `${student.first_name} ${student.last_name}`,

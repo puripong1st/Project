@@ -65,9 +65,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "username หรือ password ไม่ถูกต้อง" }, { status: 401 });
     }
 
-    // Update last login
-    await pool.query("UPDATE admin_users SET last_login = NOW() WHERE id = $1", [admin.id]);
-
     const token = signToken({
       id: admin.id,
       username: admin.username,
@@ -82,6 +79,8 @@ export async function POST(req: NextRequest) {
     });
 
     response.cookies.set(cookieOpts);
+    pool.query("UPDATE admin_users SET last_login = NOW() WHERE id = $1", [admin.id])
+      .catch((err) => console.error("[Auth] Failed to update last_login:", err));
     return response;
   } catch (error) {
     console.error("[Auth] Login error:", error);
