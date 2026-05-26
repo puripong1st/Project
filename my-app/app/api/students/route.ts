@@ -95,7 +95,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, first_name, last_name, student_id, year, faculty, branch, requested_room, token } = body;
+    const { title, first_name, last_name, student_id, year, faculty, branch, requested_room, token, offline_id, offline_created_at } = body;
+    const offlineId = typeof offline_id === "string" ? offline_id.trim().slice(0, 80) : "";
+    const offlineCreatedAt = typeof offline_created_at === "string" ? offline_created_at : "";
+    const isOfflineReplay = !!offlineId && !!offlineCreatedAt;
 
     // Sanitize input to prevent XSS
     const sanitizeHTML = (input: string): string => {
@@ -134,7 +137,7 @@ export async function POST(req: NextRequest) {
     // ตรวจสอบและ Consume Token ทันทีเสี้ยววินาทีที่ยื่นฟอร์มสมัคร 
     // หาก Token นี้ไม่มีในระบบ, หมดอายุ (เกิน 60s), หรือเคยถูกใช้งาน (Consume) ไปแล้ว ให้ปฏิเสธการลงทะเบียนทันที!
     // สิ่งนี้ช่วยป้องกันการแชร์ลิงก์ให้คนอื่นไปกดสมัครต่อ หรือการเปิดลิงก์เดิมลงทะเบียนซ้ำได้อย่างเด็ดขาด 100%!
-    const isTokenValid = await consumeQRToken(token || "");
+    const isTokenValid = isOfflineReplay ? true : await consumeQRToken(token || "");
     if (!isTokenValid) {
       return NextResponse.json(
         { error: "ลิงก์สแกน QR Code นี้หมดอายุแล้วหรือถูกใช้งานโดยผู้อื่นไปแล้ว กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องปฏิบัติการ" },
@@ -143,6 +146,31 @@ export async function POST(req: NextRequest) {
     }
 
     const pool = getPool();
+
+    if (isOfflineReplay) {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS offline_submissions (
+          offline_id VARCHAR(80) PRIMARY KEY,
+          student_id VARCHAR(30) NOT NULL,
+          requested_room VARCHAR(50) NOT NULL DEFAULT 'default',
+          received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          client_created_at TIMESTAMP,
+          status VARCHAR(20) NOT NULL DEFAULT 'accepted'
+        )
+      `);
+      const { rows: duplicateOfflineRows } = await pool.query(
+        "SELECT offline_id FROM offline_submissions WHERE offline_id = $1 LIMIT 1",
+        [offlineId]
+      );
+      if (duplicateOfflineRows.length > 0) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+          message: "Offline submission was already synchronized.",
+          status: "pending",
+        }, { status: 200 });
+      }
+    }
 
     // Check duplicate student_id securely for intelligent re-entry / re-submission
     const { rows: existing } = await pool.query(
@@ -168,7 +196,17 @@ export async function POST(req: NextRequest) {
 
     const isWorkingDay = autoApproveDays.includes(currentDay);
     const isWithinTimeRange = currentTimeStr >= autoApproveStartTime && currentTimeStr <= autoApproveEndTime;
-    const shouldAutoApprove = autoApproveEnabled && isWorkingDay && isWithinTimeRange;
+    const shouldAutoApprove = !isOfflineReplay && autoApproveEnabled && isWorkingDay && isWithinTimeRange;
+
+    const recordOfflineSubmission = async (status: string) => {
+      if (!isOfflineReplay) return;
+      await pool.query(
+        `INSERT INTO offline_submissions (offline_id, student_id, requested_room, client_created_at, status)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (offline_id) DO NOTHING`,
+        [offlineId, sanitizedStudentId, sanitizedRequestedRoom, new Date(offlineCreatedAt), status]
+      );
+    };
 
     if (existingStudents.length > 0) {
       const existingStudent = existingStudents[0];
@@ -219,6 +257,15 @@ export async function POST(req: NextRequest) {
       } else {
         // Outside working hours: reset to pending and wait for admin approval
         if (existingStudent.status === "pending") {
+          await recordOfflineSubmission("pending");
+          if (isOfflineReplay) {
+            return NextResponse.json({
+              success: true,
+              message: "Offline submission synchronized; request is pending admin approval.",
+              id: existingStudent.id,
+              status: "pending",
+            }, { status: 200 });
+          }
           return NextResponse.json({ error: "ข้อมูลของท่านอยู่ในขั้นตอนรอเจ้าหน้าที่ตรวจสอบสิทธิ์ กรุณาอย่าส่งคำขอซ้ำ" }, { status: 409 });
         }
 
@@ -228,6 +275,7 @@ export async function POST(req: NextRequest) {
            WHERE id = $9`,
           [sanitizedTitle, sanitizedFirstName, sanitizedLastName, yearNum, sanitizedFaculty, sanitizedBranch, newBypassToken, sanitizedRequestedRoom, existingStudent.id]
         );
+        await recordOfflineSubmission("pending");
 
         runBackground(pool.query(
           "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES ($1, 'registered', $2, $3)",
@@ -302,6 +350,7 @@ export async function POST(req: NextRequest) {
         [sanitizedTitle, sanitizedFirstName, sanitizedLastName, sanitizedStudentId, yearNum, sanitizedFaculty, sanitizedBranch, ip, bypassToken, sanitizedRequestedRoom]
       );
       const insertId = result[0].id;
+      await recordOfflineSubmission("pending");
 
       runBackground(pool.query(
         "INSERT INTO access_logs (student_id, action, notes, room_code) VALUES ($1, 'registered', $2, $3)",

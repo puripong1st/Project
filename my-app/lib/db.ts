@@ -2,6 +2,7 @@
 import { Pool, PoolConfig } from "pg";
 import bcrypt from "bcryptjs";
 import { parse } from "pg-connection-string";
+import { DEFAULT_SYSTEM_SETTINGS, getFallbackSettings } from "./resilience";
 
 // Use globalThis to persist the pg Pool instance across module hot-reloads in Next.js development mode
 const globalForDb = globalThis as unknown as {
@@ -195,6 +196,17 @@ export async function initDatabase(): Promise<void> {
       )
     `);
 
+    await initPool.query(`
+      CREATE TABLE IF NOT EXISTS offline_submissions (
+        offline_id VARCHAR(80) PRIMARY KEY,
+        student_id VARCHAR(30) NOT NULL,
+        requested_room VARCHAR(50) NOT NULL DEFAULT 'default',
+        received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        client_created_at TIMESTAMP,
+        status VARCHAR(20) NOT NULL DEFAULT 'accepted'
+      )
+    `);
+
     // Create indexes if not exists using PL/pgSQL
     await initPool.query(`
       DO $$
@@ -216,24 +228,7 @@ export async function initDatabase(): Promise<void> {
     `);
 
     // Seed default settings if not exists
-    const defaultSettings = [
-      { key: "auto_approve_enabled", value: "1" },
-      { key: "auto_approve_start_time", value: "09:00" },
-      { key: "auto_approve_end_time", value: "16:00" },
-      { key: "auto_approve_days", value: "1,2,3,4,5" },
-      { key: "discord_webhook_register", value: "" },
-      { key: "discord_webhook_approve", value: "" },
-      { key: "discord_webhook_logs", value: "" },
-      { key: "auto_fill_enabled", value: "1" },
-      { key: "auto_fill_mode", value: "auto" },
-      { key: "configured_rooms", value: "CE-401,CE-402" },
-      { key: "room_ip_CE-401", value: "192.168.1.100" },
-      { key: "room_ip_CE-402", value: "192.168.1.101" },
-      { key: "room_webhook_register_CE-401", value: "" },
-      { key: "room_webhook_approve_CE-401", value: "" },
-      { key: "room_webhook_logs_CE-401", value: "" },
-      { key: "student_id_display_mode", value: "full" },
-    ];
+    const defaultSettings = Object.entries(DEFAULT_SYSTEM_SETTINGS).map(([key, value]) => ({ key, value }));
 
     for (const setting of defaultSettings) {
       await initPool.query(
@@ -358,17 +353,22 @@ export async function getSystemSettings(options: { force?: boolean } = {}): Prom
     return globalForDb.settingsCache.value;
   }
 
-  const pool = getPool();
-  const { rows } = await pool.query("SELECT setting_key, setting_value FROM system_settings");
-  const settings: Record<string, string> = {};
-  for (const row of rows as { setting_key: string; setting_value: string }[]) {
-    settings[row.setting_key] = row.setting_value;
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query("SELECT setting_key, setting_value FROM system_settings");
+    const settings: Record<string, string> = getFallbackSettings();
+    for (const row of rows as { setting_key: string; setting_value: string }[]) {
+      settings[row.setting_key] = row.setting_value;
+    }
+    globalForDb.settingsCache = {
+      value: settings,
+      expiresAt: now + SETTINGS_CACHE_TTL_MS,
+    };
+    return settings;
+  } catch (error) {
+    console.error("[DB] Falling back to default system settings:", error);
+    return getFallbackSettings();
   }
-  globalForDb.settingsCache = {
-    value: settings,
-    expiresAt: now + SETTINGS_CACHE_TTL_MS,
-  };
-  return settings;
 }
 
 export async function updateSystemSetting(key: string, value: string): Promise<void> {

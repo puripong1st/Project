@@ -10,6 +10,13 @@ interface OfflineEntry {
   retries: number;
 }
 
+function createOfflineId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 // ─── Minimalist Stroke SVG Icons ───
 const GraduationIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -685,10 +692,19 @@ function RegistrationPageInner() {
     }
 
     if (!isOnline) {
+      const offlineId = createOfflineId();
+      const offlineCreatedAt = new Date().toISOString();
       const entry: OfflineEntry = {
-        id: Date.now().toString(),
-        data: { ...form, year: parseInt(form.year), requested_room: room, token: searchParams.get("scan") || "" },
-        timestamp: new Date().toISOString(),
+        id: offlineId,
+        data: {
+          ...form,
+          year: parseInt(form.year),
+          requested_room: room,
+          token: searchParams.get("scan") || "",
+          offline_id: offlineId,
+          offline_created_at: offlineCreatedAt,
+        },
+        timestamp: offlineCreatedAt,
         retries: 0,
       };
       const q = getOfflineQueue();

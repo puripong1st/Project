@@ -185,9 +185,25 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     console.error("[ESP32/Display] error:", error);
+    const host = req.headers.get("host") || "localhost:3000";
+    const protocol = req.headers.get("x-forwarded-proto") || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const { searchParams } = new URL(req.url);
+    const room = (searchParams.get("room") || "default").trim();
     return NextResponse.json(
-      { status: "error", message: "Server error", server_time: new Date().toISOString() },
-      { status: 500, headers: { "Access-Control-Allow-Origin": "*" } }
+      {
+        status: "degraded",
+        message: "Database unavailable; running fallback display payload.",
+        title: "RMUTP Door Access",
+        qr_url: `${appUrl}/?room=${room}`,
+        register_url: `${appUrl}/?room=${room}`,
+        pending_count: 0,
+        last_approved: null,
+        server_time: new Date().toISOString(),
+        requested_room: room,
+        door_trigger: "idle",
+      },
+      { status: 503, headers: { "Access-Control-Allow-Origin": "*" } }
     );
   }
 }

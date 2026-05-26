@@ -1256,6 +1256,9 @@ void loop() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [systemStatus, setSystemStatus] = useState<{
+    serviceState?: "online" | "degraded" | "offline";
+    degraded?: boolean;
+    mode?: string;
     mysql: { online: boolean; host: string; database: string; error: string };
     esp32: { online: boolean; doorStatus: string; ip: string; mock: boolean; room?: string };
     esp32Devices?: { room: string; online: boolean; ip: string; doorStatus: string; mock: boolean; mode: string; activeToken?: string }[];

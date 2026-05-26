@@ -6,6 +6,7 @@ import { getPool } from "@/lib/db";
 import { getESP32Status } from "@/lib/esp32";
 import { getAdminFromCookie } from "@/lib/auth";
 import { getOrCreateActiveQRToken } from "@/lib/qr";
+import { getDependencyState, getFallbackSettings, parseConfiguredRooms } from "@/lib/resilience";
 
 export async function GET() {
   try {
@@ -22,7 +23,8 @@ export async function GET() {
     let activeLogs = 0;
     let expiredLogs = 0;
     let isDiscordWebhookConfigured = false;
-    let roomCodes: string[] = ["CE-401", "CE-402"];
+    let roomCodes: string[] = parseConfiguredRooms(getFallbackSettings());
+    const fallbackSettings = getFallbackSettings();
 
     let pool: ReturnType<typeof getPool> | null = null;
     try {
@@ -48,6 +50,15 @@ export async function GET() {
         const roomsConfig = roomsRows as { setting_value: string }[];
         if (roomsConfig.length > 0 && roomsConfig[0].setting_value) {
           roomCodes = roomsConfig[0].setting_value.split(",").filter(Boolean);
+        }
+        for (const roomCode of roomCodes) {
+          const { rows: ipRows } = await pool.query(
+            "SELECT setting_value FROM system_settings WHERE setting_key = $1",
+            [`room_ip_${roomCode}`]
+          );
+          if (ipRows[0]?.setting_value) {
+            fallbackSettings[`room_ip_${roomCode}`] = ipRows[0].setting_value;
+          }
         }
 
         // Only query counts if admin is owner
@@ -83,6 +94,7 @@ export async function GET() {
     const devicesList = await Promise.all(
       roomCodes.map(async (roomCode) => {
         let ip = "192.168.1.100";
+        ip = fallbackSettings[`room_ip_${roomCode}`] || ip;
         if (mysqlOnline && pool) {
           try {
             const { rows: ipRows } = await pool.query(
@@ -136,6 +148,9 @@ export async function GET() {
 
     return NextResponse.json(
       {
+        serviceState: getDependencyState([mysqlOnline, devicesList.some((device) => device.online)]),
+        degraded: !mysqlOnline || devicesList.some((device) => !device.online),
+        mode: mysqlOnline ? "online" : "local-fallback",
         mysql: {
           online: mysqlOnline,
           host: process.env.POSTGRES_HOST || "localhost",
