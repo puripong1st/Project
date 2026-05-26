@@ -71,7 +71,7 @@ export async function initDatabase(): Promise<void> {
   if (dbInitialized) return;
   
   // Fast Path Optimization: If database is already initialized, skip all 15 CREATE TABLE queries to prevent high latency!
-  if (process.env.SKIP_DB_INIT === "true" || process.env.NODE_ENV === "production") {
+  if (process.env.SKIP_DB_INIT === "true") {
     dbInitialized = true;
     console.log("[DB] Fast Path: Skipping schema table checks (Database already seeded & active)");
     return;
@@ -204,18 +204,54 @@ export async function initDatabase(): Promise<void> {
       );
     }
 
-    // Seed default admin if not exists
-    const { rows: existingAdmins } = await initPool.query(
-      "SELECT id FROM admin_users WHERE username = $1",
-      ["admin"]
+    // Seed default admin if not exists (securely check the total admin count)
+    const { rows: adminCountRows } = await initPool.query(
+      "SELECT COUNT(*) as count FROM admin_users"
     );
-    if (existingAdmins.length === 0) {
-      const hash = await bcrypt.hash("admin123", 12);
-      await initPool.query(
-        `INSERT INTO admin_users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4)`,
-        ["admin", hash, "ผู้ดูแลระบบ (Owner)", "owner"]
-      );
-      console.log("[DB] Seeded default admin user: admin / admin123");
+    const adminCount = parseInt(adminCountRows[0].count, 10);
+    const isProd = process.env.NODE_ENV === "production";
+
+    if (adminCount === 0) {
+      if (isProd) {
+        // Production: secure initial admin provisioning via environment variables
+        const initialUsername = process.env.INITIAL_ADMIN_USERNAME;
+        const initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
+        const initialFullName = process.env.INITIAL_ADMIN_FULL_NAME || "System Administrator (Owner)";
+
+        if (!initialUsername || !initialPassword) {
+          throw new Error(
+            "Production Database Initialization Error: No admin users found in the 'admin_users' table. " +
+            "To seed the initial production administrator, you MUST configure the environment variables: " +
+            "INITIAL_ADMIN_USERNAME and INITIAL_ADMIN_PASSWORD."
+          );
+        }
+
+        // Enforce strong password policy for production admin
+        if (initialPassword.length < 8) {
+          throw new Error(
+            "Production Database Initialization Error: The INITIAL_ADMIN_PASSWORD must be at least 8 characters long."
+          );
+        }
+
+        const hash = await bcrypt.hash(initialPassword, 12);
+        await initPool.query(
+          `INSERT INTO admin_users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4)`,
+          [initialUsername, hash, initialFullName, "owner"]
+        );
+        console.log(`[DB] Successfully seeded initial production administrator: '${initialUsername}' (Credentials validated securely, password hidden)`);
+      } else {
+        // Development: only seed the insecure default credentials if ALLOW_DEV_SEED is explicitly enabled
+        if (process.env.ALLOW_DEV_SEED === "true") {
+          const hash = await bcrypt.hash("admin123", 12);
+          await initPool.query(
+            `INSERT INTO admin_users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4)`,
+            ["admin", hash, "ผู้ดูแลระบบ (Owner)", "owner"]
+          );
+          console.log("[DB] Seeded default development admin user: admin / admin123 (ALLOW_DEV_SEED is true)");
+        } else {
+          console.log("[DB] Skipping default admin seeding in development. Set ALLOW_DEV_SEED=true to seed default dev credentials (admin/admin123).");
+        }
+      }
     }
 
     console.log("[DB] Database initialized successfully");
