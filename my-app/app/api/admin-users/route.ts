@@ -33,8 +33,9 @@ export async function GET(req: NextRequest) {
       "SELECT id, username, full_name, role, is_active, created_at, last_login, allowed_rooms FROM admin_users ORDER BY created_at DESC"
     );
     return NextResponse.json({ admins: rows });
-  } catch {
-    return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
+  } catch (error: any) {
+    console.error("[Admin GET Error]", error);
+    return NextResponse.json({ error: "เกิดข้อผิดพลาด: " + (error?.message || String(error)) }, { status: 500 });
   }
 }
 
@@ -89,7 +90,8 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ success: true, message: "สร้าง Admin สำเร็จ" }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
+  } catch (error: any) {
+    console.error("[Admin GET Error]", error);
+    return NextResponse.json({ error: "เกิดข้อผิดพลาด: " + (error?.message || String(error)) }, { status: 500 });
   }
 }
