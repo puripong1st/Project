@@ -170,9 +170,33 @@ export async function initDatabase(): Promise<void> {
         esp32_response VARCHAR(500),
         notes TEXT,
         room_code VARCHAR(50) NOT NULL DEFAULT 'default',
+        room VARCHAR(50),
+        method VARCHAR(50),
+        ip_address VARCHAR(50),
+        details TEXT,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL,
         FOREIGN KEY (performed_by) REFERENCES admin_users(id) ON DELETE SET NULL
       )
+    `);
+
+    // Safely add columns if the table already exists from an older version
+    await initPool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='access_logs' AND column_name='room') THEN
+              ALTER TABLE access_logs ADD COLUMN room VARCHAR(50);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='access_logs' AND column_name='method') THEN
+              ALTER TABLE access_logs ADD COLUMN method VARCHAR(50);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='access_logs' AND column_name='ip_address') THEN
+              ALTER TABLE access_logs ADD COLUMN ip_address VARCHAR(50);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='access_logs' AND column_name='details') THEN
+              ALTER TABLE access_logs ADD COLUMN details TEXT;
+          END IF;
+      END
+      $$;
     `);
 
     // 4. Create dynamic_qr_tokens table (security-hardened schema)

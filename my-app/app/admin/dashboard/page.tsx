@@ -1268,6 +1268,68 @@ void handleLocalValidation() {
       if (req.endsWith("\\r\\n\\r\\n")) break;
     }
   }
+  if (req.indexOf("POST /door/open") != -1) {
+    // ─── [Real-Time HTTP Push opening from Next.js (Online Mode)] ───
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Connection: close");
+    client.println();
+    client.println("{\\"success\\":true}");
+    client.stop();
+
+    // Extract studentId from request body if present
+    String studentId = "";
+    int bodyIdx = req.indexOf("\\r\\n\\r\\n");
+    if (bodyIdx != -1) {
+      String body = req.substring(bodyIdx + 4);
+      int sIdIdx = body.indexOf("\\"studentId\\"");
+      if (sIdIdx != -1) {
+        int colonIdx = body.indexOf(":", sIdIdx);
+        if (colonIdx != -1) {
+          int quoteStart = body.indexOf("\\"", colonIdx);
+          if (quoteStart != -1) {
+            int quoteEnd = body.indexOf("\\"", quoteStart + 1);
+            if (quoteEnd != -1) {
+              studentId = body.substring(quoteStart + 1, quoteEnd);
+            }
+          }
+        }
+      }
+    }
+
+    Serial.println("[INFO] Real-time Door unlocked via HTTP Push");
+    DBG("🔓 REAL-TIME ACCESS GRANTED! Opening door...");
+
+    drawScanningScreen();
+    tone(BUZZER_PIN, 1500, 100);
+    delay(1200);
+
+    drawUnlockedScreen("VERIFIED MEMBER", studentId != "" ? studentId : "ONLINE STUDENT");
+    digitalWrite(RELAY_PIN, HIGH);
+
+    tone(BUZZER_PIN, 1000, 150);
+    delay(180);
+    tone(BUZZER_PIN, 1500, 150);
+    delay(180);
+    tone(BUZZER_PIN, 2000, 300);
+
+    int stepSize = 320 / 38;
+    for (int i = 0; i < 38; i++) {
+      tft.fillRect(0, 236, 320 - (i * stepSize), 4, tft.color565(16, 185, 129));
+      tft.fillRect(320 - (i * stepSize), 236, stepSize, 4, tft.color565(6, 78, 59));
+      delay(100);
+    }
+    digitalWrite(RELAY_PIN, LOW);
+    Serial.println("[INFO] Door locked");
+    DBG("🔒 Door auto locked (Real-time).");
+    tone(BUZZER_PIN, 800, 250);
+
+    last_queue_count = -1;
+    last_approved_name = "FORCE_REDRAW";
+    last_active_token = "FORCE_REDRAW";
+    return;
+  }
+
   if (req.indexOf("POST /unlock") != -1 || req.indexOf("GET /unlock") != -1) {
     int grantIdx = req.indexOf("grant=");
     if (grantIdx != -1) {
@@ -1316,7 +1378,11 @@ void syncStudentCache() {
   String syncUrl = String(server_url) + "&sync=1";
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
+#ifdef WOKWI_SIM
+  client->setInsecure();
+#else
   client->setCACert(root_ca_cert);
+#endif
   http.begin(*client, syncUrl);
   http.addHeader("x-api-key", api_key);
   int httpCode = http.GET();
@@ -1356,11 +1422,14 @@ void syncOfflineLogs() {
   String content = f.readString();
   f.close();
   HTTPClient http;
-  String logUrl = String(server_url);
-  logUrl.replace("display", "logs/sync");
+  String logUrl = String(server_url).replace("display", "logs/sync");
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
+#ifdef WOKWI_SIM
+  client->setInsecure();
+#else
   client->setCACert(root_ca_cert);
+#endif
   http.begin(*client, logUrl);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-api-key", api_key);
@@ -1453,10 +1522,10 @@ void setup() {
 }
 
 void loop() {
+  // Always run local web server to handle real-time push commands immediately
+  handleLocalValidation();
+
   if (is_offline_mode) {
-    startLocalServer();
-    handleLocalValidation();
-    
     // Status indicators
     bool hasCache = SPIFFS.exists(cache_students_file);
     if (hasCache) {
@@ -1468,14 +1537,15 @@ void loop() {
         digitalWrite(LED_WIFI, ledState ? HIGH : LOW);
         digitalWrite(LED_REJECT, LOW);
       }
-      
+
       unsigned long sec = millis() / 1000;
       unsigned long hh = (sec / 3600) % 24;
       unsigned long mm = (sec / 60) % 60;
       unsigned long ss = sec % 60;
       char timeBuf[10];
-      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
-      
+      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm,
+               (int)ss);
+
       static unsigned long lastScreenUpdate = 0;
       if (millis() - lastScreenUpdate > 5000) {
         lastScreenUpdate = millis();
@@ -1484,7 +1554,7 @@ void loop() {
     } else {
       digitalWrite(LED_WIFI, LOW);
       digitalWrite(LED_REJECT, HIGH);
-      
+
       static unsigned long lastScreenUpdate = 0;
       if (millis() - lastScreenUpdate > 5000) {
         lastScreenUpdate = millis();
@@ -1501,193 +1571,196 @@ void loop() {
     }
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
-    if (!is_offline_mode) {
-      digitalWrite(LED_WIFI, HIGH);
-    }
+  // Non-blocking cloud polling
+  static unsigned long lastPollTime = 0;
+  if (WiFi.status() == WL_CONNECTED && !is_offline_mode) {
+    digitalWrite(LED_WIFI, HIGH);
 
-    // ดึงเวลาปัจจุบันจำลอง
-    String time_str = "12:00:00";
-    // คำนวณเวลาแบบง่าย (ชั่วโมง:นาที:วินาที)
-    unsigned long sec = millis() / 1000;
-    unsigned long hh = (sec / 3600) % 24;
-    unsigned long mm = (sec / 60) % 60;
-    unsigned long ss = sec % 60;
-    char timeBuf[10];
-    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
-    time_str = String(timeBuf);
+    if (millis() - lastPollTime >= polling_delay) {
+      lastPollTime = millis();
 
-    HTTPClient http;
-    if (String(server_url).startsWith("https://")) {
-      static WiFiClientSecure secureClient;
-      WiFiClientSecure *client = &secureClient;
-      if (client) {
-        #ifdef WOKWI_SIM
-        client->setInsecure(); // Wokwi ไม่รองรับ CA cert — ใช้ setInsecure() แทน
-        #else
-        client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริงเพื่อความปลอดภัยสูงสุด
-        #endif
-        http.begin(*client, server_url);
+      // ดึงเวลาปัจจุบันจำลอง
+      String time_str = "12:00:00";
+      // คำนวณเวลาแบบง่าย (ชั่วโมง:นาที:วินาที)
+      unsigned long sec = millis() / 1000;
+      unsigned long hh = (sec / 3600) % 24;
+      unsigned long mm = (sec / 60) % 60;
+      unsigned long ss = sec % 60;
+      char timeBuf[10];
+      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm,
+               (int)ss);
+      time_str = String(timeBuf);
+
+      HTTPClient http;
+      if (String(server_url).startsWith("https://")) {
+        static WiFiClientSecure secureClient;
+        WiFiClientSecure *client = &secureClient;
+        if (client) {
+#ifdef WOKWI_SIM
+          client->setInsecure(); // Wokwi สภาพแวดล้อมจำลอง — ไม่รองรับ TLS cert จริง
+#else
+          client->setCACert(root_ca_cert); // Production: ตรวจสอบ Root CA เสมอ
+#endif
+          http.begin(*client, server_url);
+        } else {
+          Serial.println("[ERROR] Connection failed");
+          DBG("Unable to create WiFiClientSecure");
+          api_fail_count++;
+          if (api_fail_count >= 3) {
+            is_offline_mode = true;
+          }
+          return;
+        }
+      } else {
+        http.begin(server_url);
+      }
+
+      http.setTimeout(1200);
+      http.addHeader("Content-Type", "application/json");
+      http.addHeader("x-api-key", api_key);
+
+      int httpCode = http.GET();
+      if (httpCode == 200) {
+        api_fail_count = 0;
+        is_offline_mode = false;
+        if (millis() - last_student_sync > SYNC_STUDENTS_INTERVAL) {
+          last_student_sync = millis();
+          syncStudentCache();
+        }
+        if (millis() - last_log_sync > SYNC_LOGS_INTERVAL) {
+          last_log_sync = millis();
+          syncOfflineLogs();
+        }
+        String payload = http.getString();
+        StaticJsonDocument<768> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+
+        if (!error) {
+          const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
+          int pending_count = doc["pending_count"];
+          const char *server_time_text = doc["server_time_text"];
+          if (server_time_text && strlen(server_time_text) >= 8) {
+            time_str = String(server_time_text).substring(0, 8);
+          }
+
+          // อ่านประวัติและชื่อล่าสุด
+          String approvedName = "";
+          String studentId = "";
+          if (doc.containsKey("last_approved") &&
+              !doc["last_approved"].isNull()) {
+            approvedName = doc["last_approved"]["name"].as<String>();
+            studentId = doc["last_approved"]["student_id"].as<String>();
+          }
+
+          // รับค่าคีย์ลงทะเบียนและ active token ล่าสุดจากคลาวด์เซิร์ฟเวอร์
+          const char *active_token = doc["active_token"];
+          const char *register_url = doc["register_url"];
+          const char *requested_room = doc["requested_room"];
+
+          // สร้างหน้าลิงก์สแกน QR Code ประจำตัวบอร์ดแบบสมบูรณ์
+          String qrText = "";
+          if (active_token && register_url && requested_room) {
+            String regUrl = String(register_url);
+            int idx = regUrl.indexOf("/?room=");
+            String baseUrl = "";
+            if (idx != -1) {
+              baseUrl = regUrl.substring(0, idx);
+            } else {
+              baseUrl = "${origin}";
+            }
+            qrText = baseUrl + "/?scan=" + String(active_token) +
+                     "&room=" + String(requested_room);
+          }
+
+          DBGF("Door command: %s | Queue: %d\\n", door_trigger ? door_trigger : "NULL", pending_count);
+
+          // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
+          if (String(door_trigger) == "open") {
+            Serial.println("[INFO] Door unlocked");
+            DBG("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
+
+            // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) 1.2 วินาทีเพื่อความเหมือนจริง!
+            drawScanningScreen();
+            tone(BUZZER_PIN, 1500, 100);
+            delay(1200);
+
+            // ขั้น 2: แสดงหน้าจออนุมัติ (Access Granted)
+            drawUnlockedScreen(approvedName, studentId);
+
+            // ส่งสัญญาณพอร์ตบวกไประดมการเปิดรีเลย์จริง
+            digitalWrite(RELAY_PIN, HIGH);
+
+            // เล่นเพลงเสียงระดับสูงหวานหรูหราต้อนรับ
+            tone(BUZZER_PIN, 1000, 150);
+            delay(180);
+            tone(BUZZER_PIN, 1500, 150);
+            delay(180);
+            tone(BUZZER_PIN, 2000, 300);
+
+            // ลูปแสดงเกจคูลดาวน์เวลาเปิดประตูก่อนที่จะกลับมาล็อก
+            // (ช่วยเพิ่มแอนิเมชันเกจลดเวลาประดับบนจอจำลองให้เหมือน esp32-preview)
+            int stepSize = 320 / 38;
+            for (int i = 0; i < 38; i++) {
+              tft.fillRect(0, 236, 320 - (i * stepSize), 4,
+                           tft.color565(16, 185, 129));
+              tft.fillRect(320 - (i * stepSize), 236, stepSize, 4,
+                           tft.color565(6, 78, 59));
+              delay(100);
+            }
+
+            digitalWrite(RELAY_PIN, LOW); // ดึงพินกลับคืนประตูล็อก
+            Serial.println("[INFO] Door locked");
+            DBG("🔒 Door auto locked.");
+
+            // เสียงติ๊ดสั้นเมื่อประตูล็อกกลับคืน
+            tone(BUZZER_PIN, 800, 250);
+
+            // บังคับให้ล้างค่าเก่าเพื่อรีดรอการวาดหน้าหลักสแตนด์บายรอบใหม่
+            last_queue_count = -1;
+            last_approved_name = "FORCE_REDRAW";
+            last_active_token = "FORCE_REDRAW";
+          }
+          // --- ส่วนลดการกะพริบ: โหลดข้อมูลใหม่เฉพาะจุดที่มีการอัปเดตสเตตัส ---
+          else if (pending_count != last_queue_count ||
+                   studentId != last_approved_name ||
+                   (active_token && String(active_token) != last_active_token)) {
+            last_queue_count = pending_count;
+            last_approved_name = studentId;
+            if (active_token)
+              last_active_token = String(active_token);
+
+            drawMainScreen(pending_count, studentId, time_str, qrText);
+          } else {
+            // หากไม่มีคำสั่งและข้อมูลไม่เปลี่ยน แต่อยากให้อัปเดตเฉพาะนาฬิกา
+            tft.setTextSize(1);
+            tft.fillRect(265, 0, 55, 20,
+                         tft.color565(14, 17, 28)); // ล้างแถบเวลาเก่า
+            tft.setTextColor(tft.color565(16, 185, 129));
+            tft.setCursor(265, 6);
+            tft.print(time_str);
+          }
+        }
       } else {
         Serial.println("[ERROR] Connection failed");
-        DBG("Unable to create WiFiClientSecure");
+        DBGF("HTTP Error: %d\\n", httpCode);
         api_fail_count++;
         if (api_fail_count >= 3) {
-          is_offline_mode = true;
-        }
-        return;
-      }
-    } else {
-      http.begin(server_url);
-    }
-
-    http.setTimeout(1200);
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("x-api-key", api_key);
-
-    int httpCode = http.GET();
-    if (httpCode == 200) {
-      api_fail_count = 0;
-      is_offline_mode = false;
-      if (millis() - last_student_sync > SYNC_STUDENTS_INTERVAL) {
-        last_student_sync = millis();
-        syncStudentCache();
-      }
-      if (millis() - last_log_sync > SYNC_LOGS_INTERVAL) {
-        last_log_sync = millis();
-        syncOfflineLogs();
-      }
-      String payload = http.getString();
-      StaticJsonDocument<768> doc;
-      DeserializationError error = deserializeJson(doc, payload);
-
-      if (!error) {
-        const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
-        int pending_count = doc["pending_count"];
-        const char *server_time_text = doc["server_time_text"];
-        if (server_time_text && strlen(server_time_text) >= 8) {
-          time_str = String(server_time_text).substring(0, 8);
-        }
-
-        // อ่านประวัติและชื่อล่าสุด
-        String approvedName = "";
-        String studentId = "";
-        if (doc.containsKey("last_approved") &&
-            !doc["last_approved"].isNull()) {
-          approvedName = doc["last_approved"]["name"].as<String>();
-          studentId = doc["last_approved"]["student_id"].as<String>();
-        }
-
-        // รับค่าคีย์ลงทะเบียนและ active token ล่าสุดจากคลาวด์เซิร์ฟเวอร์
-        const char *active_token = doc["active_token"];
-        const char *register_url = doc["register_url"];
-        const char *requested_room = doc["requested_room"];
-
-        // สร้างหน้าลิงก์สแกน QR Code ประจำตัวบอร์ดแบบสมบูรณ์
-        String qrText = "";
-        if (active_token && register_url && requested_room) {
-          String regUrl = String(register_url);
-          int idx = regUrl.indexOf("/?room=");
-          String baseUrl = "";
-          if (idx != -1) {
-            baseUrl = regUrl.substring(0, idx);
-          } else {
-            baseUrl = "${origin}";
+          if (!is_offline_mode) {
+            is_offline_mode = true;
+            DBG("Entering offline fallback mode due to consecutive API "
+                "failures.");
           }
-          qrText = baseUrl + "/?scan=" + String(active_token) +
-                   "&room=" + String(requested_room);
-        }
-
-        DBGF("Door command: %s | Queue: %d\\n", door_trigger ? door_trigger : "NULL", pending_count);
-
-        // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
-        if (String(door_trigger) == "open") {
-          Serial.println("[INFO] Door unlocked");
-          DBG("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
-
-          // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) 1.2 วินาทีเพื่อความเหมือนจริง!
-          drawScanningScreen();
-          tone(BUZZER_PIN, 1500, 100);
-          delay(1200);
-
-          // ขั้น 2: แสดงหน้าจออนุมัติ (Access Granted)
-          drawUnlockedScreen(approvedName, studentId);
-
-          // ส่งสัญญาณพอร์ตบวกไประดมการเปิดรีเลย์จริง
-          digitalWrite(RELAY_PIN, HIGH);
-
-          // เล่นเพลงเสียงระดับสูงหวานหรูหราต้อนรับ
-          tone(BUZZER_PIN, 1000, 150);
-          delay(180);
-          tone(BUZZER_PIN, 1500, 150);
-          delay(180);
-          tone(BUZZER_PIN, 2000, 300);
-
-          // ลูปแสดงเกจคูลดาวน์เวลาเปิดประตูก่อนที่จะกลับมาล็อก
-          // (ช่วยเพิ่มแอนิเมชันเกจลดเวลาประดับบนจอจำลองให้เหมือน esp32-preview)
-          int countdownMs = 3800; // หน่วงเวลารวม 5 วินาที
-          int stepSize = 320 / 38;
-          for (int i = 0; i < 38; i++) {
-            tft.fillRect(0, 236, 320 - (i * stepSize), 4,
-                         tft.color565(16, 185, 129));
-            tft.fillRect(320 - (i * stepSize), 236, stepSize, 4,
-                         tft.color565(6, 78, 59));
-            delay(100);
-          }
-
-          digitalWrite(RELAY_PIN, LOW); // ดึงพินกลับคืนประตูล็อก
-          Serial.println("[INFO] Door locked");
-          DBG("🔒 Door auto locked.");
-
-          // เสียงติ๊ดสั้นเมื่อประตูล็อกกลับคืน
-          tone(BUZZER_PIN, 800, 250);
-
-          // บังคับให้ล้างค่าเก่าเพื่อรีดรอการวาดหน้าหลักสแตนด์บายรอบใหม่
-          last_queue_count = -1;
-          last_approved_name = "FORCE_REDRAW";
-          last_active_token = "FORCE_REDRAW";
-        }
-        // --- ส่วนลดการกะพริบ: โหลดข้อมูลใหม่เฉพาะจุดที่มีการอัปเดตสเตตัส ---
-        else if (pending_count != last_queue_count ||
-                 studentId != last_approved_name ||
-                 (active_token && String(active_token) != last_active_token)) {
-          last_queue_count = pending_count;
-          last_approved_name = studentId;
-          if (active_token)
-            last_active_token = String(active_token);
-
-          drawMainScreen(pending_count, studentId, time_str, qrText);
-        } else {
-          // หากไม่มีคำสั่งและข้อมูลไม่เปลี่ยน แต่อยากให้อัปเดตเฉพาะนาฬิกา
-          tft.setTextSize(1);
-          tft.fillRect(265, 0, 55, 20,
-                       tft.color565(14, 17, 28)); // ล้างแถบเวลาเก่า
-          tft.setTextColor(tft.color565(16, 185, 129));
-          tft.setCursor(265, 6);
-          tft.print(time_str);
         }
       }
-    } else {
-      Serial.println("[ERROR] Connection failed");
-      DBGF("HTTP Error: %d\\n", httpCode);
-      api_fail_count++;
-      if (api_fail_count >= 3) {
-        if (!is_offline_mode) {
-          is_offline_mode = true;
-          DBG("Entering offline fallback mode due to consecutive API failures.");
-        }
-      }
+      http.end();
     }
-    http.end();
-  } else {
+  } else if (WiFi.status() != WL_CONNECTED) {
     // กะพริบเตือนกรณีสัญญาณเครือข่ายสูญหาย
     digitalWrite(LED_WIFI, LOW);
     delay(250);
     digitalWrite(LED_WIFI, HIGH);
     delay(250);
   }
-
-  delay(polling_delay);
 }
 
 // ─── Security Hardening Helper: Constant-Time Comparison (VULN-036) ──────────

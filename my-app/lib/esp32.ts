@@ -122,27 +122,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
-/**
- * Fire-and-forget LAN direct attempt — runs completely in background.
- * Does NOT block or retry. Failure is silent (already handled by DB queue).
- */
-function tryLanDirectBackground(url: string, studentId: string | undefined, roomCode: string): void {
-  // Run in background, no await, no retry
-  fetchWithTimeout(`${url}/door/open`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": ESP32_API_KEY,
-    },
-    body: JSON.stringify({ studentId, timestamp: new Date().toISOString() }),
-  }, 1500).then(res => {
-    if (res.ok) {
-      console.log(`[ESP32 LAN] Direct connection succeeded for room: ${roomCode}`);
-    }
-  }).catch(() => {
-    // Silent: DB queue already handles delivery — LAN direct is just a fast-path bonus
-  });
-}
+
 
 /**
  * Send door open command to ESP32 / Wokwi.
@@ -180,16 +160,7 @@ export async function openDoor(studentId?: string, roomCode?: string): Promise<E
     };
   }
 
-  // ─── [Optimized: Non-blocking LAN Direct Background Attempt] ───
-  // ถ้าไม่ได้รันบนระบบคลาวด์ และบอร์ดอยู่ในวง LAN เดียวกัน ลองยิงตรงใน background (fire-and-forget)
-  // ไม่บล็อกการทำงาน — คิวใน DB คือระบบหลักและได้บันทึกแล้ว
-  if (!isCloudEnvironment()) {
-    // Only attempt LAN direct if NOT on Vercel/cloud (where it would always timeout)
-    getESP32Url(sanitizedRoom).then(url => {
-      if (!isPrivateLanUrl(url)) return; // Only try LAN IPs in background
-      tryLanDirectBackground(url, studentId, sanitizedRoom);
-    }).catch(() => {});
-  }
+
 
   return {
     success: true,
