@@ -50,6 +50,13 @@ export function getPool(): Pool {
       console.warn('[DEV] No SUPABASE_CA_CERT — using default SSL');
     }
 
+    if (!process.env.POSTGRES_URL && process.env.NODE_ENV === 'production') {
+      throw new Error(
+        "Critical Security Error: POSTGRES_URL is not configured in the production environment. " +
+        "Database password exposure risks require environment variable configuration."
+      );
+    }
+
     const connectionString = readEnv("POSTGRES_URL");
     const connectionConfig = connectionString ? parse(connectionString) : ({} as ReturnType<typeof parse>);
 
@@ -122,6 +129,10 @@ export async function initDatabase(): Promise<void> {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP
       )
+    `);
+
+    await initPool.query(`
+      ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS allowed_rooms TEXT DEFAULT NULL
     `);
 
     // 2. Create students table
@@ -348,6 +359,7 @@ export interface AdminRow {
   is_active: boolean;
   created_at: Date;
   last_login: Date | null;
+  allowed_rooms: string | null;
 }
 
 export interface AccessLogRow {

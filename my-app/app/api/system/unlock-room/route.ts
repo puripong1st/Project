@@ -1,7 +1,7 @@
 // app/api/system/unlock-room/route.ts — Remote unlock classroom door (admin only)
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase } from "@/lib/db";
-import { getAdminFromCookie } from "@/lib/auth";
+import { getAdminFromCookie, canOperateRoom } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
@@ -31,6 +31,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const room = typeof body.room === "string" ? body.room.trim() : "";
     if (!room) return NextResponse.json({ error: "กรุณาระบุรหัสห้องเรียน" }, { status: 400 });
+
+    if (!canOperateRoom(admin, room)) {
+      return NextResponse.json({ error: "ไม่มีสิทธิ์ควบคุมห้องนี้" }, { status: 403 });
+    }
 
     // Call openDoor for the specific room (with SYSTEM indicator to signal manual bypass)
     const esp32Result = await openDoor("SYSTEM_BYPASS", room);

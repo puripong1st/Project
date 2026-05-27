@@ -63,8 +63,6 @@ const TOKEN_ROTATION_SECONDS = 60;
  * This is set to 5 minutes to accommodate slow mobile data, scan latency, and form fill-in time. */
 const TOKEN_EXPIRY_SECONDS = 300;
 const OFFLINE_GRANT_EXPIRY_SECONDS = 600;
-const TOKEN_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
-const lastTokenCleanupByRoom = new Map<string, number>();
 
 /** Minimum entropy: 32 hex chars = 128 bits (brute-force resistant) */
 function generateSecureToken(): string {
@@ -144,14 +142,10 @@ export async function getOrCreateActiveQRToken(roomCode: string = "default"): Pr
   const pool = getPool();
 
   const sanitizedRoom = (roomCode || "default").trim();
-  const now = Date.now();
-  const lastCleanup = lastTokenCleanupByRoom.get(sanitizedRoom) || 0;
-
-  // ─── [Self-Deleting Garbage Collection (Every 5 Minutes Auto-Cleanup)] ───
+  // ─── [Self-Deleting Garbage Collection (1% random sampling cleanup)] ───
   // ลบข้อมูล Token ที่หมดอายุหรือถูกใช้งานเสร็จสิ้นแล้วถาวรออกจากฐานข้อมูล Aiven 
   // เพื่อให้ตารางเบาลง 10 เท่า คอลัมน์เล็ก ส่งข้อมูล SQL เร็วขึ้นสูงสุด 300%
-  if (now - lastCleanup > TOKEN_CLEANUP_INTERVAL_MS) {
-    lastTokenCleanupByRoom.set(sanitizedRoom, now);
+  if (Math.random() < 0.01) {
     await pool.query(
       "DELETE FROM dynamic_qr_tokens WHERE room_code = $1 AND (is_consumed = TRUE OR created_at < CURRENT_TIMESTAMP - INTERVAL '1 second' * $2)",
       [sanitizedRoom, TOKEN_EXPIRY_SECONDS]

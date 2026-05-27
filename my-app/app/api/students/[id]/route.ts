@@ -98,9 +98,13 @@ export async function DELETE(
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
 
     const { id } = await params;
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) {
+      return NextResponse.json({ error: "ID นักศึกษาต้องเป็นตัวเลข" }, { status: 400 });
+    }
     const pool = getPool();
-    await pool.query("DELETE FROM access_logs WHERE student_id = $1", [parseInt(id)]);
-    await pool.query("DELETE FROM students WHERE id = $1", [parseInt(id)]);
+    await pool.query("DELETE FROM access_logs WHERE student_id = $1", [numId]);
+    await pool.query("DELETE FROM students WHERE id = $1", [numId]);
     return NextResponse.json({ success: true, message: "ลบข้อมูลสำเร็จ" });
   } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });

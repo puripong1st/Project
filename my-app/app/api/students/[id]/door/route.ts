@@ -1,7 +1,7 @@
 // app/api/students/[id]/door/route.ts — Open door for approved student (door_operator allowed)
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, StudentRow } from "@/lib/db";
-import { getAdminFromCookie } from "@/lib/auth";
+import { getAdminFromCookie, canOperateRoom } from "@/lib/auth";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
 
@@ -40,6 +40,10 @@ export async function POST(
     const student = students[0];
     if (student.status !== "approved") {
       return NextResponse.json({ error: "นักศึกษานี้ยังไม่ได้รับการอนุมัติ" }, { status: 400 });
+    }
+
+    if (!canOperateRoom(admin, student.requested_room)) {
+      return NextResponse.json({ error: "ไม่มีสิทธิ์ควบคุมห้องนี้" }, { status: 403 });
     }
 
     const esp32Result = await openDoor(student.student_id, student.requested_room);

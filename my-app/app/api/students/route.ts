@@ -8,6 +8,8 @@ import { openDoor } from "@/lib/esp32";
 import { consumeOfflineGrant, consumeQRToken } from "@/lib/qr";
 import { rateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
+import { getClientIp } from "@/lib/client-ip";
+import DOMPurify from "isomorphic-dompurify";
 
 let initialized = false;
 async function ensureInit() {
@@ -77,8 +79,8 @@ export async function POST(req: NextRequest) {
   try {
     await ensureInit();
 
-    // Extract client IP
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+    // Extract client IP securely
+    const ip = getClientIp(req);
 
     // Durable Rate Limit (Vercel/Serverless friendly): 5 attempts per IP per minute
     const rateLimitResult = await rateLimit({
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
 
     // Sanitize input to prevent XSS
     const sanitizeHTML = (input: string): string => {
-      return input.replace(/<[^>]*>/g, '');
+      return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
     };
     const sanitizedTitle = sanitizeHTML(title?.trim() ?? '');
     const sanitizedFirstName = sanitizeHTML(first_name?.trim() ?? '');

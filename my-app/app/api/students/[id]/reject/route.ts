@@ -27,6 +27,10 @@ export async function POST(
     if (isNaN(studentId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const { reason } = await req.json();
+    const sanitizedReason = typeof reason === "string"
+      ? reason.replace(/<[^>]*>/g, "").trim().slice(0, 500)
+      : "";
+    const finalReason = sanitizedReason || "ไม่ผ่านการตรวจสอบ";
 
     const pool = getPool();
     const { rows } = await pool.query("SELECT * FROM students WHERE id = $1", [studentId]);
@@ -38,19 +42,19 @@ export async function POST(
 
     await pool.query(
       "UPDATE students SET status = 'rejected', approved_by = $1, approved_at = CURRENT_TIMESTAMP, rejection_reason = $2 WHERE id = $3",
-      [admin.id, reason || "ไม่ผ่านการตรวจสอบ", studentId]
+      [admin.id, finalReason, studentId]
     );
 
     await pool.query(
       `INSERT INTO access_logs (student_id, action, performed_by, notes, room_code) VALUES ($1, 'rejected', $2, $3, $4)`,
-      [studentId, admin.id, `เหตุผล: ${reason || "ไม่ผ่านการตรวจสอบ"} | โดย: ${admin.full_name}`, student.requested_room || 'default']
+      [studentId, admin.id, `เหตุผล: ${finalReason} | โดย: ${admin.full_name}`, student.requested_room || 'default']
     );
 
     sendDiscordNotification("student_rejected", {
       studentName: `${student.first_name} ${student.last_name}`,
       studentId: student.student_id,
       adminName: admin.full_name,
-      reason: reason || "ไม่ผ่านการตรวจสอบ",
+      reason: finalReason,
       room: student.requested_room,
     }).catch(() => {});
 

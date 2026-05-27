@@ -1,7 +1,7 @@
 // app/api/admin-users/route.ts — List + Create admin users (owner only)
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, AdminRow } from "@/lib/db";
-import { getAdminFromCookie } from "@/lib/auth";
+import { getAdminFromCookie, validatePasswordPolicy, validateUsername } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import bcrypt from "bcryptjs";
 
@@ -53,16 +53,28 @@ export async function POST(req: NextRequest) {
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
 
-    const { username, password, full_name, role } = await req.json();
+    const { username, password, full_name, role, allowed_rooms } = await req.json();
     if (!username || !password || !full_name || !role) {
       return NextResponse.json({ error: "กรุณากรอกข้อมูลให้ครบ" }, { status: 400 });
     }
     if (!["owner", "door_operator"].includes(role)) {
       return NextResponse.json({ error: "Role ไม่ถูกต้อง" }, { status: 400 });
     }
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Password ต้องมีอย่างน้อย 6 ตัวอักษร" }, { status: 400 });
+
+    const userCheck = validateUsername(username);
+    if (!userCheck.ok) {
+      return NextResponse.json({ error: userCheck.error }, { status: 400 });
     }
+
+    const passCheck = validatePasswordPolicy(password);
+    if (!passCheck.ok) {
+      return NextResponse.json({ error: passCheck.error }, { status: 400 });
+    }
+
+    const sanitizedFullName = full_name.replace(/<[^>]*>/g, '').slice(0, 100);
+    const sanitizedAllowedRooms = typeof allowed_rooms === "string"
+      ? allowed_rooms.replace(/[^a-zA-Z0-9_,-]/g, "").slice(0, 1000)
+      : null;
 
     const pool = getPool();
     const { rows: existing } = await pool.query("SELECT id FROM admin_users WHERE username = $1", [username]);
@@ -72,8 +84,8 @@ export async function POST(req: NextRequest) {
 
     const hash = await bcrypt.hash(password, 12);
     await pool.query(
-      "INSERT INTO admin_users (username, password_hash, full_name, role) VALUES ($1, $2, $3, $4)",
-      [username, hash, full_name, role]
+      "INSERT INTO admin_users (username, password_hash, full_name, role, allowed_rooms) VALUES ($1, $2, $3, $4, $5)",
+      [username, hash, sanitizedFullName, role, sanitizedAllowedRooms]
     );
 
     return NextResponse.json({ success: true, message: "สร้าง Admin สำเร็จ" }, { status: 201 });

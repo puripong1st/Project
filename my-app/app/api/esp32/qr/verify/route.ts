@@ -2,12 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createOfflineGrant, validateQRToken } from "@/lib/qr";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/client-ip";
 
 export async function POST(req: NextRequest) {
   try {
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || req.headers.get("x-real-ip")
-      || "unknown";
+    const clientIp = getClientIp(req);
 
     const rateLimitResult = await rateLimit({
       key: `qr_verify:${clientIp}`,

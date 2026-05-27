@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminFromCookie } from "@/lib/auth";
 import { getPool } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/client-ip";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,10 +13,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ip =
-      req.headers.get("x-forwarded-for") ||
-      req.headers.get("x-real-ip") ||
-      "anonymous";
+    const ip = getClientIp(req);
 
     const rl = await rateLimit({
       key: `health:${ip}`,

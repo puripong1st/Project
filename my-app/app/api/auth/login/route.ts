@@ -5,6 +5,8 @@ import { signToken, setAuthCookie } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 
+import { getClientIp } from "@/lib/client-ip";
+
 let initialized = false;
 async function ensureInit() {
   if (!initialized) {
@@ -17,8 +19,8 @@ export async function POST(req: NextRequest) {
   try {
     await ensureInit();
 
-    // Get IP address from headers
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+    // Get IP address from headers securely
+    const ip = getClientIp(req);
 
     // Durable Rate Limit (Vercel/Serverless friendly)
     const rateLimitResult = await rateLimit({
@@ -62,12 +64,13 @@ export async function POST(req: NextRequest) {
       username: admin.username,
       full_name: admin.full_name,
       role: admin.role,
+      allowed_rooms: admin.allowed_rooms,
     });
 
     const cookieOpts = setAuthCookie(token);
     const response = NextResponse.json({
       success: true,
-      user: { id: admin.id, username: admin.username, full_name: admin.full_name, role: admin.role },
+      user: { id: admin.id, username: admin.username, full_name: admin.full_name, role: admin.role, allowed_rooms: admin.allowed_rooms },
     });
 
     response.cookies.set(cookieOpts);

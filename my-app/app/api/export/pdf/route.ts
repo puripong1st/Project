@@ -4,6 +4,7 @@ import { getPool, initDatabase, StudentRow } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { generateStudentsPDF, generateSingleStudentPDF } from "@/lib/pdf";
+import { getClientIp } from "@/lib/client-ip";
 
 let initialized = false;
 async function ensureInit() {
@@ -91,7 +92,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+      const ip = getClientIp(req);
       await pool.query(
         `INSERT INTO access_logs (student_id, action, room, method, ip_address, details)
          VALUES ('SYSTEM', 'PDF_EXPORT', 'ALL', 'admin', $1, $2)`,
@@ -158,7 +159,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+      const ip = getClientIp(req);
       await pool.query(
         `INSERT INTO access_logs (student_id, action, room, method, ip_address, details)
          VALUES ('SYSTEM', 'PDF_EXPORT', 'ALL', 'admin', $1, $2)`,

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/client-ip";
 
 /**
  * Universal rate-limiting middleware wrapper for Next.js API Routes.
@@ -11,7 +12,7 @@ export async function withRateLimit(
   maxRequests: number,
   windowSeconds: number = 60
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "anonymous";
+  const ip = getClientIp(request);
 
   const result = await rateLimit({
     key: `${endpoint}:${ip}`,

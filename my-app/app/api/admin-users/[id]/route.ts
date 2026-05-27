@@ -22,7 +22,10 @@ export async function DELETE(
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
 
     const { id } = await params;
-    const targetId = parseInt(id);
+    const targetId = parseInt(id, 10);
+    if (isNaN(targetId)) {
+      return NextResponse.json({ error: "ID แอดมินต้องเป็นตัวเลข" }, { status: 400 });
+    }
 
     if (admin.id === targetId) {
       return NextResponse.json({ error: "ไม่สามารถลบบัญชีตัวเองได้" }, { status: 400 });

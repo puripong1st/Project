@@ -17,6 +17,14 @@ export interface AdminPayload {
   username: string;
   full_name: string;
   role: "owner" | "door_operator";
+  allowed_rooms?: string | null;
+}
+
+export function canOperateRoom(admin: AdminPayload, roomCode: string): boolean {
+  if (admin.role === "owner") return true;
+  if (!admin.allowed_rooms) return false;
+  const rooms = admin.allowed_rooms.split(",").map((r) => r.trim());
+  return rooms.includes(roomCode);
 }
 
 export function signToken(payload: AdminPayload): string {
@@ -66,3 +74,30 @@ export function setAuthCookie(token: string): {
 }
 
 export const COOKIE_NAME_EXPORT = COOKIE_NAME;
+
+export function validatePasswordPolicy(password: string): { ok: boolean; error?: string } {
+  if (password.length < 12) {
+    return { ok: false, error: "รหัสผ่านต้องมีความยาวอย่างน้อย 12 ตัวอักษร" };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { ok: false, error: "รหัสผ่านต้องมีอักษรตัวใหญ่ (A-Z) อย่างน้อย 1 ตัว" };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { ok: false, error: "รหัสผ่านต้องมีอักษรตัวเล็ก (a-z) อย่างน้อย 1 ตัว" };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { ok: false, error: "รหัสผ่านต้องมีตัวเลข (0-9) อย่างน้อย 1 ตัว" };
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return { ok: false, error: "รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว" };
+  }
+  return { ok: true };
+}
+
+export function validateUsername(username: string): { ok: boolean; error?: string } {
+  const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
+  if (!usernameRegex.test(username)) {
+    return { ok: false, error: "ชื่อผู้ใช้ต้องมีความยาว 3-30 ตัวอักษร และประกอบด้วยตัวอักษร, ตัวเลข, จุด (.), หรือขีดล่าง (_) เท่านั้น" };
+  }
+  return { ok: true };
+}
