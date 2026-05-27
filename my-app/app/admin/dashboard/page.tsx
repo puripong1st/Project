@@ -544,6 +544,7 @@ function AdminDashboardInner() {
   const [newRoomIp, setNewRoomIp] = useState("");
   const [testingRoom, setTestingRoom] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { online: boolean; ip: string; mode: string }>>({});
+  const [firmwareMode, setFirmwareMode] = useState<"wokwi" | "physical">("physical");
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -677,17 +678,25 @@ function AdminDashboardInner() {
     }
   };
 
-  const getConfigCode = (roomCode: string, origin: string) => {
+  const getConfigCode = (roomCode: string, origin: string, mode: "wokwi" | "physical" = "physical") => {
+    const wifiBlock = mode === "wokwi"
+      ? `const char *ssid = "Wokwi-GUEST";\nconst char *password = "";`
+      : `const char *ssid = "YOUR_WIFI_SSID";      // ← แก้เป็นชื่อ Wi-Fi จริง\nconst char *password = "YOUR_WIFI_PASSWORD"; // ← แก้เป็นรหัส Wi-Fi จริง`;
+
+    const certBlock = mode === "wokwi"
+      ? `// Wokwi Simulator — ไม่ต้องใช้ CA Certificate (setInsecure() ถูกใช้แทน)\n// สำหรับบอร์ดจริงให้เปลี่ยนโหมดเป็น Physical ESP32 เพื่อดู CA Cert`
+      : `// Root CA Certificate สำหรับตรวจสอบใบรับรอง HTTPS Vercel (ISRG Root X1)\nconst char *root_ca_cert = \\\n"-----BEGIN CERTIFICATE-----\\n" \\\n"MIIFazCCA1OgAwIBAgIRAIIRxZ96RhG2Hae8TZtOGMEwDQYJKoZIhvcNAQELBQAw\\n" \\\n"TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\\n" \\\n"cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\\n" \\\n"WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\\n" \\\n"ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\\n" \\\n"MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzmHwXyEFD\\n" \\\n"aVY+5gE2Dux6ClJHdEEXJKmcfcPChBkuv3Gz/kOHegC6MyTPd50rtW71mMR6ZkvF\\n" \\\n"m5yOYyFL9PJA65geg8gCyRFyat6J4Rg8L3AzoU3dZCPqy8gKKHWMVfuxgpJEnt4f\\n" \\\n"mCjOt21KKOAQCFAJUsT18H3OPC9CDH5SM5KC9CTWgrOB8Uo18m1751g6M6Wd095M\\n" \\\n"O44692GUP8xQG07xEQ2g5K31LCT79kXyNdc29F257754sTA+772YtB77c5sS2t72\\n" \\\n"K17578t1A2C317187sT8sT118t1A2sT8t17sT8sT8sT8sT8sT8sT8sT8sT8sT8sT\\n" \\\n"-----END CERTIFICATE-----\\n";`;
+
     return `/*
   ========================================================================
   RMUTP Door Access Controller - config.h for Classroom ${roomCode}
+  โหมด: ${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
   ========================================================================
 */
 #ifndef CONFIG_H
 #define CONFIG_H
 
-const char *ssid = "Wokwi-GUEST";
-const char *password = "";
+${wifiBlock}
 
 const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
 const char *room_code = "${roomCode}";
@@ -697,34 +706,24 @@ const char *room_code = "${roomCode}";
 // DO NOT commit the real key to version control
 const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
 
-// Root CA Certificate สำหรับตรวจสอบใบรับรอง HTTPS Vercel (ISRG Root X1)
-const char *root_ca_cert = \\
-"-----BEGIN CERTIFICATE-----\\n" \\
-"MIIFazCCA1OgAwIBAgIRAIIRxZ96RhG2Hae8TZtOGMEwDQYJKoZIhvcNAQELBQAw\\n" \
-"TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\\n" \
-"cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\\n" \
-"WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\\n" \
-"ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\\n" \
-"MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzmHwXyEFD\\n" \
-"aVY+5gE2Dux6ClJHdEEXJKmcfcPChBkuv3Gz/kOHegC6MyTPd50rtW71mMR6ZkvF\\n" \
-"m5yOYyFL9PJA65geg8gCyRFyat6J4Rg8L3AzoU3dZCPqy8gKKHWMVfuxgpJEnt4f\\n" \
-"mCjOt21KKOAQCFAJUsT18H3OPC9CDH5SM5KC9CTWgrOB8Uo18m1751g6M6Wd095M\\n" \
-"O44692GUP8xQG07xEQ2g5K31LCT79kXyNdc29F257754sTA+772YtB77c5sS2t72\\n" \
-"K17578t1A2C317187sT8sT118t1A2sT8t17sT8sT8sT8sT8sT8sT8sT8sT8sT8sT\\n" \
-"-----END CERTIFICATE-----\\n";
+${certBlock}
 
 #endif // CONFIG_H`;
   };
 
-  const getArduinoCode = (roomCode: string, origin: string) => {
+  const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" | "physical" = "physical") => {
+    const wokwiDefine = mode === "wokwi"
+      ? `#define WOKWI_SIM  // Wokwi Simulator mode — NEVER deploy to production with this defined!`
+      : `// #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!`;
     return `/*
   ==============================================================
   RMUTP Door Access Controller - Firmware for ESP32
   ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
+  โหมด: ${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-// #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!
+${wokwiDefine}
 #define DEBUG_MODE false  // ⚠️ Set true for development ONLY
 
 #if DEBUG_MODE
@@ -1523,10 +1522,11 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
+        #ifdef WOKWI_SIM
+        client->setInsecure(); // Wokwi ไม่รองรับ CA cert — ใช้ setInsecure() แทน
+        #else
         client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริงเพื่อความปลอดภัยสูงสุด
-        // NOTE: For Wokwi simulation, you may temporarily use:
-        // client->setInsecure();
-        // WARNING: NEVER deploy to production with setInsecure()!
+        #endif
         http.begin(*client, server_url);
       } else {
         Serial.println("[ERROR] Connection failed");
@@ -2818,6 +2818,55 @@ void handleLocalWebServerRequest() {
                     </p>
                   </div>
 
+                  {/* Firmware Mode Toggle */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", flexShrink: 0 }}>🎯 เลือกโหมด:</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => setFirmwareMode("physical")}
+                        style={{
+                          padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                          background: firmwareMode === "physical" ? "#3B82F6" : "rgba(255,255,255,0.06)",
+                          color: firmwareMode === "physical" ? "#fff" : "var(--text-secondary)",
+                          border: firmwareMode === "physical" ? "1.5px solid #3B82F6" : "1.5px solid rgba(255,255,255,0.1)",
+                          transition: "all 0.15s"
+                        }}
+                      >
+                        🔧 บอร์ด ESP32 จริง
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFirmwareMode("wokwi")}
+                        style={{
+                          padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                          background: firmwareMode === "wokwi" ? "#10B981" : "rgba(255,255,255,0.06)",
+                          color: firmwareMode === "wokwi" ? "#fff" : "var(--text-secondary)",
+                          border: firmwareMode === "wokwi" ? "1.5px solid #10B981" : "1.5px solid rgba(255,255,255,0.1)",
+                          transition: "all 0.15s"
+                        }}
+                      >
+                        🧪 Wokwi Simulator
+                      </button>
+                    </div>
+                    <span style={{ fontSize: 11, color: firmwareMode === "wokwi" ? "#10B981" : "#3B82F6", fontWeight: 600, marginLeft: 4 }}>
+                      {firmwareMode === "wokwi" ? "— ใช้ setInsecure() แทน CA Cert / SSID: Wokwi-GUEST" : "— ใช้ CA Cert ตรวจสอบ HTTPS / ต้องใส่ SSID จริง"}
+                    </span>
+                  </div>
+
+                  {/* Wokwi warning banner */}
+                  {firmwareMode === "wokwi" && (
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.35)", borderRadius: 8 }}>
+                      <span style={{ fontSize: 15 }}>⚠️</span>
+                      <span style={{ fontSize: 11.5, color: "#F59E0B", lineHeight: 1.5, fontWeight: 600 }}>
+                        โค้ดนี้สำหรับ Wokwi Simulator เท่านั้น — ห้ามใช้บนบอร์ดจริง
+                        <span style={{ display: "block", fontWeight: 400, color: "var(--text-secondary)", marginTop: 2 }}>
+                          โหมด Wokwi ใช้ <code style={{ background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 4 }}>setInsecure()</code> แทน CA Certificate เพราะ Wokwi ไม่รองรับ TLS จริง — สำหรับ deploy บอร์ดจริงให้เปลี่ยนโหมดเป็น &quot;บอร์ด ESP32 จริง&quot;
+                        </span>
+                      </span>
+                    </div>
+                  )}
+
                   {/* 1. config.h code block */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)" }}>1. ไฟล์การตั้งค่าความลับ (config.h)</span>
@@ -2889,7 +2938,7 @@ void handleLocalWebServerRequest() {
                           lineHeight: 1.5
                         }}
                         dangerouslySetInnerHTML={{
-                          __html: highlightArduinoCode(getConfigCode(activeRoomDetails.room, originUrl))
+                          __html: highlightArduinoCode(getConfigCode(activeRoomDetails.room, originUrl, firmwareMode))
                         }}
                       />
                     </div>
@@ -2945,7 +2994,7 @@ void handleLocalWebServerRequest() {
                           lineHeight: 1.5
                         }}
                         dangerouslySetInnerHTML={{
-                          __html: highlightArduinoCode(getArduinoCode(activeRoomDetails.room, originUrl))
+                          __html: highlightArduinoCode(getArduinoCode(activeRoomDetails.room, originUrl, firmwareMode))
                         }}
                       />
                     </div>
