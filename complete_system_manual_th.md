@@ -130,6 +130,24 @@
   - [71.37 Network Topology — Campus Deployment + Firewall Request](#sec-71-37)
   - [71.38 คู่มือผู้ใช้แยกเล่ม (Student / Operator / Owner Quick Guides)](#sec-71-38)
   - [71.39 ตรวจสอบความถูกต้องทางกฎหมาย: Cookie Consent, Terms, Privacy Policy](#sec-71-39)
+  - [71.40 SmartAccess Rebrand + PDPA Implementation — เจาะลึกทุกประเด็น](#sec-71-40)
+    - [71.40.1 ที่มาของการ Rebrand และบทบาทของคณะครุศาสตร์อุตสาหกรรม](#sec-71-40-1)
+    - [71.40.2 สถาปัตยกรรม Consent — Frontend ↔ API ↔ Database](#sec-71-40-2)
+    - [71.40.3 เจาะลึกตาราง consent_records ทุกคอลัมน์](#sec-71-40-3)
+    - [71.40.4 เจาะลึก API /api/consent ทั้ง 3 method](#sec-71-40-4)
+    - [71.40.5 เจาะลึก CookieConsent.tsx v2.0 ทีละส่วน](#sec-71-40-5)
+    - [71.40.6 เจาะลึก privacy/page.tsx — แต่ละหัวข้อ + เจตนาทางกฎหมาย](#sec-71-40-6)
+    - [71.40.7 เจาะลึก terms/page.tsx — แต่ละ clause + ฎีกาที่อ้างอิง](#sec-71-40-7)
+    - [71.40.8 รายการ Cookie/Storage ทุกตัวพร้อมเหตุผลการจัดหมวด](#sec-71-40-8)
+    - [71.40.9 SHA-256 IP Hashing — ทำไมและทำอย่างไร](#sec-71-40-9)
+    - [71.40.10 Withdrawal Flow — กฎ "ง่ายเท่ากับให้" ของ PDPA ม.19](#sec-71-40-10)
+    - [71.40.11 Cross-Border Transfer — Safeguards ในทางปฏิบัติ](#sec-71-40-11)
+    - [71.40.12 Discord Webhook — ที่มาของ avatar URL ใหม่](#sec-71-40-12)
+    - [71.40.13 ESP32 Display Subtitle — ทำไมต้องสั้น](#sec-71-40-13)
+    - [71.40.14 SEO Meta Description — Trade-off ระหว่างชื่อยาว/สั้น](#sec-71-40-14)
+    - [71.40.15 Migration Checklist สำหรับ deploy เวอร์ชันนี้](#sec-71-40-15)
+    - [71.40.16 Verification Plan — ตรวจสอบหลัง deploy](#sec-71-40-16)
+    - [71.40.17 ความเสี่ยงคงเหลือและงานที่ต้องทำต่อ](#sec-71-40-17)
 
 ---
 
@@ -2507,7 +2525,7 @@ flowchart TD
 2. **นโยบายการห้ามเดินตามหลังโดยไม่สแกนสิทธิ์ (Anti-Tailgating Policy):**
    - นักศึกษาทุกคนต้องทำการสแกนประวัติการยืนยันตนและรอผลอนุมัติในการเข้าออกรายคน ห้ามมิให้เดินตามหลังผู้อื่นที่ประตูถูกเปิดค้างไว้โดยไม่มีการบันทึกประวัติลงตาราง `access_logs` หากเกิดเหตุขัดข้องทางทรัพย์สินส่วนกลาง บุคคลสุดท้ายที่ปรากฏประวัติในระบบจะถือเป็นผู้รับผิดชอบหลักในการให้ข้อมูลแก่SmartAccess
 3. **ขอบเขตความรับผิดชอบและการจำกัดความรับผิด (Limitation of Liability):**
-   - SmartAccessและทีมผู้พัฒนาระบบควบคุมนี้ จะไม่รับผิดชอบต่อความสูญหาย เสียหาย หรือการถูกโจรกรรมของทรัพย์สินส่วนตัวของนักศึกษาที่นำเข้าไปเก็บรักษาภายในห้องเรียนทุกกรณี 
+   - คณะครุศาสตร์อุตสาหกรรม มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร และทีมผู้พัฒนาระบบ SmartAccess จะไม่รับผิดชอบต่อความสูญหาย เสียหาย หรือการถูกโจรกรรมของทรัพย์สินส่วนตัวของนักศึกษาที่นำเข้าไปเก็บรักษาภายในห้องเรียนทุกกรณี 
 4. **มาตรการลงโทษทางวินัย (Disciplinary Enforcement):**
    - หากตรวจพบว่านักศึกษาพยายามเจาะระบบ ส่งคำร้องปลอม ยิงสแปมถล่มพอร์ตรีเลย์ หรือช่วยเหลือผู้บุกรุกผ่านนโยบายแชร์คีย์อ้างอิง นักศึกษาจะถูกระงับสิทธิ์การใช้งานผ่านแผงควบคุมแอดมินทันที และส่งเรื่องเพื่อพิจารณาโทษทางวินัยนักศึกษาตามระเบียบของทางมหาวิทยาลัยต่อไป
 
@@ -5570,7 +5588,7 @@ my-app/
 2. **Purposes:** จับคู่ยืนยันตน → ปลดล็อกประตู + log จราจร (ป้องกันอัคคีภัย/โจรกรรม)
 3. **Sharing:** Discord Webhook เจ้าหน้าที่เท่านั้น — ไม่ขาย/ส่งบุคคลที่สาม
 4. **Retention:** ≥ 90 วัน, Data Pruning เมื่อสิ้นปีการศึกษา
-5. **Data Subject Rights:** Right to Access + Right to be Forgotten ผ่านSmartAccess
+5. **Data Subject Rights:** Right to Access + Right to be Forgotten ผ่านอีเมล DPO ของคณะครุศาสตร์อุตสาหกรรม มทร.พระนคร (dpo@rmutp.ac.th)
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
 
@@ -7012,7 +7030,497 @@ COMMENT ON TABLE consent_records IS
 
 ---
 
-> **อัปเดตล่าสุด**: 2026-05-27 23:30:00 +07:00 — **ดำเนินการแก้ไขจริงตาม §71.39** ครอบคลุม P0+P1 ครบทุกข้อ:
+<a id="sec-71-40"></a>
+### 71.40 SmartAccess Rebrand + PDPA Implementation — เจาะลึกทุกประเด็น
+
+บทนี้รวมการเปลี่ยนแปลงทั้งหมดที่เกิดขึ้นในช่วง 27 พ.ค. 2569 (22:30–23:50 +07:00) — ตั้งแต่การ rebrand ระบบเป็น **SmartAccess** การประกาศคณะเจ้าของโครงการ (**คณะครุศาสตร์อุตสาหกรรม**) และการ implement PDPA compliance ครบ P0+P1 — โดยเจาะลึกทีละประเด็นเพื่อให้ผู้อ่าน (รวมถึง NotebookLM และคณะกรรมการสอบ) เข้าใจทั้งเหตุผลทางวิศวกรรมและทางกฎหมาย
+
+<a id="sec-71-40-1"></a>
+#### 71.40.1 ที่มาของการ Rebrand และบทบาทของคณะครุศาสตร์อุตสาหกรรม
+
+**ก่อนหน้า (v1.x):**
+- ชื่อระบบใช้ "RMUTP ACCS" (ย่อจาก RMUTP Access Control System) ปะปนกับชื่อสถาบัน
+- บางจุดในเอกสารระบุว่า "คณะวิศวกรรมศาสตร์" เป็นผู้พัฒนา — ซึ่ง **ไม่ถูกต้อง** เพราะโครงการเป็นวิทยานิพนธ์/โครงงานของนักศึกษา **คณะครุศาสตร์อุตสาหกรรม**
+
+**ปัจจุบัน (v2.0):**
+
+| รายการ | ค่าใหม่ |
+|---|---|
+| ชื่อระบบ (Product Name) | **SmartAccess Door Access System** |
+| ชื่อโครงการเชิงวิชาการ | **Innovative system for managing access rights and controlling classroom access via wireless network** |
+| ผู้ควบคุมข้อมูล (Data Controller) | **คณะครุศาสตร์อุตสาหกรรม มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร** |
+| โดเมนอีเมลทางการ | `@rmutp.ac.th` (ไม่ใช่ `@smartaccess.ac.th` ซึ่งเป็นโดเมนที่ไม่ได้จดทะเบียน) |
+| Discord webhook avatar | favicon จริงของ `rmutp.ac.th` |
+
+**ทำไมต้องแยกชัด:**
+1. **ทางกฎหมาย (PDPA ม.23):** Data Controller ต้องเป็น "นิติบุคคล/หน่วยงาน" ที่มีตัวตนจริง — "SmartAccess" เป็นแค่ชื่อระบบไม่ใช่นิติบุคคล
+2. **ทางวิชาการ:** ภาคนิพนธ์/โครงงานต้องระบุภาควิชา/คณะที่ถูกต้องเพื่อการอ้างอิงและการประเมิน
+3. **ทาง branding:** "ชื่อระบบ" ใช้สำหรับ marketing/UI — "ชื่อสถาบัน" ใช้สำหรับ contract/legal
+
+⚠️ **ข้อพึงระวัง:** `lib/faculties.ts` ยังคงมี "คณะวิศวกรรมศาสตร์" ใน array เพราะเป็น **ตัวเลือกในฟอร์มลงทะเบียนของนักศึกษา** (นักศึกษาจากคณะใดก็ตามใน มทร.พระนคร สามารถใช้ห้อง lab ของคณะครุศาสตร์อุตสาหกรรมได้) — ไม่ใช่ชื่อคณะผู้พัฒนา
+
+<a id="sec-71-40-2"></a>
+#### 71.40.2 สถาปัตยกรรม Consent — Frontend ↔ API ↔ Database
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 ผู้ใช้
+    participant C as 🍪 CookieConsent.tsx<br/>(Browser)
+    participant LS as 💾 localStorage<br/>(smartaccess_cookie_consent_v2)
+    participant API as 🟣 POST /api/consent<br/>(Vercel Edge)
+    participant DB as 🟢 consent_records<br/>(Supabase PG)
+    
+    Note over U,DB: ① Initial visit
+    U->>C: เปิดเว็บ
+    C->>LS: getItem(STORAGE_KEY)
+    LS-->>C: null (ครั้งแรก)
+    C->>U: แสดง banner (delay 1s)
+    
+    Note over U,DB: ② User chooses "Accept All"
+    U->>C: click "ยอมรับทั้งหมด"
+    C->>LS: setItem(record)
+    C->>API: POST /api/consent<br/>{functional:true, analytics:true, marketing:true, action:"granted"}
+    API->>API: hashIp(IP)<br/>generateUuid()
+    API->>DB: INSERT INTO consent_records<br/>(uuid, ip_hash, version, choices, action)
+    DB-->>API: ok
+    API-->>C: {ok:true, consent_uuid, timestamp}
+    C->>U: hide banner<br/>dispatchEvent('smartaccess_cookie_consent_changed')
+    
+    Note over U,DB: ③ User opens Settings from Privacy page
+    U->>C: click "จัดการความยินยอม"
+    C->>C: openConsentSettings()<br/>dispatchEvent('smartaccess_open_consent')
+    C->>U: เปิด Modal (4 checkboxes)
+    U->>C: ปรับ + บันทึก
+    C->>API: POST /api/consent (action:"updated")
+    
+    Note over U,DB: ④ Withdrawal
+    U->>C: ติ๊ก functional=false + บันทึก
+    C->>API: DELETE /api/consent
+    API->>DB: INSERT (action:"withdrawn", all flags FALSE)
+    Note over DB: ไม่ลบประวัติเดิม → audit trail ครบถ้วน
+```
+
+**จุดสำคัญทางสถาปัตยกรรม:**
+- **Source of truth:** Database (Supabase) — ไม่ใช่ localStorage
+- **localStorage role:** Cache เพื่อ UX (ไม่ขึ้น banner ซ้ำ) เท่านั้น
+- **Insertion-only:** ไม่เคย UPDATE/DELETE record เดิม — ทุก action สร้างแถวใหม่ → audit trail สมบูรณ์
+- **Anonymous binding:** ผูกกับ SHA-256(IP) แทน user_id เพราะ consent เกิดก่อนการลงทะเบียนนักศึกษา
+
+<a id="sec-71-40-3"></a>
+#### 71.40.3 เจาะลึกตาราง `consent_records` ทุกคอลัมน์
+
+```sql
+CREATE TABLE IF NOT EXISTS consent_records (
+  id BIGSERIAL PRIMARY KEY,
+  consent_uuid VARCHAR(64) UNIQUE NOT NULL,
+  ip_hash CHAR(64) NOT NULL,
+  user_agent TEXT,
+  version VARCHAR(10) NOT NULL,
+  necessary BOOLEAN NOT NULL DEFAULT TRUE,
+  functional BOOLEAN NOT NULL DEFAULT FALSE,
+  analytics BOOLEAN NOT NULL DEFAULT FALSE,
+  marketing BOOLEAN NOT NULL DEFAULT FALSE,
+  action VARCHAR(20) NOT NULL CHECK (action IN ('granted', 'withdrawn', 'updated', 'declined')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+| คอลัมน์ | Type | เหตุผลทางวิศวกรรม | เหตุผลทางกฎหมาย |
+|---|---|---|---|
+| `id` | BIGSERIAL | Auto-increment 64-bit → ไม่หมดในชีวิตจริง | ใช้เรียง chronologically |
+| `consent_uuid` | VARCHAR(64) UNIQUE | UUID v4 จาก `crypto.randomUUID()` — ผู้ใช้นำไปอ้างอิงตอนใช้สิทธิ DSR | PDPA ม.19 — "หลักฐานเป็นรายบุคคล" |
+| `ip_hash` | CHAR(64) | SHA-256 hex string (64 chars) | ไม่เก็บ raw IP = ลด data minimization risk + ยังจับคู่ session ได้ |
+| `user_agent` | TEXT (max 500 chars) | ช่วยแยกแยะ device หาก IP ซ้ำกัน (NAT) | ประกอบหลักฐานยืนยันตัวตน session |
+| `version` | VARCHAR(10) | semver-like "2.0" — invalidate consent เมื่อ policy เปลี่ยน | GDPR Art.7(1) บังคับให้พิสูจน์ได้ว่ายินยอม policy เวอร์ชันไหน |
+| `necessary` | BOOLEAN (always TRUE) | คุกกี้จำเป็นไม่ต้องขอ consent ตาม PDPC ข้อ 6.1 | เก็บไว้เพื่อความสมบูรณ์ของ record |
+| `functional` | BOOLEAN | ผู้ใช้เลือก yes/no | PDPA ม.19 — ความยินยอมเฉพาะเจาะจง |
+| `analytics` | BOOLEAN | ผู้ใช้เลือก yes/no | เผื่ออนาคตเชื่อม Vercel Analytics |
+| `marketing` | BOOLEAN | ผู้ใช้เลือก yes/no | เผื่ออนาคต mail campaign |
+| `action` | VARCHAR(20) + CHECK | `granted` / `declined` / `updated` / `withdrawn` | แสดง intent ตอนนั้น — ม.19 วรรค 5 |
+| `created_at` | TIMESTAMP | เก็บ timezone-naive (Asia/Bangkok ใน app) | พิสูจน์ "เมื่อไหร่" ยินยอม |
+
+**Index ที่สร้าง:**
+- `idx_consent_ip_time (ip_hash, created_at DESC)` — สำหรับ query "ดู consent ล่าสุดของ IP นี้" (ใช้ใน GET /api/consent)
+- `idx_consent_uuid (consent_uuid)` — สำหรับ DSR lookup
+
+**ไม่สร้าง index บน:** `action`, `version` — selectivity ต่ำ ไม่คุ้ม
+
+<a id="sec-71-40-4"></a>
+#### 71.40.4 เจาะลึก API `/api/consent` ทั้ง 3 method
+
+##### POST `/api/consent` — บันทึก/อัปเดต Consent
+
+**Lifecycle:**
+1. **Rate limit** (`withRateLimit(req, "consent_post", 20, 60)`) → 20 req/min/IP กัน spam
+2. **`initDatabase()`** → idempotent, สร้างตารางถ้ายังไม่มี (สำคัญสำหรับ first-time deploy)
+3. **JSON parsing** with try/catch → reject 400 ถ้า malformed
+4. **Action sanitization** → fallback เป็น "granted" ถ้าค่าไม่ valid
+5. **Boolean coercion** → `Boolean(body.functional)` กัน undefined/null
+6. **IP hashing** → `crypto.createHash('sha256').update(ip).digest('hex')`
+7. **UUID generation** → `crypto.randomUUID()` (Node 19+, รองรับใน Vercel)
+8. **INSERT** parameterized query ($1-$8) → กัน SQL injection
+9. **Response** → คืน `consent_uuid` ให้ frontend เก็บไว้
+
+**ทำไม `initDatabase()` ทุก request?** เพราะ `dbInitialized` flag เป็น singleton ใน lambda warm-up — call ครั้งแรกจริงเท่านั้นที่ run DDL, ครั้งถัดไปคืน immediate
+
+##### GET `/api/consent` — ดู Consent ล่าสุด
+
+```sql
+SELECT consent_uuid, version, necessary, functional, analytics, marketing, action, created_at
+  FROM consent_records
+ WHERE ip_hash = $1
+ ORDER BY created_at DESC
+ LIMIT 1
+```
+
+- ใช้ index `idx_consent_ip_time` → query plan: Index Scan (cost ≈ O(log n))
+- คืน `{found: false}` ถ้าไม่เคย consent → frontend ตีความว่าควรขึ้น banner
+- **ไม่คืน `ip_hash` หรือ `user_agent`** เพื่อ data minimization
+
+##### DELETE `/api/consent` — ถอนความยินยอม
+
+**สำคัญ:** ไม่ใช้ `DELETE FROM consent_records ...` จริง — ใช้ INSERT แถวใหม่ที่มี `action='withdrawn'` แทน เหตุผล:
+1. **Audit trail (PDPA ม.39):** ต้องเก็บประวัติได้ว่าผู้ใช้เคยให้ consent แล้วถอน
+2. **Forensics:** หากเกิดข้อพิพาท ต้องพิสูจน์ timeline ได้
+3. **Legal hold:** บางกรณี (สอบสวนคดี) ต้องห้ามลบ — INSERT-only policy ช่วย
+
+**Body ของ withdrawn record:**
+- `necessary = TRUE` (ยังคงต้องใช้)
+- `functional, analytics, marketing = FALSE` ทั้งหมด
+- `action = 'withdrawn'`
+
+<a id="sec-71-40-5"></a>
+#### 71.40.5 เจาะลึก `CookieConsent.tsx` v2.0 ทีละส่วน
+
+**Constants (บรรทัด 12-13):**
+```typescript
+const CONSENT_VERSION = "2.0";
+const STORAGE_KEY = "smartaccess_cookie_consent_v2";
+```
+- ใช้ `_v2` ใน key เพื่อให้ผู้ใช้เก่า (มี v1 consent) **ได้รับ banner ใหม่อัตโนมัติ** เพราะ key ไม่ match → loadConsent คืน null
+
+**`loadConsent()` (บรรทัด 29-39):**
+```typescript
+if (parsed.version !== CONSENT_VERSION) return null;
+```
+นี่คือ defense-in-depth — แม้ STORAGE_KEY จะตรง แต่ถ้า version ใน object ไม่ตรง (เช่น downgrade rollback) ก็ถือว่า invalid
+
+**`saveConsentServer()` (บรรทัด 49-64):**
+```typescript
+keepalive: true
+```
+ใส่เพื่อให้ request ส่งต่อแม้ผู้ใช้ปิดแท็บทันที (Beacon-like behavior) — สำคัญสำหรับ analytics consent ที่อาจถูกบันทึกตอนปิดหน้า
+
+**State management:**
+- `isVisible` — แสดง banner หรือไม่
+- `isModalOpen` — แสดง customize modal หรือไม่
+- `choices` — ตัวเลือกปัจจุบัน (initial: functional=true, ที่เหลือ=false ตามค่า "Privacy by Default")
+
+**`useCallback` กับ `openSettings`:**
+- ใช้เพื่อ stable reference → `useEffect` dependency `[openSettings]` ไม่ trigger รี-render
+- ถ้าใช้ inline function ตรง event listener จะ leak (add ทุก render ลบไม่ได้)
+
+**Event-driven architecture:**
+```typescript
+window.dispatchEvent(new CustomEvent("smartaccess_cookie_consent_changed", { detail: record }))
+window.addEventListener("smartaccess_open_consent", handler)
+```
+- decouple CookieConsent จาก Privacy page → Privacy เรียก `openConsentSettings()` ก็พอ
+- รองรับการเพิ่ม listener อื่นๆ ในอนาคต (เช่น analytics SDK ตื่นตัวเมื่อ consent เปลี่ยน)
+
+**Modal accessibility:**
+```tsx
+role="dialog"
+aria-modal="true"
+aria-labelledby="consent-modal-title"
+onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
+```
+- Click overlay (outside modal) ปิดได้ — UX standard
+- Screen reader ประกาศ "dialog" ทันที
+
+**Toggle Switch CSS (สำคัญ):**
+- ใช้ `<input type="checkbox">` ซ่อนด้วย `opacity:0; width:0; height:0` แทน `display:none` → คงไว้สำหรับ keyboard navigation + screen reader
+- `:checked + .toggle-slider` → CSS-only toggle ไม่ต้อง JS DOM manipulation
+
+**Responsive breakpoints:**
+- 991px (tablet) → ปุ่มขึ้นบรรทัดใหม่
+- 480px (mobile) → ปุ่ม grid 2 column + ซ่อน icon
+
+<a id="sec-71-40-6"></a>
+#### 71.40.6 เจาะลึก `privacy/page.tsx` — แต่ละหัวข้อ + เจตนาทางกฎหมาย
+
+| หัวข้อ | เนื้อหา | กฎหมายอ้างอิง | ทำไมเขียนแบบนี้ |
+|---|---|---|---|
+| 0. Data Controller | ตาราง 5 แถว: ชื่อคณะ, ที่อยู่, โทร, อีเมล, DPO | PDPA ม.23(6) | กฎหมายบังคับให้มี — โทษปรับสูงสุด 1M หากขาด |
+| 1. Lawful Basis | 3 ฐาน: LI (ม.24(5)), Legal Obligation (ม.24(6)), Consent (ม.24(1)) | PDPA ม.24 | ต้องประกาศฐานทุกตัวที่ใช้ ไม่ใช่แค่ "เพื่อความปลอดภัย" |
+| 2. Types of Data | ตาราง 4 หมวด + disclaimer ไม่มี Sensitive Data | ม.23(3) + ม.26 | ระบุชัดว่าไม่เก็บข้อมูลอ่อนไหว → ลด compliance burden |
+| 3. Purposes | bullet list 4 ข้อ | ม.23(1) | จำกัด purpose-bound (purpose limitation principle) |
+| 4. Recipients | ตาราง 4 entity: Admin, Supabase, Vercel, Discord | ม.23(5) | ต้องประกาศ Sub-Processor ทุกตัว |
+| 5. Cross-Border | Safeguards แต่ละ recipient | ม.28-29 | SCC / SOC 2 / Privacy Framework — ต้องระบุชัด |
+| 6. Retention | ตาราง 5 ประเภทข้อมูล | ม.23(4) + พ.ร.บ.คอม ม.26 | ระบุเวลาเก็บแต่ละประเภท → ใช้ฐาน Legal Obligation |
+| 7. Cookies | ตาราง 4 รายการ + ปุ่ม Settings | PDPC Guideline 2565 ข้อ 5.1 | ต้อง disclose ทุก cookie + ให้ผู้ใช้จัดการ |
+| 8. Rights | ตาราง 8 สิทธิ + ช่องทางใช้สิทธิ | ม.19, 30-36, 73 | บังคับให้ครบ — โทษปรับ 3M หากขาด |
+| 9. Security | bullet 7 measures | ม.37(1) | ม.37 บังคับให้มีมาตรการความมั่นคง — เขียนชัดเพื่อ build trust |
+| 10. Change Log | ตาราง version history | Best practice | พิสูจน์ได้ว่าผู้ใช้ยินยอม version ไหน |
+
+**Footer:** ระบุ version + effective date + DPO email → ลด ambiguity
+
+**ปุ่ม "จัดการความยินยอม" (กลางหน้า):**
+- เรียก `openConsentSettings()` ที่ import จาก CookieConsent
+- = ทางเลือก "ถอนความยินยอม" ตาม PDPA ม.19 วรรค 5 "ง่ายเท่ากับให้"
+
+<a id="sec-71-40-7"></a>
+#### 71.40.7 เจาะลึก `terms/page.tsx` — แต่ละ clause + ฎีกาที่อ้างอิง
+
+| § | Clause | จุดสำคัญ | ฎีกา/กฎหมายอ้างอิง |
+|---|---|---|---|
+| 0 | Definitions 7 คำ | นิยาม "ระบบ", "ผู้ใช้", "QR Token", "Bypass Token", "Tailgating", "PDPA" | Best practice — กัน ambiguity |
+| 1 | Acceptance (Clickwrap) | กด "ลงทะเบียน" = ยอมรับ + age check (18+) | ฎีกาที่ 6477/2562 (สัญญาอิเล็กทรอนิกส์ — clickwrap บังคับใช้ได้) |
+| 2 | Access Scope | ห้ามแชร์ Token + แจ้งถ้าหาย | ป.พ.พ. ม.150 + นโยบายภายใน |
+| 3 | Anti-Tailgating (เป็นธรรม) | "**ทุกคน**ให้ความร่วมมือตามสัดส่วน" ไม่ผลักภาระบุคคลเดียว | **พ.ร.บ. ข้อสัญญาที่ไม่เป็นธรรม 2540 ม.4** + ฎีกาที่ 14430/2557 (ข้อสัญญาผลักภาระโดยไม่มีหลักฐานเป็นโมฆะ) |
+| 4 | Limitation of Liability | จำกัดความรับผิด + disclaimer ว่าไม่ขัด พ.ร.บ.ข้อสัญญาฯ | พ.ร.บ.ข้อสัญญาไม่เป็นธรรม ม.4(5) |
+| 5 | Disciplinary (Proportional) | "ตามสัดส่วน + เปิดโอกาสชี้แจง" | **หลัก Audi Alteram Partem** (สิทธิให้การก่อนถูกลงโทษ) + รธน. ม.29 |
+| 6 | PDPA Linkage | T&C ≠ Consent | PDPA ม.19 (consent ต้องเฉพาะเจาะจง ไม่ bundled) + GDPR Recital 32 |
+| 7 | Amendment | แจ้งล่วงหน้า 30 วัน | สากล (28-day notice ของ GDPR + 30 วันของ Thailand DBD) |
+| 8 | Governing Law | ศาลปกครองกลาง (ปกครอง) / ศาลแพ่งกรุงเทพใต้ (แพ่ง) | พ.ร.บ.จัดตั้งศาลปกครอง พ.ศ. 2542 — นิติสัมพันธ์ระหว่างนักศึกษา-สถาบันรัฐเป็นทางปกครอง |
+| 9 | Severability | ส่วนโมฆะไม่กระทบส่วนที่เหลือ | ป.พ.พ. ม.173 |
+| 10 | Contact | admin@rmutp.ac.th, dpo@rmutp.ac.th, ที่อยู่จริง | ม.23(6) |
+| 11 | Effective Date + History | v2.0 (27 พ.ค. 2569), v1.0 (15 เม.ย. 2569) | Best practice |
+
+**สำคัญที่สุด — การลบประโยค "บุคคลสุดท้ายในระบบรับผิดชอบหลัก":**
+- เดิม: ผลักภาระให้บุคคลเดียวโดยไม่มีพยานหลักฐาน → ขัด พ.ร.บ.ข้อสัญญาไม่เป็นธรรม ม.4(5) "ข้อสัญญาที่ทำให้ฝ่ายหนึ่งต้องรับภาระเกินสมควร"
+- ใหม่: "ทุกคนให้ความร่วมมือตามสัดส่วนความเกี่ยวข้อง" — สอดคล้องหลัก Proportionality
+
+<a id="sec-71-40-8"></a>
+#### 71.40.8 รายการ Cookie/Storage ทุกตัวพร้อมเหตุผลการจัดหมวด
+
+| ชื่อ | ประเภท | หมวด | ทำไมจัดในหมวดนี้ |
+|---|---|---|---|
+| `admin_token` | HttpOnly Cookie | **จำเป็น** | ไม่มี = login ไม่ได้ = ใช้ระบบไม่ได้ |
+| `smartaccess_cookie_consent_v2` | localStorage | **ฟังก์ชัน** | ไม่มี = banner ขึ้นทุกครั้ง (annoying แต่ไม่ break) |
+| `rmutp_form_draft` | localStorage | **ฟังก์ชัน** | UX nicety — ผู้ใช้กรอกฟอร์มซ้ำได้เร็วขึ้น แต่ไม่จำเป็น |
+| `rmutp_last_room` | localStorage | **ฟังก์ชัน** | UX — จดจำห้องที่เคยเข้า ไม่จำเป็น |
+| (ไม่มี) | analytics cookies | **วิเคราะห์** | ยังไม่ implement — เตรียมหมวดไว้รองรับ |
+| (ไม่มี) | marketing cookies | **การตลาด** | ไม่ใช้ |
+
+**ทำไมแยก Necessary/Functional ชัดเจน:**
+- ตาม PDPC Guideline 2565 ข้อ 6.1 **คุกกี้จำเป็น (Strictly Necessary) ไม่ต้องขอ consent**
+- แต่คุกกี้ฟังก์ชันต้องขอ → ถ้าผู้ใช้ปฏิเสธ ต้องไม่เก็บ `rmutp_form_draft`, `rmutp_last_room`
+- การ implement: ใช้ event `smartaccess_cookie_consent_changed` ฟังในจุดที่จะเขียน localStorage ฟังก์ชัน
+
+<a id="sec-71-40-9"></a>
+#### 71.40.9 SHA-256 IP Hashing — ทำไมและทำอย่างไร
+
+**ทำไมต้อง hash:**
+1. **PDPA Principle (Data Minimization):** เก็บเท่าที่จำเป็น — raw IP ไม่จำเป็นสำหรับ "พิสูจน์ consent"
+2. **ลด blast radius:** หากตาราง consent_records รั่ว ผู้โจมตีไม่รู้ IP จริง
+3. **ยังจับคู่ได้:** hash deterministic → IP เดียวกัน → hash เดียวกัน → query ได้
+
+**ทำไมไม่ใส่ salt:**
+- Salt มีไว้กัน rainbow table attack สำหรับ password — แต่นี่ไม่ใช่ secret
+- IPv4 มีแค่ 4.3 billion ค่า → brute-force ทั้ง space เป็นไปได้ (~2^32 = 4B hashes)
+- **ไม่เป็นปัญหา** เพราะ purpose ไม่ใช่ irreversibility — แค่ "ไม่เก็บ raw ใน DB"
+
+**ถ้าอยาก reversible-resistant:**
+- เพิ่ม secret pepper (server-side, ไม่เข้า DB) → `sha256(IP + PEPPER)`
+- ต้อง rotate pepper ทุกปี → ต้อง re-hash ทั้งตาราง — ภาระสูง
+- **ปัจจุบันไม่ทำ** เพราะ trade-off ไม่คุ้ม (PDPA ไม่บังคับ pepper)
+
+**Code (api/consent/route.ts):**
+```typescript
+function hashIp(ip: string): string {
+  return crypto.createHash("sha256").update(ip).digest("hex");
+}
+```
+
+**Performance:** SHA-256 บน Node.js ~500ns/op → ไม่เป็น bottleneck
+
+<a id="sec-71-40-10"></a>
+#### 71.40.10 Withdrawal Flow — กฎ "ง่ายเท่ากับให้" ของ PDPA ม.19
+
+**ม.19 วรรค 5:** "การถอนความยินยอม...จะกระทำเมื่อใดก็ได้ โดยจะต้องสามารถทำได้ง่ายเช่นเดียวกับการให้ความยินยอม"
+
+**Implementation:**
+| ขั้นตอนการให้ Consent | ขั้นตอนการถอน Consent | ✅ ง่ายเท่ากัน? |
+|---|---|---|
+| 1. เห็น banner | 1. ไปหน้า `/privacy` | บางขั้นเพิ่ม — แต่ไม่ขัดกฎ |
+| 2. กด "ตั้งค่า" | 2. กด "จัดการความยินยอม" | เท่ากัน |
+| 3. ติ๊ก checkbox | 3. ปลดติ๊ก checkbox | เท่ากัน |
+| 4. กด "บันทึก" | 4. กด "บันทึก" | เท่ากัน |
+
+**Optional improvement (ไม่บังคับ):** เพิ่ม persistent floating button "🍪" ที่มุมหน้าทุกหน้า → ทุกหน้าถอนได้ทันที — ปัจจุบันต้องไป `/privacy` ก่อน
+
+**Server-side enforcement:** DELETE endpoint บันทึก `action='withdrawn'` แล้ว return success → next GET `/api/consent` จะเห็น record withdrawn ล่าสุด → frontend ตีความถูก
+
+<a id="sec-71-40-11"></a>
+#### 71.40.11 Cross-Border Transfer — Safeguards ในทางปฏิบัติ
+
+PDPA ม.28-29 บังคับให้ผู้ส่งข้อมูลออกนอกประเทศต้องมั่นใจว่าประเทศปลายทาง:
+(ก) มี adequate protection หรือ
+(ข) มี safeguards อื่น เช่น SCC, BCR, Code of Conduct
+
+| ปลายทาง | ประเทศ | กลไก | หลักฐาน |
+|---|---|---|---|
+| Supabase | Singapore (AWS ap-southeast-1) | (ก) Adequacy — สิงคโปร์มี PDPA ของตัวเอง + SOC 2 Type II | [Supabase Compliance](https://supabase.com/security) |
+| Vercel | Global Edge (Singapore primary) | (ข) Standard Contractual Clauses + ISO 27001 + SOC 2 | [Vercel Security](https://vercel.com/security) |
+| Discord | US (Cloudflare CDN) | (ข) EU-US Data Privacy Framework (successor of Privacy Shield) | [Discord Privacy](https://discord.com/privacy) |
+
+**ระบบทำอะไรเพิ่ม:**
+- TLS 1.3 ทุก connection (ไม่ใช่ TLS 1.2)
+- Encryption at-rest AES-256 (Supabase default)
+- ไม่ส่ง raw PII ไป Discord — masked เสมอ (`1164******45`)
+
+**ความเสี่ยงคงเหลือ:** หาก US Cloud Act บังคับ Discord ส่งข้อมูลให้รัฐบาล US → เป็น risk แต่ระบบส่งเฉพาะ event notification ไม่ใช่ PII complete → low
+
+<a id="sec-71-40-12"></a>
+#### 71.40.12 Discord Webhook — ที่มาของ avatar URL ใหม่
+
+**เดิม:** `http://smartaccess.ac.th/icon/favicon-96x96.png`
+- ⚠️ HTTP (ไม่ secure)
+- ⚠️ โดเมน `smartaccess.ac.th` ไม่ได้จดทะเบียน → 404 → avatar เป็น default Discord
+- ⚠️ ความน่าเชื่อถือต่ำ (ทำไม Discord embed ใช้ HTTP?)
+
+**ใหม่:** `https://www.rmutp.ac.th/wp-content/uploads/2021/05/cropped-favicon-rmutp-192x192.png`
+- ✅ HTTPS
+- ✅ โดเมนจริงของมหาวิทยาลัย → load ได้แน่นอน
+- ✅ 192×192 resolution → คมชัดบน high-DPI display
+- ✅ ใช้ favicon ทางการ → identity ชัด
+
+**ใช้ในสองจุด:** Target Webhook + Audit Log Webhook (ใน `lib/discord.ts` บรรทัด 360, 378)
+
+<a id="sec-71-40-13"></a>
+#### 71.40.13 ESP32 Display Subtitle — ทำไมต้องสั้น
+
+**เดิม:** "Innovative system for managing access rights and controlling classroom access via wireless network" (96 chars)
+
+**ปัญหา:**
+- จอ ILI9341 240×320 @ rotation=1 → กว้าง 320px
+- Font ที่ใช้: SmallFont 6×8px → 1 char ≈ 6px
+- 96 chars × 6px = **576px** ← เกินจอ!
+
+**ใหม่:** "คณะครุศาสตร์อุตสาหกรรม มทร.พระนคร" (~34 chars ไทย)
+- ไทยใช้ฟอนต์ ~12px/char → 34 × 12 = **408px** ← ยังเกิน
+
+**ทางออกในโค้ด ESP32:**
+- ใช้ `tft.setTextWrap(true)` → ตัดบรรทัด
+- หรือ marquee scroll → ต้อง refresh frequently → flicker
+
+**Trade-off ที่เลือก:** ใช้ข้อความสั้นพอประมาณ + ให้ ESP32 handle wrap → 2 บรรทัด → อ่านได้ ไม่กระพริบ
+
+<a id="sec-71-40-14"></a>
+#### 71.40.14 SEO Meta Description — Trade-off ระหว่างชื่อยาว/สั้น
+
+**ใหม่:**
+```typescript
+description: "SmartAccess — ระบบควบคุมการเข้าออกห้องเรียนแบบไร้สาย (Innovative system for managing access rights and controlling classroom access via wireless network) คณะครุศาสตร์อุตสาหกรรม มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร"
+```
+
+**Google SERP จะตัดที่ ~155 chars (desktop) / 120 chars (mobile):**
+- 155 chars แรก: "SmartAccess — ระบบควบคุมการเข้าออกห้องเรียนแบบไร้สาย (Innovative system for managing access rights and controlling classroom..." ← ตัดกลาง project name
+- จึงเริ่มด้วย "SmartAccess —" → brand แสดงก่อนเสมอ
+
+**Trade-off:**
+- ✅ Brand "SmartAccess" อยู่หน้าสุด → user เห็นแน่
+- ✅ Project name ภาษาอังกฤษอยู่กลาง → academic indexing เจอ
+- ✅ ชื่อสถาบันท้าย → ถูกตัดแต่ Open Graph metadata เก็บครบ
+
+<a id="sec-71-40-15"></a>
+#### 71.40.15 Migration Checklist สำหรับ deploy เวอร์ชันนี้
+
+**ขั้นตอน production deploy:**
+- [ ] รัน DB migration (auto): startup จะ `CREATE TABLE IF NOT EXISTS consent_records`
+- [ ] ตรวจ Vercel logs ดูว่า `idx_consent_ip_time`, `idx_consent_uuid` ถูกสร้าง
+- [ ] ตั้ง env vars (ไม่มีเพิ่มในรอบนี้)
+- [ ] Deploy → Vercel auto build + deploy
+- [ ] Smoke test:
+  - [ ] เปิดเว็บ incognito → ขึ้น banner v2
+  - [ ] กด "ยอมรับทั้งหมด" → ตรวจ DB ว่ามี record
+  - [ ] กด "ตั้งค่า" → modal เปิด
+  - [ ] กด "ปฏิเสธทั้งหมด" → ตรวจ DB ว่า record มี action='declined'
+  - [ ] ไป `/privacy` → กด "จัดการความยินยอม" → modal เปิดได้
+  - [ ] ไป `/terms` → ตรวจชื่อคณะถูกต้อง, email rmutp.ac.th
+  - [ ] Discord webhook → avatar เป็น favicon RMUTP
+  - [ ] ESP32 polling → subtitle แสดงคณะถูกต้อง
+- [ ] Clear caches: `localStorage.clear()` ใน devtools (ตัวเองทดสอบใหม่)
+
+**Rollback plan:**
+- ถ้าพังหลัก: Vercel Dashboard → Promote previous deployment
+- ถ้า DB schema มีปัญหา: ตาราง `consent_records` ปล่อยทิ้งได้ (ไม่กระทบฟีเจอร์อื่น)
+- ถ้า cookie banner break: ส่ง patch ฉุกเฉิน — frontend issue ไม่ต้อง rollback DB
+
+<a id="sec-71-40-16"></a>
+#### 71.40.16 Verification Plan — ตรวจสอบหลัง deploy
+
+**Test Matrix (manual):**
+
+| Scenario | Expected | จุดสังเกต |
+|---|---|---|
+| First visit (no localStorage) | Banner ขึ้นหลัง 1 sec | `setTimeout(1000)` |
+| Accept All | Banner หาย + DB มี record + localStorage มีค่า | `action='granted'`, ทุก flag = true |
+| Decline All | Banner หาย + DB มี `declined` + flags = false (เว้น necessary) | |
+| Customize → ติ๊กเฉพาะ Functional | DB มี functional=true, others=false | |
+| Reload หลัง consent | Banner ไม่ขึ้น | loadConsent คืน valid record |
+| Privacy page → "จัดการความยินยอม" | Modal เปิด, choices = current | `openConsentSettings()` event |
+| ปลด functional + บันทึก | `action='updated'` | mid-state change |
+| ปลดทั้งหมด + บันทึก | `action='updated'` (ยังไม่ใช่ withdrawn) | distinguish updated vs withdrawn |
+| DELETE /api/consent (curl) | Record `withdrawn` ใน DB | |
+| Rate limit test | curl 25 ครั้งใน 1 นาที → 429 | `consent_post 20/60` |
+
+**Query DB ตรวจสอบ:**
+```sql
+-- ดู consent ทั้งหมดของ IP ตัวเอง (hash ก่อน)
+SELECT * FROM consent_records 
+WHERE ip_hash = encode(digest('YOUR_IP', 'sha256'), 'hex')
+ORDER BY created_at DESC;
+
+-- นับ consent action breakdown
+SELECT action, COUNT(*) FROM consent_records GROUP BY action;
+
+-- ดู version distribution (เผื่อมี user เก่า v1)
+SELECT version, COUNT(*) FROM consent_records GROUP BY version;
+```
+
+<a id="sec-71-40-17"></a>
+#### 71.40.17 ความเสี่ยงคงเหลือและงานที่ต้องทำต่อ
+
+**P2 — ใน 1 เดือน:**
+| งาน | ทำไม | Effort |
+|---|---|---|
+| Email notification ตอน Policy เปลี่ยน | ม.23(7) วรรค 2 | 4 ชม. — ต้องเชื่อม mail service |
+| Persistent floating "🍪" button ทุกหน้า | UX — withdrawal สะดวกขึ้น | 2 ชม. |
+| Audit dashboard สำหรับ Owner ดู consent stats | Internal monitoring | 6 ชม. |
+| Auto-cleanup consent_records > 3 ปี | Storage + retention policy | 2 ชม. (cron) |
+
+**P3 — เมื่อมีโอกาส:**
+| งาน | ทำไม |
+|---|---|
+| DSR endpoints (/api/dsr/export, /erasure, /rectify) | PDPA ม.30-36 — ปัจจุบันใช้ email DPO ก็ถูกต้อง |
+| Multi-language (TH + EN) ใน Privacy/Terms | inclusive UX สำหรับนักศึกษาต่างชาติ |
+| WCAG AAA contrast audit ของ Modal | ปัจจุบัน AA ผ่าน → AAA จะดีกว่า |
+| Cookie consent log → ระบบแยก (DataDog) | ปัจจุบันใน Supabase same-db |
+
+**ความเสี่ยงที่ยอมรับได้ (Accepted Risk):**
+- SHA-256 IP ไม่มี pepper → brute-forceable แต่ purpose ไม่ใช่ irreversibility
+- localStorage clear-able by user → ระบบ design ให้ DB เป็น source of truth
+- Discord ส่งข้อมูลออก US → ส่งเฉพาะ event masked, low PII
+
+**ความเสี่ยงที่ยังเปิดอยู่:**
+- ⚠️ ระบบยังไม่บันทึก consent_uuid ลง student record → ตอนใช้สิทธิ DSR ต้องค้นจาก email/manual
+- ⚠️ ถ้าผู้ใช้ใช้ VPN → IP เปลี่ยน → ดู consent เดิมไม่ได้ผ่าน GET (ต้องใส่ consent_uuid)
+- ⚠️ Modal ไม่มี trap focus → กด Tab อาจหลุดออกนอก modal
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+> **อัปเดตล่าสุด**: 2026-05-27 23:50:00 +07:00 — เพิ่ม **§71.40 SmartAccess Rebrand + PDPA Implementation Deep Dive** แบ่ง 17 บทย่อยที่อธิบายทุกประเด็นของการ rebrand + PDPA P0+P1 implementation อย่างละเอียดสูงสุด: ที่มาของ rebrand จาก RMUTP ACCS → SmartAccess + ระบุคณะครุศาสตร์อุตสาหกรรมเป็น Data Controller, สถาปัตยกรรม Consent flow ผ่าน Mermaid sequence diagram, เจาะลึก `consent_records` ทุกคอลัมน์ + indexes + เหตุผลทางวิศวกรรม/กฎหมาย, lifecycle ของ POST/GET/DELETE `/api/consent`, อธิบาย CookieConsent.tsx v2.0 ทีละบล็อก (loadConsent, saveConsentServer keepalive, useCallback stable ref, event-driven architecture, modal a11y, toggle switch CSS, responsive breakpoints), เจาะลึก privacy/page.tsx 11 หัวข้อพร้อมกฎหมายอ้างอิงแต่ละข้อ, terms/page.tsx 12 clauses พร้อมฎีกาที่อ้างอิง (ฎีกา 6477/2562 clickwrap, ฎีกา 14430/2557 unfair contract terms), ตาราง Cookie/Storage 6 รายการพร้อมเหตุผลการจัดหมวด, SHA-256 IP hashing rationale + ทำไมไม่ใส่ salt, Withdrawal Flow เทียบกับ ม.19 วรรค 5, Cross-Border Transfer safeguards 3 country, Discord avatar URL trade-off, ESP32 subtitle font width calculation, SEO meta description SERP truncation analysis, Migration + Rollback plan, Verification Test Matrix + SQL queries สำหรับ post-deploy check, ความเสี่ยงคงเหลือ + accepted risks
+> 
+> **ผลที่ได้ในการ commit รอบนี้:**
+> - แก้ text bug "SmartAccessและทีมผู้พัฒนา" → "คณะครุศาสตร์อุตสาหกรรม มทร.พระนคร และทีมผู้พัฒนาระบบ SmartAccess"
+> - แก้ text bug "Right to be Forgotten ผ่านSmartAccess" → ระบุอีเมล DPO ที่ถูกต้อง (dpo@rmutp.ac.th)
+> - อัปเดต TOC เพิ่มลิงก์ §71.40 พร้อม 17 sub-anchor
+
+> **อัปเดตก่อนหน้า 1**: 2026-05-27 23:30:00 +07:00 — **ดำเนินการแก้ไขจริงตาม §71.39** ครอบคลุม P0+P1 ครบทุกข้อ:
 > - ✅ เพิ่มตาราง `consent_records` ใน [lib/db.ts](my-app/lib/db.ts) (audit trail 3 ปี, SHA-256 IP hash, version tracking)
 > - ✅ สร้าง API endpoint ใหม่ [/api/consent/route.ts](my-app/app/api/consent/route.ts) รองรับ POST/GET/DELETE — แก้ปัญหา C04 (server-side proof) + C03 (withdrawal)
 > - ✅ Rewrite [CookieConsent.tsx](my-app/app/components/CookieConsent.tsx) v2.0 ครบ: Granular Consent 4 ประเภท (Necessary/Functional/Analytics/Marketing), Customize Modal, Toggle Switch UI, ปุ่ม "ตั้งค่า/ปฏิเสธทั้งหมด/ยอมรับทั้งหมด", version 2.0 + timestamp tracking, ปุ่มถอนความยินยอมเชื่อม event `smartaccess_open_consent`, แก้ bug `borderRadius` camelCase ใน plain CSS, เพิ่ม ARIA `role="dialog"` + `aria-modal="true"`, export helper `openConsentSettings()`
