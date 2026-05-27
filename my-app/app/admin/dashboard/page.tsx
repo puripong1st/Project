@@ -777,21 +777,20 @@ ${wokwiDefine}
   #define DBGF(fmt, ...)
 #endif
 
-#include <FS.h>
-#include <SPIFFS.h>
-#include <mbedtls/md.h>
 #include "ricmoo_qrcode.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
+#include <FS.h>
 #include <HTTPClient.h>
 #include <SPI.h>
+#include <SPIFFS.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
-
+#include <mbedtls/md.h>
+#include <time.h> // สำหรับ NTP time sync (ใช้ใน HMAC timestamp)
 
 #include "config.h"
-#include <time.h>
 
 // ─── Compile-time production safety guard ───────────────────────────────────
 // Prevents accidentally shipping a Wokwi simulation build to a real device.
@@ -1132,6 +1131,26 @@ String base64Decode(String input) {
   return res;
 }
 
+// Hex-encoded HMAC-SHA256 — ตรงกับ Node.js crypto.createHmac('sha256', key).digest('hex')
+// ใช้สำหรับ x-hmac-signature header ที่ server ตรวจสอบ
+String generateHMACHex(String payload, String key) {
+  uint8_t hmacResult[32];
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char *)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload.c_str(), payload.length());
+  mbedtls_md_hmac_finish(&ctx, hmacResult);
+  mbedtls_md_free(&ctx);
+  char hexBuf[65];
+  for (int i = 0; i < 32; i++) {
+    sprintf(hexBuf + i * 2, "%02x", hmacResult[i]);
+  }
+  hexBuf[64] = '\\0';
+  return String(hexBuf);
+}
+
+// Base64url-encoded HMAC-SHA256 (ใช้สำหรับ offline grant validation)
 String generateHMAC(String payload, String key) {
   uint8_t hmacResult[32];
   mbedtls_md_context_t ctx;
@@ -1417,32 +1436,6 @@ void handleLocalValidation() {
 }
 
 
-String getTimestamp() {
-  time_t now = time(nullptr);
-  return String((long)now);
-}
-
-String generateCloudHMAC(String timestamp, String path) {
-  String payload = timestamp + ":" + path;
-  uint8_t hmacResult[32];
-  mbedtls_md_context_t ctx;
-  mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
-  mbedtls_md_init(&ctx);
-  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
-  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)api_key, strlen(api_key));
-  mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload.c_str(), payload.length());
-  mbedtls_md_hmac_finish(&ctx, hmacResult);
-  mbedtls_md_free(&ctx);
-
-  String encoded = "";
-  const char* hex = "0123456789abcdef";
-  for(int i=0; i<32; i++){
-    encoded += hex[hmacResult[i] >> 4];
-    encoded += hex[hmacResult[i] & 0x0F];
-  }
-  return encoded;
-}
-
 void syncStudentCache() {
   if (WiFi.status() != WL_CONNECTED) return;
   HTTPClient http;
@@ -1581,39 +1574,18 @@ void setup() {
   digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
   DBG("\\nWiFi connected successfully!");
 
-  // Setup NTP for HMAC Time Signature after WiFi connects
-  configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
-  Serial.print("[INFO] Waiting for NTP time sync: ");
-  time_t now = time(nullptr);
-  int ntp_timeout = 0;
-  while (now < 24 * 3600 && ntp_timeout < 50) {
-    Serial.print(".");
-    delay(100);
-    now = time(nullptr);
-    ntp_timeout++;
-  }
-  if (ntp_timeout >= 50) {
-    Serial.println(" FAILED (Timeout), trying HTTP Fallback...");
-    HTTPClient httpTime;
-    httpTime.begin("http://worldtimeapi.org/api/timezone/Etc/UTC");
-    int httpCode = httpTime.GET();
-    if (httpCode == 200) {
-      String payload = httpTime.getString();
-      StaticJsonDocument<512> doc;
-      deserializeJson(doc, payload);
-      long unixTime = doc["unixtime"];
-      struct timeval tv;
-      tv.tv_sec = unixTime + 7 * 3600; // GMT+7
-      tv.tv_usec = 0;
-      settimeofday(&tv, NULL);
-      Serial.println("[INFO] HTTP Time Sync OK");
-    } else {
-      Serial.println("[INFO] HTTP Time Sync FAILED");
+  // ─── NTP Time Sync (จำเป็นสำหรับ HMAC timestamp) ───────────────────
+  // UTC+7 (Bangkok ICT) — offset 7*3600 = 25200
+  configTime(25200, 0, "pool.ntp.org", "time.cloudflare.com");
+  // รอให้ได้เวลาจริงจาก NTP (สูงสุด 5 วินาที)
+  {
+    int ntp_wait = 0;
+    while (time(nullptr) < 1000000000UL && ntp_wait < 50) {
+      delay(100);
+      ntp_wait++;
     }
-    httpTime.end();
-  } else {
-    Serial.println(" OK");
   }
+  Serial.println("[INFO] NTP synced: " + String((long)time(nullptr)));
 
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
@@ -1727,9 +1699,14 @@ void loop() {
       http.setTimeout(5000);
       http.addHeader("Content-Type", "application/json");
       http.addHeader("x-api-key", api_key);
-      String ts3 = getTimestamp();
-      http.addHeader("x-timestamp", ts3);
-      http.addHeader("x-hmac-signature", generateCloudHMAC(ts3, "/api/esp32/display"));
+
+      // HMAC-SHA256 timestamp authentication (V11 fix)
+      time_t nowTs = time(nullptr);
+      String timestampStr = String((long)nowTs);
+      String hmacPayload = timestampStr + ":/api/esp32/display";
+      String signature = generateHMACHex(hmacPayload, String(api_key));
+      http.addHeader("x-timestamp", timestampStr);
+      http.addHeader("x-hmac-signature", signature);
 
       int httpCode = http.GET();
       if (httpCode == 200) {
@@ -1778,7 +1755,7 @@ void loop() {
             if (idx != -1) {
               baseUrl = regUrl.substring(0, idx);
             } else {
-              baseUrl = "${origin}";
+              baseUrl = "${origin || "https://project-sigma-ivory-21.vercel.app"}";
             }
             qrText = baseUrl + "/?scan=" + String(active_token) +
                      "&room=" + String(requested_room);
