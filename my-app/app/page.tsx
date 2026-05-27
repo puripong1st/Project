@@ -958,7 +958,7 @@ function RegistrationPageInner() {
             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>สถานะ Bypass</span>
               <span className="badge badge-approved">
-                ✓ ผ่านประตูสำเร็จ (ต่อเวลาสิทธิ์ซ้ำ)
+                ผ่านประตูสำเร็จ (ต่อเวลาสิทธิ์ซ้ำ)
               </span>
             </div>
           </div>
@@ -1182,7 +1182,7 @@ function RegistrationPageInner() {
             <div style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 6,
+              gap: 8,
               background: "rgba(255,255,255,0.06)",
               border: "1px solid var(--border)",
               borderRadius: 12,
@@ -1191,9 +1191,6 @@ function RegistrationPageInner() {
               color: "var(--text-secondary)",
               fontSize: 13,
               fontWeight: 700,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8
             }}>
               <IconDoor size={14} />
               <span>ห้องปฏิบัติการ: {room}</span>

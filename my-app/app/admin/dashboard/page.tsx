@@ -478,10 +478,17 @@ export default function AdminDashboard() {
             boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
           }}>
             <div style={{
-              fontSize: 48,
+              display: "flex",
+              justifyContent: "center",
               marginBottom: 16,
+              color: "var(--smartaccess-purple)"
             }}>
-              ⏳
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2h12" />
+                <path d="M6 22h12" />
+                <path d="M6 2v4a6 6 0 0 0 12 0V2" />
+                <path d="M18 22v-4a6 6 0 0 0-12 0v4" />
+              </svg>
             </div>
             <h3 style={{
               fontSize: 18,
@@ -690,10 +697,10 @@ function AdminDashboardInner() {
 
   const handleTestWebhook = async (webhookUrl: string, type: "register" | "approve" | "logs" | "admin_audit", room?: string) => {
     if (!webhookUrl || !webhookUrl.trim().startsWith("https://discord.com/api/webhooks/")) {
-      showToast("❌ ลิงก์ Discord Webhook ไม่ถูกต้อง หรือไม่ได้ระบุ", "error");
+      showToast(" ลิงก์ Discord Webhook ไม่ถูกต้อง หรือไม่ได้ระบุ", "error");
       return;
     }
-    showToast("🧪 กำลังส่งข้อความทดสอบ...", "success");
+    showToast(" กำลังส่งข้อความทดสอบ...", "success");
     try {
       const response = await fetch("/api/system/test-webhook", {
         method: "POST",
@@ -706,7 +713,7 @@ function AdminDashboardInner() {
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        showToast("🔔 ส่งข้อความทดสอบเข้า Discord สำเร็จเรียบร้อยแล้ว!", "success");
+        showToast(" ส่งข้อความทดสอบเข้า Discord สำเร็จเรียบร้อยแล้ว!", "success");
       } else {
         showToast(data.error || "เกิดข้อผิดพลาดในการส่งบอท Discord", "error");
       }
@@ -718,7 +725,7 @@ function AdminDashboardInner() {
   const copyToClipboard = (text: string) => {
     if (typeof window !== "undefined" && navigator && navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text)
-        .then(() => showToast("📋 คัดลอกสำเร็จ", "success"))
+        .then(() => showToast(" คัดลอกสำเร็จ", "success"))
         .catch(() => fallbackCopyToClipboard(text));
     } else {
       fallbackCopyToClipboard(text);
@@ -739,12 +746,12 @@ function AdminDashboardInner() {
       const successful = document.execCommand("copy");
       document.body.removeChild(textArea);
       if (successful) {
-        showToast("📋 คัดลอกสำเร็จ (ผ่านระบบสำรอง)", "success");
+        showToast(" คัดลอกสำเร็จ (ผ่านระบบสำรอง)", "success");
       } else {
-        showToast("❌ ไม่สามารถคัดลอกได้โดยอัตโนมัติ กรุณาก็อปปี้ด้วยตนเอง", "error");
+        showToast(" ไม่สามารถคัดลอกได้โดยอัตโนมัติ กรุณาก็อปปี้ด้วยตนเอง", "error");
       }
     } catch {
-      showToast("❌ ไม่สามารถคัดลอกได้ กรุณาก็อปปี้ด้วยตนเอง", "error");
+      showToast(" ไม่สามารถคัดลอกได้ กรุณาก็อปปี้ด้วยตนเอง", "error");
     }
   };
 
@@ -2053,14 +2060,14 @@ void handleLocalWebServerRequest() {
       const data = await res.json();
       if (res.ok && data.online) {
         setTestResults(prev => ({ ...prev, [roomCode]: { online: true, ip: data.ip, mode: data.mode } }));
-        showToast(`📡 เชื่อมต่อบอร์ดห้อง ${roomCode} (${data.ip}) สำเร็จ!`, "success");
+        showToast(` เชื่อมต่อบอร์ดห้อง ${roomCode} (${data.ip}) สำเร็จ!`, "success");
       } else {
         setTestResults(prev => ({ ...prev, [roomCode]: { online: false, ip: data.ip || "ไม่ระบุ", mode: data.mode || "physical" } }));
-        showToast(`❌ ไม่สามารถเชื่อมต่อกับบอร์ดห้อง ${roomCode} (${data.ip || "ไม่ระบุ"})`, "error");
+        showToast(` ไม่สามารถเชื่อมต่อกับบอร์ดห้อง ${roomCode} (${data.ip || "ไม่ระบุ"})`, "error");
       }
     } catch {
       setTestResults(prev => ({ ...prev, [roomCode]: { online: false, ip: "error", mode: "physical" } }));
-      showToast(`❌ ไม่สามารถติดต่อเซิร์ฟเวอร์เพื่อทดสอบห้อง ${roomCode}`, "error");
+      showToast(` ไม่สามารถติดต่อเซิร์ฟเวอร์เพื่อทดสอบห้อง ${roomCode}`, "error");
     } finally {
       setTestingRoom(null);
     }
@@ -2079,7 +2086,7 @@ void handleLocalWebServerRequest() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast(`🔓 ปลดล็อกประตูห้อง ${roomCode} สำเร็จ!`, "success");
+        showToast(` ปลดล็อกประตูห้อง ${roomCode} สำเร็จ!`, "success");
         // Trigger a 5-second glowing active unlock animation in the client UI
         setRecentlyUnlockedRooms(prev => ({ ...prev, [roomCode]: true }));
         setTimeout(() => {
@@ -2116,12 +2123,12 @@ void handleLocalWebServerRequest() {
     setRoomsList(prev => [...prev, { room: code, ip }]);
     setNewRoomCode("");
     setNewRoomIp("");
-    showToast(`🏢 เพิ่มห้อง ${code} ลงในรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
+    showToast(` เพิ่มห้อง ${code} ลงในรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
   };
 
   const handleRemoveRoom = (roomCode: string) => {
     setRoomsList(prev => prev.filter(r => r.room !== roomCode));
-    showToast(`🗑️ ลบห้อง ${roomCode} ออกจากรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
+    showToast(` ลบห้อง ${roomCode} ออกจากรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
   };
 
   // Unified Filters (Tab 2: ทำเนียบ & ประวัติเข้าออก)
@@ -2853,9 +2860,9 @@ void handleLocalWebServerRequest() {
             {/* Modal Tabs selector */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, margin: "18px 28px", background: "var(--bg-primary)", padding: 6, borderRadius: 8, border: "1px solid var(--border)" }}>
               {[
-                { id: "api", label: "🔗 API & URLs" },
-                { id: "webhook", label: "🔔 Discord Webhook" },
-                { id: "arduino", label: "🔌 Arduino โค้ดบอร์ด (.ino)" }
+                { id: "api", label: "API & URLs", icon: <TerminalIcon /> },
+                { id: "webhook", label: "Discord Webhook", icon: <FileTextIcon /> },
+                { id: "arduino", label: "Arduino โค้ดบอร์ด (.ino)", icon: <SaveIcon /> }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -2875,7 +2882,7 @@ void handleLocalWebServerRequest() {
                     transition: "all 0.2s"
                   }}
                 >
-                  {tab.label}
+                  <span style={{ marginRight: 6, display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>{tab.icon}</span>{tab.label}
                 </button>
               ))}
             </div>
@@ -2893,7 +2900,7 @@ void handleLocalWebServerRequest() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }} className="animate-fade-in">
                     {[
                       {
-                        label: "📡 1. API ดึงค่าสเตตัสบอร์ด & ทริกเปิดประตู (Display Polling API)",
+                        label: " 1. API ดึงค่าสเตตัสบอร์ด & ทริกเปิดประตู (Display Polling API)",
                         desc: "สำหรับฝั่งบอร์ด ESP32 คอยยิงดึงสถานะจอและแฟล็กปลดล็อกทุกๆ 2 วินาที",
                         url: `${originUrl}/api/esp32/display?room=${activeRoomDetails.room}`,
                         btnLabel: "🧪 ทดสอบ API"
@@ -3002,7 +3009,7 @@ void handleLocalWebServerRequest() {
                           className="btn-ghost"
                           style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
                         >
-                          🧪 ทดสอบส่ง
+                          ทดสอบส่ง
                         </button>
                       </div>
                     </div>
@@ -4024,7 +4031,7 @@ void handleLocalWebServerRequest() {
                               style={{ padding: "10px", borderRadius: 10, color: "var(--smartaccess-purple)", borderColor: "var(--smartaccess-purple-light)", display: "flex", alignItems: "center", justifyContent: "center" }}
                               title="ตั้งค่า API & คัดลอกโค้ด Arduino บอร์ดห้องนี้"
                             >
-                              ⚙️
+                              
                             </button>
                           </div>
 
@@ -4351,7 +4358,7 @@ void handleLocalWebServerRequest() {
                       className="btn-secondary"
                       style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, borderColor: "var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)" }}
                     >
-                      🧹 ล้างข้อมูล Log หมดอายุ (&gt; 90 วัน)
+                      ล้างข้อมูล Log หมดอายุ (&gt; 90 วัน)
                     </button>
 
                     <button
@@ -4366,7 +4373,7 @@ void handleLocalWebServerRequest() {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                       </svg>
-                      ⚠️ ล้างข้อมูลประวัติทั้งหมดในระบบ (ลบถาวร)
+                      ล้างข้อมูลประวัติทั้งหมดในระบบ (ลบถาวร)
                     </button>
                   </div>
                 </div>
@@ -4580,13 +4587,13 @@ void handleLocalWebServerRequest() {
                 {/* ── Filter Pills Tabs ── */}
                 <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", background: "rgba(255, 255, 255, 0.02)", padding: 6, borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)" }}>
                   {[
-                    { value: "all", label: "📁 ทั้งหมด", color: "var(--text-secondary)" },
-                    { value: "door_opened", label: "🔓 ผ่านประตูสำเร็จ", color: "#10B981" },
-                    { value: "door_failed", label: "⚠️ ปฏิเสธสิทธิ์/ล้มเหลว", color: "#EF4444" },
-                    { value: "approved", label: "✅ อนุมัติสิทธิ์สมัคร", color: "#7C3AED" },
-                    { value: "rejected", label: "❌ ปฏิเสธสิทธิ์สมัคร", color: "#F59E0B" },
-                    { value: "registered", label: "📝 ลงทะเบียนใหม่", color: "#3B82F6" },
-                    { value: "export_pdf", label: "📄 ส่งออก PDF", color: "#EC4899" }
+                    { value: "all", label: "ทั้งหมด", color: "var(--text-secondary)", icon: <TerminalIcon /> },
+                    { value: "door_opened", label: "ผ่านประตูสำเร็จ", color: "#10B981", icon: <UnlockIcon /> },
+                    { value: "door_failed", label: "ปฏิเสธสิทธิ์/ล้มเหลว", color: "#EF4444", icon: <AlertIcon /> },
+                    { value: "approved", label: "อนุมัติสิทธิ์สมัคร", color: "#7C3AED", icon: <CheckIcon /> },
+                    { value: "rejected", label: "ปฏิเสธสิทธิ์สมัคร", color: "#F59E0B", icon: <CrossIcon /> },
+                    { value: "registered", label: "ลงทะเบียนใหม่", color: "#3B82F6", icon: <FileTextIcon /> },
+                    { value: "export_pdf", label: "ส่งออก PDF", color: "#EC4899", icon: <SaveIcon /> }
                   ].map(t => (
                     <button
                       key={t.value}
@@ -4605,7 +4612,7 @@ void handleLocalWebServerRequest() {
                         transition: "all 0.2s ease"
                       }}
                     >
-                      {t.label}
+                      <span style={{ marginRight: 6, display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>{t.icon}</span>{t.label}
                     </button>
                   ))}
                 </div>
@@ -4826,7 +4833,7 @@ void handleLocalWebServerRequest() {
                                       style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--smartaccess-purple)" }}
                                       title="แก้ไขขอบเขตสิทธิ์"
                                     >
-                                      ✏️
+                                      
                                     </button>
                                     {a.id !== user.id && (
                                       <button
@@ -5138,7 +5145,7 @@ void handleLocalWebServerRequest() {
                   {/* Card 1: Automated Approvals & Auto-fill */}
                   <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
-                      <SettingsIcon /> ⚙️ อนุมัติ & กรอกฟอร์มอัตโนมัติ (Automated Control)
+                      <SettingsIcon /> อนุมัติ & กรอกฟอร์มอัตโนมัติ (Automated Control)
                     </h3>
 
                     <div style={{ padding: 16, background: "rgba(255, 255, 255, 0.02)", borderRadius: 12, border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
@@ -5363,7 +5370,7 @@ void handleLocalWebServerRequest() {
                   {/* Card 2: Discord Webhooks (ส่วนกลาง) */}
                   <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
-                      <FileTextIcon /> 🔔 Discord Webhooks (ส่วนกลาง)
+                      <FileTextIcon /> Discord Webhooks (ส่วนกลาง)
                     </h3>
 
                     <div style={{ padding: 12, background: "rgba(139,92,246,0.04)", border: "1px dashed rgba(139,92,246,0.2)", borderRadius: 10 }}>
@@ -5375,7 +5382,7 @@ void handleLocalWebServerRequest() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          📝 คำขอลงทะเบียนเข้าใช้ห้องใหม่
+                          คำขอลงทะเบียนเข้าใช้ห้องใหม่
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
@@ -5399,7 +5406,7 @@ void handleLocalWebServerRequest() {
 
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          🚪 แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ
+                          แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
@@ -5423,7 +5430,7 @@ void handleLocalWebServerRequest() {
 
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          📊 บันทึก Log จราจร/ความปลอดภัยอย่างละเอียด
+                          บันทึก Log จราจร/ความปลอดภัยอย่างละเอียด
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
@@ -5447,7 +5454,7 @@ void handleLocalWebServerRequest() {
 
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          🔐 แจ้งเตือน Admin เข้า/ออกระบบ (Audit Log)
+                          แจ้งเตือน Admin เข้า/ออกระบบ (Audit Log)
                           <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "1px 8px", borderRadius: 8 }}>Security</span>
                         </label>
                         <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "0 0 6px" }}>
@@ -5485,7 +5492,7 @@ void handleLocalWebServerRequest() {
                     display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 22 }}>🏢</span>
+                      <span style={{ display: "inline-flex", color: "var(--smartaccess-purple)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" /></svg></span>
                       <div>
                         <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", margin: 0 }}>
                           จัดการห้องเรียน & บอร์ด ESP32
@@ -5505,7 +5512,7 @@ void handleLocalWebServerRequest() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
                       {roomsList.length === 0 ? (
                         <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)", fontSize: 13, border: "2px dashed var(--border)", borderRadius: 14 }}>
-                          <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>🏫</span>
+                          <span style={{ display: "flex", justifyContent: "center", color: "var(--smartaccess-purple)", marginBottom: 8 }}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" /></svg></span>
                           ยังไม่มีห้องเรียนลงทะเบียนใช้งานในระบบ — กรุณาพิมพ์เพิ่มห้องเรียนใหม่ในกล่องด้านล่าง
                         </div>
                       ) : (
@@ -5540,7 +5547,7 @@ void handleLocalWebServerRequest() {
                                           color: testRes.online ? "#059669" : "#DC2626",
                                           border: testRes.online ? "1.5px solid rgba(16,185,129,0.2)" : "1.5px solid rgba(220,38,38,0.2)"
                                         }}>
-                                          {testRes.online ? "🟢 ออนไลน์" : "🔴 ออฟไลน์"}
+                                          {testRes.online ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#10B981" }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981", display: "inline-block" }}></span> ออนไลน์</span> : <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#EF4444" }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444", display: "inline-block" }}></span> ออฟไลน์</span>}
                                         </span>
                                       )}
                                     </div>
@@ -5603,7 +5610,7 @@ void handleLocalWebServerRequest() {
                                   />
                                 </div>
                                 <button type="button"
-                                  onClick={() => showToast(`✅ ปรับปรุงข้อมูลห้อง ${r.room} เรียบร้อยแล้ว! อย่าลืมกด "บันทึกการตั้งค่าทั้งหมด" ด้านล่างสุด`, "success")}
+                                  onClick={() => showToast(` ปรับปรุงข้อมูลห้อง ${r.room} เรียบร้อยแล้ว! อย่าลืมกด "บันทึกการตั้งค่าทั้งหมด" ด้านล่างสุด`, "success")}
                                   className="btn-ghost"
                                   style={{ padding: "10px 16px", borderRadius: 10, fontSize: 12, fontWeight: 800, color: "#059669", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.03)", width: "100%", display: "flex", justifyContent: "center" }}>
                                   ✓ ยืนยันชั่วคราว
@@ -5618,7 +5625,7 @@ void handleLocalWebServerRequest() {
                     {/* Add Room Subcard */}
                     <div style={{ padding: 20, background: "rgba(124,58,237,0.02)", border: "1px dashed var(--smartaccess-purple-light)", borderRadius: 16, display: "flex", flexDirection: "column", gap: 14 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 6 }}>
-                        ➕ ลงทะเบียนห้องเรียน / บอร์ดควบคุมใหม่
+                         ลงทะเบียนห้องเรียน / บอร์ดควบคุมใหม่
                       </span>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end" }}>
                         <div style={{ textAlign: "left" }}>
@@ -5647,7 +5654,7 @@ void handleLocalWebServerRequest() {
                 {/* ═══ SECTION 4: Centralized Save Settings Button ═══ */}
                 <div className="premium-card" style={{ padding: 18, background: "linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(219,39,119,0.03) 100%)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>⚠️ ยืนยันการบันทึกการตั้งค่าระบบทั้งหมด</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>ยืนยันการบันทึกการตั้งค่าระบบทั้งหมด</span>
                     <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>กดปุ่มเพื่อบันทึกตารางเวลาบริการ, วันเปิดบริการ, Auto-fill และ Discord Webhooks ส่วนกลาง</span>
                   </div>
                   <button onClick={saveSettings} disabled={settingsLoading}
@@ -5661,7 +5668,7 @@ void handleLocalWebServerRequest() {
                     ) : (
                       <>
                         <SaveIcon />
-                        <span>💾 บันทึกการตั้งค่าระบบทั้งหมด</span>
+                        <span>บันทึกการตั้งค่าระบบทั้งหมด</span>
                       </>
                     )}
                   </button>
@@ -5697,7 +5704,7 @@ void handleLocalWebServerRequest() {
                       fontSize: 26,
                       boxShadow: "0 6px 16px rgba(124,58,237,0.25)"
                     }}>
-                      📖
+                      
                     </div>
                     <div>
                       <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--smartaccess-purple-dark)", margin: 0 }}>

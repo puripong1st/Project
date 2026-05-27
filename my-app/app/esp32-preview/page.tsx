@@ -287,7 +287,7 @@ function ESP32Screen({ mode, displayData, pendingCount, room }: {
           </svg>
         </div>
         <div style={{ color: "#EF4444", fontSize: 18, fontWeight: 900, marginBottom: 4, letterSpacing: "1px", textShadow: "0 0 8px rgba(239,68,68,0.5)" }}>ACCESS DENIED</div>
-        <div style={{ color: "#FFC7C7", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>❌ ปฏิเสธการเข้าใช้ห้อง</div>
+        <div style={{ color: "#FFC7C7", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>ปฏิเสธการเข้าใช้ห้อง</div>
         <div style={{ color: "#9CA3AF", fontSize: 9 }}>กรุณาลงทะเบียนใหม่หรือติดต่อเจ้าหน้าที่</div>
       </div>
     );
@@ -581,7 +581,7 @@ function ESP32PreviewPageInner() {
           {/* ─── 🔗 Dev Link: Clickable Simulator Scan ─── */}
           <div className="glass-card animate-fade-in" style={{ padding: 24, marginBottom: 20, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.02)", boxShadow: "0 10px 25px -5px rgba(16,185,129,0.05)" }}>
             <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 12, color: "#10B981", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
-              <span style={{ fontSize: 18 }}>🔗</span>
+              <span style={{ display: "inline-flex", alignItems: "center", color: "#10B981" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg></span>
               <span>Dev Link: ปุ่มลัดสำหรับนักพัฒนา</span>
             </h3>
             <p style={{ color: "#9EA8A0", fontSize: 12, marginTop: 6, marginBottom: 16, lineHeight: "1.4" }}>
@@ -598,9 +598,9 @@ function ESP32PreviewPageInner() {
                   onChange={e => setSimRoom(e.target.value)}
                   style={{ flex: 1, padding: "8px 12px", fontSize: 12.5, background: "rgba(15,17,23,0.8)", borderColor: "rgba(255,255,255,0.08)", color: "#F0F4F0" }}
                 >
-                  <option value="CE-401">🚪 Classroom CE-401</option>
-                  <option value="CE-402">🚪 Classroom CE-402</option>
-                  <option value="CE-403">🚪 Classroom CE-403</option>
+                  <option value="CE-401">Classroom CE-401</option>
+                  <option value="CE-402">Classroom CE-402</option>
+                  <option value="CE-403">Classroom CE-403</option>
                 </select>
               </div>
 
@@ -628,11 +628,11 @@ function ESP32PreviewPageInner() {
                     transition: "all 0.2s"
                   }}
                 >
-                  ⚡ คลิกเปิดแท็บลงทะเบียนห้อง {simRoom} (Simulate Scan)
+                  คลิกเปิดแท็บลงทะเบียนห้อง {simRoom} (Simulate Scan)
                 </a>
               ) : (
                 <div style={{ color: "#EF4444", fontSize: 11.5, textAlign: "center", background: "rgba(239,68,68,0.05)", padding: 10, borderRadius: 8 }}>
-                  ⚠️ กำลังตรวจจับคีย์ Token ล่าสุดจากเซิร์ฟเวอร์...
+                  กำลังตรวจจับคีย์ Token ล่าสุดจากเซิร์ฟเวอร์...
                 </div>
               )}
 
@@ -665,7 +665,7 @@ function ESP32PreviewPageInner() {
                 color: esp32Status?.mode === "wokwi" ? "#A78BFA" : esp32Status?.mode === "mock" ? "#F59E0B" : "#4CAF50",
                 border: `1px solid ${esp32Status?.mode === "wokwi" ? "rgba(139,92,246,0.4)" : esp32Status?.mode === "mock" ? "rgba(245,158,11,0.3)" : "rgba(76,175,80,0.3)"}`,
               }}>
-                {esp32Status?.mode === "wokwi" ? "🔵 Wokwi" : esp32Status?.mode === "mock" ? "🟡 Mock" : "🟢 Physical"}
+                {esp32Status?.mode === "wokwi" ? "Wokwi" : esp32Status?.mode === "mock" ? "Mock" : "Physical"}
               </span>
             </div>
 
@@ -690,7 +690,7 @@ function ESP32PreviewPageInner() {
 
             {/* Setup guide */}
             <div style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 10, padding: "14px 16px" }}>
-              <div style={{ color: "#A78BFA", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>📋 วิธีเปิดใช้ Wokwi Simulator</div>
+              <div style={{ color: "#A78BFA", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>วิธีเปิดใช้ Wokwi Simulator</div>
               {[
                 { step: "1", text: "ติดตั้ง VS Code Extension: Wokwi Simulator", sub: "marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode" },
                 { step: "2", text: "เปิดไฟล์ esp32/diagram.json ใน VS Code", sub: "F1 → Wokwi: Start Simulator" },
@@ -733,15 +733,15 @@ function ESP32PreviewPageInner() {
               </button>
               <button onClick={simulateApprove}
                 style={{ padding: "10px 0", background: "rgba(76,175,80,0.15)", border: "1px solid rgba(76,175,80,0.3)", borderRadius: 10, color: "#4CAF50", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                ✅ อนุมัติสำเร็จ (Approved)
+                อนุมัติสำเร็จ (Approved)
               </button>
               <button onClick={simulateReject}
                 style={{ padding: "10px 0", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, color: "#EF4444", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                ❌ ปฏิเสธ (Rejected)
+                ปฏิเสธ (Rejected)
               </button>
               <button onClick={() => { setMode("scanning"); setTimeout(() => setMode("idle"), 2000); }}
                 style={{ padding: "10px 0", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 10, color: "#3B82F6", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                🔄 กำลังสแกน (Scanning)
+                กำลังสแกน (Scanning)
               </button>
             </div>
             <div style={{ fontSize: 11, color: "#6B7A70" }}>
@@ -757,7 +757,7 @@ function ESP32PreviewPageInner() {
                 <span>ESP32 API Endpoints</span>
               </h3>
               <button onClick={() => fetchDisplay(simRoom)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4CAF50", fontSize: 11, fontFamily: "inherit", fontWeight: "bold" }}>
-                {isRefreshing ? "⏳ กำลังรีเฟรช..." : "🔄 รีเฟรชข้อมูล"}
+                {isRefreshing ? "กำลังรีเฟรช..." : "รีเฟรชข้อมูล"}
               </button>
             </div>
             {[
