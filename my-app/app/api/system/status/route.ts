@@ -87,7 +87,8 @@ export async function GET() {
         }
       }
     } catch (error) {
-      mysqlError = error instanceof Error ? error.message : "Database connection error";
+      console.error("[System Status DB Connection Error]:", error);
+      mysqlError = "Database connection error";
     }
 
     // 3. Resolve status of ALL configured rooms concurrently
@@ -193,6 +194,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error("[System Status GET Error]:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "ไม่สามารถดึงข้อมูลระบบได้" }, { status: 500 });
   }
 }

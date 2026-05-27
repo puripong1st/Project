@@ -16,6 +16,9 @@
   #define DBGF(fmt, ...)
 #endif
 
+#include <FS.h>
+#include <SPIFFS.h>
+#include <mbedtls/md.h>
 #include "ricmoo_qrcode.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
@@ -303,9 +306,371 @@ void drawRejectedScreen() {
   tft.print("PLEASE CONTACT CLASSROOM INSTRUCTOR");
 }
 
+// ─── Offline Mode Configurations & Helper Functions (Prompt 18) ─────────────
+bool is_offline_mode = false;
+int api_fail_count = 0;
+unsigned long last_student_sync = 0;
+unsigned long last_log_sync = 0;
+const unsigned long SYNC_STUDENTS_INTERVAL = 300000; // 5 minutes
+const unsigned long SYNC_LOGS_INTERVAL = 60000;     // 1 minute
+
+String cached_qr_key = "";
+const char* cache_students_file = "/student_cache.json";
+const char* cache_logs_file = "/offline_logs.json";
+const char* cache_key_file = "/qr_key.bin";
+
+WiFiServer localServer(80);
+bool localServerStarted = false;
+
+// Forward declarations
+bool validateOfflineQR(String grant);
+void triggerDoorOpenOffline(String grant);
+void saveOfflineLog(String student_id);
+void syncStudentCache();
+void syncOfflineLogs();
+
+void startLocalServer() {
+  if (!localServerStarted) {
+    localServer.begin();
+    localServerStarted = true;
+    DBG("Local web server started on port 80 for offline validation.");
+  }
+}
+
+String base64Decode(String input) {
+  input.replace("-", "+");
+  input.replace("_", "/");
+  while (input.length() % 4) {
+    input += "=";
+  }
+  int len = input.length();
+  uint8_t* out = (uint8_t*)malloc(len);
+  int decoded_len = 0;
+  const char* lookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  int bits = 0;
+  int val = 0;
+  for (int i = 0; i < len; i++) {
+    char c = input[i];
+    if (c == '=') break;
+    const char* p = strchr(lookup, c);
+    if (!p) continue;
+    int idx = p - lookup;
+    val = (val << 6) | idx;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[decoded_len++] = (val >> bits) & 0xFF;
+    }
+  }
+  String res = "";
+  for (int i = 0; i < decoded_len; i++) {
+    res += (char)out[i];
+  }
+  free(out);
+  return res;
+}
+
+String generateHMAC(String payload, String key) {
+  uint8_t hmacResult[32];
+  mbedtls_md_context_t ctx;
+  mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload.c_str(), payload.length());
+  mbedtls_md_hmac_finish(&ctx, hmacResult);
+  mbedtls_md_free(&ctx);
+
+  String encoded = "";
+  const char* lookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  int bits = 0;
+  int val = 0;
+  for (int i = 0; i < 32; i++) {
+    val = (val << 8) | hmacResult[i];
+    bits += 8;
+    while (bits >= 6) {
+      bits -= 6;
+      encoded += lookup[(val >> bits) & 0x3F];
+    }
+  }
+  if (bits > 0) {
+    encoded += lookup[(val << (6 - bits)) & 0x3F];
+  }
+  return encoded;
+}
+
+bool validateOfflineQR(String grant) {
+  if (cached_qr_key == "") {
+    DBG("No cached QR signing key. Cannot validate offline.");
+    return false;
+  }
+  int dotIdx = grant.indexOf(".");
+  if (dotIdx == -1) return false;
+  
+  String encodedPayload = grant.substring(0, dotIdx);
+  String signature = grant.substring(dotIdx + 1);
+  
+  String expectedSignature = generateHMAC(encodedPayload, cached_qr_key);
+  if (!secureCompare(signature.c_str(), expectedSignature.c_str())) {
+    DBG("Offline signature verification failed!");
+    return false;
+  }
+  
+  String decoded = base64Decode(encodedPayload);
+  StaticJsonDocument<384> doc;
+  DeserializationError err = deserializeJson(doc, decoded);
+  if (err) {
+    DBG("Failed to parse decoded payload JSON!");
+    return false;
+  }
+  
+  const char* room = doc["room"];
+  const char* student_id = doc["student_id"];
+  
+  if (String(room) != String(room_code)) {
+    DBG("Room mismatch in offline grant!");
+    return false;
+  }
+  
+  if (!SPIFFS.exists(cache_students_file)) {
+    DBG("No student cache JSON file exists!");
+    return false;
+  }
+  
+  File f = SPIFFS.open(cache_students_file, "r");
+  if (!f) return false;
+  
+  StaticJsonDocument<2048> cacheDoc;
+  DeserializationError cacheErr = deserializeJson(cacheDoc, f);
+  f.close();
+  if (cacheErr) {
+    DBG("Failed to parse student cache JSON file!");
+    return false;
+  }
+  
+  JsonArray arr = cacheDoc.as<JsonArray>();
+  bool found = false;
+  for (JsonVariant v : arr) {
+    if (v.as<String>() == String(student_id)) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    DBG("Student ID not found in local offline cache!");
+    return false;
+  }
+  DBG("Offline QR validation successful!");
+  return true;
+}
+
+void saveOfflineLog(String student_id) {
+  StaticJsonDocument<1536> logDoc;
+  if (SPIFFS.exists(cache_logs_file)) {
+    File f = SPIFFS.open(cache_logs_file, "r");
+    if (f) {
+      deserializeJson(logDoc, f);
+      f.close();
+    }
+  }
+  JsonArray logs;
+  if (logDoc.containsKey("logs")) {
+    logs = logDoc["logs"].as<JsonArray>();
+  } else {
+    logs = logDoc.to<JsonArray>();
+  }
+  if (logs.size() >= 50) {
+    logs.remove(0);
+  }
+  JsonObject newLog = logs.createNestedObject();
+  newLog["student_id"] = student_id;
+  newLog["action"] = "door_opened_offline";
+  newLog["timestamp"] = millis() / 1000;
+  File f = SPIFFS.open(cache_logs_file, "w");
+  if (f) {
+    serializeJson(logDoc, f);
+    f.close();
+    DBG("Saved offline access log to SPIFFS.");
+  }
+}
+
+void triggerDoorOpenOffline(String grant) {
+  int dotIdx = grant.indexOf(".");
+  String encodedPayload = grant.substring(0, dotIdx);
+  String decoded = base64Decode(encodedPayload);
+  StaticJsonDocument<256> doc;
+  deserializeJson(doc, decoded);
+  String student_id = doc["student_id"].as<String>();
+  
+  saveOfflineLog(student_id);
+  
+  Serial.println("[INFO] Door unlocked");
+  DBG("🔓 OFFLINE ACCESS GRANTED! Opening door...");
+  
+  drawScanningScreen();
+  tone(BUZZER_PIN, 1500, 100);
+  delay(1200);
+  
+  drawUnlockedScreen("OFFLINE MEMBER", student_id);
+  digitalWrite(RELAY_PIN, HIGH);
+  
+  tone(BUZZER_PIN, 1000, 150);
+  delay(180);
+  tone(BUZZER_PIN, 1500, 150);
+  delay(180);
+  tone(BUZZER_PIN, 2000, 300);
+  
+  int countdownMs = 3800;
+  int stepSize = 320 / 38;
+  for (int i = 0; i < 38; i++) {
+    tft.fillRect(0, 236, 320 - (i * stepSize), 4, tft.color565(16, 185, 129));
+    tft.fillRect(320 - (i * stepSize), 236, stepSize, 4, tft.color565(6, 78, 59));
+    delay(100);
+  }
+  digitalWrite(RELAY_PIN, LOW);
+  Serial.println("[INFO] Door locked");
+  DBG("🔒 Door auto locked (Offline).");
+  tone(BUZZER_PIN, 800, 250);
+  
+  last_queue_count = -1;
+  last_approved_name = "FORCE_REDRAW";
+  last_active_token = "FORCE_REDRAW";
+}
+
+void handleLocalValidation() {
+  WiFiClient client = localServer.available();
+  if (!client) return;
+  DBG("New client connected to local offline validation server.");
+  unsigned long timeout = millis() + 2000;
+  String req = "";
+  while (client.connected() && millis() < timeout) {
+    if (client.available()) {
+      char c = client.read();
+      req += c;
+      if (req.endsWith("\r\n\r\n")) break;
+    }
+  }
+  if (req.indexOf("POST /unlock") != -1 || req.indexOf("GET /unlock") != -1) {
+    int grantIdx = req.indexOf("grant=");
+    if (grantIdx != -1) {
+      int endIdx = req.indexOf(" ", grantIdx);
+      if (endIdx == -1) endIdx = req.indexOf("\r", grantIdx);
+      String grant = req.substring(grantIdx + 6, endIdx);
+      grant.replace("%2E", ".");
+      grant.replace("%2D", "-");
+      grant.replace("%5F", "_");
+      
+      bool valid = validateOfflineQR(grant);
+      if (valid) {
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: text/plain; charset=utf-8");
+        client.println("Connection: close");
+        client.println();
+        client.println("ACCESS GRANTED");
+        triggerDoorOpenOffline(grant);
+      } else {
+        client.println("HTTP/1.1 403 Forbidden");
+        client.println("Content-Type: text/plain; charset=utf-8");
+        client.println("Connection: close");
+        client.println();
+        client.println("ACCESS DENIED");
+      }
+    }
+  } else {
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html; charset=utf-8");
+    client.println("Connection: close");
+    client.println();
+    client.println("<!DOCTYPE html><html><head><meta charset='utf-8'><title>RMUTP Offline Mode</title></head>");
+    client.println("<body style='font-family:sans-serif; text-align:center; padding:50px;'>");
+    client.println("<h1 style='color:#F59E0B;'>⚠️ OFFLINE MODE ACTIVE</h1>");
+    client.println("<p>ระบบอยู่ในโหมดออฟไลน์ (อินเทอร์เน็ตขัดข้อง)</p>");
+    client.println("<p>กรุณาสแกนคีย์ QR โค้ดปลดล็อกของท่านเพื่อยืนยันสิทธิ์กับบอร์ดโดยตรง</p>");
+    client.println("</body></html>");
+  }
+  delay(1);
+  client.stop();
+}
+
+void syncStudentCache() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient http;
+  String syncUrl = String(server_url) + "&sync=1";
+  static WiFiClientSecure secureClient;
+  WiFiClientSecure *client = &secureClient;
+  client->setCACert(root_ca_cert);
+  http.begin(*client, syncUrl);
+  http.addHeader("x-api-key", api_key);
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    String payload = http.getString();
+    StaticJsonDocument<2048> doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (!error) {
+      if (doc.containsKey("qr_key")) {
+        const char* key = doc["qr_key"];
+        cached_qr_key = String(key);
+        File f = SPIFFS.open(cache_key_file, "w");
+        if (f) {
+          f.print(cached_qr_key);
+          f.close();
+          DBG("Synced and saved QR signing key.");
+        }
+      }
+      if (doc.containsKey("students")) {
+        File f = SPIFFS.open(cache_students_file, "w");
+        if (f) {
+          serializeJson(doc["students"], f);
+          f.close();
+          DBG("Synced and saved approved student list to SPIFFS.");
+        }
+      }
+    }
+  }
+  http.end();
+}
+
+void syncOfflineLogs() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (!SPIFFS.exists(cache_logs_file)) return;
+  File f = SPIFFS.open(cache_logs_file, "r");
+  if (!f) return;
+  String content = f.readString();
+  f.close();
+  HTTPClient http;
+  String logUrl = String(server_url).replace("display", "logs/sync");
+  static WiFiClientSecure secureClient;
+  WiFiClientSecure *client = &secureClient;
+  client->setCACert(root_ca_cert);
+  http.begin(*client, logUrl);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-api-key", api_key);
+  int httpCode = http.POST(content);
+  if (httpCode == 200 || httpCode == 201) {
+    SPIFFS.remove(cache_logs_file);
+    DBG("Successfully synchronized and cleared offline access logs.");
+  }
+  http.end();
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("[BOOT] System starting...");
+
+  // Initialize SPIFFS cache storage
+  if (!SPIFFS.begin(true)) {
+    Serial.println("[ERROR] SPIFFS mount failed!");
+  } else {
+    Serial.println("[INFO] SPIFFS mounted successfully.");
+    if (SPIFFS.exists(cache_key_file)) {
+      File f = SPIFFS.open(cache_key_file, "r");
+      if (f) {
+        cached_qr_key = f.readString();
+        f.close();
+        DBG("Loaded cached QR signing key from SPIFFS.");
+      }
+    }
+  }
 
   // 定義อินพุตเอาต์พุตพิน
   pinMode(RELAY_PIN, OUTPUT);
@@ -369,8 +734,58 @@ void setup() {
 }
 
 void loop() {
+  if (is_offline_mode) {
+    startLocalServer();
+    handleLocalValidation();
+    
+    // Status indicators
+    bool hasCache = SPIFFS.exists(cache_students_file);
+    if (hasCache) {
+      static unsigned long lastBlink = 0;
+      static bool ledState = false;
+      if (millis() - lastBlink > 1000) {
+        lastBlink = millis();
+        ledState = !ledState;
+        digitalWrite(LED_WIFI, ledState ? HIGH : LOW);
+        digitalWrite(LED_REJECT, LOW);
+      }
+      
+      unsigned long sec = millis() / 1000;
+      unsigned long hh = (sec / 3600) % 24;
+      unsigned long mm = (sec / 60) % 60;
+      unsigned long ss = sec % 60;
+      char timeBuf[10];
+      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
+      
+      static unsigned long lastScreenUpdate = 0;
+      if (millis() - lastScreenUpdate > 5000) {
+        lastScreenUpdate = millis();
+        drawMainScreen(0, "OFFLINE CACHE ACTIVE", String(timeBuf), "");
+      }
+    } else {
+      digitalWrite(LED_WIFI, LOW);
+      digitalWrite(LED_REJECT, HIGH);
+      
+      static unsigned long lastScreenUpdate = 0;
+      if (millis() - lastScreenUpdate > 5000) {
+        lastScreenUpdate = millis();
+        tft.fillScreen(tft.color565(15, 3, 3));
+        tft.setTextColor(tft.color565(239, 68, 68));
+        tft.setTextSize(3);
+        tft.setCursor(45, 80);
+        tft.print("OFFLINE MODE");
+        tft.setTextSize(2);
+        tft.setTextColor(ILI9341_WHITE);
+        tft.setCursor(55, 130);
+        tft.print("NO CACHED DATA");
+      }
+    }
+  }
+
   if (WiFi.status() == WL_CONNECTED) {
-    digitalWrite(LED_WIFI, HIGH);
+    if (!is_offline_mode) {
+      digitalWrite(LED_WIFI, HIGH);
+    }
 
     // ดึงเวลาปัจจุบันจำลอง
     String time_str = "12:00:00";
@@ -396,6 +811,10 @@ void loop() {
       } else {
         Serial.println("[ERROR] Connection failed");
         DBG("Unable to create WiFiClientSecure");
+        api_fail_count++;
+        if (api_fail_count >= 3) {
+          is_offline_mode = true;
+        }
         return;
       }
     } else {
@@ -408,6 +827,16 @@ void loop() {
 
     int httpCode = http.GET();
     if (httpCode == 200) {
+      api_fail_count = 0;
+      is_offline_mode = false;
+      if (millis() - last_student_sync > SYNC_STUDENTS_INTERVAL) {
+        last_student_sync = millis();
+        syncStudentCache();
+      }
+      if (millis() - last_log_sync > SYNC_LOGS_INTERVAL) {
+        last_log_sync = millis();
+        syncOfflineLogs();
+      }
       String payload = http.getString();
       StaticJsonDocument<768> doc;
       DeserializationError error = deserializeJson(doc, payload);
@@ -521,6 +950,13 @@ void loop() {
     } else {
       Serial.println("[ERROR] Connection failed");
       DBGF("HTTP Error: %d\n", httpCode);
+      api_fail_count++;
+      if (api_fail_count >= 3) {
+        if (!is_offline_mode) {
+          is_offline_mode = true;
+          DBG("Entering offline fallback mode due to consecutive API failures.");
+        }
+      }
     }
     http.end();
   } else {
