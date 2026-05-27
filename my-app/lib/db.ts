@@ -41,6 +41,15 @@ function readCaCert(): string | undefined {
 export function getPool(): Pool {
   if (!globalForDb.pool) {
     const isProd = process.env.NODE_ENV === "production";
+
+    if (!process.env.SUPABASE_CA_CERT && process.env.NODE_ENV === 'production') {
+      console.error('[SECURITY] SUPABASE_CA_CERT not set — DB connections may fail');
+    }
+
+    if (process.env.NODE_ENV !== 'production' && !process.env.SUPABASE_CA_CERT) {
+      console.warn('[DEV] No SUPABASE_CA_CERT — using default SSL');
+    }
+
     const connectionString = readEnv("POSTGRES_URL");
     const connectionConfig = connectionString ? parse(connectionString) : ({} as ReturnType<typeof parse>);
 
@@ -57,22 +66,10 @@ export function getPool(): Pool {
       );
     }
 
-    let sslConfig: PoolConfig["ssl"] = undefined;
-
-    const ca = readCaCert();
-    if (ca) {
-      sslConfig = {
-        rejectUnauthorized: true,
-        ca,
-      };
-    } else if (isProd) {
-      // Supabase/Vercel connection strings usually provide sslmode=require, but
-      // node-postgres still needs an ssl object when we parse the URL manually.
-      // SUPABASE_CA_CERT can be added later to enforce CA verification.
-      sslConfig = { rejectUnauthorized: false };
-    } else {
-      sslConfig = { rejectUnauthorized: false };
-    }
+    const sslConfig = {
+      ca: readCaCert() || process.env.SUPABASE_CA_CERT,
+      rejectUnauthorized: true  // Always verify certificate
+    };
 
     const config: PoolConfig = {
       host,
