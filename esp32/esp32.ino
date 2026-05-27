@@ -5,7 +5,7 @@
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-// #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!
+#define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!
 #define DEBUG_MODE false  // ⚠️ Set true for development ONLY
 
 #if DEBUG_MODE
@@ -598,7 +598,11 @@ void syncStudentCache() {
   String syncUrl = String(server_url) + "&sync=1";
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
+  #ifdef WOKWI_SIM
+  client->setInsecure();
+  #else
   client->setCACert(root_ca_cert);
+  #endif
   http.begin(*client, syncUrl);
   http.addHeader("x-api-key", api_key);
   int httpCode = http.GET();
@@ -642,7 +646,11 @@ void syncOfflineLogs() {
   logUrl.replace("display", "logs/sync");
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
+  #ifdef WOKWI_SIM
+  client->setInsecure();
+  #else
   client->setCACert(root_ca_cert);
+  #endif
   http.begin(*client, logUrl);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-api-key", api_key);
@@ -804,10 +812,11 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
+        #ifdef WOKWI_SIM
+        client->setInsecure(); // Wokwi does not support CA cert verification
+        #else
         client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริงเพื่อความปลอดภัยสูงสุด
-        // NOTE: For Wokwi simulation, you may temporarily use:
-        // client->setInsecure();
-        // WARNING: NEVER deploy to production with setInsecure()!
+        #endif
         http.begin(*client, server_url);
       } else {
         Serial.println("[ERROR] Connection failed");
