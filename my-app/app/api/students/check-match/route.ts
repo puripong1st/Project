@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, getSystemSettings } from "@/lib/db";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 
 // POST /api/students/check-match — ค้นหาประวัติเพื่อดึงข้อมูล คณะ สาขา ชั้นปี มาทำ Auto-fill
 export async function POST(req: NextRequest) {
   try {
+    const rateLimitRes = await withRateLimit(req, "students_check_match", 20, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
     const settings = await getSystemSettings();
     const autoFillEnabled = settings.auto_fill_enabled === "1";
 

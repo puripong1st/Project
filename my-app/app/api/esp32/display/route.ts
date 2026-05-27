@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { initDatabase, getPool } from "@/lib/db";
 import { getOrCreateActiveQRToken } from "@/lib/qr";
 import { getAdminFromCookie } from "@/lib/auth";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 
 // Restrict CORS to the configured app origin only — never open wildcard in production
 const ALLOWED_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || "https://project-sigma-ivory-21.vercel.app").replace(/\/$/, "");
@@ -34,6 +35,13 @@ export async function OPTIONS() {
 export async function GET(req: NextRequest) {
   try {
     await ensureInit();
+    const rateLimitRes = await withRateLimit(req, "esp32_display", 60, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60", ...CORS_HEADERS } }
+      );
+    }
     const host = req.headers.get("host") || "localhost:3000";
     const protocol = req.headers.get("x-forwarded-proto") || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
@@ -230,6 +238,13 @@ export async function GET(req: NextRequest) {
 // ESP32 can POST its status here
 export async function POST(req: NextRequest) {
   try {
+    const rateLimitRes = await withRateLimit(req, "esp32_display", 60, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60", ...CORS_HEADERS } }
+      );
+    }
     // Authenticate: accept either a valid ESP32 API key (for IoT devices) or an admin cookie (for browser-side calls)
     const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_placeholder";
     const callerKey = req.headers.get("x-api-key") || "";

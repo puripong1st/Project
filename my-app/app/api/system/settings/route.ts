@@ -1,13 +1,21 @@
 export const dynamic = "force-dynamic";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getPool, getSystemSettings, updateSystemSettings } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 
 // GET /api/system/settings — ดึงค่าการตั้งค่าระบบทั้งหมด (เฉพาะ owner เท่านั้น)
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const rateLimitRes = await withRateLimit(req, "system_settings", 20, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
@@ -28,8 +36,15 @@ export async function GET() {
 }
 
 // POST /api/system/settings — อัปเดตค่าการตั้งค่าระบบ (เฉพาะ owner เท่านั้น)
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const rateLimitRes = await withRateLimit(req, "system_settings", 20, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });

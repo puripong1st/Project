@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, AdminRow } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 import bcrypt from "bcryptjs";
 
 let initialized = false;
@@ -12,9 +13,17 @@ async function ensureInit() {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await ensureInit();
+    const rateLimitRes = await withRateLimit(req, "admin_users", 30, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
+
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
@@ -32,6 +41,14 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await ensureInit();
+    const rateLimitRes = await withRateLimit(req, "admin_users", 30, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
+
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
 
@@ -16,6 +17,14 @@ async function ensureInit() {
 export async function POST(req: NextRequest) {
   try {
     await ensureInit();
+    const rateLimitRes = await withRateLimit(req, "unlock-room", 10, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
+
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

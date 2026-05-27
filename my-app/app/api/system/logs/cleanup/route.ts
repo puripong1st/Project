@@ -1,10 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 import bcrypt from "bcryptjs";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const rateLimitRes = await withRateLimit(request, "logs_cleanup", 3, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
     // 1. Authenticate the operator
     const admin = await getAdminFromCookie();
     if (!admin) {

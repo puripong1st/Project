@@ -2,9 +2,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getESP32Status, getESP32Url } from "@/lib/esp32";
 import { getAdminFromCookie } from "@/lib/auth";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET(req: NextRequest) {
   try {
+    const rateLimitRes = await withRateLimit(req, "esp32_status", 30, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
     const admin = await getAdminFromCookie();
     if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, StudentRow } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
+import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { generateStudentsPDF, generateSingleStudentPDF } from "@/lib/pdf";
 
 let initialized = false;
@@ -23,6 +24,13 @@ async function ensureInit() {
 export async function GET(req: NextRequest) {
   try {
     await ensureInit();
+    const rateLimitRes = await withRateLimit(req, "export_pdf", 5, 60);
+    if (!rateLimitRes.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
     const admin = await getAdminFromCookie();
     if (!admin) {
       return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" }, { status: 401 });
