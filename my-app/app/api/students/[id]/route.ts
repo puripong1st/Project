@@ -103,7 +103,9 @@ export async function DELETE(
       return NextResponse.json({ error: "ID นักศึกษาต้องเป็นตัวเลข" }, { status: 400 });
     }
     const pool = getPool();
-    await pool.query("DELETE FROM access_logs WHERE student_id = $1", [numId]);
+    // Legal Compliance (Computer Crime Act): Do NOT delete access logs. 
+    // The database will automatically set student_id to NULL via ON DELETE SET NULL, 
+    // retaining the crucial audit logs/traffic trails for at least 90 days.
     await pool.query("DELETE FROM students WHERE id = $1", [numId]);
     return NextResponse.json({ success: true, message: "ลบข้อมูลสำเร็จ" });
   } catch {
