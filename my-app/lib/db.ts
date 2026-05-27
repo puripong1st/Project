@@ -256,6 +256,37 @@ export async function initDatabase(): Promise<void> {
       )
     `);
 
+    // PDPA ม.19 — Consent audit trail (server-side proof of consent)
+    // เก็บหลักฐานการให้/ถอน consent 3 ปี ตามแนวปฏิบัติ สคส.
+    await initPool.query(`
+      CREATE TABLE IF NOT EXISTS consent_records (
+        id BIGSERIAL PRIMARY KEY,
+        consent_uuid VARCHAR(64) UNIQUE NOT NULL,
+        ip_hash CHAR(64) NOT NULL,
+        user_agent TEXT,
+        version VARCHAR(10) NOT NULL,
+        necessary BOOLEAN NOT NULL DEFAULT TRUE,
+        functional BOOLEAN NOT NULL DEFAULT FALSE,
+        analytics BOOLEAN NOT NULL DEFAULT FALSE,
+        marketing BOOLEAN NOT NULL DEFAULT FALSE,
+        action VARCHAR(20) NOT NULL CHECK (action IN ('granted', 'withdrawn', 'updated', 'declined')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await initPool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_consent_ip_time') THEN
+              CREATE INDEX idx_consent_ip_time ON consent_records (ip_hash, created_at DESC);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_consent_uuid') THEN
+              CREATE INDEX idx_consent_uuid ON consent_records (consent_uuid);
+          END IF;
+      END
+      $$;
+    `);
+
     // Create indexes if not exists using PL/pgSQL
     await initPool.query(`
       DO $$

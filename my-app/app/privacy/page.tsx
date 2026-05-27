@@ -1,12 +1,54 @@
 "use client";
+// PDPA-compliant Privacy Policy v2.0
+// ครอบคลุม PDPA ม.23 ครบ 7 รายการ + สิทธิเจ้าของข้อมูล 8 ข้อ (ม.19, 30-36, 73)
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { openConsentSettings } from "../components/CookieConsent";
+
+const POLICY_VERSION = "2.0";
+const EFFECTIVE_DATE = "27 พฤษภาคม 2569";
+
+const sectionHeading: React.CSSProperties = {
+  color: "#FCE7F3",
+  fontSize: "18px",
+  fontWeight: 700,
+  marginBottom: "10px",
+};
+
+const subHeading: React.CSSProperties = {
+  color: "#F3E8FF",
+  fontSize: "15px",
+  fontWeight: 700,
+  marginTop: "12px",
+  marginBottom: "6px",
+};
+
+const tableStyle: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  fontSize: "13.5px",
+  marginTop: "8px",
+};
+
+const thStyle: React.CSSProperties = {
+  textAlign: "left",
+  padding: "8px 10px",
+  background: "rgba(124, 58, 237, 0.18)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  fontWeight: 700,
+  color: "#FFFFFF",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "8px 10px",
+  border: "1px solid rgba(255,255,255,0.08)",
+  color: "rgba(255, 255, 255, 0.8)",
+  verticalAlign: "top",
+};
 
 export default function PrivacyPage() {
   const [queryString, setQueryString] = useState("");
-
   useEffect(() => {
-    // Preserve token and room params when returning to registration page
     setQueryString(window.location.search || "");
   }, []);
 
@@ -24,38 +66,27 @@ export default function PrivacyPage() {
         fontFamily: "'Noto Sans Thai', 'Inter', sans-serif",
       }}
     >
-      {/* Drifting Blobs */}
       <div
         style={{
-          position: "absolute",
-          top: "-10%",
-          left: "-5%",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
+          position: "absolute", top: "-10%", left: "-5%",
+          width: 500, height: 500, borderRadius: "50%",
           background: "radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%)",
-          filter: "blur(50px)",
-          pointerEvents: "none",
+          filter: "blur(50px)", pointerEvents: "none",
         }}
       />
       <div
         style={{
-          position: "absolute",
-          bottom: "-10%",
-          right: "-5%",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
+          position: "absolute", bottom: "-10%", right: "-5%",
+          width: 500, height: 500, borderRadius: "50%",
           background: "radial-gradient(circle, rgba(219,39,119,0.25) 0%, transparent 70%)",
-          filter: "blur(50px)",
-          pointerEvents: "none",
+          filter: "blur(50px)", pointerEvents: "none",
         }}
       />
 
       <div
         className="animate-fade-in"
         style={{
-          maxWidth: "800px",
+          maxWidth: "900px",
           width: "100%",
           zIndex: 10,
           background: "rgba(255, 255, 255, 0.04)",
@@ -68,27 +99,14 @@ export default function PrivacyPage() {
           color: "#FFFFFF",
         }}
       >
-        {/* Navigation */}
+        {/* Back link */}
         <div style={{ marginBottom: "32px" }}>
           <Link
             href={`/${queryString}`}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              color: "rgba(255, 255, 255, 0.6)",
-              textDecoration: "none",
-              fontSize: "14px",
-              fontWeight: 600,
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#FFFFFF";
-              e.currentTarget.style.transform = "translateX(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "rgba(255, 255, 255, 0.6)";
-              e.currentTarget.style.transform = "translateX(0)";
+              display: "inline-flex", alignItems: "center", gap: "8px",
+              color: "rgba(255,255,255,0.6)", textDecoration: "none",
+              fontSize: "14px", fontWeight: 600,
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -99,32 +117,24 @@ export default function PrivacyPage() {
           </Link>
         </div>
 
-        {/* Header Title */}
+        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <div
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
+              display: "inline-flex", alignItems: "center", gap: "8px",
               background: "rgba(219, 39, 119, 0.15)",
               border: "1px solid rgba(219, 39, 119, 0.35)",
-              borderRadius: "99px",
-              padding: "6px 16px",
-              color: "#F472B6",
-              fontSize: "12px",
-              fontWeight: 700,
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
+              borderRadius: "99px", padding: "6px 16px",
+              color: "#F472B6", fontSize: "12px", fontWeight: 700,
+              letterSpacing: "0.5px", textTransform: "uppercase",
               marginBottom: "16px",
             }}
           >
-            PDPA Compliance
+            PDPA Compliance · v{POLICY_VERSION}
           </div>
           <h1
             style={{
-              fontSize: "32px",
-              fontWeight: 800,
-              lineHeight: "1.3",
+              fontSize: "32px", fontWeight: 800, lineHeight: "1.3",
               background: "linear-gradient(to right, #FFFFFF, #FCE7F3)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -133,77 +143,381 @@ export default function PrivacyPage() {
           >
             นโยบายความเป็นส่วนตัวของระบบควบคุมห้องเรียน
           </h1>
-          <p style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "14px", marginTop: "8px" }}>
-            (Official Privacy Policy)
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", marginTop: "8px" }}>
+            (Official Privacy Policy) · เริ่มมีผลบังคับใช้ {EFFECTIVE_DATE}
           </p>
         </div>
 
-        {/* Content Body */}
+        {/* Body */}
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "28px",
-            fontSize: "15px",
-            lineHeight: "1.8",
-            color: "rgba(255, 255, 255, 0.8)",
+            display: "flex", flexDirection: "column", gap: "26px",
+            fontSize: "14.5px", lineHeight: "1.8",
+            color: "rgba(255,255,255,0.82)",
           }}
         >
           <p>
-            นโยบายความเป็นส่วนตัวนี้ชี้แจงกระบวนการจัดการข้อมูลส่วนบุคคล (PII) ของระบบควบคุมการเข้าออกห้องปฏิบัติการอัจฉริยะ <strong style={{ color: "#FFFFFF" }}>RMUTP ACCS</strong> เพื่อความโปร่งใสและปกป้องผลประโยชน์ของผู้ใช้บริการทุกคนตามหลักมาตรฐานสากลและพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA):
+            นโยบายความเป็นส่วนตัวฉบับนี้จัดทำขึ้นตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ม.23
+            เพื่อชี้แจงวิธีที่ระบบ <strong style={{ color: "#FFFFFF" }}>RMUTP ACCS</strong>
+            (ระบบควบคุมการเข้าออกห้องปฏิบัติการ) เก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคล (PII)
+            ของนักศึกษา อาจารย์ และบุคลากรของคณะวิศวกรรมศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร
           </p>
 
           <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)" }} />
 
+          {/* 0. Data Controller */}
           <div>
-            <h3 style={{ color: "#FCE7F3", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>
-              1. ประเภทข้อมูลส่วนบุคคลที่จัดเก็บ (Types of Personal Data Collected)
-            </h3>
+            <h3 style={sectionHeading}>0. ผู้ควบคุมข้อมูลส่วนบุคคล (Data Controller)</h3>
+            <table style={tableStyle}>
+              <tbody>
+                <tr><td style={tdStyle}><strong>ชื่อ</strong></td><td style={tdStyle}>คณะวิศวกรรมศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร</td></tr>
+                <tr><td style={tdStyle}><strong>ที่อยู่</strong></td><td style={tdStyle}>1381 ถนนประชาราษฎร์ 1 แขวงวงศ์สว่าง เขตบางซื่อ กรุงเทพมหานคร 10800</td></tr>
+                <tr><td style={tdStyle}><strong>โทรศัพท์</strong></td><td style={tdStyle}>02-836-3000</td></tr>
+                <tr><td style={tdStyle}><strong>อีเมลทั่วไป</strong></td><td style={tdStyle}>info@eng.rmutp.ac.th</td></tr>
+                <tr><td style={tdStyle}><strong>เจ้าหน้าที่คุ้มครองข้อมูล (DPO)</strong></td><td style={tdStyle}>dpo@rmutp.ac.th · 02-836-3000 ต่อ DPO</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 1. Lawful Basis */}
+          <div>
+            <h3 style={sectionHeading}>1. ฐานทางกฎหมายในการประมวลผล (Lawful Basis)</h3>
             <p>
-              ระบบจะทำการบันทึกข้อมูลส่วนตัวที่จำเป็นเมื่อท่านส่งคำร้องลงทะเบียนขอเข้าใช้งาน ได้แก่ คำนำหน้าชื่อ, ชื่อจริง, นามสกุล, รหัสนักศึกษา, คณะวิชา, สาขาวิชาการเรียน, พิกัดรหัสห้องเรียนที่ขอเข้าใช้งาน, เวลาที่ยื่นคำขอ, และข้อมูลเน็ตเวิร์กเชิงสถิติความปลอดภัย ได้แก่ ไอพีแอดเดรส (IP Address) และประวัติของเครื่องอุปกรณ์ (User-Agent) เพื่อใช้ในการรักษาความมั่นคงปลอดภัย
+              ระบบประมวลผลข้อมูลส่วนบุคคลของท่านโดยอาศัยฐานทางกฎหมายดังนี้:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "8px" }}>
+              <li><strong>ฐานประโยชน์โดยชอบด้วยกฎหมาย (ม.24(5)):</strong> เพื่อความปลอดภัยของอาคารและทรัพย์สินภายในห้องปฏิบัติการ</li>
+              <li><strong>ฐานหน้าที่ตามกฎหมาย (ม.24(6)):</strong> เพื่อปฏิบัติตาม พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ พ.ศ. 2560 มาตรา 26 (เก็บข้อมูลจราจรคอมพิวเตอร์ไม่น้อยกว่า 90 วัน)</li>
+              <li><strong>ฐานความยินยอม (ม.24(1)):</strong> สำหรับคุกกี้ประเภทฟังก์ชัน วิเคราะห์ และการตลาด (ดูแบนเนอร์คุกกี้ด้านล่าง)</li>
+            </ul>
+          </div>
+
+          {/* 2. Types of Data */}
+          <div>
+            <h3 style={sectionHeading}>2. ประเภทข้อมูลส่วนบุคคลที่จัดเก็บ</h3>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>หมวด</th>
+                  <th style={thStyle}>รายการข้อมูล</th>
+                  <th style={thStyle}>วัตถุประสงค์</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={tdStyle}>ข้อมูลระบุตัวตน</td>
+                  <td style={tdStyle}>คำนำหน้า, ชื่อจริง, นามสกุล, รหัสนักศึกษา/พนักงาน</td>
+                  <td style={tdStyle}>ยืนยันตัวตนเพื่ออนุญาตเข้าห้อง</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ข้อมูลสังกัด</td>
+                  <td style={tdStyle}>คณะ, สาขา, ชั้นปี, ห้องเรียนที่ขอเข้าใช้</td>
+                  <td style={tdStyle}>ตรวจสอบสิทธิ์ระดับห้อง (Allowed Rooms)</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ข้อมูลจราจร (Traffic Data)</td>
+                  <td style={tdStyle}>IP Address, User-Agent, เวลา, ห้องที่เข้า, ผลการเปิดประตู</td>
+                  <td style={tdStyle}>พ.ร.บ. คอมฯ ม.26 + ป้องกันโจรกรรม</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ข้อมูลความยินยอม</td>
+                  <td style={tdStyle}>SHA-256 hash ของ IP, เวอร์ชันนโยบาย, ตัวเลือกคุกกี้, timestamp</td>
+                  <td style={tdStyle}>หลักฐานการให้/ถอน consent ตาม PDPA ม.19</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ marginTop: "10px", fontSize: "13px", color: "rgba(255,255,255,0.65)" }}>
+              ⚠️ ระบบไม่จัดเก็บข้อมูลอ่อนไหว (Sensitive Data) ตาม PDPA ม.26 เช่น เชื้อชาติ ศาสนา ข้อมูลสุขภาพ ข้อมูลชีวภาพ (Biometric) หรือประวัติอาชญากรรม
             </p>
           </div>
 
+          {/* 3. Purposes */}
           <div>
-            <h3 style={{ color: "#FCE7F3", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>
-              2. จุดประสงค์การจัดเก็บข้อมูลและประมวลผล (Purposes of Processing)
-            </h3>
+            <h3 style={sectionHeading}>3. วัตถุประสงค์ในการประมวลผล</h3>
             <p>
-              ข้อมูลทั้งหมดจะถูกจัดเก็บลง Supabase PostgreSQL เพื่อใช้ในการคิวรี่จับคู่ประวัติและยืนยันตนสำหรับการอนุญาตปลดล็อกประตูผ่านทางเข้าห้องเรียนแบบไร้สาย รวมถึงการจัดทำประวัติล็อกการจราจรคอมพิวเตอร์เพื่อความปลอดภัยในการป้องกันอัคคีภัยและการโจรกรรมในสถาบันการศึกษา
+              ระบบใช้ข้อมูลของท่านเพื่อจุดประสงค์ดังต่อไปนี้เท่านั้น:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "8px" }}>
+              <li>จับคู่ยืนยันตัวตนเพื่ออนุญาตปลดล็อกประตูห้องปฏิบัติการ</li>
+              <li>จัดทำประวัติการเข้าออก (access_logs) เพื่อความปลอดภัยและการสืบสวนเหตุ</li>
+              <li>แจ้งเตือนเหตุการณ์สำคัญแก่เจ้าหน้าที่ผู้ดูแลผ่าน Discord Webhook</li>
+              <li>ปรับปรุงประสิทธิภาพและความปลอดภัยของระบบ (ในกรณีที่ท่านยินยอมคุกกี้วิเคราะห์)</li>
+            </ul>
+          </div>
+
+          {/* 4. Recipients */}
+          <div>
+            <h3 style={sectionHeading}>4. ผู้รับข้อมูลและผู้ประมวลผลข้อมูล (Recipients & Sub-Processors)</h3>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>ผู้รับข้อมูล</th>
+                  <th style={thStyle}>ประเภท</th>
+                  <th style={thStyle}>ที่ตั้ง</th>
+                  <th style={thStyle}>ข้อมูลที่ได้รับ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={tdStyle}>แอดมินคณะวิศวกรรมศาสตร์</td>
+                  <td style={tdStyle}>Data User ภายใน</td>
+                  <td style={tdStyle}>ประเทศไทย</td>
+                  <td style={tdStyle}>ข้อมูลทั้งหมด (จำกัดสิทธิ์ตาม role)</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Supabase Inc.</td>
+                  <td style={tdStyle}>Sub-Processor (Database hosting)</td>
+                  <td style={tdStyle}>AWS Singapore (ap-southeast-1)</td>
+                  <td style={tdStyle}>ฐานข้อมูลทั้งหมด (เข้ารหัส at-rest AES-256)</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Vercel Inc.</td>
+                  <td style={tdStyle}>Sub-Processor (Web hosting)</td>
+                  <td style={tdStyle}>Edge network (Singapore + global)</td>
+                  <td style={tdStyle}>HTTP request metadata (IP, headers)</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Discord Inc.</td>
+                  <td style={tdStyle}>Third-Party (Notification)</td>
+                  <td style={tdStyle}>สหรัฐอเมริกา</td>
+                  <td style={tdStyle}>เฉพาะข้อความแจ้งเตือนเหตุการณ์ (ชื่อ-รหัส masked, ห้อง, เวลา)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 5. Cross-Border Transfer */}
+          <div>
+            <h3 style={sectionHeading}>5. การส่งข้อมูลออกนอกราชอาณาจักร (Cross-Border Transfer)</h3>
+            <p>
+              ตาม PDPA มาตรา 28-29 ระบบมีการส่งข้อมูลออกไปยังต่างประเทศโดยมีมาตรการคุ้มครองดังนี้:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "8px" }}>
+              <li><strong>Supabase (Singapore):</strong> ใช้ Standard Contractual Clauses (SCC) + SOC 2 Type II certification, encryption at-rest (AES-256), in-transit (TLS 1.3)</li>
+              <li><strong>Vercel (Global Edge):</strong> ISO 27001 + SOC 2 Type II, TLS 1.3 ทุกการเชื่อมต่อ</li>
+              <li><strong>Discord (US):</strong> Privacy Shield successor framework (Data Privacy Framework), ส่งเฉพาะข้อมูลแจ้งเตือน (masked PII)</li>
+            </ul>
+          </div>
+
+          {/* 6. Retention */}
+          <div>
+            <h3 style={sectionHeading}>6. ระยะเวลาเก็บข้อมูล (Data Retention)</h3>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>ประเภทข้อมูล</th>
+                  <th style={thStyle}>ระยะเวลา</th>
+                  <th style={thStyle}>เหตุผล</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={tdStyle}>access_logs (ประวัติเข้าออก)</td>
+                  <td style={tdStyle}>ไม่น้อยกว่า 90 วัน สูงสุด 1 ปีการศึกษา</td>
+                  <td style={tdStyle}>พ.ร.บ.คอม ม.26 ขั้นต่ำ + นโยบายภายใน</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>students (ทะเบียนนักศึกษา)</td>
+                  <td style={tdStyle}>จนสิ้นปีการศึกษา + 1 ปี</td>
+                  <td style={tdStyle}>เพื่ออ้างอิงผลการเรียนและการสอบสวน</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>dynamic_qr_tokens</td>
+                  <td style={tdStyle}>24 ชั่วโมง</td>
+                  <td style={tdStyle}>ลบอัตโนมัติเมื่อ consume หรือหมดอายุ</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>consent_records</td>
+                  <td style={tdStyle}>3 ปี</td>
+                  <td style={tdStyle}>หลักฐาน PDPA ม.19 (พิสูจน์ consent)</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>rate_limits</td>
+                  <td style={tdStyle}>5 นาที (auto-expire)</td>
+                  <td style={tdStyle}>ป้องกันการโจมตี brute-force</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ marginTop: "10px" }}>
+              เมื่อพ้นกำหนดข้างต้น ระบบจะทำลายข้อมูลโดยอัตโนมัติ (Data Pruning Cron Job)
             </p>
           </div>
 
+          {/* 7. Cookies & Storage */}
           <div>
-            <h3 style={{ color: "#FCE7F3", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>
-              3. การรักษาความมั่นคงปลอดภัยและการส่งต่อข้อมูล (Information Sharing and Security)
-            </h3>
+            <h3 style={sectionHeading}>7. คุกกี้และ Web Storage ที่ระบบใช้</h3>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>ชื่อ</th>
+                  <th style={thStyle}>ประเภท</th>
+                  <th style={thStyle}>หมวด</th>
+                  <th style={thStyle}>วัตถุประสงค์</th>
+                  <th style={thStyle}>อายุ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={tdStyle}><code>admin_token</code></td>
+                  <td style={tdStyle}>HttpOnly Cookie</td>
+                  <td style={tdStyle}>จำเป็น</td>
+                  <td style={tdStyle}>JWT session ของแอดมิน</td>
+                  <td style={tdStyle}>8 ชั่วโมง</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}><code>rmutp_cookie_consent_v2</code></td>
+                  <td style={tdStyle}>localStorage</td>
+                  <td style={tdStyle}>ฟังก์ชัน</td>
+                  <td style={tdStyle}>จดจำตัวเลือกความยินยอม</td>
+                  <td style={tdStyle}>ถาวรจนผู้ใช้ลบ</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}><code>rmutp_form_draft</code></td>
+                  <td style={tdStyle}>localStorage</td>
+                  <td style={tdStyle}>ฟังก์ชัน</td>
+                  <td style={tdStyle}>Auto-fill ฟอร์มลงทะเบียน</td>
+                  <td style={tdStyle}>7 วัน</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}><code>rmutp_last_room</code></td>
+                  <td style={tdStyle}>localStorage</td>
+                  <td style={tdStyle}>ฟังก์ชัน</td>
+                  <td style={tdStyle}>จดจำห้องที่เคยเข้า</td>
+                  <td style={tdStyle}>30 วัน</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style={{ marginTop: "12px" }}>
+              <button
+                onClick={openConsentSettings}
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED, #DB2777)",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "#FFFFFF",
+                  padding: "10px 20px",
+                  fontSize: "13.5px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'Noto Sans Thai', sans-serif",
+                  boxShadow: "0 4px 15px rgba(124, 58, 237, 0.3)",
+                }}
+              >
+                ⚙️ จัดการความยินยอมคุกกี้ของฉัน
+              </button>
+            </div>
+          </div>
+
+          {/* 8. Rights */}
+          <div>
+            <h3 style={sectionHeading}>8. สิทธิของเจ้าของข้อมูลส่วนบุคคล (Data Subject Rights)</h3>
             <p>
-              ระบบได้รับการคุ้มครองด้วยการตั้งค่าความมั่นคงปลอดภัยระดับตารางแถว (Row-Level Security) ในฐานข้อมูล และจะส่งต่อเฉพาะข้อมูลการเข้าห้องที่ได้รับอนุมัติแล้วเท่านั้นไปยัง Discord Webhook ของกลุ่มเจ้าหน้าที่ดูแลระบบที่ได้รับอนุญาตอย่างเป็นทางการ และจะไม่มีการส่งมอบ ขาย หรือแบ่งปันข้อมูลส่วนบุคคลของนักศึกษาออกไปยังหน่วยงานภายนอกอื่นเด็ดขาด
+              ท่านมีสิทธิตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 ทั้ง 8 ข้อดังต่อไปนี้:
+            </p>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>มาตรา</th>
+                  <th style={thStyle}>สิทธิ</th>
+                  <th style={thStyle}>ช่องทางใช้สิทธิ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={tdStyle}>ม.19 วรรค 5</td>
+                  <td style={tdStyle}><strong>สิทธิเพิกถอนความยินยอม</strong> (Right to Withdraw Consent)</td>
+                  <td style={tdStyle}>กดปุ่ม "จัดการความยินยอม" ด้านบน หรืออีเมล DPO</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ม.30</td>
+                  <td style={tdStyle}><strong>สิทธิเข้าถึงและขอสำเนาข้อมูล</strong> (Right to Access)</td>
+                  <td style={tdStyle}>อีเมล dpo@rmutp.ac.th — ตอบสนองภายใน 30 วัน</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ม.31</td>
+                  <td style={tdStyle}><strong>สิทธิให้โอนย้ายข้อมูล</strong> (Right to Data Portability)</td>
+                  <td style={tdStyle}>อีเมล DPO เพื่อขอ export ในรูปแบบ JSON/CSV</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ม.32</td>
+                  <td style={tdStyle}><strong>สิทธิคัดค้านการประมวลผล</strong> (Right to Object)</td>
+                  <td style={tdStyle}>อีเมล DPO พร้อมเหตุผล</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ม.33</td>
+                  <td style={tdStyle}><strong>สิทธิให้ลบข้อมูล</strong> (Right to Erasure / Right to be Forgotten)</td>
+                  <td style={tdStyle}>อีเมล DPO — ดำเนินการภายใน 30 วัน (ยกเว้นข้อมูลที่ต้องเก็บตามกฎหมาย)</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ม.34</td>
+                  <td style={tdStyle}><strong>สิทธิให้ระงับการใช้ข้อมูล</strong> (Right to Restrict)</td>
+                  <td style={tdStyle}>อีเมล DPO ระหว่างการตรวจสอบความถูกต้อง</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ม.36</td>
+                  <td style={tdStyle}><strong>สิทธิให้แก้ไขข้อมูลให้ถูกต้อง</strong> (Right to Rectification)</td>
+                  <td style={tdStyle}>แจ้งคณะวิศวกรรมศาสตร์ หรืออีเมล DPO</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>ม.73</td>
+                  <td style={tdStyle}><strong>สิทธิร้องเรียนต่อสำนักงาน สคส.</strong> (PDPC)</td>
+                  <td style={tdStyle}>หากท่านเห็นว่าระบบไม่ปฏิบัติตามกฎหมาย: <a href="https://www.pdpc.or.th" target="_blank" rel="noopener noreferrer" style={{ color: "#F472B6" }}>pdpc.or.th</a> หรือ pdpc@mdes.go.th</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ marginTop: "12px", fontSize: "13px", color: "rgba(255,255,255,0.65)" }}>
+              💡 การใช้สิทธิข้างต้นไม่มีค่าใช้จ่าย เว้นแต่กรณีการขอสำเนาเอกสารพิมพ์ออก
             </p>
           </div>
 
+          {/* 9. Security */}
           <div>
-            <h3 style={{ color: "#FCE7F3", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>
-              4. ระยะเวลาการจัดเก็บข้อมูลและการทำลายข้อมูล (Data Retention & Deletion)
-            </h3>
-            <p>
-              ระบบจัดเก็บข้อมูลประวัติการขอผ่านประตูและการลงทะเบียนไว้ในฐานข้อมูลเป็นเวลาอย่างน้อย 90 วัน เพื่อให้เป็นไปตามพระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ และเมื่อครบกำหนดระยะเวลาดังกล่าวหรือเมื่อเสร็จสิ้นปีการศึกษา ระบบจะมีตรรกะการลบทำลายข้อมูลประวัติการสแกนเก่าทิ้งอัตโนมัติ (Data Pruning)
-            </p>
+            <h3 style={sectionHeading}>9. มาตรการรักษาความมั่นคงปลอดภัย (Security Measures)</h3>
+            <ul style={{ paddingLeft: "20px" }}>
+              <li>การเข้ารหัสข้อมูลระหว่างส่ง (TLS 1.3) และข้อมูลขณะเก็บ (AES-256 at-rest)</li>
+              <li>Row-Level Security (RLS) บน Supabase PostgreSQL</li>
+              <li>JWT-based authentication (HS256) + bcrypt password hashing (cost factor 12)</li>
+              <li>Rate-limiting: login 10 ครั้ง/5 นาที, bypass 3 ครั้ง/นาที</li>
+              <li>Role-Based Access Control (RBAC) + Allowed Rooms scoping</li>
+              <li>SHA-256 hash ของ IP ในตาราง consent_records (ไม่เก็บ raw IP)</li>
+              <li>Discord Webhook สำหรับแจ้งเหตุการณ์ผิดปกติทันที</li>
+            </ul>
           </div>
 
+          {/* 10. Change Log */}
           <div>
-            <h3 style={{ color: "#FCE7F3", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>
-              5. สิทธิ์ในการเข้าถึงและขอทำลายข้อมูลส่วนบุคคล (Data Subject Rights)
-            </h3>
-            <p>
-              นักศึกษามีสิทธิ์ในการยื่นคำร้องผ่านทางคณะวิศวกรรมศาสตร์เพื่อขอเข้าตรวจสอบประวัติการลงทะเบียนของตนเอง หรือขอใช้สิทธิ์ในการลบทำลายข้อมูลส่วนบุคคลของตนเองออกนอกระบบควบคุม (Right to be Forgotten) ได้ทุกเมื่อ หากนักศึกษาหมดความจำเป็นในการเข้าใช้ห้องปฏิบัติการดังกล่าวแล้ว
+            <h3 style={sectionHeading}>10. การเปลี่ยนแปลงนโยบาย (Change Log)</h3>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>เวอร์ชัน</th>
+                  <th style={thStyle}>วันที่</th>
+                  <th style={thStyle}>การเปลี่ยนแปลง</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={tdStyle}>2.0</td>
+                  <td style={tdStyle}>27 พ.ค. 2569</td>
+                  <td style={tdStyle}>เพิ่มข้อมูล Data Controller, Lawful Basis, สิทธิเจ้าของข้อมูล 8 ข้อ, Cross-Border Transfer, Cookie Table, Granular Consent</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>1.0</td>
+                  <td style={tdStyle}>15 เม.ย. 2569</td>
+                  <td style={tdStyle}>เผยแพร่นโยบายฉบับแรก</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ marginTop: "10px" }}>
+              ระบบจะแจ้งการเปลี่ยนแปลงนโยบายที่สาระสำคัญผ่านอีเมล (หากมี) และประกาศบนเว็บล่วงหน้าไม่น้อยกว่า 30 วัน
             </p>
           </div>
 
           <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)" }} />
 
-          <p style={{ fontSize: "13px", color: "rgba(255, 255, 255, 0.4)", textAlign: "center" }}>
-            ปรับปรุงล่าสุด: 27 พฤษภาคม 2569 | ฝ่ายดูแลนโยบายความเป็นส่วนตัว RMUTP ACCS
+          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", textAlign: "center" }}>
+            เวอร์ชัน {POLICY_VERSION} · เริ่มมีผลบังคับใช้ {EFFECTIVE_DATE}<br />
+            ฝ่ายดูแลนโยบายความเป็นส่วนตัว RMUTP ACCS · ติดต่อ DPO: dpo@rmutp.ac.th
           </p>
         </div>
       </div>
