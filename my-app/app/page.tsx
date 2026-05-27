@@ -421,6 +421,8 @@ function RegistrationPageInner() {
     return () => clearTimeout(timer);
   }, [qrAuthorized, timeLeft, room]);
 
+  const [showConsentError, setShowConsentError] = useState(false);
+
   const [form, setForm] = useState({
     title: "นาย",
     first_name: "",
@@ -738,6 +740,13 @@ function RegistrationPageInner() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    // Explicit consent enforcement
+    if (hasConsented !== true) {
+      setShowConsentError(true);
+      return;
+    }
+    setShowConsentError(false);
     setLoading(true);
 
     const idRegex = /^\d{9,12}-\d{1}$|^\d{8,13}$/;
@@ -1508,11 +1517,50 @@ function RegistrationPageInner() {
               </select>
             </div>
 
+            {/* Show consent warning above button if user clicked with no consent */}
+            {showConsentError && (
+              <div 
+                className="animate-shake"
+                style={{
+                  background: "#FEF2F2",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: 12,
+                  padding: "12px 16px",
+                  color: "#DC2626",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  marginBottom: 16,
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  boxShadow: "0 4px 12px rgba(239, 68, 68, 0.08)"
+                }}
+              >
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span>ไม่สามารถส่งข้อมูลได้ กรุณากดยอมรับนโยบายความเป็นส่วนตัวและคุกกี้ที่แถบด้านล่างสุดก่อนส่งข้อมูล</span>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
-              className="btn-primary"
-              style={{ width: "100%", justifyContent: "center", fontSize: 15, borderRadius: 14, padding: "14px 20px" }}
+              className={hasConsented === true ? "btn-primary" : "btn-secondary"}
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                fontSize: 15,
+                borderRadius: 14,
+                padding: "14px 20px",
+                background: hasConsented === true 
+                  ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" 
+                  : "rgba(203, 213, 225, 0.4)",
+                color: hasConsented === true ? "#FFFFFF" : "#64748B",
+                border: hasConsented === true ? "none" : "1px solid #CBD5E1",
+                cursor: hasConsented === true ? "pointer" : "not-allowed",
+                boxShadow: hasConsented === true ? "0 4px 15px rgba(124, 58, 237, 0.3)" : "none",
+                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+              }}
               disabled={loading}
             >
               {loading ? (
