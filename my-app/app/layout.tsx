@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import CookieConsent from "./components/CookieConsent";
 
 export const metadata: Metadata = {
   title: "RMUTP Door Access System",
@@ -19,7 +20,9 @@ export default function RootLayout({
       </head>
       <body style={{ minHeight: "100vh" }}>
         {children}
+        <CookieConsent />
       </body>
     </html>
   );
 }
+

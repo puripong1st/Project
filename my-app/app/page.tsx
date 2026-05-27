@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { RMUTP_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
 
 interface OfflineEntry {
@@ -265,6 +266,29 @@ function RegistrationPageInner() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null); // ตัวแปรนับถอยหลังหมดอายุ 120 วินาที
   const [offlineGrant, setOfflineGrant] = useState("");
   const authChecked = useRef(false);
+
+  // PDPA Cookie & Policy Consent state
+  const [hasConsented, setHasConsented] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkConsent = () => {
+      const consent = localStorage.getItem("rmutp_cookie_consent");
+      if (consent === "true") {
+        setHasConsented(true);
+      } else if (consent === "false") {
+        setHasConsented(false);
+      } else {
+        setHasConsented(null);
+      }
+    };
+    checkConsent();
+    window.addEventListener("rmutp_cookie_consent_changed", checkConsent);
+    window.addEventListener("storage", checkConsent);
+    return () => {
+      window.removeEventListener("rmutp_cookie_consent_changed", checkConsent);
+      window.removeEventListener("storage", checkConsent);
+    };
+  }, []);
 
   useEffect(() => {
     // ─── 5-Minutes Returning Bypass Gate ───
@@ -886,6 +910,126 @@ function RegistrationPageInner() {
           >
             ← ล้างเซสชันและลงทะเบียนรหัสอื่น
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PDPA Consent Block Screen ──────────────────────────────
+  if (hasConsented === false) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+        background: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
+      }}>
+        <div className="floating-blob blob-1" />
+        <div className="floating-blob blob-2" />
+
+        <div className="animate-fade-in" style={{
+          maxWidth: 480,
+          width: "100%",
+          textAlign: "center",
+          zIndex: 10,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 28,
+          padding: "52px 40px",
+          backdropFilter: "blur(24px)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+        }}>
+          {/* Glowing Shield Alert Icon */}
+          <div style={{
+            width: 110, height: 110,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, rgba(239,68,68,0.3), rgba(219,39,119,0.2))",
+            border: "2px solid rgba(239,68,68,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 32px",
+            color: "#FCA5A5",
+            boxShadow: "0 0 40px rgba(239,68,68,0.4)",
+          }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+
+          <h1 style={{
+            fontSize: 26,
+            fontWeight: 800,
+            color: "#FFFFFF",
+            marginBottom: 16,
+            letterSpacing: "-0.5px",
+            lineHeight: 1.3,
+          }}>
+            การเข้าถึงระบบถูกระงับ
+          </h1>
+          
+          <p style={{ color: "rgba(255,255,255,0.7)", marginBottom: 28, fontSize: 14, lineHeight: 1.7 }}>
+            เนื่องจาก **พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์** และมาตรการความปลอดภัยของสถานศึกษา ระบบมีความจำเป็นตามกฎหมายที่จะต้องบันทึกประวัติการผ่านเข้าออก (Access Logs) ตลอดจนข้อมูลไอพีแอดเดรสเพื่อป้องกันอัคคีภัยและการโจรกรรม
+          </p>
+
+          <div style={{
+            background: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: 16,
+            padding: "16px 20px",
+            textAlign: "left",
+            marginBottom: 32,
+            fontSize: 13,
+            color: "#FCA5A5",
+            lineHeight: 1.6
+          }}>
+            ⚠️ หากท่านปฏิเสธที่จะยอมรับนโยบายความเป็นส่วนตัวและข้อตกลงนี้ ระบบจะไม่สามารถอนุญาตให้ท่านลงทะเบียนเพื่อส่งคำขอเปิดประตูผ่านเครือข่ายได้
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <button
+              onClick={() => {
+                localStorage.setItem("rmutp_cookie_consent", "true");
+                window.dispatchEvent(new Event("rmutp_cookie_consent_changed"));
+              }}
+              style={{
+                width: "100%",
+                background: "linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)",
+                border: "none",
+                borderRadius: 14,
+                color: "#FFFFFF",
+                padding: "14px 20px",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 6px 20px rgba(124,58,237,0.3)",
+                transition: "all 0.2s ease"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+            >
+              ยอมรับนโยบายและเริ่มต้นใช้งาน
+            </button>
+
+            <Link
+              href="/privacy"
+              style={{
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 13,
+                textDecoration: "underline",
+                fontWeight: 500,
+                marginTop: 8
+              }}
+            >
+              อ่านนโยบายความเป็นส่วนตัวเพิ่มเติม
+            </Link>
+          </div>
         </div>
       </div>
     );
