@@ -357,7 +357,7 @@ export async function sendDiscordNotification(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: "RMUTP Door Access",
-          avatar_url: "https://www.rmutp.ac.th/wp-content/uploads/2020/11/logo-rmutp.png",
+          avatar_url: "http://rmutp.ac.th/icon/favicon-96x96.png",
           embeds: [embed!],
         }),
       });
@@ -375,7 +375,7 @@ export async function sendDiscordNotification(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: "RMUTP Audit Log Bot",
-          avatar_url: "https://www.rmutp.ac.th/wp-content/uploads/2020/11/logo-rmutp.png",
+          avatar_url: "http://rmutp.ac.th/icon/favicon-96x96.png",
           content: `📊 **[SYSTEM LOG]** ตรวจพบเหตุการณ์ประเภท \`${eventType}\``,
           embeds: [embed!],
         }),
