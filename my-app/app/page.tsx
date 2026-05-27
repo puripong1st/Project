@@ -755,14 +755,16 @@ function RegistrationPageInner() {
     }
 
     try {
+      const grant = offlineGrant || sessionStorage.getItem(`rmutp_offline_grant_${room}`) || "";
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ...form, 
-          year: parseInt(form.year), 
-          requested_room: room, 
-          token: searchParams.get("scan") || "" 
+        body: JSON.stringify({
+          ...form,
+          year: parseInt(form.year),
+          requested_room: room,
+          token: searchParams.get("scan") || "",
+          offline_grant: grant,
         }),
       });
       const data = await res.json();

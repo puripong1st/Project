@@ -137,12 +137,17 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── [Dynamic QR Single-Use Verification] ───
-    // ตรวจสอบและ Consume Token ทันทีเสี้ยววินาทีที่ยื่นฟอร์มสมัคร 
-    // หาก Token นี้ไม่มีในระบบ, หมดอายุ (เกิน 60s), หรือเคยถูกใช้งาน (Consume) ไปแล้ว ให้ปฏิเสธการลงทะเบียนทันที!
-    // สิ่งนี้ช่วยป้องกันการแชร์ลิงก์ให้คนอื่นไปกดสมัครต่อ หรือการเปิดลิงก์เดิมลงทะเบียนซ้ำได้อย่างเด็ดขาด 100%!
-    const isTokenValid = isOfflineReplay
-      ? await consumeOfflineGrant(typeof offline_grant === "string" ? offline_grant : "", sanitizedRequestedRoom)
+    // ลำดับความสำคัญ:
+    //   1. ถ้ามี offline_grant (HMAC-signed token ออกตอนสแกน QR) → ใช้ consumeOfflineGrant
+    //      ใช้ทั้ง online และ offline เพราะ QR token ถูก consume ไปแล้วตอน /api/esp32/qr/verify
+    //   2. ถ้าไม่มี offline_grant → fallback consumeQRToken (กรณีเก่าหรือ direct URL)
+    const grantStr = typeof offline_grant === "string" ? offline_grant.trim() : "";
+    const hasGrant = grantStr.length >= 10;
+
+    const isTokenValid = hasGrant
+      ? await consumeOfflineGrant(grantStr, sanitizedRequestedRoom)
       : await consumeQRToken(token || "", sanitizedRequestedRoom);
+
     if (!isTokenValid) {
       return NextResponse.json(
         { error: "ลิงก์สแกน QR Code นี้หมดอายุแล้วหรือถูกใช้งานโดยผู้อื่นไปแล้ว กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องปฏิบัติการ" },
