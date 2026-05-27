@@ -268,7 +268,7 @@ function RegistrationPageInner() {
 
   useEffect(() => {
     // ─── 5-Minutes Returning Bypass Gate ───
-    const saved = localStorage.getItem("rmutp_user_session");
+    const saved = sessionStorage.getItem("rmutp_user_session");
     let isBypassValid = false;
     if (saved) {
       try {
@@ -476,6 +476,7 @@ function RegistrationPageInner() {
       setTimeout(() => setAutoFillToast(null), 3000);
     }
   }
+
   const [success, setSuccess] = useState<{ id: number; student_id: string; title: string; first_name: string; last_name: string; bypass_token?: string } | null>(null);
   const [error, setError] = useState("");
   const [isOnline, setIsOnline] = useState(true);
@@ -573,9 +574,12 @@ function RegistrationPageInner() {
       const data = await res.json();
       if (res.ok && data.success) {
         setBypassState("success");
+        // Auto-clear bypass tokens after successful use — token is consumed, no reuse possible
+        sessionStorage.removeItem("rmutp_temp_bypass_token");
+        sessionStorage.removeItem("rmutp_user_session");
         // We do NOT renew the timestamp so that the 5-minute session is strictly from the original approval time
       } else {
-        localStorage.removeItem("rmutp_user_session");
+        sessionStorage.removeItem("rmutp_user_session");
         setBypassState("none");
       }
     } catch {
@@ -586,7 +590,7 @@ function RegistrationPageInner() {
 
   // Check bypass session on component mount
   useEffect(() => {
-    const saved = localStorage.getItem("rmutp_user_session");
+    const saved = sessionStorage.getItem("rmutp_user_session");
     if (!saved) {
       setTimeout(() => {
         setBypassState("none");
@@ -606,13 +610,13 @@ function RegistrationPageInner() {
         }, 0);
       } else {
         // Expired
-        localStorage.removeItem("rmutp_user_session");
+        sessionStorage.removeItem("rmutp_user_session");
         setTimeout(() => {
           setBypassState("none");
         }, 0);
       }
     } catch {
-      localStorage.removeItem("rmutp_user_session");
+      sessionStorage.removeItem("rmutp_user_session");
       setTimeout(() => {
         setBypassState("none");
       }, 0);
@@ -632,7 +636,7 @@ function RegistrationPageInner() {
 
     const checkStatus = async () => {
       try {
-        const token = success.bypass_token || localStorage.getItem("rmutp_temp_bypass_token") || "";
+        const token = success.bypass_token || sessionStorage.getItem("rmutp_temp_bypass_token") || "";
         const res = await fetch(`/api/students/${success.id}?token=${encodeURIComponent(token)}`);
         if (res.ok) {
           const data = await res.json();
@@ -659,14 +663,14 @@ function RegistrationPageInner() {
       const session = {
         id: success.id,
         student_id: success.student_id,
-        bypass_token: success.bypass_token || localStorage.getItem("rmutp_temp_bypass_token"),
+        bypass_token: success.bypass_token || sessionStorage.getItem("rmutp_temp_bypass_token"),
         timestamp: new Date().toISOString(),
         title: success.title,
         first_name: success.first_name,
         last_name: success.last_name,
         requested_room: room,
       };
-      localStorage.setItem("rmutp_user_session", JSON.stringify(session));
+      sessionStorage.setItem("rmutp_user_session", JSON.stringify(session));
     }
   }, [success, currentStatus, room]);
 
@@ -753,7 +757,7 @@ function RegistrationPageInner() {
           bypass_token: data.bypass_token,
         });
         if (data.bypass_token) {
-          localStorage.setItem("rmutp_temp_bypass_token", data.bypass_token);
+          sessionStorage.setItem("rmutp_temp_bypass_token", data.bypass_token);
         }
       }
     } catch {
@@ -798,7 +802,7 @@ function RegistrationPageInner() {
     let sessionName = "นักศึกษา";
     let sessionCode = "";
     try {
-      const saved = localStorage.getItem("rmutp_user_session");
+      const saved = sessionStorage.getItem("rmutp_user_session");
       if (saved) {
         const s = JSON.parse(saved);
         sessionName = `${s.title}${s.first_name} ${s.last_name}`;
@@ -852,7 +856,7 @@ function RegistrationPageInner() {
             className="btn-secondary"
             style={{ width: "100%", borderRadius: 14, cursor: "pointer" }}
             onClick={() => {
-              localStorage.removeItem("rmutp_user_session");
+              sessionStorage.removeItem("rmutp_user_session");
               setBypassState("none");
               setForm({ title: "นาย", first_name: "", last_name: "", student_id: "", year: "", faculty: "", branch: "" });
             }}
