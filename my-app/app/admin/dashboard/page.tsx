@@ -2070,6 +2070,11 @@ void handleLocalWebServerRequest() {
   const [logCurrentPage, setLogCurrentPage] = useState(1);
 
   const [newAdmin, setNewAdmin] = useState({ username: "", password: "", full_name: "", role: "door_operator" });
+  const [newAdminAllowedRooms, setNewAdminAllowedRooms] = useState<string[]>([]);
+  const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
+  const [editAdminForm, setEditAdminForm] = useState({ full_name: "", role: "door_operator" });
+  const [editAdminAllowedRooms, setEditAdminAllowedRooms] = useState<string[]>([]);
+  const [editAdminLoading, setEditAdminLoading] = useState(false);
   const [currentTime, setTime] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

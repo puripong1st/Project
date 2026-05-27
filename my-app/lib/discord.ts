@@ -142,7 +142,6 @@ export async function sendDiscordNotification(
     return false;
   }
 
-
   const now = new Date().toLocaleString("th-TH", {
     timeZone: "Asia/Bangkok",
     year: "numeric",
@@ -154,13 +153,14 @@ export async function sendDiscordNotification(
     hour12: false,
   });
 
-  let embed: DiscordEmbed;
+  let embed: DiscordEmbed | undefined;
 
   switch (eventType) {
-    case "student_registered":
+    case "student_registered": {
+      const deviceInfo = parseUserAgent(data.userAgent || "");
       embed = {
         title: "📝 นักศึกษาลงทะเบียนใหม่",
-        description: `มีนักศึกษาลงทะเบียนขอเข้าห้องใหม่ รอการอนุมัติ`,
+        description: `มีนักศึกษาลงทะเบียนขอเข้าห้องใหม่ รอเจ้าหน้าที่อนุมัติ`,
         color: COLORS.info,
         fields: [
           { name: "👤 ชื่อ-นามสกุล", value: data.studentName || "-", inline: true },
@@ -168,12 +168,17 @@ export async function sendDiscordNotification(
           { name: "📚 ชั้นปี", value: `ปีที่ ${data.year || "-"}`, inline: true },
           { name: "🏛️ คณะ", value: data.faculty || "-", inline: true },
           { name: "📖 สาขา", value: data.branch || "-", inline: true },
+          { name: "🚪 ขอสิทธิ์เข้าห้อง", value: data.room || "-", inline: true },
+          { name: "🌐 IP ผู้ขอสิทธิ์", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "💻 อุปกรณ์", value: deviceInfo.device, inline: true },
+          { name: "🌍 Browser", value: deviceInfo.browser, inline: true },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
         footer: { text: "ระบบ RMUTP Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
+    }
 
     case "student_approved":
       embed = {
@@ -183,8 +188,10 @@ export async function sendDiscordNotification(
         fields: [
           { name: "👤 นักศึกษา", value: data.studentName || "-", inline: true },
           { name: "🎓 รหัส", value: data.studentId || "-", inline: true },
+          { name: "📚 คณะ/สาขา", value: `${data.faculty || "-"} / ${data.branch || "-"} (ปี ${data.year || "-"})`, inline: false },
           { name: "👨‍💼 อนุมัติโดย", value: data.adminName || "-", inline: true },
-          { name: "🚪 ESP32", value: data.esp32Response || "สั่งเปิดประตูแล้ว", inline: false },
+          { name: "🚪 ห้องปฏิบัติการ", value: data.room || "-", inline: true },
+          { name: "🚪 ESP32 Response", value: `\`${data.esp32Response || "สั่งเปิดประตูสำเร็จ"}\``, inline: false },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
         footer: { text: "ระบบ RMUTP Door Access" },
@@ -200,8 +207,10 @@ export async function sendDiscordNotification(
         fields: [
           { name: "👤 นักศึกษา", value: data.studentName || "-", inline: true },
           { name: "🎓 รหัส", value: data.studentId || "-", inline: true },
+          { name: "📚 คณะ/สาขา", value: `${data.faculty || "-"} / ${data.branch || "-"} (ปี ${data.year || "-"})`, inline: false },
           { name: "👨‍💼 ปฏิเสธโดย", value: data.adminName || "-", inline: true },
-          { name: "📝 เหตุผล", value: data.reason || "ไม่ระบุ", inline: false },
+          { name: "🚪 ห้องปฏิบัติการ", value: data.room || "-", inline: true },
+          { name: "📝 เหตุผล", value: `\`${data.reason || "ไม่ระบุ"}\``, inline: false },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
         footer: { text: "ระบบ RMUTP Door Access" },
@@ -215,10 +224,12 @@ export async function sendDiscordNotification(
         description: data.reason ? `🔓 เข้าห้องสำเร็จด้วยสิทธิ์ Bypass` : `ระบบสั่งเปิดประตูสำเร็จ`,
         color: COLORS.success,
         fields: [
-          { name: "👤 นักศึกษา", value: data.studentName || "-", inline: true },
+          { name: "👤 นักศึกษา / บุคคล", value: data.studentName || "-", inline: true },
           { name: "🎓 รหัสนักศึกษา", value: data.studentId || "-", inline: true },
-          { name: "📡 ESP32", value: data.esp32Response || "OK", inline: true },
+          { name: "🚪 ห้องเรียน", value: data.room || "-", inline: true },
+          { name: "📡 ESP32", value: `\`${data.esp32Response || "OK"}\``, inline: true },
           ...(data.adminName ? [{ name: "👨‍💼 ดำเนินการโดย", value: data.adminName, inline: true }] : []),
+          ...(data.ip ? [{ name: "🌐 IP Address", value: `\`${data.ip}\``, inline: true }] : []),
           ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
@@ -226,16 +237,18 @@ export async function sendDiscordNotification(
         timestamp: new Date().toISOString(),
       };
       break;
- 
+  
     case "door_failed":
       embed = {
         title: "⚠️ เปิดประตูไม่สำเร็จ",
         description: data.reason ? `❌ เปิดประตูด้วยสิทธิ์ Bypass ล้มเหลว` : `ไม่สามารถส่งคำสั่งไปยัง ESP32 ได้`,
         color: COLORS.warning,
         fields: [
-          { name: "👤 นักศึกษา", value: data.studentName || "-", inline: true },
+          { name: "👤 นักศึกษา / บุคคล", value: data.studentName || "-", inline: true },
           { name: "🎓 รหัสนักศึกษา", value: data.studentId || "-", inline: true },
-          { name: "❌ ข้อผิดพลาด", value: data.esp32Response || "Timeout", inline: true },
+          { name: "🚪 ห้องเรียน", value: data.room || "-", inline: true },
+          { name: "❌ ข้อผิดพลาด", value: `\`${data.esp32Response || "Timeout"}\``, inline: false },
+          ...(data.ip ? [{ name: "🌐 บอร์ด IP", value: `\`${data.ip}\``, inline: true }] : []),
           ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
@@ -247,9 +260,11 @@ export async function sendDiscordNotification(
     case "esp32_offline":
       embed = {
         title: "🔴 ESP32 ออฟไลน์",
-        description: `ไม่สามารถติดต่อ ESP32 ได้ กรุณาตรวจสอบการเชื่อมต่อ`,
+        description: `ไม่สามารถติดต่อ ESP32 ได้ (Heartbeat Timeout)`,
         color: COLORS.error,
         fields: [
+          { name: "🚪 ห้องเรียนที่ขาดติดต่อ", value: data.room || "-", inline: true },
+          { name: "🌐 IP Address บอร์ด", value: `\`${data.ip || "ไม่ระบุ"}\``, inline: true },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
         footer: { text: "ระบบ RMUTP Door Access" },
@@ -258,7 +273,11 @@ export async function sendDiscordNotification(
       break;
 
     case "admin_login": {
-      const roleLabel = data.adminRole === "owner" ? "👑 Owner (ผู้ดูแลสูงสุด)" : "🔑 Door Operator";
+      const roleLabel = data.adminRole === "owner" 
+        ? "👑 Owner (ผู้ดูแลสูงสุด)" 
+        : data.adminRole === "log_viewer"
+          ? "📊 Log Viewer (ดูประวัติอย่างเดียว)"
+          : "🔑 Door Operator";
       const deviceInfo = parseUserAgent(data.userAgent || "");
       embed = {
         title: "🔐 แอดมินเข้าสู่ระบบ",
@@ -274,6 +293,53 @@ export async function sendDiscordNotification(
           { name: "⏰ เวลาเข้าสู่ระบบ", value: now, inline: false },
         ],
         footer: { text: "RMUTP Admin Audit Log" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
+
+    case "admin_logout": {
+      const roleLabel = data.adminRole === "owner" 
+        ? "👑 Owner (ผู้ดูแลสูงสุด)" 
+        : data.adminRole === "log_viewer"
+          ? "📊 Log Viewer (ดูประวัติอย่างเดียว)"
+          : "🔑 Door Operator";
+      embed = {
+        title: "🚪 แอดมินออกจากระบบ",
+        description: `**${data.adminName || data.adminUsername || "-"}** ออกจากระบบแล้ว`,
+        color: COLORS.info,
+        fields: [
+          { name: "👤 ชื่อ-นามสกุล", value: data.adminName || "-", inline: true },
+          { name: "🏷️ Username", value: `\`${data.adminUsername || "-"}\``, inline: true },
+          { name: "🎭 ตำแหน่ง", value: roleLabel, inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "⏰ เวลาออกจากระบบ", value: now, inline: false },
+        ],
+        footer: { text: "RMUTP Admin Audit Log" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
+
+    case "admin_login_failed": {
+      const deviceInfo = parseUserAgent(data.userAgent || "");
+      embed = {
+        title: "⚠️ พยายามเข้าสู่ระบบล้มเหลว",
+        description: `มีการพยายามล็อกอินด้วย Username **\`${data.adminUsername || "-"}\`** แต่ไม่สำเร็จ`,
+        color: COLORS.warning,
+        fields: [
+          { name: "🏷️ Username ที่ใช้", value: `\`${data.adminUsername || "-"}\``, inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "💻 อุปกรณ์", value: deviceInfo.device, inline: true },
+          { name: "🌍 Browser", value: deviceInfo.browser, inline: true },
+          { name: "📝 เหตุผล", value: data.reason || "Username หรือ Password ไม่ถูกต้อง", inline: false },
+          { name: "⏰ เวลา", value: now, inline: false },
+        ],
+        footer: { text: "RMUTP Admin Audit Log — Security Alert" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }in Audit Log" },
         timestamp: new Date().toISOString(),
       };
       break;

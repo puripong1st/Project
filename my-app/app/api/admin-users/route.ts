@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     const pool = getPool();
     const { rows } = await pool.query(
-      "SELECT id, username, full_name, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC"
+      "SELECT id, username, full_name, role, is_active, created_at, last_login, allowed_rooms FROM admin_users ORDER BY created_at DESC"
     );
     return NextResponse.json({ admins: rows });
   } catch {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (!username || !password || !full_name || !role) {
       return NextResponse.json({ error: "กรุณากรอกข้อมูลให้ครบ" }, { status: 400 });
     }
-    if (!["owner", "door_operator"].includes(role)) {
+    if (!["owner", "door_operator", "log_viewer"].includes(role)) {
       return NextResponse.json({ error: "Role ไม่ถูกต้อง" }, { status: 400 });
     }
 

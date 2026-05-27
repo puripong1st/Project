@@ -42,7 +42,7 @@ export interface AdminPayload {
   id: number;
   username: string;
   full_name: string;
-  role: "owner" | "door_operator";
+  role: "owner" | "door_operator" | "log_viewer";
   allowed_rooms?: string | null;
 }
 
@@ -50,7 +50,7 @@ export function canOperateRoom(admin: AdminPayload, roomCode: string): boolean {
   if (admin.role === "owner") return true;
   if (!admin.allowed_rooms) return false;
   const rooms = admin.allowed_rooms.split(",").map((r) => r.trim());
-  return rooms.includes(roomCode);
+  return rooms.includes("*") || rooms.includes(roomCode);
 }
 
 export function signToken(payload: AdminPayload): string {

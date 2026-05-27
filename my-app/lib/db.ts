@@ -124,11 +124,19 @@ export async function initDatabase(): Promise<void> {
         username VARCHAR(50) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         full_name VARCHAR(100) NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'door_operator' CHECK (role IN ('owner', 'door_operator')),
+        role VARCHAR(20) NOT NULL DEFAULT 'door_operator',
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP
       )
+    `);
+
+    await initPool.query(`
+      ALTER TABLE admin_users DROP CONSTRAINT IF EXISTS admin_users_role_check
+    `);
+
+    await initPool.query(`
+      ALTER TABLE admin_users ADD CONSTRAINT admin_users_role_check CHECK (role IN ('owner', 'door_operator', 'log_viewer'))
     `);
 
     await initPool.query(`
@@ -379,7 +387,7 @@ export interface AdminRow {
   username: string;
   password_hash: string;
   full_name: string;
-  role: "owner" | "door_operator";
+  role: "owner" | "door_operator" | "log_viewer";
   is_active: boolean;
   created_at: Date;
   last_login: Date | null;

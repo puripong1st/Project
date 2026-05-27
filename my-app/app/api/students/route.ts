@@ -33,13 +33,24 @@ export async function GET(req: NextRequest) {
     await ensureInit();
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    if (admin.role !== "owner" && admin.role !== "log_viewer") {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const faculty = searchParams.get("faculty");
     const search = searchParams.get("search");
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "300", 10) || 300, 1), 500);
+
+    const isLogViewer = admin.role === "log_viewer";
+    let allowedRooms: string[] = [];
+    if (isLogViewer) {
+      if (!admin.allowed_rooms) {
+        return NextResponse.json({ students: [] });
+      }
+      allowedRooms = admin.allowed_rooms.split(",").map((r) => r.trim());
+    }
 
     const pool = getPool();
     let query = `
@@ -48,9 +59,14 @@ export async function GET(req: NextRequest) {
       LEFT JOIN admin_users a ON s.approved_by = a.id
       WHERE 1=1
     `;
-    const params: (string | number)[] = [];
-
+    const params: any[] = [];
     let paramIndex = 1;
+
+    if (isLogViewer && !allowedRooms.includes("*")) {
+      query += ` AND s.requested_room = ANY($${paramIndex++}::varchar[])`;
+      params.push(allowedRooms);
+    }
+
     if (status && status !== "all") {
       query += ` AND s.status = $${paramIndex++}`;
       params.push(status);

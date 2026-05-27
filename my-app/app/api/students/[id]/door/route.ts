@@ -25,7 +25,9 @@ export async function POST(
     await ensureInit();
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // Both roles can open door
+    if (admin.role !== "owner" && admin.role !== "door_operator") {
+      return NextResponse.json({ error: "สิทธิ์ไม่เพียงพอในการเปิดประตู" }, { status: 403 });
+    }
 
     const { id } = await params;
     const studentId = parseInt(id);

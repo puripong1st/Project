@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
     if (!admin) {
       return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" }, { status: 401 });
     }
-    if (admin.role !== "owner") {
-      return NextResponse.json({ error: "สิทธิ์การเข้าถึงไม่เพียงพอเฉพาะสิทธิ์ระดับเจ้าของห้อง (Owner)" }, { status: 403 });
+    if (admin.role !== "owner" && admin.role !== "log_viewer") {
+      return NextResponse.json({ error: "สิทธิ์การเข้าถึงไม่เพียงพอ" }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -60,6 +60,14 @@ export async function GET(req: NextRequest) {
       }
 
       const student = students[0];
+
+      if (admin.role === "log_viewer") {
+        const allowed = admin.allowed_rooms && (admin.allowed_rooms.split(",").includes("*") || admin.allowed_rooms.split(",").includes(student.requested_room));
+        if (!allowed) {
+          return NextResponse.json({ error: "ไม่มีสิทธิ์ดาวน์โหลดข้อมูลของห้องนี้" }, { status: 403 });
+        }
+      }
+
       const pdfBuffer = await generateSingleStudentPDF(student, admin.full_name);
 
       await pool.query(
@@ -105,8 +113,19 @@ export async function GET(req: NextRequest) {
         LEFT JOIN admin_users a ON s.approved_by = a.id
         WHERE 1=1
       `;
-      const params: string[] = [];
+      const params: any[] = [];
       let paramIndex = 1;
+
+      if (admin.role === "log_viewer") {
+        if (!admin.allowed_rooms) {
+          return NextResponse.json({ error: "ไม่มีสิทธิ์ดาวน์โหลดข้อมูล" }, { status: 403 });
+        }
+        const allowedRooms = admin.allowed_rooms.split(",").map((r) => r.trim());
+        if (!allowedRooms.includes("*")) {
+          query += ` AND s.requested_room = ANY($${paramIndex++}::varchar[])`;
+          params.push(allowedRooms);
+        }
+      }
       
       if (filter !== "all") {
         query += ` AND s.status = $${paramIndex++}`;
