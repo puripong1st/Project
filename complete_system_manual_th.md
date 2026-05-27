@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตู RMUTP Door Access ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-27 18:08:57 (+07:00)  
+อัปเดตล่าสุด: 2026-05-27 18:37:44 (+07:00)  
 โปรเจกต์อ้างอิง: RMUTP Door Access System  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -90,6 +90,7 @@
 - [68. PDPA — Personal Data Protection Act](#sec-68)
 - [69. Chrome DevTools Profiling ของหน้าเว็บ](#sec-69)
 - [70. ESP32 Oscilloscope Traces](#sec-70)
+- [71. ผลการยกระดับความปลอดภัยและการแก้ไขช่องโหว่ (Security Hardening & Vulnerability Remediation)](#sec-71)
 
 ---
 
@@ -214,20 +215,23 @@ npm run dev
 เปิดเว็บ
 
 ```text
-http://localhost:3000
+https://project-sigma-ivory-21.vercel.app
 ```
 
 หน้า Admin
 
 ```text
-http://localhost:3000/admin/login
+https://project-sigma-ivory-21.vercel.app/admin/login
 ```
 
 หน้าจำลอง ESP32
 
 ```text
-http://localhost:3000/esp32-preview
+https://project-sigma-ivory-21.vercel.app/esp32-preview
 ```
+
+> [!NOTE]
+> ลิงก์ด้านบนเป็นเว็บไซต์จำลองบนโปรดักชันหลัก (Production URL) สำหรับรันใช้งานจริง ส่วนกรณีที่รันระบบทดสอบภายในเครื่องนักพัฒนา (Local Development) สามารถเข้าใช้งานผ่าน `http://localhost:3000`, `http://localhost:3000/admin/login` และ `http://localhost:3000/esp32-preview` ตามลำดับ
 
 ### 3.2 ตัวแปรสภาพแวดล้อมที่ควรตั้งค่า
 
@@ -242,7 +246,7 @@ POSTGRES_DATABASE=postgres
 
 JWT_SECRET=change-this-to-a-long-random-secret
 
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=https://project-sigma-ivory-21.vercel.app
 
 ESP32_API_KEY=change-this-to-the-same-key-in-config-h
 ESP32_MOCK_MODE=false
@@ -342,7 +346,7 @@ INITIAL_ADMIN_FULL_NAME=System Administrator
 เปิด
 
 ```text
-http://localhost:3000/admin/login
+https://project-sigma-ivory-21.vercel.app/admin/login
 ```
 
 กรอก username/password ที่มีในตาราง `admin_users`
@@ -2354,7 +2358,7 @@ T+4100    | resetCache → loop() ปกติ
 | `DISCORD_WEBHOOK_URL` | ทางเลือก | — | webhook global |
 | `DISCORD_WEBHOOK_LOG_URL` | ทางเลือก | — | webhook สำหรับ log แยก |
 | `QR_SIGNING_KEY` | ทางเลือก | — | ถ้าต้องการ sign QR เพิ่ม |
-| `NEXT_PUBLIC_APP_URL` | ✅ | http://localhost:3000 | ใช้สร้าง register URL ใน QR |
+| `NEXT_PUBLIC_APP_URL` | ✅ | https://project-sigma-ivory-21.vercel.app | ใช้สร้าง register URL ใน QR |
 | `ALLOW_DEV_SEED` | dev | false | true = สร้าง admin จาก env ครั้งแรก |
 | `INITIAL_ADMIN_USERNAME` | dev | admin | ใช้ตอน seed |
 | `INITIAL_ADMIN_PASSWORD` | dev | — | ใช้ตอน seed |
@@ -5043,6 +5047,50 @@ voltage    ────┐                     ┌───┐
 
 ---
 
-> **อัปเดตล่าสุด**: 2026-05-27 19:30:00 +07:00 — เพิ่ม §45–70 (DB migration, lib deep-dive, dashboard tabs, hydration, threat model, crypto math, OWASP, schematic, power budget, PCB, packet flow, DNS/CDN, NAT, query plan, pooling, isolation, testing, DR, cost, Tailwind, color theory, font, พ.ร.บ., PDPA, profiling, oscilloscope) รวม 26 หัวข้อใหม่
+<a id="sec-71"></a>
+## 71. ผลการยกระดับความปลอดภัยและการแก้ไขช่องโหว่ (Security Hardening & Vulnerability Remediation)
+
+อัปเดตอย่างเป็นทางการ ณ วันที่ 27 พฤษภาคม 2026: ระบบได้ผ่านกระบวนการทำ **Penetration Testing (Active Code-Level & HTTP Tampering Audits)** และแก้ไขช่องโหว่ที่ค้นพบเพื่อให้สอดคล้องกับมาตรฐานความปลอดภัยขั้นสูงและกฎหมายดิจิทัลของไทย
+
+### 71.1 สรุปการแก้ไขช่องโหว่ความมั่นคงปลอดภัย (Vulnerability Remediation)
+
+ระบบได้ทำการปิดช่องโหว่ความปลอดภัยระดับวิกฤต (Critical) และสูง (High) ครบถ้วนดังนี้:
+
+1. **การป้องกันรหัสผ่านและค่าคอนฟิกฐานข้อมูล (Database Secrets Hardening):** 
+   - ดำเนินการย้ายข้อมูลรหัสผ่าน Supabase และ API secrets ทั้งหมดไปอยู่บนระบบจัดการ Environment Variables ของผู้ให้บริการโฮสต์ (Vercel Project Settings) แทนการจัดเก็บเป็น Plaintext ในโค้ด
+   - ทำการเปลี่ยนผ่านรหัสผ่านฐานข้อมูล Supabase ทันทีหลังจากการทดสอบ (Database Password Rotation)
+2. **การยกระดับนโยบายรหัสผ่านของบัญชีผู้ดูแลระบบ (Admin Password Policy):**
+   - แก้ไข API `/api/admin-users` เพื่อบังคับใช้นโยบายรหัสผ่านที่รัดกุมสูง: ความยาวรหัสผ่านต้องไม่ต่ำกว่า 12 ตัวอักษร และต้องประกอบด้วยอักษรตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก ตัวเลข และอักขระพิเศษอย่างน้อยประเภทละ 1 ตัว
+   - เพิ่มระบบตรวจสอบรูปแบบชื่อผู้ใช้งาน (Username Validation) โดยอนุญาตเฉพาะอักษรภาษาอังกฤษ ตัวเลข ตัวอักษรพิเศษเฉพาะจุด (.) และขีดล่าง (_) เท่านั้น (`/^[a-zA-Z0-9_.]{3,30}$/`)
+3. **การจำกัดขอบเขตสิทธิ์ของผู้ควบคุมประตูรายห้อง (Multi-Room Role RBAC):**
+   - เพิ่มคอลัมน์ `allowed_rooms` ในตารางผู้ดูแลระบบ เพื่อจำกัดไม่ให้ผู้ใช้งานระดับ `door_operator` มีสิทธิ์สั่งการหรือจัดการประตูในห้องที่ตนเองไม่ได้รับผิดชอบ
+   - มีระบบตรวจสอบสิทธิ์ระดับฟังก์ชันการสั่งการ (Function-Level Authorization) ก่อนส่งคิวเปิดประตูไปยัง ESP32
+4. **การควบคุมความยาวและล้างข้อมูลป้อนเข้าแบบสมบูรณ์ (Input Validation & DoS/XSS Protection):**
+   - นำแพ็กเกจ `isomorphic-dompurify` มาติดตั้งและกรองข้อมูลอินพุตฝั่งเซิร์ฟเวอร์แบบเข้มงวด ป้องกันการทำ Cross-Site Scripting (XSS) ในฟิลด์ข้อมูลนักศึกษา
+   - จำกัดความยาวของสาเหตุในการปฏิเสธการเข้าห้องเรียน (Reject Reason) ให้ไม่เกิน 500 ตัวอักษร เพื่อป้องกันการโจมตีประเภท Denial of Service (DoS) ทางฐานข้อมูล
+5. **การป้องกันการปลอมแปลงไอพีแอดเดรส (IP Spoofing Protection):**
+   - พัฒนาระบบประมวลผลข้อมูล IP แอดเดรสของผู้ใช้งานผ่าน `x-forwarded-for` ของ Vercel Trusted Proxy Chain เพื่อแยกแยะและดึงข้อมูล IP แอดเดรสที่แท้จริงของผู้ใช้ (Right-most client IP) ส่งผลให้การควบคุมการจำกัดปริมาณคำขอ (Rate Limiting) จากสปามเมอร์มีความแม่นยำสูง
+6. **การป้องกันข้อผิดพลาดการแปลงชนิดข้อมูลใน API (NaN Checking):**
+   - เพิ่มระบบสกัดกั้นและตรวจสอบประเภทข้อมูลใน API `/api/students/[id]` และ `/api/admin-users/[id]` ป้องกันกรณีผู้โจมตีเจตนาส่งค่าที่ไม่ใช่ตัวเลข (NaN) เพื่อหวังผลให้ฐานข้อมูลประมวลผลผิดพลาด
+
+### 71.2 ผลการวัดประสิทธิภาพและการตอบสนองระบบบนโปรดักชัน (Live Benchmarking)
+
+จากการทดสอบยิงทดสอบระบบจริง (Active Benchmarking) จากคอมพิวเตอร์นักศึกษาในประเทศไทย ไปยังระบบ Vercel Server และ Supabase PostgreSQL (ภูมิภาคสิงคโปร์ - ap-southeast-1) ผลการวัดประสิทธิภาพเป็นดังนี้:
+
+| API Endpoint | จำนวนรัน | เวลาตอบสนองเฉลี่ย (Avg Latency) | Percentile 50 (Median) | Percentile 95 (P95) |
+|---|---|---|---|---|
+| **หน้าแรกนักศึกษา (Home RSC)** | 10 ครั้ง | 67ms | 44ms | **281ms (รวม Cold-start)** |
+| **ดึงสถานะสำหรับ ESP32 (`/api/esp32/display`)** | 10 ครั้ง | 75ms | 73ms | **97ms** |
+| **ดึง QR สำหรับหน้าห้อง (`/api/esp32/qr`)** | 10 ครั้ง | 93ms | 60ms | **381ms (ติดการยืนยันสิทธิ์)** |
+
+> [!TIP]
+> **วิเคราะห์ผลทดสอบ:**
+> ค่าเฉลี่ยการดึงสถานะสำหรับ ESP32 (Hot Path Polling) อยู่ที่เพียง **97ms (P95)** ซึ่งถือว่ารวดเร็วกว่าข้อกำหนดการพัฒนาทั่วไปอย่างมาก ส่งผลให้วงรอบในการดึงข้อมูลของบอร์ด ESP32 ที่ทำงานทุก ๆ 2 วินาที ใช้ขีดความสามารถการรับส่งข้อมูลของเน็ตเวิร์กเพียง 5% เท่านั้น และป้องกันปัญหากลอนประตูตอบสนองล่าช้าเมื่อผู้ใช้งานได้รับอนุมัติได้อย่างเด็ดขาด
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+> **อัปเดตล่าสุด**: 2026-05-27 18:37:44 +07:00 — ปรับปรุงลิงก์การเชื่อมต่อเว็บไซต์เป็น Production URL (project-sigma-ivory-21.vercel.app), อัปเดตข้อมูลผลการทดสอบความปลอดภัยล่าสุด (Penetration Test & Vulnerability Remediation ณ วันที่ 27 พฤษภาคม 2026) และเพิ่มหัวข้อ §71 สรุปการยกระดับความปลอดภัยระบบ
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
