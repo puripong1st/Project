@@ -248,7 +248,7 @@ const MenuIcon = () => (
 );
 
 const ACTION_METADATA: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  registered: { label: "ลงทะเบียนใหม่", icon: <FileTextIcon />, color: "var(--rmutp-purple)" },
+  registered: { label: "ลงทะเบียนใหม่", icon: <FileTextIcon />, color: "var(--smartaccess-purple)" },
   approved: { label: "อนุมัติสิทธิ์", icon: <CheckIcon />, color: "#10B981" },
   rejected: { label: "ปฏิเสธสิทธิ์", icon: <CrossIcon />, color: "#EF4444" },
   door_opened: { label: "ผ่านประตูสำเร็จ", icon: <UnlockIcon />, color: "#10B981" },
@@ -291,7 +291,7 @@ function renderLogNotes(notes?: string) {
               paddingLeft: 8,
               lineHeight: 1.4
             }}>
-              <span style={{ color: "var(--rmutp-purple)", fontWeight: "bold", marginTop: 2 }}>•</span>
+              <span style={{ color: "var(--smartaccess-purple)", fontWeight: "bold", marginTop: 2 }}>•</span>
               <span>{trimmed.replace(/^•\s*/, "")}</span>
             </div>
           );
@@ -438,7 +438,7 @@ export default function AdminDashboard() {
                 width: "100%",
                 padding: "12px 24px",
                 borderRadius: 10,
-                background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
                 color: "#fff",
                 border: "none",
                 fontSize: 14,
@@ -729,7 +729,7 @@ const char *root_ca_cert =
 
     return `/*
   ========================================================================
-  RMUTP Door Access Controller - Configuration for ESP32
+  SmartAccess Door Access Controller - Configuration for ESP32
   ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
   โหมด: ${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
   ========================================================================
@@ -761,7 +761,7 @@ ${certBlock}
       : `// #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!`;
     return `/*
   ==============================================================
-  RMUTP Door Access Controller - Firmware for ESP32
+  SmartAccess Door Access Controller - Firmware for ESP32
   ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
   โหมด: ${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
@@ -871,7 +871,7 @@ void drawMainScreen(int queueCount, String lastApprovedName, String timeStr,
   tft.setTextSize(1);
   tft.setTextColor(tft.color565(226, 232, 240)); // สีตัวอักษรขาวสว่าง #E2E8F0
   tft.setCursor(8, 6);
-  tft.print("RMUTP DOOR ACCESS  ");
+  tft.print("SmartAccess DOOR ACCESS  ");
 
   // ปุ่มตราสัญลักษณ์ ACTIVE สีเขียวมะนาว
   tft.setTextColor(tft.color565(16, 185, 129)); // #10B981
@@ -961,7 +961,7 @@ void drawMainScreen(int queueCount, String lastApprovedName, String timeStr,
   tft.setTextSize(1);
   tft.setTextColor(tft.color565(107, 122, 112));
   tft.setCursor(8, 226);
-  tft.print("RMUTP Faculty of Education");
+  tft.print("SmartAccess Faculty of Education");
 
   // แสดงค่าหมายเลขไอพีแอดเดรสของอุปกรณ์
   tft.setTextColor(tft.color565(16, 185, 129));
@@ -1425,7 +1425,7 @@ void handleLocalValidation() {
     client.println("Content-Type: text/html; charset=utf-8");
     client.println("Connection: close");
     client.println();
-    client.println("<!DOCTYPE html><html><head><meta charset='utf-8'><title>RMUTP Offline Mode</title></head>");
+    client.println("<!DOCTYPE html><html><head><meta charset='utf-8'><title>SmartAccess Offline Mode</title></head>");
     client.println("<body style='font-family:sans-serif; text-align:center; padding:50px;'>");
     client.println("<h1 style='color:#F59E0B;'>⚠️ OFFLINE MODE ACTIVE</h1>");
     client.println("<p>ระบบอยู่ในโหมดออฟไลน์ (อินเทอร์เน็ตขัดข้อง)</p>");
@@ -1548,7 +1548,7 @@ void setup() {
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(2);
   tft.setCursor(20, 12);
-  tft.print("RMUTP DOOR ACCESS");
+  tft.print("SmartAccess DOOR ACCESS");
 
   tft.setTextSize(2);
   tft.setTextColor(tft.color565(59, 130, 246));
@@ -2474,7 +2474,7 @@ void handleLocalWebServerRequest() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `rmutp_report_${filterType}_${start || "launch"}_to_${end || "today"}.pdf`;
+      a.download = `smartaccess_report_${filterType}_${start || "launch"}_to_${end || "today"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -2517,7 +2517,7 @@ void handleLocalWebServerRequest() {
   if (!user) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div className="animate-spin" style={{ width: 42, height: 42, border: "4px solid rgba(124,58,237,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+        <div className="animate-spin" style={{ width: 42, height: 42, border: "4px solid rgba(124,58,237,0.2)", borderTopColor: "var(--smartaccess-purple)", borderRadius: "50%" }} />
       </div>
     );
   }
@@ -2636,8 +2636,8 @@ void handleLocalWebServerRequest() {
           width: 28px;
           height: 28px;
           border-radius: 8px;
-          background: var(--rmutp-purple-pale);
-          color: var(--rmutp-purple-dark);
+          background: var(--smartaccess-purple-pale);
+          color: var(--smartaccess-purple-dark);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -2706,7 +2706,7 @@ void handleLocalWebServerRequest() {
         }
         .room-form-band {
           background: var(--bg-secondary);
-          border: 1px dashed var(--rmutp-purple-light);
+          border: 1px dashed var(--smartaccess-purple-light);
           border-radius: 8px;
           padding: 18px;
         }
@@ -2727,10 +2727,10 @@ void handleLocalWebServerRequest() {
               <CrossIcon /> ปฏิเสธคำขอการลงทะเบียน
             </h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginBottom: 16 }}>
-              นักศึกษา: <strong style={{ color: "var(--rmutp-purple-dark)" }}>{rejectModal.name}</strong>
+              นักศึกษา: <strong style={{ color: "var(--smartaccess-purple-dark)" }}>{rejectModal.name}</strong>
             </p>
             <textarea
-              className="rmutp-input"
+              className="smartaccess-input"
               placeholder="กรุณาระบุเหตุผลการปฏิเสธสิทธิ์ (เพื่อแสดงบนใบประวัติ PDF)"
               value={rejectReason}
               onChange={e => setRejectReason(e.target.value)}
@@ -2772,14 +2772,14 @@ void handleLocalWebServerRequest() {
             </button>
 
             <div style={{ padding: "24px 28px 18px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, rgba(124,58,237,0.06), rgba(219,39,119,0.04))" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "#fff", border: "1px solid var(--border)", color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 900, marginBottom: 10 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "#fff", border: "1px solid var(--border)", color: "var(--smartaccess-purple-dark)", fontSize: 12, fontWeight: 900, marginBottom: 10 }}>
                 ESP32 Room Setup
               </div>
               <h3 style={{ fontSize: 22, fontWeight: 900, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                 ห้อง {activeRoomDetails.room}
               </h3>
               <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: "6px 0 0" }}>
-                IP / Domain ของบอร์ด: <code style={{ color: "var(--rmutp-purple)", fontWeight: 800 }}>{activeRoomDetails.ip}</code>
+                IP / Domain ของบอร์ด: <code style={{ color: "var(--smartaccess-purple)", fontWeight: 800 }}>{activeRoomDetails.ip}</code>
               </p>
             </div>
 
@@ -2802,7 +2802,7 @@ void handleLocalWebServerRequest() {
                     fontWeight: 800,
                     cursor: "pointer",
                     border: "none",
-                    background: roomDetailsTab === tab.id ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                    background: roomDetailsTab === tab.id ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "transparent",
                     color: roomDetailsTab === tab.id ? "#fff" : "var(--text-secondary)",
                     boxShadow: roomDetailsTab === tab.id ? "0 8px 18px rgba(124,58,237,0.18)" : "none",
                     transition: "all 0.2s"
@@ -2865,8 +2865,8 @@ void handleLocalWebServerRequest() {
                                 fontSize: 11, 
                                 borderRadius: 8, 
                                 fontWeight: 700, 
-                                borderColor: item.isRegistration ? "var(--edu-pink)" : "var(--rmutp-purple-light)", 
-                                color: item.isRegistration ? "var(--edu-pink)" : "var(--rmutp-purple-dark)" 
+                                borderColor: item.isRegistration ? "var(--edu-pink)" : "var(--smartaccess-purple-light)", 
+                                color: item.isRegistration ? "var(--edu-pink)" : "var(--smartaccess-purple-dark)" 
                               }}
                             >
                               {item.btnLabel}
@@ -2884,7 +2884,7 @@ void handleLocalWebServerRequest() {
 
                         {item.isRegistration && (
                           <div style={{ marginTop: 14, padding: "12px 14px", background: "rgba(139,92,246,0.03)", border: "1.5px dashed rgba(139,92,246,0.15)", borderRadius: 10 }}>
-                            <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--rmutp-purple)", display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--smartaccess-purple)", display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                               🛡️ ระบบความปลอดภัยและกฎการหมุนเวียน Token:
                             </div>
                             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 10.5, color: "var(--text-secondary)", lineHeight: "1.5", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -2892,7 +2892,7 @@ void handleLocalWebServerRequest() {
                                 <strong style={{ color: "var(--text-primary)" }}>การหมุนเวียนคีย์ (Rotation):</strong> ลิงก์และ QR Code จะซิงก์กันเสมอ และหมุนเวียนเปลี่ยนคีย์ใหม่โดยอัตโนมัติทุกๆ <span style={{ color: "var(--edu-pink)", fontWeight: 700 }}>60 วินาที</span> ตามหน้าจอหลักของบอร์ดหน้าห้องเรียน
                               </li>
                               <li>
-                                <strong style={{ color: "var(--text-primary)" }}>อายุการใช้กรอก (Expiry):</strong> แต่ละคีย์มีอายุการกรอกลงทะเบียนได้ไม่เกิน <span style={{ color: "var(--rmutp-purple)", fontWeight: 700 }}>5 นาที (300 วินาที)</span> เพื่อให้เวลาผู้ใช้กรอกแบบฟอร์ม
+                                <strong style={{ color: "var(--text-primary)" }}>อายุการใช้กรอก (Expiry):</strong> แต่ละคีย์มีอายุการกรอกลงทะเบียนได้ไม่เกิน <span style={{ color: "var(--smartaccess-purple)", fontWeight: 700 }}>5 นาที (300 วินาที)</span> เพื่อให้เวลาผู้ใช้กรอกแบบฟอร์ม
                               </li>
                               <li>
                                 <strong style={{ color: "var(--text-primary)" }}>ใช้งานครั้งเดียว (One-Time Token):</strong> เมื่ออนุมัติหรือส่งข้อมูลสำเร็จ คีย์นั้นจะใช้ไม่ได้อีกทันทีเพื่อความปลอดภัย หากแอดมินต้องการทดสอบใหม่ ให้กลับมาที่หน้านี้แล้วกดปุ่ม <span style={{ color: "var(--edu-pink)", fontWeight: 700 }}>🚀 ทดสอบสแกนสด</span> อีกครั้ง
@@ -2910,7 +2910,7 @@ void handleLocalWebServerRequest() {
               {roomDetailsTab === "webhook" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }} className="animate-fade-in">
                   <div style={{ padding: 14, background: "rgba(139,92,246,0.03)", border: "1px dashed rgba(139,92,246,0.25)", borderRadius: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple-dark)" }}>🔔 ระบบแจ้งเตือนเฉพาะกลุ่มห้องเรียน (Traffic Webhook Isolation)</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple-dark)" }}>🔔 ระบบแจ้งเตือนเฉพาะกลุ่มห้องเรียน (Traffic Webhook Isolation)</span>
                     <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.4" }}>
                       ท่านสามารถระบุ Discord Webhook ประจำห้องเรียนห้องนี้ได้โดยเฉพาะ เพื่อส่งข้อมูลความปลอดภัยแยกขาดตามห้องปฏิบัติการได้แบบ 3 แชนแนล (สแกน, อนุมัติ, และบันทึกระบบ)
                     </p>
@@ -2923,7 +2923,7 @@ void handleLocalWebServerRequest() {
                       </label>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <input
-                          className="rmutp-input"
+                          className="smartaccess-input"
                           placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
                           value={roomWebhookRegisterInput}
                           onChange={e => setRoomWebhookRegisterInput(e.target.value)}
@@ -2946,7 +2946,7 @@ void handleLocalWebServerRequest() {
                       </label>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <input
-                          className="rmutp-input"
+                          className="smartaccess-input"
                           placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
                           value={roomWebhookApproveInput}
                           onChange={e => setRoomWebhookApproveInput(e.target.value)}
@@ -2969,7 +2969,7 @@ void handleLocalWebServerRequest() {
                       </label>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <input
-                          className="rmutp-input"
+                          className="smartaccess-input"
                           placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
                           value={roomWebhookLogsInput}
                           onChange={e => setRoomWebhookLogsInput(e.target.value)}
@@ -2998,7 +2998,7 @@ void handleLocalWebServerRequest() {
                       fontWeight: 800,
                       fontSize: 12.5,
                       alignSelf: "flex-end",
-                      background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                      background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
                       color: "#fff",
                       boxShadow: "0 4px 10px rgba(124,58,237,0.2)",
                       border: "none",
@@ -3237,7 +3237,7 @@ void handleLocalWebServerRequest() {
               </label>
               <input
                 type="password"
-                className="rmutp-input"
+                className="smartaccess-input"
                 placeholder="กรอกรหัสผ่านเข้าสู่ระบบของคุณ..."
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
@@ -3303,12 +3303,12 @@ void handleLocalWebServerRequest() {
         <aside className={`sidebar-responsive ${mobileMenuOpen ? 'open' : ''}`}>
           <div style={{ padding: "24px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
             <div
-              style={{ width: 40, height: 40, borderRadius: "12px", background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 10px rgba(124,58,237,0.2)" }}
+              style={{ width: 40, height: 40, borderRadius: "12px", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 10px rgba(124,58,237,0.2)" }}
             >
               <LockIcon />
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--rmutp-purple-dark)", letterSpacing: "0.5px" }}>RMUTP ACCS</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", letterSpacing: "0.5px" }}>SmartAccess</div>
               <div style={{ fontSize: 10.5, color: "var(--text-secondary)", fontWeight: 600 }}>บอร์ดควบคุมครุศาสตร์</div>
             </div>
             <button
@@ -3321,11 +3321,11 @@ void handleLocalWebServerRequest() {
           </div>
 
           <div style={{ padding: "16px 20px" }}>
-            <div style={{ padding: "12px 14px", background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", borderRadius: 14 }}>
+            <div style={{ padding: "12px 14px", background: "var(--smartaccess-purple-pale)", border: "1px solid var(--border)", borderRadius: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {user.full_name}
               </div>
-              <div style={{ fontSize: 10.5, color: isOwner ? "var(--edu-pink)" : "var(--rmutp-purple)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ fontSize: 10.5, color: isOwner ? "var(--edu-pink)" : "var(--smartaccess-purple)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
                 <span>{isOwner ? <CrownIcon /> : <KeyIcon />}</span>
                 <span>{isOwner ? "Owner (เจ้าของห้อง)" : "Door Operator"}</span>
               </div>
@@ -3367,8 +3367,8 @@ void handleLocalWebServerRequest() {
                   padding: "12px 14px",
                   borderRadius: 12,
                   border: "none",
-                  background: tab === item.id ? "var(--rmutp-purple-pale)" : "transparent",
-                  color: tab === item.id ? "var(--rmutp-purple)" : "var(--text-secondary)",
+                  background: tab === item.id ? "var(--smartaccess-purple-pale)" : "transparent",
+                  color: tab === item.id ? "var(--smartaccess-purple)" : "var(--text-secondary)",
                   fontSize: 13.5,
                   fontWeight: tab === item.id ? 700 : 500,
                   cursor: "pointer",
@@ -3440,7 +3440,7 @@ void handleLocalWebServerRequest() {
                   )}
                   {tab === "iot" && (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ color: "var(--rmutp-purple)", display: "inline-flex" }}>
+                      <span style={{ color: "var(--smartaccess-purple)", display: "inline-flex" }}>
                         <TVIcon />
                       </span>
                       <span>สถานะบอร์ด IoT ทั้งหมด (Multi-Room)</span>
@@ -3551,7 +3551,7 @@ void handleLocalWebServerRequest() {
             {/* ── Sleek System Health Bar ── */}
             {systemStatus && (
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap", padding: "12px 18px", background: "rgba(124, 58, 237, 0.03)", borderRadius: 14, border: "1px solid var(--border)", marginBottom: 24, alignItems: "center" }} className="animate-fade-in">
-                <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--rmutp-purple)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   🏥 สเตตัสระบบกลาง:
                 </span>
                 
@@ -3574,7 +3574,7 @@ void handleLocalWebServerRequest() {
                 <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 600 }}>
                   <span>ผู้ล็อกอินปัจจุบัน:</span>
                   <strong style={{ color: "var(--text-primary)" }}>{user?.full_name}</strong>
-                  <span style={{ fontSize: 9.5, padding: "2px 6px", background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--rmutp-purple)", fontWeight: 800 }}>
+                  <span style={{ fontSize: 9.5, padding: "2px 6px", background: "var(--smartaccess-purple-pale)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--smartaccess-purple)", fontWeight: 800 }}>
                     {user?.role === "owner" ? "Owner (สูงสุด)" : "Door Operator"}
                   </span>
                 </div>
@@ -3597,7 +3597,7 @@ void handleLocalWebServerRequest() {
                         fontSize: 13,
                         fontWeight: 700,
                         cursor: "pointer",
-                        background: pendingRoomFilter === "all" ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                        background: pendingRoomFilter === "all" ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "transparent",
                         color: pendingRoomFilter === "all" ? "#ffffff" : "var(--text-secondary)",
                         boxShadow: pendingRoomFilter === "all" ? "0 4px 12px rgba(124, 58, 237, 0.2)" : "none",
                         transition: "all 0.2s ease"
@@ -3618,7 +3618,7 @@ void handleLocalWebServerRequest() {
                             fontSize: 13,
                             fontWeight: 700,
                             cursor: "pointer",
-                            background: pendingRoomFilter === r.room ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                            background: pendingRoomFilter === r.room ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "transparent",
                             color: pendingRoomFilter === r.room ? "#ffffff" : "var(--text-secondary)",
                             boxShadow: pendingRoomFilter === r.room ? "0 4px 12px rgba(124, 58, 237, 0.2)" : "none",
                             transition: "all 0.2s ease"
@@ -3660,7 +3660,7 @@ void handleLocalWebServerRequest() {
 
                 {filteredPending.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--bg-secondary)", borderRadius: 20, border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--rmutp-purple-pale)", border: "2px solid var(--rmutp-purple-light)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "var(--rmutp-purple)" }}>
+                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--smartaccess-purple-pale)", border: "2px solid var(--smartaccess-purple-light)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "var(--smartaccess-purple)" }}>
                       <SuccessBadgeIcon />
                     </div>
                     <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
@@ -3679,14 +3679,14 @@ void handleLocalWebServerRequest() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                           <div style={{ flex: 1, minWidth: 260 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                              <div style={{ width: 44, height: 44, borderRadius: "12px", background: "var(--rmutp-purple-pale)", border: "1.5px solid var(--rmutp-purple-light)", color: "var(--rmutp-purple)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16 }}>
+                              <div style={{ width: 44, height: 44, borderRadius: "12px", background: "var(--smartaccess-purple-pale)", border: "1.5px solid var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16 }}>
                                 {s.first_name[0]}
                               </div>
                               <div>
                                 <h4 style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-primary)" }}>
                                   {s.title}{s.first_name} {s.last_name}
                                 </h4>
-                                <div style={{ fontSize: 12.5, color: "var(--rmutp-purple)", fontWeight: 700, fontFamily: "monospace", display: "flex", alignItems: "center" }}>
+                                <div style={{ fontSize: 12.5, color: "var(--smartaccess-purple)", fontWeight: 700, fontFamily: "monospace", display: "flex", alignItems: "center" }}>
                                   <IdCardIcon />
                                   <span style={{ marginLeft: 4 }}>{s.student_id}</span>
                                 </div>
@@ -3695,7 +3695,7 @@ void handleLocalWebServerRequest() {
 
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                               {s.requested_room && s.requested_room !== "default" && (
-                                <span style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(219,39,119,0.12) 100%)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 8, padding: "4px 10px", fontSize: 11.5, color: "var(--rmutp-purple-dark)", fontWeight: 800, display: "flex", alignItems: "center" }}>
+                                <span style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(219,39,119,0.12) 100%)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 8, padding: "4px 10px", fontSize: 11.5, color: "var(--smartaccess-purple-dark)", fontWeight: 800, display: "flex", alignItems: "center" }}>
                                   🚪 คำขอเข้าห้อง: {s.requested_room}
                                 </span>
                               )}
@@ -3785,7 +3785,7 @@ void handleLocalWebServerRequest() {
                     <span style={{ background: "rgba(220,38,38,0.08)", border: "1.5px solid rgba(220,38,38,0.2)", borderRadius: 10, padding: "6px 14px", fontSize: 12, color: "#DC2626", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
                       ออฟไลน์: {roomsList.length - (systemStatus?.esp32Devices?.filter(d => d.online).length || 0)} บอร์ด
                     </span>
-                    <span style={{ background: "var(--rmutp-purple-pale)", border: "1.5px solid var(--border-medium)", borderRadius: 10, padding: "6px 14px", fontSize: 12, color: "var(--rmutp-purple-dark)", fontWeight: 700 }}>
+                    <span style={{ background: "var(--smartaccess-purple-pale)", border: "1.5px solid var(--border-medium)", borderRadius: 10, padding: "6px 14px", fontSize: 12, color: "var(--smartaccess-purple-dark)", fontWeight: 700 }}>
                       รวมห้องปฏิบัติการทั้งหมด: {roomsList.length} ห้อง
                     </span>
                   </div>
@@ -3894,7 +3894,7 @@ void handleLocalWebServerRequest() {
                             {/* Notifications set */}
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>แจ้งเตือนเฉพาะห้อง (Webhooks):</span>
-                              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--rmutp-purple-dark)" }}>
+                              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--smartaccess-purple-dark)" }}>
                                 {rawSettings[`room_webhook_register_${roomItem.room}`] ? "🔔 เปิดใช้งาน" : "⚪ ปิดใช้งาน"}
                               </span>
                             </div>
@@ -3911,7 +3911,7 @@ void handleLocalWebServerRequest() {
                               style={{ flex: 1, padding: "10px", borderRadius: 10, fontSize: 11.5, display: "flex", gap: 4, alignItems: "center", justifyContent: "center", fontWeight: 700 }}
                             >
                               {testingRoom === roomItem.room ? (
-                                <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+                                <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--smartaccess-purple)", borderRadius: "50%" }} />
                               ) : (
                                 <span>📡 เทส Polling</span>
                               )}
@@ -3934,7 +3934,7 @@ void handleLocalWebServerRequest() {
                                 fontWeight: 700,
                                 background: isRecentlyUnlocked 
                                   ? "#10B981" 
-                                  : "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                                  : "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
                                 border: "none",
                                 boxShadow: isRecentlyUnlocked ? "0 4px 12px rgba(16, 185, 129, 0.3)" : "none",
                                 transition: "all 0.3s ease"
@@ -3953,7 +3953,7 @@ void handleLocalWebServerRequest() {
                               type="button"
                               onClick={() => handleOpenRoomDetails(roomItem.room, activeIp)}
                               className="btn-ghost"
-                              style={{ padding: "10px", borderRadius: 10, color: "var(--rmutp-purple)", borderColor: "var(--rmutp-purple-light)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              style={{ padding: "10px", borderRadius: 10, color: "var(--smartaccess-purple)", borderColor: "var(--smartaccess-purple-light)", display: "flex", alignItems: "center", justifyContent: "center" }}
                               title="ตั้งค่า API & คัดลอกโค้ด Arduino บอร์ดห้องนี้"
                             >
                               ⚙️
@@ -3977,7 +3977,7 @@ void handleLocalWebServerRequest() {
                 <div className="dashboard-section-card export-hub">
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <div>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "var(--rmutp-purple-pale)", color: "var(--rmutp-purple-dark)", fontSize: 11.5, fontWeight: 800, marginBottom: 10 }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "var(--smartaccess-purple-pale)", color: "var(--smartaccess-purple-dark)", fontSize: 11.5, fontWeight: 800, marginBottom: 10 }}>
                         <CalendarIcon /> PDF Export
                       </div>
                       <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6 }}>ส่งออกรายงานตามช่วงเวลา</h3>
@@ -3988,7 +3988,7 @@ void handleLocalWebServerRequest() {
 
                     <div className="export-summary-grid">
                       {[
-                        { label: "รวมในรายงาน", value: exportSummary.total, color: "var(--rmutp-purple-dark)" },
+                        { label: "รวมในรายงาน", value: exportSummary.total, color: "var(--smartaccess-purple-dark)" },
                         { label: "อนุมัติแล้ว", value: exportSummary.approved, color: "#059669" },
                         { label: "รออนุมัติ", value: exportSummary.pending, color: "#D97706" },
                         { label: "ปฏิเสธ", value: exportSummary.rejected, color: "#DC2626" },
@@ -4004,15 +4004,15 @@ void handleLocalWebServerRequest() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, alignItems: "end" }}>
                     <div>
                       <label className="field-label">วันที่เริ่มต้น</label>
-                      <input type="date" className="rmutp-input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                      <input type="date" className="smartaccess-input" value={startDate} onChange={e => setStartDate(e.target.value)} />
                     </div>
                     <div>
                       <label className="field-label">วันที่สิ้นสุด</label>
-                      <input type="date" className="rmutp-input" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                      <input type="date" className="smartaccess-input" value={endDate} onChange={e => setEndDate(e.target.value)} />
                     </div>
                     <div>
                       <label htmlFor="filter_status" className="field-label">สถานะในรายงาน</label>
-                      <select id="filter_status" className="rmutp-input" value={filterStatus} onChange={e => setFilter(e.target.value)}>
+                      <select id="filter_status" className="smartaccess-input" value={filterStatus} onChange={e => setFilter(e.target.value)}>
                         <option value="all">ทุกสถานะ</option>
                         <option value="pending">รออนุมัติ</option>
                         <option value="approved">อนุมัติแล้ว</option>
@@ -4062,7 +4062,7 @@ void handleLocalWebServerRequest() {
                       </label>
                       <input
                         type="date"
-                        className="rmutp-input"
+                        className="smartaccess-input"
                         value={startDate}
                         onChange={e => setStartDate(e.target.value)}
                         style={{ padding: "10px 14px" }}
@@ -4076,7 +4076,7 @@ void handleLocalWebServerRequest() {
                       </label>
                       <input
                         type="date"
-                        className="rmutp-input"
+                        className="smartaccess-input"
                         value={endDate}
                         onChange={e => setEndDate(e.target.value)}
                         style={{ padding: "10px 14px" }}
@@ -4090,7 +4090,7 @@ void handleLocalWebServerRequest() {
                       </label>
                       <select
                         id="filter_status"
-                        className="rmutp-input"
+                        className="smartaccess-input"
                         value={filterStatus}
                         onChange={e => setFilter(e.target.value)}
                         style={{ padding: "10px 14px" }}
@@ -4127,8 +4127,8 @@ void handleLocalWebServerRequest() {
                   </div>
 
                   {/* Date range helpers */}
-                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", padding: "10px 16px", borderRadius: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontWeight: 700, color: "var(--rmutp-purple-dark)" }}>ระบบเปิดตัวเมื่อ: 23/05/2569 (เริ่มต้นนับแต่วันที่ยึดระบบ)</span>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", background: "var(--smartaccess-purple-pale)", border: "1px solid var(--border)", padding: "10px 16px", borderRadius: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 700, color: "var(--smartaccess-purple-dark)" }}>ระบบเปิดตัวเมื่อ: 23/05/2569 (เริ่มต้นนับแต่วันที่ยึดระบบ)</span>
                     <span style={{ color: "var(--text-muted)" }}>|</span>
                     <span>ตารางและสถิติด้านล่างจะกรองตามช่วงเวลาที่คุณเลือกแบบเรียลไทม์ทันที!</span>
                   </div>
@@ -4216,7 +4216,7 @@ void handleLocalWebServerRequest() {
                     </div>
                   ) : (
                     <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-secondary)", fontSize: 13 }}>
-                      <span className="animate-spin" style={{ display: "inline-block", width: 16, height: 16, border: "2px solid rgba(124,58,237,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%", marginRight: 8 }} />
+                      <span className="animate-spin" style={{ display: "inline-block", width: 16, height: 16, border: "2px solid rgba(124,58,237,0.2)", borderTopColor: "var(--smartaccess-purple)", borderRadius: "50%", marginRight: 8 }} />
                       กำลังโหลดข้อมูล Health...
                     </div>
                   )}
@@ -4281,7 +4281,7 @@ void handleLocalWebServerRequest() {
                         }
                       }}
                       className="btn-secondary"
-                      style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, borderColor: "var(--rmutp-purple-light)", color: "var(--rmutp-purple)" }}
+                      style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, borderColor: "var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)" }}
                     >
                       🧹 ล้างข้อมูล Log หมดอายุ (&gt; 90 วัน)
                     </button>
@@ -4312,7 +4312,7 @@ void handleLocalWebServerRequest() {
                   {/* Search and Filters */}
                   <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 360 }}>
                     <input
-                      className="rmutp-input"
+                      className="smartaccess-input"
                       placeholder="ค้นหาด้วยชื่อจริง หรือ รหัสนักศึกษา..."
                       value={searchQ}
                       onChange={e => setSearchQ(e.target.value)}
@@ -4322,8 +4322,8 @@ void handleLocalWebServerRequest() {
                 </div>
 
                 <div className="premium-card" style={{ overflow: "hidden", marginBottom: 36 }}>
-                  <div className="rmutp-table-container">
-                    <table className="rmutp-table">
+                  <div className="smartaccess-table-container">
+                    <table className="smartaccess-table">
                       <thead>
                         <tr>
                           <th style={{ width: 40, textAlign: "center" }}>#</th>
@@ -4352,7 +4352,7 @@ void handleLocalWebServerRequest() {
                             <tr key={s.id}>
                               <td style={{ color: "var(--text-muted)", fontSize: 12, textAlign: "center" }}>{i + 1}</td>
                               <td>
-                                <span style={{ color: "var(--rmutp-purple-dark)", fontWeight: 800, fontSize: 13, fontFamily: "monospace" }}>
+                                <span style={{ color: "var(--smartaccess-purple-dark)", fontWeight: 800, fontSize: 13, fontFamily: "monospace" }}>
                                   {s.student_id}
                                 </span>
                               </td>
@@ -4373,8 +4373,8 @@ void handleLocalWebServerRequest() {
                                 <span style={{
                                   fontSize: 12,
                                   fontWeight: 800,
-                                  color: s.requested_room && s.requested_room !== "default" ? "var(--rmutp-purple-dark)" : "var(--text-secondary)",
-                                  background: s.requested_room && s.requested_room !== "default" ? "var(--rmutp-purple-pale)" : "transparent",
+                                  color: s.requested_room && s.requested_room !== "default" ? "var(--smartaccess-purple-dark)" : "var(--text-secondary)",
+                                  background: s.requested_room && s.requested_room !== "default" ? "var(--smartaccess-purple-pale)" : "transparent",
                                   padding: s.requested_room && s.requested_room !== "default" ? "4px 10px" : "0",
                                   border: s.requested_room && s.requested_room !== "default" ? "1px solid rgba(124,58,237,0.2)" : "none",
                                   borderRadius: 8,
@@ -4446,9 +4446,9 @@ void handleLocalWebServerRequest() {
 
                 {/* Enterprise Logs Stats Mini Summary */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 16 }}>
-                  <div className="stat-card" style={{ borderLeft: "4px solid var(--rmutp-purple)", padding: "14px 20px" }}>
+                  <div className="stat-card" style={{ borderLeft: "4px solid var(--smartaccess-purple)", padding: "14px 20px" }}>
                     <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700 }}>บันทึกประวัติในช่วงนี้</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--rmutp-purple-dark)", marginTop: 4 }}>{filteredLogs.length} รายการ</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 4 }}>{filteredLogs.length} รายการ</div>
                   </div>
                   <div className="stat-card" style={{ borderLeft: "4px solid #10B981", padding: "14px 20px" }}>
                     <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700 }}>ปลดล็อคประตูสำเร็จ</div>
@@ -4485,7 +4485,7 @@ void handleLocalWebServerRequest() {
                             fontWeight: 800,
                             cursor: "pointer",
                             border: "none",
-                            background: logPageSize === size ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                            background: logPageSize === size ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "transparent",
                             color: logPageSize === size ? "#fff" : "var(--text-secondary)",
                             boxShadow: logPageSize === size ? "0 2px 8px rgba(124, 58, 237, 0.2)" : "none",
                             transition: "all 0.2s"
@@ -4499,7 +4499,7 @@ void handleLocalWebServerRequest() {
                     {/* Search Input */}
                     <div style={{ width: 220 }}>
                       <input
-                        className="rmutp-input"
+                        className="smartaccess-input"
                         placeholder="ค้นหาประวัติ..."
                         value={logSearch}
                         onChange={e => { setLogSearch(e.target.value); setLogCurrentPage(1); }}
@@ -4531,7 +4531,7 @@ void handleLocalWebServerRequest() {
                         fontWeight: 700,
                         cursor: "pointer",
                         border: "none",
-                        background: logFilter === t.value ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                        background: logFilter === t.value ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "transparent",
                         color: logFilter === t.value ? "#fff" : t.color,
                         boxShadow: logFilter === t.value ? "0 4px 12px rgba(124, 58, 237, 0.25)" : "none",
                         transition: "all 0.2s ease"
@@ -4543,8 +4543,8 @@ void handleLocalWebServerRequest() {
                 </div>
 
                 <div className="premium-card" style={{ overflow: "hidden" }}>
-                  <div className="rmutp-table-container">
-                    <table className="rmutp-table">
+                  <div className="smartaccess-table-container">
+                    <table className="smartaccess-table">
                       <thead>
                         <tr>
                           <th style={{ width: 40, textAlign: "center" }}>#</th>
@@ -4589,7 +4589,7 @@ void handleLocalWebServerRequest() {
                                         fontWeight: 800,
                                         background: "linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(219,39,119,0.12) 100%)",
                                         border: "1px solid rgba(124,58,237,0.25)",
-                                        color: "var(--rmutp-purple-dark)",
+                                        color: "var(--smartaccess-purple-dark)",
                                         padding: "2px 8px",
                                         borderRadius: 6
                                       }}>
@@ -4599,7 +4599,7 @@ void handleLocalWebServerRequest() {
                                   </div>
                                 </td>
                                 <td>
-                                  <span style={{ color: "var(--rmutp-purple-dark)", fontWeight: 700, fontFamily: "monospace", fontSize: 12.5 }}>
+                                  <span style={{ color: "var(--smartaccess-purple-dark)", fontWeight: 700, fontFamily: "monospace", fontSize: 12.5 }}>
                                     {log.student_code || "-"}
                                   </span>
                                 </td>
@@ -4668,8 +4668,8 @@ void handleLocalWebServerRequest() {
                             fontSize: 12.5,
                             fontWeight: 700,
                             cursor: "pointer",
-                            border: logCurrentPage === p ? "1px solid var(--rmutp-purple)" : "1px solid rgba(255,255,255,0.08)",
-                            background: logCurrentPage === p ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.02)",
+                            border: logCurrentPage === p ? "1px solid var(--smartaccess-purple)" : "1px solid rgba(255,255,255,0.08)",
+                            background: logCurrentPage === p ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.02)",
                             color: logCurrentPage === p ? "#fff" : "var(--text-secondary)",
                             display: "flex",
                             alignItems: "center",
@@ -4704,13 +4704,13 @@ void handleLocalWebServerRequest() {
 
                   {/* Admin List table card */}
                   <div className="premium-card" style={{ overflow: "hidden" }}>
-                    <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", background: "var(--rmutp-purple-pale)" }}>
-                      <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", background: "var(--smartaccess-purple-pale)" }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 6 }}>
                         <UsersIcon /> บัญชีรายชื่อผู้ดูแลระบบทั้งหมด
                       </h3>
                     </div>
-                    <div className="rmutp-table-container" style={{ border: "none", borderRadius: 0 }}>
-                      <table className="rmutp-table">
+                    <div className="smartaccess-table-container" style={{ border: "none", borderRadius: 0 }}>
+                      <table className="smartaccess-table">
                         <thead>
                           <tr>
                             <th>ชื่อ - นามสกุลแอดมิน</th>
@@ -4755,7 +4755,7 @@ void handleLocalWebServerRequest() {
                                         setEditAdminForm({ full_name: a.full_name, role: a.role });
                                         setEditAdminAllowedRooms(a.allowed_rooms ? a.allowed_rooms.split(",") : []);
                                       }}
-                                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--rmutp-purple)" }}
+                                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--smartaccess-purple)" }}
                                       title="แก้ไขขอบเขตสิทธิ์"
                                     >
                                       ✏️
@@ -4795,7 +4795,7 @@ void handleLocalWebServerRequest() {
                             {f.label} *
                           </label>
                           <input
-                            className="rmutp-input"
+                            className="smartaccess-input"
                             type={f.type}
                             placeholder={f.placeholder}
                             value={(newAdmin as Record<string, string>)[f.key]}
@@ -4811,7 +4811,7 @@ void handleLocalWebServerRequest() {
                         </label>
                         <select
                           id="new_admin_role"
-                          className="rmutp-input"
+                          className="smartaccess-input"
                           value={newAdmin.role}
                           onChange={e => setNewAdmin(a => ({ ...a, role: e.target.value }))}
                         >
@@ -4827,7 +4827,7 @@ void handleLocalWebServerRequest() {
                             ห้องเรียนที่อนุญาตให้เข้าถึง / จัดการได้ *
                           </label>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 10 }}>
-                            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, color: "var(--rmutp-purple)" }}>
+                            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, color: "var(--smartaccess-purple)" }}>
                               <input
                                 type="checkbox"
                                 checked={newAdminAllowedRooms.includes("*")}
@@ -4886,7 +4886,7 @@ void handleLocalWebServerRequest() {
                 <section className="dashboard-section-card" style={{ padding: 22 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "var(--rmutp-purple)", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 }}>
                         Room Inventory
                       </div>
                       <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: 24, fontWeight: 900, lineHeight: 1.2 }}>
@@ -4916,7 +4916,7 @@ void handleLocalWebServerRequest() {
 
                   <div className="room-overview-grid">
                     {[
-                      { label: "ห้องทั้งหมด", value: roomsList.length, hint: "รายการที่บันทึกในระบบ", color: "var(--rmutp-purple-dark)" },
+                      { label: "ห้องทั้งหมด", value: roomsList.length, hint: "รายการที่บันทึกในระบบ", color: "var(--smartaccess-purple-dark)" },
                       { label: "ออนไลน์", value: systemStatus?.esp32Devices?.filter(d => d.online).length || 0, hint: "บอร์ดที่ตอบกลับล่าสุด", color: "#059669" },
                       { label: "ออฟไลน์", value: Math.max(roomsList.length - (systemStatus?.esp32Devices?.filter(d => d.online).length || 0), 0), hint: "ควรตรวจ IP หรือไฟเลี้ยง", color: "#DC2626" },
                       { label: "ทดสอบล่าสุด", value: Object.keys(testResults).length, hint: "จำนวนห้องที่กดเทสในรอบนี้", color: "#D97706" },
@@ -4946,7 +4946,7 @@ void handleLocalWebServerRequest() {
                         <article className="room-config-card" key={`room-tab-${idx}`}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                              <span style={{ width: 42, height: 42, borderRadius: 8, background: "var(--rmutp-purple-pale)", color: "var(--rmutp-purple-dark)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
+                              <span style={{ width: 42, height: 42, borderRadius: 8, background: "var(--smartaccess-purple-pale)", color: "var(--smartaccess-purple-dark)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
                                 {idx + 1}
                               </span>
                               <div style={{ minWidth: 0 }}>
@@ -4965,7 +4965,7 @@ void handleLocalWebServerRequest() {
                             <div>
                               <label className="field-label">รหัสห้อง</label>
                               <input
-                                className="rmutp-input"
+                                className="smartaccess-input"
                                 value={roomItem.room}
                                 onChange={e => {
                                   const newVal = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
@@ -4977,7 +4977,7 @@ void handleLocalWebServerRequest() {
                             <div>
                               <label className="field-label">IP Address / Domain</label>
                               <input
-                                className="rmutp-input"
+                                className="smartaccess-input"
                                 value={roomItem.ip}
                                 onChange={e => setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, ip: e.target.value } : rm))}
                                 style={{ fontFamily: "monospace" }}
@@ -5016,11 +5016,11 @@ void handleLocalWebServerRequest() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, alignItems: "end" }}>
                     <div>
                       <label className="field-label">รหัสห้อง</label>
-                      <input className="rmutp-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)} />
+                      <input className="smartaccess-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)} />
                     </div>
                     <div>
                       <label className="field-label">IP Address / Domain</label>
-                      <input className="rmutp-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)} />
+                      <input className="smartaccess-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)} />
                     </div>
                     <button type="button" onClick={() => handleAddRoom()} className="btn-primary" style={{ borderRadius: 8, minHeight: 46 }}>
                       เพิ่มห้องลงรายการ
@@ -5036,7 +5036,7 @@ void handleLocalWebServerRequest() {
                 <div className="dashboard-section-card" style={{ padding: 22 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16 }}>
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--rmutp-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>System Settings</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>System Settings</div>
                       <h2 style={{ fontSize: 22, lineHeight: 1.2, fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>ตั้งค่าระบบแบบแยกหมวด</h2>
                       <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, margin: "8px 0 0" }}>
                         หน้านี้เก็บเฉพาะสิทธิ์อัตโนมัติและ Discord Webhook ส่วนกลาง ส่วนการเพิ่มห้องและบอร์ด ESP32 แยกไปที่แท็บห้องเรียน & ESP32 แล้ว
@@ -5069,7 +5069,7 @@ void handleLocalWebServerRequest() {
 
                   {/* Card 1: Automated Approvals & Auto-fill */}
                   <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
                       <SettingsIcon /> ⚙️ อนุมัติ & กรอกฟอร์มอัตโนมัติ (Automated Control)
                     </h3>
 
@@ -5087,7 +5087,7 @@ void handleLocalWebServerRequest() {
                           width: 48,
                           height: 26,
                           borderRadius: 15,
-                          background: settings.auto_approve_enabled ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
+                          background: settings.auto_approve_enabled ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
                           border: "1px solid var(--border)",
                           position: "relative",
                           cursor: "pointer",
@@ -5128,7 +5128,7 @@ void handleLocalWebServerRequest() {
                             width: 48,
                             height: 26,
                             borderRadius: 15,
-                            background: settings.auto_fill_enabled ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
+                            background: settings.auto_fill_enabled ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
                             border: "1px solid var(--border)",
                             position: "relative",
                             cursor: "pointer",
@@ -5165,7 +5165,7 @@ void handleLocalWebServerRequest() {
                                 value="auto"
                                 checked={settings.auto_fill_mode === "auto"}
                                 onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
-                                style={{ accentColor: "var(--rmutp-purple)", cursor: "pointer" }}
+                                style={{ accentColor: "var(--smartaccess-purple)", cursor: "pointer" }}
                               />
                               <span>เด้งขึ้นมาให้เองอัตโนมัติ (Auto Pop-up)</span>
                             </label>
@@ -5176,7 +5176,7 @@ void handleLocalWebServerRequest() {
                                 value="manual"
                                 checked={settings.auto_fill_mode === "manual"}
                                 onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
-                                style={{ accentColor: "var(--rmutp-purple)", cursor: "pointer" }}
+                                style={{ accentColor: "var(--smartaccess-purple)", cursor: "pointer" }}
                               />
                               <span>แสดงปุ่มให้กดเลือกเอง (Manual Confirmation)</span>
                             </label>
@@ -5195,7 +5195,7 @@ void handleLocalWebServerRequest() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         <select
                           id="student_id_display_mode"
-                          className="rmutp-input"
+                          className="smartaccess-input"
                           value={settings.student_id_display_mode}
                           onChange={e => setSettings(s => ({ ...s, student_id_display_mode: e.target.value }))}
                           style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", width: "100%", outline: "none", fontSize: 12.5 }}
@@ -5216,7 +5216,7 @@ void handleLocalWebServerRequest() {
                           เวลาเริ่มบริการ (ชั่วโมง:นาที)
                         </label>
                         <input
-                          className="rmutp-input"
+                          className="smartaccess-input"
                           type="text"
                           placeholder="เช่น 09:00"
                           value={settings.auto_approve_start_time}
@@ -5229,7 +5229,7 @@ void handleLocalWebServerRequest() {
                           เวลาปิดบริการ (ชั่วโมง:นาที)
                         </label>
                         <input
-                          className="rmutp-input"
+                          className="smartaccess-input"
                           type="text"
                           placeholder="เช่น 16:00"
                           value={settings.auto_approve_end_time}
@@ -5294,7 +5294,7 @@ void handleLocalWebServerRequest() {
 
                   {/* Card 2: Discord Webhooks (ส่วนกลาง) */}
                   <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
                       <FileTextIcon /> 🔔 Discord Webhooks (ส่วนกลาง)
                     </h3>
 
@@ -5311,7 +5311,7 @@ void handleLocalWebServerRequest() {
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
-                            className="rmutp-input"
+                            className="smartaccess-input"
                             type="url"
                             placeholder="https://discord.com/api/webhooks/..."
                             value={settings.discord_webhook_register}
@@ -5335,7 +5335,7 @@ void handleLocalWebServerRequest() {
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
-                            className="rmutp-input"
+                            className="smartaccess-input"
                             type="url"
                             placeholder="กรอก URL แจ้งเตือนการเปิดประตู"
                             value={settings.discord_webhook_approve}
@@ -5359,7 +5359,7 @@ void handleLocalWebServerRequest() {
                         </label>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
-                            className="rmutp-input"
+                            className="smartaccess-input"
                             type="url"
                             placeholder="กรอก URL เก็บ Log ความปลอดภัย"
                             value={settings.discord_webhook_logs}
@@ -5387,7 +5387,7 @@ void handleLocalWebServerRequest() {
                         </p>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
-                            className="rmutp-input"
+                            className="smartaccess-input"
                             type="url"
                             placeholder="กรอก URL สำหรับ Admin Audit Log"
                             value={settings.discord_webhook_admin_audit || ""}
@@ -5419,7 +5419,7 @@ void handleLocalWebServerRequest() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ fontSize: 22 }}>🏢</span>
                       <div>
-                        <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--rmutp-purple-dark)", margin: 0 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", margin: 0 }}>
                           จัดการห้องเรียน & บอร์ด ESP32
                         </h3>
                         <p style={{ fontSize: 11.5, color: "var(--text-secondary)", margin: "2px 0 0" }}>
@@ -5455,7 +5455,7 @@ void handleLocalWebServerRequest() {
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                   <span style={{
                                     width: 38, height: 38, borderRadius: 12,
-                                    background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                                    background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
                                     color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
                                     fontSize: 15, fontWeight: 800, flexShrink: 0,
                                     boxShadow: "0 4px 10px rgba(124,58,237,0.15)"
@@ -5487,13 +5487,13 @@ void handleLocalWebServerRequest() {
                                   <button type="button" onClick={() => handleTestConnection(r.room)} disabled={testingRoom === r.room}
                                     className="btn-ghost" style={{ padding: "8px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 6, alignItems: "center", fontWeight: 700 }}>
                                     {testingRoom === r.room ? (
-                                      <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+                                      <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--smartaccess-purple)", borderRadius: "50%" }} />
                                     ) : (
                                       <span>📡 ทดสอบดึงคำสั่ง</span>
                                     )}
                                   </button>
                                   <button type="button" onClick={() => handleOpenRoomDetails(r.room, r.ip)}
-                                    className="btn-ghost" style={{ padding: "8px 14px", borderRadius: 10, fontSize: 12, color: "var(--rmutp-purple)", display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}
+                                    className="btn-ghost" style={{ padding: "8px 14px", borderRadius: 10, fontSize: 12, color: "var(--smartaccess-purple)", display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}
                                     title="ตั้งค่า API Webhooks & Arduino">
                                     ⚙️ ตั้งค่าและโค้ดบอร์ด
                                   </button>
@@ -5511,7 +5511,7 @@ void handleLocalWebServerRequest() {
                                     ✏️ แก้ไขชื่อ/รหัสห้อง
                                   </label>
                                   <input
-                                    className="rmutp-input"
+                                    className="smartaccess-input"
                                     value={r.room}
                                     onChange={e => {
                                       const newVal = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
@@ -5525,7 +5525,7 @@ void handleLocalWebServerRequest() {
                                     📡 แก้ไข IP Address / โดเมนบอร์ด
                                   </label>
                                   <input
-                                    className="rmutp-input"
+                                    className="smartaccess-input"
                                     value={r.ip}
                                     onChange={e => {
                                       setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, ip: e.target.value } : rm));
@@ -5548,8 +5548,8 @@ void handleLocalWebServerRequest() {
                     </div>
 
                     {/* Add Room Subcard */}
-                    <div style={{ padding: 20, background: "rgba(124,58,237,0.02)", border: "1px dashed var(--rmutp-purple-light)", borderRadius: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--rmutp-purple-dark)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ padding: 20, background: "rgba(124,58,237,0.02)", border: "1px dashed var(--smartaccess-purple-light)", borderRadius: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 6 }}>
                         ➕ ลงทะเบียนห้องเรียน / บอร์ดควบคุมใหม่
                       </span>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end" }}>
@@ -5557,18 +5557,18 @@ void handleLocalWebServerRequest() {
                           <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
                             รหัสห้องเรียน (อังกฤษ-ตัวเลข)
                           </label>
-                          <input className="rmutp-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)}
+                          <input className="smartaccess-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)}
                             style={{ padding: "10px 14px", fontSize: 13, width: "100%" }} />
                         </div>
                         <div style={{ textAlign: "left" }}>
                           <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
                             IP Address / โดเมนบอร์ด (ใส่ IP สมมติเพื่อเทสได้)
                           </label>
-                          <input className="rmutp-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)}
+                          <input className="smartaccess-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)}
                             style={{ padding: "10px 14px", fontSize: 13, width: "100%" }} />
                         </div>
                         <button type="button" onClick={() => handleAddRoom()} className="btn-secondary"
-                          style={{ padding: "10px 20px", fontSize: 13, fontWeight: 800, borderRadius: 10, borderColor: "var(--rmutp-purple-light)", color: "var(--rmutp-purple)", whiteSpace: "nowrap", width: "100%", justifyContent: "center", display: "flex" }}>
+                          style={{ padding: "10px 20px", fontSize: 13, fontWeight: 800, borderRadius: 10, borderColor: "var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)", whiteSpace: "nowrap", width: "100%", justifyContent: "center", display: "flex" }}>
                           ➕ เพิ่มห้องลงรายการ
                         </button>
                       </div>
@@ -5621,7 +5621,7 @@ void handleLocalWebServerRequest() {
                       width: 52,
                       height: 52,
                       borderRadius: "16px",
-                      background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                      background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -5632,7 +5632,7 @@ void handleLocalWebServerRequest() {
                       📖
                     </div>
                     <div>
-                      <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--rmutp-purple-dark)", margin: 0 }}>
+                      <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--smartaccess-purple-dark)", margin: 0 }}>
                         คู่มือการใช้งานระบบ & IoT Controller (ACCS User Manual)
                       </h2>
                       <p style={{ fontSize: 12.5, color: "var(--text-secondary)", margin: "4px 0 0" }}>
@@ -5778,7 +5778,7 @@ void handleLocalWebServerRequest() {
             </button>
 
             <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text-primary)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
-              ✏️ แก้ไขสิทธิ์แอดมิน: <span style={{ color: "var(--rmutp-purple)" }}>{editingAdmin.username}</span>
+              ✏️ แก้ไขสิทธิ์แอดมิน: <span style={{ color: "var(--smartaccess-purple)" }}>{editingAdmin.username}</span>
             </h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 20 }}>
               ปรับปรุงชื่อ ตำแหน่ง และขอบเขตการดูแลห้องปฏิบัติการของ {editingAdmin.full_name}
@@ -5790,7 +5790,7 @@ void handleLocalWebServerRequest() {
                   ชื่อ - นามสกุล เจ้าหน้าที่ *
                 </label>
                 <input
-                  className="rmutp-input"
+                  className="smartaccess-input"
                   type="text"
                   value={editAdminForm.full_name}
                   onChange={e => setEditAdminForm(a => ({ ...a, full_name: e.target.value }))}
@@ -5804,7 +5804,7 @@ void handleLocalWebServerRequest() {
                 </label>
                 <select
                   id="edit_admin_role"
-                  className="rmutp-input"
+                  className="smartaccess-input"
                   value={editAdminForm.role}
                   onChange={e => setEditAdminForm(a => ({ ...a, role: e.target.value }))}
                 >
@@ -5820,7 +5820,7 @@ void handleLocalWebServerRequest() {
                     ห้องเรียนที่อนุญาตให้เข้าถึง / จัดการได้ *
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 10 }}>
-                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, color: "var(--rmutp-purple)" }}>
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, color: "var(--smartaccess-purple)" }}>
                       <input
                         type="checkbox"
                         checked={editAdminAllowedRooms.includes("*")}

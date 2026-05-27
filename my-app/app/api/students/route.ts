@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, StudentRow, getSystemSettings } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
-import { RMUTP_FACULTIES } from "@/lib/faculties";
+import { SmartAccess_FACULTIES } from "@/lib/faculties";
 import { openDoor } from "@/lib/esp32";
 import { consumeOfflineGrant, consumeQRToken } from "@/lib/qr";
 import { rateLimit } from "@/lib/rate-limit";
@@ -145,10 +145,10 @@ export async function POST(req: NextRequest) {
     }
     const yearNum = parseInt(year ?? '');
     if (isNaN(yearNum) || yearNum < 1 || yearNum > 4) return NextResponse.json({ error: "กรุณาเลือกชั้นปี" }, { status: 400 });
-    if (!sanitizedFaculty || !RMUTP_FACULTIES[sanitizedFaculty]) {
+    if (!sanitizedFaculty || !SmartAccess_FACULTIES[sanitizedFaculty]) {
       return NextResponse.json({ error: "กรุณาเลือกคณะที่ถูกต้อง" }, { status: 400 });
     }
-    if (!sanitizedBranch || !RMUTP_FACULTIES[sanitizedFaculty].includes(sanitizedBranch)) {
+    if (!sanitizedBranch || !SmartAccess_FACULTIES[sanitizedFaculty].includes(sanitizedBranch)) {
       return NextResponse.json({ error: "กรุณาเลือกสาขาที่ถูกต้อง" }, { status: 400 });
     }
 

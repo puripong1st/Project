@@ -2,7 +2,7 @@
 
 // PDPA + PDPC Cookie Guideline 2565 — Granular Consent Banner v2.0
 // - C01-C02: แยกประเภทคุกกี้ + ปุ่ม "ตั้งค่า"
-// - C03: ปุ่มถอนความยินยอม (เปิดได้ตลอดจากหน้า Privacy หรือ event "rmutp_open_consent")
+// - C03: ปุ่มถอนความยินยอม (เปิดได้ตลอดจากหน้า Privacy หรือ event "smartaccess_open_consent")
 // - C04: บันทึก consent server-side ผ่าน POST /api/consent
 // - C05: version + timestamp tracking
 
@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
 const CONSENT_VERSION = "2.0";
-const STORAGE_KEY = "rmutp_cookie_consent_v2";
+const STORAGE_KEY = "smartaccess_cookie_consent_v2";
 
 export type ConsentChoices = {
   necessary: true;        // บังคับ — ไม่ขอ consent
@@ -99,8 +99,8 @@ export default function CookieConsent() {
 
   useEffect(() => {
     const handler = () => openSettings();
-    window.addEventListener("rmutp_open_consent", handler);
-    return () => window.removeEventListener("rmutp_open_consent", handler);
+    window.addEventListener("smartaccess_open_consent", handler);
+    return () => window.removeEventListener("smartaccess_open_consent", handler);
   }, [openSettings]);
 
   const persist = useCallback(
@@ -114,7 +114,7 @@ export default function CookieConsent() {
       saveConsentLocal(record);
       saveConsentServer(next, action);
       window.dispatchEvent(
-        new CustomEvent("rmutp_cookie_consent_changed", { detail: record })
+        new CustomEvent("smartaccess_cookie_consent_changed", { detail: record })
       );
     },
     []
@@ -159,7 +159,7 @@ export default function CookieConsent() {
   return (
     <>
       <style>{`
-        .rmutp-cookie-banner {
+        .smartaccess-cookie-banner {
           position: fixed;
           bottom: 0;
           left: 0;
@@ -178,13 +178,13 @@ export default function CookieConsent() {
           gap: 32px;
           animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
-        .rmutp-cookie-content {
+        .smartaccess-cookie-content {
           display: flex;
           align-items: center;
           gap: 16px;
           flex: 1;
         }
-        .rmutp-cookie-icon {
+        .smartaccess-cookie-icon {
           background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(219, 39, 119, 0.2));
           border: 1px solid rgba(167, 139, 250, 0.4);
           border-radius: 12px;
@@ -196,36 +196,36 @@ export default function CookieConsent() {
           flex-shrink: 0;
           box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
         }
-        .rmutp-cookie-text-container { text-align: left; }
-        .rmutp-cookie-title {
+        .smartaccess-cookie-text-container { text-align: left; }
+        .smartaccess-cookie-title {
           color: #FFFFFF;
           font-size: 14.5px;
           font-weight: 700;
           margin-bottom: 2px;
           font-family: 'Noto Sans Thai', sans-serif;
         }
-        .rmutp-cookie-desc {
+        .smartaccess-cookie-desc {
           color: rgba(255, 255, 255, 0.75);
           font-size: 12.5px;
           line-height: 1.5;
           font-weight: 400;
           font-family: 'Noto Sans Thai', sans-serif;
         }
-        .rmutp-cookie-link {
+        .smartaccess-cookie-link {
           color: #F472B6;
           text-decoration: underline;
           font-weight: 600;
           transition: color 0.2s ease;
         }
-        .rmutp-cookie-link:hover { color: #DB2777; }
-        .rmutp-cookie-link-alt {
+        .smartaccess-cookie-link:hover { color: #DB2777; }
+        .smartaccess-cookie-link-alt {
           color: #A78BFA;
           text-decoration: underline;
           font-weight: 600;
           transition: color 0.2s ease;
         }
-        .rmutp-cookie-link-alt:hover { color: #7C3AED; }
-        .rmutp-cookie-buttons {
+        .smartaccess-cookie-link-alt:hover { color: #7C3AED; }
+        .smartaccess-cookie-buttons {
           display: flex;
           align-items: center;
           gap: 10px;
@@ -265,7 +265,7 @@ export default function CookieConsent() {
           box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45);
         }
         /* Modal overlay */
-        .rmutp-modal-overlay {
+        .smartaccess-modal-overlay {
           position: fixed;
           inset: 0;
           z-index: 10000;
@@ -277,7 +277,7 @@ export default function CookieConsent() {
           padding: 20px;
           animation: fadeIn 0.25s ease both;
         }
-        .rmutp-modal {
+        .smartaccess-modal {
           background: linear-gradient(135deg, #1a1438 0%, #2a1f54 100%);
           border: 1px solid rgba(255, 255, 255, 0.12);
           border-radius: 20px;
@@ -291,12 +291,12 @@ export default function CookieConsent() {
           box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
           animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
-        .rmutp-modal h2 {
+        .smartaccess-modal h2 {
           font-size: 22px;
           font-weight: 800;
           margin: 0 0 6px;
         }
-        .rmutp-modal .modal-subtitle {
+        .smartaccess-modal .modal-subtitle {
           color: rgba(255, 255, 255, 0.55);
           font-size: 13px;
           margin-bottom: 20px;
@@ -395,21 +395,21 @@ export default function CookieConsent() {
           to { opacity: 1; transform: translateY(0) }
         }
         @media (max-width: 991px) {
-          .rmutp-cookie-banner {
+          .smartaccess-cookie-banner {
             flex-direction: column;
             align-items: stretch;
             gap: 16px;
             padding: 16px 24px;
           }
-          .rmutp-cookie-buttons {
+          .smartaccess-cookie-buttons {
             justify-content: flex-end;
             flex-wrap: wrap;
           }
         }
         @media (max-width: 480px) {
-          .rmutp-cookie-content { align-items: flex-start }
-          .rmutp-cookie-icon { display: none }
-          .rmutp-cookie-buttons {
+          .smartaccess-cookie-content { align-items: flex-start }
+          .smartaccess-cookie-icon { display: none }
+          .smartaccess-cookie-buttons {
             width: 100%;
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -424,25 +424,25 @@ export default function CookieConsent() {
       `}</style>
 
       {!isModalOpen && (
-        <div className="rmutp-cookie-banner" role="region" aria-label="แถบความยินยอมคุกกี้">
-          <div className="rmutp-cookie-content">
-            <div className="rmutp-cookie-icon" aria-hidden="true">
+        <div className="smartaccess-cookie-banner" role="region" aria-label="แถบความยินยอมคุกกี้">
+          <div className="smartaccess-cookie-content">
+            <div className="smartaccess-cookie-icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
 
-            <div className="rmutp-cookie-text-container">
-              <h4 className="rmutp-cookie-title">นโยบายความเป็นส่วนตัวและคุกกี้ 🍪</h4>
-              <p className="rmutp-cookie-desc">
-                ระบบ RMUTP ACCS ใช้คุกกี้/Web Storage เพื่อระบุตัวตน จดจำการตั้งค่า และจัดเก็บประวัติ Log การเข้าออกตาม พ.ร.บ. คอมพิวเตอร์ฯ 2560 และ PDPA 2562 ท่านสามารถเลือกประเภทคุกกี้ที่ยินยอมและถอนความยินยอมได้ทุกเมื่อ ดูรายละเอียดที่{" "}
-                <Link href={`/privacy${queryString}`} className="rmutp-cookie-link">นโยบายความเป็นส่วนตัว</Link> และ{" "}
-                <Link href={`/terms${queryString}`} className="rmutp-cookie-link-alt">ข้อกำหนดการใช้งาน</Link>
+            <div className="smartaccess-cookie-text-container">
+              <h4 className="smartaccess-cookie-title">นโยบายความเป็นส่วนตัวและคุกกี้ 🍪</h4>
+              <p className="smartaccess-cookie-desc">
+                ระบบ SmartAccess ใช้คุกกี้/Web Storage เพื่อระบุตัวตน จดจำการตั้งค่า และจัดเก็บประวัติ Log การเข้าออกตาม พ.ร.บ. คอมพิวเตอร์ฯ 2560 และ PDPA 2562 ท่านสามารถเลือกประเภทคุกกี้ที่ยินยอมและถอนความยินยอมได้ทุกเมื่อ ดูรายละเอียดที่{" "}
+                <Link href={`/privacy${queryString}`} className="smartaccess-cookie-link">นโยบายความเป็นส่วนตัว</Link> และ{" "}
+                <Link href={`/terms${queryString}`} className="smartaccess-cookie-link-alt">ข้อกำหนดการใช้งาน</Link>
               </p>
             </div>
           </div>
 
-          <div className="rmutp-cookie-buttons">
+          <div className="smartaccess-cookie-buttons">
             <button
               onClick={() => setIsModalOpen(true)}
               className="btn-cookie-settings"
@@ -462,7 +462,7 @@ export default function CookieConsent() {
 
       {isModalOpen && (
         <div
-          className="rmutp-modal-overlay"
+          className="smartaccess-modal-overlay"
           role="dialog"
           aria-modal="true"
           aria-labelledby="consent-modal-title"
@@ -470,7 +470,7 @@ export default function CookieConsent() {
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="rmutp-modal">
+          <div className="smartaccess-modal">
             <h2 id="consent-modal-title">⚙️ ตั้งค่าความยินยอมคุกกี้</h2>
             <p className="modal-subtitle">
               เวอร์ชัน {CONSENT_VERSION} · เลือกประเภทคุกกี้ที่ท่านยินยอมให้ระบบใช้งาน
@@ -490,7 +490,7 @@ export default function CookieConsent() {
               <div className="consent-category-info">
                 <p className="consent-category-name">⚡ ฟังก์ชันการใช้งาน (Functional)</p>
                 <p className="consent-category-desc">
-                  คุกกี้/localStorage สำหรับจดจำการตั้งค่าผู้ใช้ เช่น Auto-fill ฟอร์มลงทะเบียน (rmutp_form_draft), การจดจำห้องที่เคยเข้า, การจดจำความยินยอมนี้
+                  คุกกี้/localStorage สำหรับจดจำการตั้งค่าผู้ใช้ เช่น Auto-fill ฟอร์มลงทะเบียน (smartaccess_form_draft), การจดจำห้องที่เคยเข้า, การจดจำความยินยอมนี้
                 </p>
               </div>
               <label className="toggle-switch">
@@ -567,6 +567,6 @@ export default function CookieConsent() {
 // Helper สำหรับเรียกจากหน้าอื่นเพื่อเปิด Modal (เช่นปุ่ม "จัดการความยินยอม" ใน Privacy)
 export function openConsentSettings() {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("rmutp_open_consent"));
+    window.dispatchEvent(new Event("smartaccess_open_consent"));
   }
 }

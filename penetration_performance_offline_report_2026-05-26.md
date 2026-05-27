@@ -1,6 +1,6 @@
 # รายงานทดสอบความปลอดภัย ประสิทธิภาพ และความพร้อมใช้งานแบบออฟไลน์
 
-**โครงการ:** RMUTP Door Access Controller (`my-app` Next.js + Supabase/PostgreSQL + ESP32)  
+**โครงการ:** SmartAccess Door Access Controller (`my-app` Next.js + Supabase/PostgreSQL + ESP32)  
 **วันที่ทดสอบ:** 2026-05-26  
 **ขอบเขต:** source review, dependency audit, build/lint gate, lightweight live timing, offline/failure simulation  
 **ข้อจำกัด:** ไม่ทำ destructive test, ไม่ brute force, ไม่ยิงโหลดหนัก, ไม่เรียก endpoint เปิดประตูจริง, และไม่เปิดเผยค่า secret จริงในรายงานนี้
@@ -250,7 +250,7 @@
 ## Prompt รวมสำหรับสั่ง AI แก้ทั้งหมด
 
 ```markdown
-คุณเป็น senior full-stack/security engineer ในโปรเจกต์ RMUTP Door Access Controller ให้แก้ช่องโหว่ในรายงาน `penetration_performance_offline_report_2026-05-26.md` โดยรักษาพฤติกรรมระบบเดิมและ response shape เดิมให้มากที่สุด
+คุณเป็น senior full-stack/security engineer ในโปรเจกต์ SmartAccess Door Access Controller ให้แก้ช่องโหว่ในรายงาน `penetration_performance_offline_report_2026-05-26.md` โดยรักษาพฤติกรรมระบบเดิมและ response shape เดิมให้มากที่สุด
 
 ลำดับความสำคัญ:
 1. กำจัด secret จริงออกจาก env example/workspace และเพิ่ม dummy `.env.example`

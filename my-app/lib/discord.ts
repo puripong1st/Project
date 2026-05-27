@@ -174,7 +174,7 @@ export async function sendDiscordNotification(
           { name: "🌍 Browser", value: deviceInfo.browser, inline: true },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
-        footer: { text: "ระบบ RMUTP Door Access" },
+        footer: { text: "ระบบ SmartAccess Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -194,7 +194,7 @@ export async function sendDiscordNotification(
           { name: "🚪 ESP32 Response", value: `\`${data.esp32Response || "สั่งเปิดประตูสำเร็จ"}\``, inline: false },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
-        footer: { text: "ระบบ RMUTP Door Access" },
+        footer: { text: "ระบบ SmartAccess Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -213,7 +213,7 @@ export async function sendDiscordNotification(
           { name: "📝 เหตุผล", value: `\`${data.reason || "ไม่ระบุ"}\``, inline: false },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
-        footer: { text: "ระบบ RMUTP Door Access" },
+        footer: { text: "ระบบ SmartAccess Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -233,7 +233,7 @@ export async function sendDiscordNotification(
           ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
-        footer: { text: "ระบบ RMUTP Door Access" },
+        footer: { text: "ระบบ SmartAccess Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -252,7 +252,7 @@ export async function sendDiscordNotification(
           ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
-        footer: { text: "ระบบ RMUTP Door Access" },
+        footer: { text: "ระบบ SmartAccess Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -267,7 +267,7 @@ export async function sendDiscordNotification(
           { name: "🌐 IP Address บอร์ด", value: `\`${data.ip || "ไม่ระบุ"}\``, inline: true },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
-        footer: { text: "ระบบ RMUTP Door Access" },
+        footer: { text: "ระบบ SmartAccess Door Access" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -292,7 +292,7 @@ export async function sendDiscordNotification(
           { name: "🌍 Browser", value: deviceInfo.browser, inline: true },
           { name: "⏰ เวลาเข้าสู่ระบบ", value: now, inline: false },
         ],
-        footer: { text: "RMUTP Admin Audit Log" },
+        footer: { text: "SmartAccess Admin Audit Log" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -315,7 +315,7 @@ export async function sendDiscordNotification(
           { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
           { name: "⏰ เวลาออกจากระบบ", value: now, inline: false },
         ],
-        footer: { text: "RMUTP Admin Audit Log" },
+        footer: { text: "SmartAccess Admin Audit Log" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -335,7 +335,7 @@ export async function sendDiscordNotification(
           { name: "📝 เหตุผล", value: data.reason || "Username หรือ Password ไม่ถูกต้อง", inline: false },
           { name: "⏰ เวลา", value: now, inline: false },
         ],
-        footer: { text: "RMUTP Admin Audit Log — Security Alert" },
+        footer: { text: "SmartAccess Admin Audit Log — Security Alert" },
         timestamp: new Date().toISOString(),
       };
       break;
@@ -356,8 +356,8 @@ export async function sendDiscordNotification(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: "RMUTP Door Access",
-          avatar_url: "http://rmutp.ac.th/icon/favicon-96x96.png",
+          username: "SmartAccess Door Access",
+          avatar_url: "http://smartaccess.ac.th/icon/favicon-96x96.png",
           embeds: [embed!],
         }),
       });
@@ -374,8 +374,8 @@ export async function sendDiscordNotification(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: "RMUTP Audit Log Bot",
-          avatar_url: "http://rmutp.ac.th/icon/favicon-96x96.png",
+          username: "SmartAccess Audit Log Bot",
+          avatar_url: "http://smartaccess.ac.th/icon/favicon-96x96.png",
           content: `📊 **[SYSTEM LOG]** ตรวจพบเหตุการณ์ประเภท \`${eventType}\``,
           embeds: [embed!],
         }),

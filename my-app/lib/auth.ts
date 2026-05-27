@@ -36,7 +36,7 @@ export function invalidateAdminActiveCache(id: number): void {
   globalForAuth.adminActiveCache?.delete(id);
 }
 
-const COOKIE_NAME = "rmutp_admin_token";
+const COOKIE_NAME = "smartaccess_admin_token";
 
 export interface AdminPayload {
   id: number;

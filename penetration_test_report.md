@@ -1,5 +1,5 @@
 # รายงานการทดสอบการเจาะระบบและความปลอดภัย (Penetration Testing & Security Audit Report)
-**โครงการ:** RMUTP Door Access Controller (Next.js Web App & ESP32 Smart IoT Lock)  
+**โครงการ:** SmartAccess Door Access Controller (Next.js Web App & ESP32 Smart IoT Lock)  
 **วันที่ทดสอบ:** 2026-05-26  
 **ผู้ประเมินความปลอดภัย:** Antigravity (Advanced Agentic AI Security Consultant)
 
@@ -50,7 +50,7 @@
 > **ไฟล์ที่เกี่ยวข้อง:** [esp32/esp32.ino](file:///C:/Users/aunkh/OneDrive/Desktop/Project/esp32/esp32.ino#L26), [my-app/lib/esp32.ts](file:///C:/Users/aunkh/OneDrive/Desktop/Project/my-app/lib/esp32.ts#L20)
 
 *   **ลักษณะของช่องโหว่:**  
-    มีการระบุ `ESP32_API_KEY` ค่าเริ่มต้นไว้แบบคงที่ในซอร์สโค้ด (Hardcoded String) เป็น `"rmutp_secure_door_unlock_token_2026"` ทั้งฝั่งบอร์ดและเซิร์ฟเวอร์ Next.js และไม่มีคำเตือนหรือหยุดการทำงานหากใช้งานค่าดีฟอลต์บนสภาพแวดล้อมใช้งานจริง (Production)
+    มีการระบุ `ESP32_API_KEY` ค่าเริ่มต้นไว้แบบคงที่ในซอร์สโค้ด (Hardcoded String) เป็น `"smartaccess_secure_door_unlock_token_2026"` ทั้งฝั่งบอร์ดและเซิร์ฟเวอร์ Next.js และไม่มีคำเตือนหรือหยุดการทำงานหากใช้งานค่าดีฟอลต์บนสภาพแวดล้อมใช้งานจริง (Production)
 *   **ช่องทางการโจมตี (Attack Vector):**  
     1. ผู้โจมตีสามารถดึงไฟล์ข้อมูลไบนารีที่คอมไพล์แล้วออกจากชิปหน่วยความจำ Flash ของ ESP32 ได้อย่างง่ายดายทางสายสัญญาณ หรืออ่านซอร์สโค้ดจาก Git Repository หากตั้งค่าเป็น Public เพื่อดึงรหัส API Key ออกมานำไปใช้เรียกดูข้อมูล `active_token` บน Next.js API หลังบ้าน
     2. หากใช้งานคีย์เริ่มต้นนี้ในเซิร์ฟเวอร์ Production สุ่มเสี่ยงที่จะทำให้คนนอกเดาคีย์ได้ง่ายๆ
@@ -114,7 +114,7 @@
 
 3. **ป้องกันการรัน Next.js บน Production ด้วยคีย์ฮาร์ดโค้ดเริ่มต้น**
    - แก้ไขไฟล์ `my-app/lib/esp32.ts`
-   - ค้นหาตัวแปร `ESP32_API_KEY` หากพบว่าคีย์ตรงกับค่าเริ่มต้น `"rmutp_secure_door_unlock_token_2026"` และทำงานอยู่ในสภาพแวดล้อม Production (`process.env.NODE_ENV === "production"`) ให้ทำการ throw new Error() เพื่อขัดขวางและแจ้งเตือนผู้พัฒนาให้ตั้งค่าตัวแปรในระบบ Environment ให้ปลอดภัย
+   - ค้นหาตัวแปร `ESP32_API_KEY` หากพบว่าคีย์ตรงกับค่าเริ่มต้น `"smartaccess_secure_door_unlock_token_2026"` และทำงานอยู่ในสภาพแวดล้อม Production (`process.env.NODE_ENV === "production"`) ให้ทำการ throw new Error() เพื่อขัดขวางและแจ้งเตือนผู้พัฒนาให้ตั้งค่าตัวแปรในระบบ Environment ให้ปลอดภัย
 
 4. **เพิ่มระบบ Rate Limiter ให้กับ Login API**
    - แก้ไขไฟล์ `my-app/app/api/auth/login/route.ts`

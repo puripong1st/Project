@@ -3,8 +3,8 @@ import "./globals.css";
 import CookieConsent from "./components/CookieConsent";
 
 export const metadata: Metadata = {
-  title: "RMUTP Door Access System",
-  description: "ระบบควบคุมการเข้าออก มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร",
+  title: "SmartAccess Door Access System",
+  description: "ระบบควบคุมการเข้าออก Innovative system for managing access rights and controlling classroom access via wireless network",
 };
 
 export default function RootLayout({

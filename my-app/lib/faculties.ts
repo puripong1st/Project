@@ -1,5 +1,5 @@
-// lib/faculties.ts — RMUTP real faculties and branches
-export const RMUTP_FACULTIES: Record<string, string[]> = {
+// lib/faculties.ts — SmartAccess real faculties and branches
+export const SmartAccess_FACULTIES: Record<string, string[]> = {
   "คณะวิศวกรรมศาสตร์": [
     "วิศวกรรมไฟฟ้า",
     "วิศวกรรมอิเล็กทรอนิกส์และโทรคมนาคม",
@@ -60,4 +60,4 @@ export const RMUTP_FACULTIES: Record<string, string[]> = {
   ],
 };
 
-export const FACULTY_NAMES = Object.keys(RMUTP_FACULTIES);
+export const FACULTY_NAMES = Object.keys(SmartAccess_FACULTIES);

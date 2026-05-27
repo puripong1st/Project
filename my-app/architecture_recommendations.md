@@ -83,7 +83,7 @@ sequenceDiagram
 5. **รันการทำงานเบื้องหลังตลอด 24 ชั่วโมง**: ติดตั้งตัวจัดการโพรเซส `PM2` เพื่อคุมให้ระบบเว็บเปิดค้างแม้จะปิดคอมพิวเตอร์หลักหรือไฟตกดับชั่วคราว:
    ```bash
    sudo npm install -g pm2
-   pm2 start npm --name "rmutp-app" -- run start
+   pm2 start npm --name "smartaccess-app" -- run start
    pm2 startup
    pm2 save
    ```

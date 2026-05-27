@@ -1,5 +1,5 @@
-# 🚪 RMUTP ACCS — IoT-Based Door Access Control System
-### ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร
+# 🚪 Innovative system for managing access rights and controlling classroom access via wireless network
+### ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network
 
 ระบบควบคุมการเปิด-ปิดประตูห้องผ่านคิวอาร์โค้ดแบบ Full-Stack เชื่อมต่อกับฮาร์ดแวร์บอร์ดสมองกลฝังตัว ESP32 และฐานข้อมูล postgreSQL พร้อมฟังก์ชันควบคุมความปลอดภัยและความถูกต้องตามกฎหมายจราจรทางคอมพิวเตอร์อย่างเป็นทางการ
 
@@ -77,8 +77,8 @@ my-app/
 ### 1. โคลนโปรเจกต์และติดตั้ง Packages
 ```bash
 # โคลนโปรเจกต์ลงคอมพิวเตอร์ของคุณ
-git clone https://github.com/your-username/rmutp-door-access.git
-cd rmutp-door-access/my-app
+git clone https://github.com/your-username/smartaccess-door-access.git
+cd smartaccess-door-access/my-app
 
 # ติดตั้งไลบรารีที่จำเป็นทั้งหมด
 npm install
@@ -86,7 +86,7 @@ npm install
 
 ### 2. เตรียมฐานข้อมูล postgreSQL
 1. เปิดการทำงานของเซิร์ฟเวอร์ postgreSQL (เช่น ผ่าน Supabase หรือ local postgreSQL)
-2. สร้างหรือใช้ฐานข้อมูลชื่อ `rmutp_access`
+2. สร้างหรือใช้ฐานข้อมูลชื่อ `smartaccess_access`
 3. ระบบจะทำการตรวจสอบและสร้างตารางต่างๆ (ตาราง `admin_users`, `students`, `access_logs`) พร้อมป้อนสิทธิ์บัญชีเริ่มต้นให้อัตโนมัติเมื่อสตาร์ทเซิร์ฟเวอร์ในครั้งแรก
 
 ### 3. ตั้งค่าไฟล์สภาพแวดล้อม `.env.local`
@@ -97,7 +97,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=ชื่อผู้ใช้ (เช่น postgres)
 POSTGRES_PASSWORD=รหัสผ่านฐานข้อมูล
-POSTGRES_DATABASE=rmutp_access
+POSTGRES_DATABASE=smartaccess_access
 
 # การเข้ารหัสความปลอดภัย JWT
 JWT_SECRET=รหัสลับสุ่มยาวๆความปลอดภัยของคุณ
@@ -135,7 +135,7 @@ npm run dev
 ---
 
 ## ⚖️ ข้อกฎหมายและการรับประกันความปลอดภัยของข้อมูล
-ระบบควบคุมการเข้าออกห้อง RMUTP ACCS คณะครุศาสตร์ ได้รับการออกแบบให้สอดคล้องกับระเบียบราชการทางคอมพิวเตอร์และ PDPA ทุกประการ ข้อมูลประวัติผู้ขอรับบริการและเจ้าหน้าที่ผู้ประเมินสถานะจะได้รับการป้องกันภายใต้มาตรฐานสากลและระบบบันทึกประวัติการบำรุงรักษาอย่างมีธรรมาภิบาล
+ระบบควบคุมการเข้าออกห้อง SmartAccess คณะครุศาสตร์ ได้รับการออกแบบให้สอดคล้องกับระเบียบราชการทางคอมพิวเตอร์และ PDPA ทุกประการ ข้อมูลประวัติผู้ขอรับบริการและเจ้าหน้าที่ผู้ประเมินสถานะจะได้รับการป้องกันภายใต้มาตรฐานสากลและระบบบันทึกประวัติการบำรุงรักษาอย่างมีธรรมาภิบาล
 
 ---
-*จัดทำและพัฒนาขึ้นเพื่อสนับสนุนงานเทคโนโลยีและนวัตกรรม คณะครุศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร*
+*จัดทำและพัฒนาขึ้นเพื่อสนับสนุนงานเทคโนโลยีและนวัตกรรม คณะครุศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network*

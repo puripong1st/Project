@@ -1,5 +1,5 @@
 # คู่มือการติดตั้งและจัดตั้งระบบบน Raspberry Pi 4 อย่างละเอียด (Production Deployment)
-### ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ มทร.พระนคร (RMUTP ACCS)
+### ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ มทร.พระนคร (SmartAccess)
 
 คู่มือนี้จะอธิบายขั้นตอนการนำระบบเว็บ **Next.js + postgreSQL** ไปติดตั้งบนบอร์ดคอมพิวเตอร์ขนาดเล็ก **Raspberry Pi 4** เพื่อจัดตั้งเป็น **Local Server** ประจำตึกเรียน/ห้องเรียน ให้ทำงานร่วมกับกล่องควบคุม **ESP32** แบบออฟไลน์ภายในวงแลนเดียวกันได้อย่างเสถียรที่สุด 24 ชั่วโมงต่อวัน โดยไม่ต้องพึ่งพาระบบคลาวด์ภายนอก
 
@@ -91,7 +91,7 @@
    ```
 3. สร้าง Database หลักของระบบ:
    ```sql
-   CREATE DATABASE rmutp_access;
+   CREATE DATABASE smartaccess_access;
    \q
    ```
 
@@ -129,10 +129,10 @@
    POSTGRES_PORT=5432
    POSTGRES_USER=postgres
    POSTGRES_PASSWORD=ใส่รหัสผ่านฐานข้อมูลที่คุณตั้งในขั้นตอนที่ 4
-   POSTGRES_DATABASE=rmutp_access
+   POSTGRES_DATABASE=smartaccess_access
 
    # รหัสความปลอดภัย JWT
-   JWT_SECRET=rmutp-door-access-super-secret-key-2024
+   JWT_SECRET=smartaccess-door-access-super-secret-key-2024
 
    # การเชื่อมโยงกล่องควบคุม ESP32
    ESP32_IP=ระบุไอพีของบอร์ด ESP32 จริง (เช่น 192.168.1.100)
@@ -169,7 +169,7 @@
    ```
 2. สั่งเริ่มการทำงานตัวเว็บ Next.js ภายใต้การควบคุมของ PM2:
    ```bash
-   pm2 start npm --name "rmutp-app" -- run start
+   pm2 start npm --name "smartaccess-app" -- run start
    ```
 3. ตั้งค่าระบบควบคุมให้ PM2 เริ่มเปิดเว็บอัตโนมัติตอน Raspberry Pi เปิดเครื่อง (Autostart on Boot):
    ```bash

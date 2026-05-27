@@ -1,12 +1,12 @@
 @echo off
 REM ============================================================
-REM  RMUTP ESP32 — Build Script for Wokwi Simulator
+REM  SmartAccess ESP32 — Build Script for Wokwi Simulator
 REM  รันไฟล์นี้ใน Command Prompt หรือ Terminal ใน VS Code
 REM ============================================================
 
 echo.
 echo ========================================
-echo  RMUTP ESP32 Wokwi Build Script
+echo  SmartAccess ESP32 Wokwi Build Script
 echo ========================================
 echo.
 

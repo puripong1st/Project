@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { RMUTP_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
+import { SmartAccess_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
 
 interface OfflineEntry {
   id: string;
@@ -272,7 +272,7 @@ function RegistrationPageInner() {
 
   useEffect(() => {
     const checkConsent = () => {
-      const consent = localStorage.getItem("rmutp_cookie_consent");
+      const consent = localStorage.getItem("smartaccess_cookie_consent");
       if (consent === "true") {
         setHasConsented(true);
       } else if (consent === "false") {
@@ -282,17 +282,17 @@ function RegistrationPageInner() {
       }
     };
     checkConsent();
-    window.addEventListener("rmutp_cookie_consent_changed", checkConsent);
+    window.addEventListener("smartaccess_cookie_consent_changed", checkConsent);
     window.addEventListener("storage", checkConsent);
     return () => {
-      window.removeEventListener("rmutp_cookie_consent_changed", checkConsent);
+      window.removeEventListener("smartaccess_cookie_consent_changed", checkConsent);
       window.removeEventListener("storage", checkConsent);
     };
   }, []);
 
   useEffect(() => {
     // ─── 5-Minutes Returning Bypass Gate ───
-    const saved = sessionStorage.getItem("rmutp_user_session");
+    const saved = sessionStorage.getItem("smartaccess_user_session");
     let isBypassValid = false;
     if (saved) {
       try {
@@ -319,13 +319,13 @@ function RegistrationPageInner() {
     const TIMER_DURATION = 120;
     let savedScanTs: number | null = null;
     try {
-      const raw = sessionStorage.getItem(`rmutp_qr_verified_${room}`);
+      const raw = sessionStorage.getItem(`smartaccess_qr_verified_${room}`);
       if (raw && raw !== "1") {
         savedScanTs = parseInt(raw, 10);
       } else if (raw === "1") {
         // migrate old format: treat as "just verified"
         savedScanTs = Date.now();
-        sessionStorage.setItem(`rmutp_qr_verified_${room}`, String(savedScanTs));
+        sessionStorage.setItem(`smartaccess_qr_verified_${room}`, String(savedScanTs));
       }
     } catch {}
 
@@ -340,7 +340,7 @@ function RegistrationPageInner() {
         return;
       } else {
         // timer expired while page was closed — clear and block
-        try { sessionStorage.removeItem(`rmutp_qr_verified_${room}`); } catch {}
+        try { sessionStorage.removeItem(`smartaccess_qr_verified_${room}`); } catch {}
         queueMicrotask(() => {
           setQrAuthorized(false);
           setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
@@ -372,9 +372,9 @@ function RegistrationPageInner() {
         if (res.ok && data.success) {
           try {
             // QR timer bug fix: save scan timestamp so timer continues on page reload
-            sessionStorage.setItem(`rmutp_qr_verified_${room}`, String(Date.now()));
+            sessionStorage.setItem(`smartaccess_qr_verified_${room}`, String(Date.now()));
             if (data.offline_grant) {
-              sessionStorage.setItem(`rmutp_offline_grant_${room}`, data.offline_grant);
+              sessionStorage.setItem(`smartaccess_offline_grant_${room}`, data.offline_grant);
             }
           } catch {}
           if (data.offline_grant) {
@@ -409,7 +409,7 @@ function RegistrationPageInner() {
         setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
       });
       try {
-        sessionStorage.removeItem(`rmutp_qr_verified_${room}`);
+        sessionStorage.removeItem(`smartaccess_qr_verified_${room}`);
       } catch {}
       return;
     }
@@ -457,7 +457,7 @@ function RegistrationPageInner() {
     const delayDebounceFn = setTimeout(async () => {
       try {
         // V06 fix: send offline_grant so server can verify QR authorization
-        const grant = offlineGrant || sessionStorage.getItem(`rmutp_offline_grant_${room}`) || "";
+        const grant = offlineGrant || sessionStorage.getItem(`smartaccess_offline_grant_${room}`) || "";
         const res = await fetch("/api/students/check-match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -489,7 +489,7 @@ function RegistrationPageInner() {
                 faculty: data.faculty,
                 branch: data.branch,
               }));
-              setBranches(RMUTP_FACULTIES[data.faculty] || []);
+              setBranches(SmartAccess_FACULTIES[data.faculty] || []);
               
               // Show modern transient checkmark Toast
               setAutoFillToast("✓ ดึงข้อมูลประวัติการเรียนเดิมสำเร็จอัตโนมัติ");
@@ -516,7 +516,7 @@ function RegistrationPageInner() {
         faculty: matchedHistory.faculty,
         branch: matchedHistory.branch,
       }));
-      setBranches(RMUTP_FACULTIES[matchedHistory.faculty] || []);
+      setBranches(SmartAccess_FACULTIES[matchedHistory.faculty] || []);
       setShowAutoFillPrompt(false);
       
       setAutoFillToast("✓ ดึงข้อมูลประวัติการเรียนเดิมเรียบร้อยแล้ว");
@@ -549,14 +549,14 @@ function RegistrationPageInner() {
 
   function getOfflineQueue(): OfflineEntry[] {
     try {
-      return JSON.parse(localStorage.getItem("rmutp_offline_queue") || "[]");
+      return JSON.parse(localStorage.getItem("smartaccess_offline_queue") || "[]");
     } catch {
       return [];
     }
   }
 
   const saveOfflineQueue = useCallback((q: OfflineEntry[]) => {
-    localStorage.setItem("rmutp_offline_queue", JSON.stringify(q));
+    localStorage.setItem("smartaccess_offline_queue", JSON.stringify(q));
     setQueueCount(q.length);
   }, []);
 
@@ -622,11 +622,11 @@ function RegistrationPageInner() {
       if (res.ok && data.success) {
         setBypassState("success");
         // Auto-clear bypass tokens after successful use — token is consumed, no reuse possible
-        sessionStorage.removeItem("rmutp_temp_bypass_token");
-        sessionStorage.removeItem("rmutp_user_session");
+        sessionStorage.removeItem("smartaccess_temp_bypass_token");
+        sessionStorage.removeItem("smartaccess_user_session");
         // We do NOT renew the timestamp so that the 5-minute session is strictly from the original approval time
       } else {
-        sessionStorage.removeItem("rmutp_user_session");
+        sessionStorage.removeItem("smartaccess_user_session");
         setBypassState("none");
       }
     } catch {
@@ -637,7 +637,7 @@ function RegistrationPageInner() {
 
   // Check bypass session on component mount
   useEffect(() => {
-    const saved = sessionStorage.getItem("rmutp_user_session");
+    const saved = sessionStorage.getItem("smartaccess_user_session");
     if (!saved) {
       setTimeout(() => {
         setBypassState("none");
@@ -657,13 +657,13 @@ function RegistrationPageInner() {
         }, 0);
       } else {
         // Expired
-        sessionStorage.removeItem("rmutp_user_session");
+        sessionStorage.removeItem("smartaccess_user_session");
         setTimeout(() => {
           setBypassState("none");
         }, 0);
       }
     } catch {
-      sessionStorage.removeItem("rmutp_user_session");
+      sessionStorage.removeItem("smartaccess_user_session");
       setTimeout(() => {
         setBypassState("none");
       }, 0);
@@ -683,7 +683,7 @@ function RegistrationPageInner() {
 
     const checkStatus = async () => {
       try {
-        const token = success.bypass_token || sessionStorage.getItem("rmutp_temp_bypass_token") || "";
+        const token = success.bypass_token || sessionStorage.getItem("smartaccess_temp_bypass_token") || "";
         const res = await fetch(`/api/students/${success.id}?token=${encodeURIComponent(token)}`);
         if (res.ok) {
           const data = await res.json();
@@ -710,21 +710,21 @@ function RegistrationPageInner() {
       const session = {
         id: success.id,
         student_id: success.student_id,
-        bypass_token: success.bypass_token || sessionStorage.getItem("rmutp_temp_bypass_token"),
+        bypass_token: success.bypass_token || sessionStorage.getItem("smartaccess_temp_bypass_token"),
         timestamp: new Date().toISOString(),
         title: success.title,
         first_name: success.first_name,
         last_name: success.last_name,
         requested_room: room,
       };
-      sessionStorage.setItem("rmutp_user_session", JSON.stringify(session));
+      sessionStorage.setItem("smartaccess_user_session", JSON.stringify(session));
     }
   }, [success, currentStatus, room]);
 
   // Cascade faculty → branch
   function handleFacultyChange(faculty: string) {
     setForm(f => ({ ...f, faculty, branch: "" }));
-    setBranches(RMUTP_FACULTIES[faculty] || []);
+    setBranches(SmartAccess_FACULTIES[faculty] || []);
   }
 
   // Format student ID
@@ -757,7 +757,7 @@ function RegistrationPageInner() {
     }
 
     if (!isOnline) {
-      const grant = offlineGrant || sessionStorage.getItem(`rmutp_offline_grant_${room}`) || "";
+      const grant = offlineGrant || sessionStorage.getItem(`smartaccess_offline_grant_${room}`) || "";
       if (!grant) {
         setLoading(false);
         setError("ไม่สามารถบันทึกแบบออฟไลน์ได้ เนื่องจากไม่พบหลักฐานการสแกน QR Code กรุณาเชื่อมต่ออินเทอร์เน็ตและสแกนใหม่");
@@ -788,7 +788,7 @@ function RegistrationPageInner() {
     }
 
     try {
-      const grant = offlineGrant || sessionStorage.getItem(`rmutp_offline_grant_${room}`) || "";
+      const grant = offlineGrant || sessionStorage.getItem(`smartaccess_offline_grant_${room}`) || "";
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -813,7 +813,7 @@ function RegistrationPageInner() {
           bypass_token: data.bypass_token,
         });
         if (data.bypass_token) {
-          sessionStorage.setItem("rmutp_temp_bypass_token", data.bypass_token);
+          sessionStorage.setItem("smartaccess_temp_bypass_token", data.bypass_token);
         }
       }
     } catch {
@@ -831,7 +831,7 @@ function RegistrationPageInner() {
         <div className="floating-blob blob-2" />
         <div className="animate-fade-in" style={{ maxWidth: 440, width: "100%", textAlign: "center", zIndex: 10 }}>
           <div
-            style={{ width: 84, height: 84, borderRadius: "50%", background: "var(--rmutp-purple-pale)", border: "2px solid var(--rmutp-purple)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "var(--rmutp-purple)" }}
+            style={{ width: 84, height: 84, borderRadius: "50%", background: "var(--smartaccess-purple-pale)", border: "2px solid var(--smartaccess-purple)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "var(--smartaccess-purple)" }}
             className="animate-pulse-ring"
           >
             <ClockIcon className="animate-pulse-soft" />
@@ -843,8 +843,8 @@ function RegistrationPageInner() {
             สแกนเข้าห้องซ้ำภายใน 5 นาทีเดิม... <br />
             กำลังยืนยันสิทธิ์และสั่งเปิดประตูให้ท่านอัตโนมัติโดยไม่ต้องกรอกข้อมูล
           </p>
-          <div style={{ display: "inline-flex", gap: 6, alignItems: "center", background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 600 }}>
-            <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(124,58,237,0.3)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+          <div style={{ display: "inline-flex", gap: 6, alignItems: "center", background: "var(--smartaccess-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--smartaccess-purple-dark)", fontSize: 12, fontWeight: 600 }}>
+            <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(124,58,237,0.3)", borderTopColor: "var(--smartaccess-purple)", borderRadius: "50%" }} />
             <span>กำลังสื่อสารกับกล่องควบคุมประตูด้านหน้า...</span>
           </div>
         </div>
@@ -858,7 +858,7 @@ function RegistrationPageInner() {
     let sessionName = "นักศึกษา";
     let sessionCode = "";
     try {
-      const saved = sessionStorage.getItem("rmutp_user_session");
+      const saved = sessionStorage.getItem("smartaccess_user_session");
       if (saved) {
         const s = JSON.parse(saved);
         sessionName = `${s.title}${s.first_name} ${s.last_name}`;
@@ -894,7 +894,7 @@ function RegistrationPageInner() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>รหัสนักศึกษา</span>
-              <span style={{ color: "var(--rmutp-purple)", fontWeight: 800, fontSize: 14.5 }}>{sessionCode}</span>
+              <span style={{ color: "var(--smartaccess-purple)", fontWeight: 800, fontSize: 14.5 }}>{sessionCode}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>ห้องปฏิบัติการ</span>
@@ -912,7 +912,7 @@ function RegistrationPageInner() {
             className="btn-secondary"
             style={{ width: "100%", borderRadius: 14, cursor: "pointer" }}
             onClick={() => {
-              sessionStorage.removeItem("rmutp_user_session");
+              sessionStorage.removeItem("smartaccess_user_session");
               setBypassState("none");
               setForm({ title: "นาย", first_name: "", last_name: "", student_id: "", year: "", faculty: "", branch: "" });
             }}
@@ -1004,8 +1004,8 @@ function RegistrationPageInner() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <button
               onClick={() => {
-                localStorage.setItem("rmutp_cookie_consent", "true");
-                window.dispatchEvent(new Event("rmutp_cookie_consent_changed"));
+                localStorage.setItem("smartaccess_cookie_consent", "true");
+                window.dispatchEvent(new Event("smartaccess_cookie_consent_changed"));
               }}
               style={{
                 width: "100%",
@@ -1049,7 +1049,7 @@ function RegistrationPageInner() {
   if (qrAuthorized === null) {
     return (
       <div style={{ minHeight: "100vh", background: "#0f0c29", display: "flex", alignItems: "center", justifyContent: "center", color: "#FFF", flexDirection: "column", gap: 16 }}>
-        <span className="animate-spin" style={{ display: "inline-block", width: 36, height: 36, border: "3px solid rgba(255,255,255,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%" }} />
+        <span className="animate-spin" style={{ display: "inline-block", width: 36, height: 36, border: "3px solid rgba(255,255,255,0.2)", borderTopColor: "var(--smartaccess-purple)", borderRadius: "50%" }} />
         <span style={{ fontSize: 14, fontWeight: 600 }}>กำลังตรวจสอบความถูกต้องของรหัสสแกน QR Code...</span>
       </div>
     );
@@ -1136,7 +1136,7 @@ function RegistrationPageInner() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13.5 }}>รหัสนักศึกษา</span>
-              <span style={{ color: "var(--rmutp-purple)", fontWeight: 800, fontSize: 15 }}>
+              <span style={{ color: "var(--smartaccess-purple)", fontWeight: 800, fontSize: 15 }}>
                 {success.student_id}
               </span>
             </div>
@@ -1167,7 +1167,7 @@ function RegistrationPageInner() {
           {/* Guide messages below card */}
           <div style={{ minHeight: 45, marginBottom: 24 }}>
             {currentStatus === "pending" && (
-              <p style={{ color: "var(--rmutp-purple-dark)", fontSize: 13.5, fontWeight: 700, animation: "blink 1.5s ease-in-out infinite" }}>
+              <p style={{ color: "var(--smartaccess-purple-dark)", fontSize: 13.5, fontWeight: 700, animation: "blink 1.5s ease-in-out infinite" }}>
                 กำลังตรวจสอบข้อมูลและสิทธิ์เข้าห้องแบบ Real-Time...
               </p>
             )}
@@ -1220,13 +1220,13 @@ function RegistrationPageInner() {
         <div className="animate-fade-in" style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
             <div
-              style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 8px 20px rgba(124,58,237,0.2)" }}
+              style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 8px 20px rgba(124,58,237,0.2)" }}
               className="animate-pulse-soft"
             >
               <GraduationIcon />
             </div>
             <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 12, color: "var(--rmutp-purple)", fontWeight: 800, letterSpacing: 1.5, textTransform: "uppercase" }}>RMUTP EDUCATION</div>
+              <div style={{ fontSize: 12, color: "var(--smartaccess-purple)", fontWeight: 800, letterSpacing: 1.5, textTransform: "uppercase" }}>SmartAccess EDUCATION</div>
               <div style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500 }}>คณะครุศาสตร์ มทร.พระนคร</div>
             </div>
           </div>
@@ -1248,17 +1248,17 @@ function RegistrationPageInner() {
               borderRadius: 99,
               padding: "6px 16px",
               marginTop: 12,
-              color: "var(--rmutp-purple-dark)",
+              color: "var(--smartaccess-purple-dark)",
               fontSize: 13.5,
               fontWeight: 800,
               boxShadow: "0 4px 12px rgba(124,58,237,0.08)"
             }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--rmutp-purple)", display: "inline-block" }} className="animate-pulse" />
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--smartaccess-purple)", display: "inline-block" }} className="animate-pulse" />
               <span>🚪 ห้องเรียนเป้าหมาย: {room}</span>
             </div>
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 12 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--rmutp-purple-dark)", fontSize: 12, fontWeight: 600 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--smartaccess-purple-pale)", border: "1px solid var(--border)", padding: "4px 12px", borderRadius: 99, color: "var(--smartaccess-purple-dark)", fontSize: 12, fontWeight: 600 }}>
               <ClockIcon />
               <span>{currentTime}</span>
             </div>
@@ -1333,7 +1333,7 @@ function RegistrationPageInner() {
                   <select
                     id="student_title"
                     aria-label="คำนำหน้าชื่อ"
-                    className="rmutp-input"
+                    className="smartaccess-input"
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                     style={{ textAlign: "center", paddingLeft: 4, paddingRight: 4 }}
@@ -1350,7 +1350,7 @@ function RegistrationPageInner() {
                   <input
                     id="student_first_name"
                     aria-label="ชื่อจริง"
-                    className="rmutp-input"
+                    className="smartaccess-input"
                     placeholder="ชื่อจริง"
                     value={form.first_name}
                     onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))}
@@ -1363,7 +1363,7 @@ function RegistrationPageInner() {
                   <input
                     id="student_last_name"
                     aria-label="นามสกุล"
-                    className="rmutp-input"
+                    className="smartaccess-input"
                     placeholder="นามสกุล"
                     value={form.last_name}
                     onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))}
@@ -1374,9 +1374,9 @@ function RegistrationPageInner() {
 
               {/* Preview name tag */}
               {(form.first_name || form.last_name) && (
-                <div style={{ marginTop: 8, padding: "6px 14px", background: "var(--rmutp-purple-pale)", borderRadius: 8, border: "1px solid var(--border)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <div style={{ marginTop: 8, padding: "6px 14px", background: "var(--smartaccess-purple-pale)", borderRadius: 8, border: "1px solid var(--border)", display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>ตรวจสอบชื่อ:</span>
-                  <span style={{ fontSize: 13, color: "var(--rmutp-purple-dark)", fontWeight: 700 }}>
+                  <span style={{ fontSize: 13, color: "var(--smartaccess-purple-dark)", fontWeight: 700 }}>
                     {form.title}{form.first_name} {form.last_name}
                   </span>
                 </div>
@@ -1394,7 +1394,7 @@ function RegistrationPageInner() {
               <input
                 id="student_id"
                 aria-invalid={error ? "true" : "false"}
-                className="rmutp-input"
+                className="smartaccess-input"
                 placeholder="กรอกรหัสนักศึกษา เช่น 076158050650-8"
                 value={form.student_id}
                 onChange={e => handleStudentIdInput(e.target.value)}
@@ -1411,7 +1411,7 @@ function RegistrationPageInner() {
                   marginBottom: 18,
                   padding: "12px 16px",
                   background: "linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(219,39,119,0.08) 100%)",
-                  border: "1px dashed var(--rmutp-purple)",
+                  border: "1px dashed var(--smartaccess-purple)",
                   borderRadius: 12,
                   display: "flex",
                   alignItems: "center",
@@ -1423,14 +1423,14 @@ function RegistrationPageInner() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{
                     width: 32, height: 32, borderRadius: "50%",
-                    background: "var(--rmutp-purple-pale)",
+                    background: "var(--smartaccess-purple-pale)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "var(--rmutp-purple)", flexShrink: 0
+                    color: "var(--smartaccess-purple)", flexShrink: 0
                   }}>
                     <GraduationIcon />
                   </div>
                   <div style={{ textAlign: "left" }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--rmutp-purple-dark)" }}>พบประวัติการใช้ห้องเดิมของคุณ!</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--smartaccess-purple-dark)" }}>พบประวัติการใช้ห้องเดิมของคุณ!</div>
                     <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
                       ปี {matchedHistory.year} | {matchedHistory.faculty} | {matchedHistory.branch.substring(0, 22)}{matchedHistory.branch.length > 22 ? "..." : ""}
                     </div>
@@ -1440,7 +1440,7 @@ function RegistrationPageInner() {
                   type="button"
                   onClick={applyManualAutoFill}
                   style={{
-                    background: "var(--rmutp-purple)",
+                    background: "var(--smartaccess-purple)",
                     color: "#FFFFFF",
                     border: "none",
                     padding: "8px 14px",
@@ -1466,7 +1466,7 @@ function RegistrationPageInner() {
               </label>
               <select
                 id="student_year"
-                className="rmutp-input"
+                className="smartaccess-input"
                 value={form.year}
                 onChange={e => setForm(f => ({ ...f, year: e.target.value }))}
                 required
@@ -1485,7 +1485,7 @@ function RegistrationPageInner() {
               </label>
               <select
                 id="student_faculty"
-                className="rmutp-input"
+                className="smartaccess-input"
                 value={form.faculty}
                 onChange={e => handleFacultyChange(e.target.value)}
                 required
@@ -1504,7 +1504,7 @@ function RegistrationPageInner() {
               </label>
               <select
                 id="student_branch"
-                className="rmutp-input"
+                className="smartaccess-input"
                 value={form.branch}
                 onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
                 disabled={!form.faculty}
@@ -1553,7 +1553,7 @@ function RegistrationPageInner() {
                 borderRadius: 14,
                 padding: "14px 20px",
                 background: hasConsented === true 
-                  ? "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)" 
+                  ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" 
                   : "rgba(203, 213, 225, 0.4)",
                 color: hasConsented === true ? "#FFFFFF" : "#64748B",
                 border: hasConsented === true ? "none" : "1px solid #CBD5E1",
@@ -1580,7 +1580,7 @@ function RegistrationPageInner() {
 
         {/* Navigation Footlinks */}
         <div className="animate-fade-in-delay-2" style={{ textAlign: "center", marginTop: 24, display: "flex", justifyContent: "center", alignItems: "center", gap: 12 }}>
-          <a href="/admin/login" style={{ color: "var(--rmutp-purple)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+          <a href="/admin/login" style={{ color: "var(--smartaccess-purple)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
             <LockIcon />
             สำหรับเจ้าหน้าที่ (Admin Login)
           </a>

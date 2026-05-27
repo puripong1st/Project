@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
 
   const response = NextResponse.json({ success: true });
-  response.cookies.delete("rmutp_admin_token");
+  response.cookies.delete("smartaccess_admin_token");
 
   if (admin) {
     sendDiscordNotification("admin_logout", {

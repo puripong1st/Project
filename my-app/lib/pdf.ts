@@ -104,7 +104,7 @@ function addFooter(doc: PDFKit.PDFDocument, fonts: FontSetup, margin: number): v
       .fontSize(8)
       .fillColor(COLORS.muted)
       .text(
-        safeText(`RMUTP Door Access System | หน้า ${i + 1} จาก ${range.count}`, fonts),
+        safeText(`SmartAccess Door Access System | หน้า ${i + 1} จาก ${range.count}`, fonts),
         margin,
         doc.page.height - 22,
         { width: width - margin * 2, align: "center", lineBreak: false }
@@ -348,7 +348,7 @@ export async function generateSingleStudentPDF(student: StudentRow, exportedBy: 
       .fontSize(9)
       .fillColor(COLORS.ink)
       .text(
-        safeText("เอกสารนี้สร้างจากระบบ RMUTP Door Access System เพื่อใช้ตรวจสอบประวัติการขอสิทธิ์เข้าห้องและการดำเนินการของผู้ดูแลระบบ", fonts),
+        safeText("เอกสารนี้สร้างจากระบบ SmartAccess Door Access System เพื่อใช้ตรวจสอบประวัติการขอสิทธิ์เข้าห้องและการดำเนินการของผู้ดูแลระบบ", fonts),
         margin + 16,
         noteTop + 34,
         { width: contentWidth - 32, lineGap: 3 }

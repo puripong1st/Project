@@ -1,6 +1,6 @@
 /*
   ==============================================================
-  RMUTP Door Access Controller - Firmware for ESP32
+  SmartAccess Door Access Controller - Firmware for ESP32
   ห้องปฏิบัติการเรียนการสอน: Classroom CE-401
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
@@ -109,7 +109,7 @@ void drawMainScreen(int queueCount, String lastApprovedName, String timeStr,
   tft.setTextSize(1);
   tft.setTextColor(tft.color565(226, 232, 240)); // สีตัวอักษรขาวสว่าง #E2E8F0
   tft.setCursor(8, 6);
-  tft.print("RMUTP DOOR ACCESS  ");
+  tft.print("SmartAccess DOOR ACCESS  ");
 
   // ปุ่มตราสัญลักษณ์ ACTIVE สีเขียวมะนาว
   tft.setTextColor(tft.color565(16, 185, 129)); // #10B981
@@ -199,7 +199,7 @@ void drawMainScreen(int queueCount, String lastApprovedName, String timeStr,
   tft.setTextSize(1);
   tft.setTextColor(tft.color565(107, 122, 112));
   tft.setCursor(8, 226);
-  tft.print("RMUTP Faculty of Education");
+  tft.print("SmartAccess Faculty of Education");
 
   // แสดงค่าหมายเลขไอพีแอดเดรสของอุปกรณ์
   tft.setTextColor(tft.color565(16, 185, 129));
@@ -643,7 +643,7 @@ void handleLocalValidation() {
     client.println("Content-Type: text/html; charset=utf-8");
     client.println("Connection: close");
     client.println();
-    client.println("<!DOCTYPE html><html><head><meta charset='utf-8'><title>RMUTP Offline Mode</title></head>");
+    client.println("<!DOCTYPE html><html><head><meta charset='utf-8'><title>SmartAccess Offline Mode</title></head>");
     client.println("<body style='font-family:sans-serif; text-align:center; padding:50px;'>");
     client.println("<h1 style='color:#F59E0B;'>⚠️ OFFLINE MODE ACTIVE</h1>");
     client.println("<p>ระบบอยู่ในโหมดออฟไลน์ (อินเทอร์เน็ตขัดข้อง)</p>");
@@ -764,7 +764,7 @@ void setup() {
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextSize(2);
   tft.setCursor(20, 12);
-  tft.print("RMUTP DOOR ACCESS");
+  tft.print("SmartAccess DOOR ACCESS");
 
   tft.setTextSize(2);
   tft.setTextColor(tft.color565(59, 130, 246));

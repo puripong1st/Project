@@ -5,7 +5,7 @@ import { generateQRCodeBuffer, getOrCreateActiveQRToken } from "@/lib/qr";
 import { getAdminFromCookie } from "@/lib/auth";
 import { verifyEsp32Security } from "@/lib/api-security";
 
-const DEFAULT_ESP32_API_KEY = "rmutp_secure_door_unlock_token_placeholder";
+const DEFAULT_ESP32_API_KEY = "smartaccess_secure_door_unlock_token_placeholder";
 
 function getConfiguredEsp32ApiKey(): string {
   const key = process.env.ESP32_API_KEY || DEFAULT_ESP32_API_KEY;

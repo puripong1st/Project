@@ -1,4 +1,4 @@
-# เอกสารข้อมูลโครงการระบบควบคุมการเข้าออกห้องปฏิบัติการอัจฉริยะ (RMUTP ACCS)
+# Innovative system for managing access rights and controlling classroom access via wireless network
 > **สำหรับนำไปใช้งานประกอบการจัดทำเล่มวิจัย/วิทยานิพนธ์ (ระดับมหาวิทยาลัย)**
 
 ---
@@ -6,8 +6,8 @@
 ## 1. ข้อมูลภาพรวมโครงการ (Project Overview)
 
 * **ชื่อโครงการอย่างเป็นทางการ (Official Project Name)**: 
-  * **ภาษาไทย**: ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร
-  * **ภาษาอังกฤษ**: RMUTP ACCS — IoT-Based Door Access Control System
+  * **ภาษาไทย**: ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network
+  * **ภาษาอังกฤษ**: SmartAccess — Innovative system for managing access rights and controlling classroom access via wireless network
 * **ลักษณะระบบ**: ระบบควบคุมการเข้าใช้ห้องเรียนและห้องปฏิบัติการผ่านการสแกนคิวอาร์โค้ด (Dynamic QR Code) บนพื้นฐานเทคโนโลยี Full-Stack Web Application ร่วมกับบอร์ดสมองกลฝังตัว (IoT Microcontroller) ที่มีการเชื่อมโยงฐานข้อมูลแบบเรียลไทม์ และระบบรักษาความปลอดภัยตามมาตรฐานกฎหมายคอมพิวเตอร์และ PDPA
 
 ---
@@ -86,7 +86,7 @@ graph TD
 ## 4. วิเคราะห์เทคโนโลยีและแพลตฟอร์มคลาวด์พิเศษ (Specialized Cloud Platforms)
 
 ### 4.1 แพลตฟอร์มให้บริการระบบคลาวด์เว็บแอปพลิเคชัน: การประยุกต์ใช้งาน Vercel ในโครงการนี้
-**Vercel** เป็นแพลตฟอร์มคลาวด์ยอดนิยม (Modern Web Hosting Platform) ที่ออกแบบมาเพื่อการ Deploy เว็บแอปพลิเคชันและเฟรมเวิร์ก Next.js โดยเฉพาะ โดยภายในโครงการ **RMUTP ACCS** นี้ ได้มีการประยุกต์ใช้งาน Vercel ในการขับเคลื่อนระบบหลักดังนี้:
+**Vercel** เป็นแพลตฟอร์มคลาวด์ยอดนิยม (Modern Web Hosting Platform) ที่ออกแบบมาเพื่อการ Deploy เว็บแอปพลิเคชันและเฟรมเวิร์ก Next.js โดยเฉพาะ โดยภายในโครงการ **SmartAccess** นี้ ได้มีการประยุกต์ใช้งาน Vercel ในการขับเคลื่อนระบบหลักดังนี้:
 
 1. **การโฮสต์ระบบหน้าเว็บและ API แบบเบ็ดเสร็จ (Unified Web & API Hosting)**:
    * **ฝั่งผู้ใช้งาน (Frontend)**: Vercel ทำหน้าที่โฮสต์และกระจายหน้าลงทะเบียนของนักศึกษา (`/`) หน้าเข้าสู่ระบบของแอดมิน (`/admin/login`) และหน้าแดชบอร์ดจัดการระบบ (`/admin/dashboard`) ไปยังผู้ใช้งานผ่านเครือข่าย Global CDN ทำให้หน้าเว็บโหลดได้อย่างรวดเร็วในระดับมิลลิวินาที

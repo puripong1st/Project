@@ -1,6 +1,6 @@
-# คู่มือระบบ RMUTP ACCS (IoT Door Access Control)
+# Innovative system for managing access rights and controlling classroom access via wireless network
 
-> ระบบควบคุมการเข้าใช้ห้องด้วย IoT — มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร
+> ระบบควบคุมการเข้าใช้ห้องด้วย IoT — Innovative system for managing access rights and controlling classroom access via wireless network
 > เอกสารฉบับนี้อธิบายตั้งแต่ภาพรวม → หน้าจอผู้ใช้ → หน้าจอแอดมิน → หน้าจอ TFT บน ESP32 → โค้ดทั้งฝั่งเว็บและ `.ino` → บทบาทของ Supabase และ Vercel → อัลกอริทึม/Flowchart → เหตุผลที่บางส่วนเร็ว/ช้า
 
 ---
@@ -62,7 +62,7 @@
 
 ### 2.2 การเชื่อมต่อ
 1. **Wi-Fi**: ESP32 boot → อ่าน SSID/PASS จาก `config.h` → connect → ขึ้น IP บน TFT
-2. **Server**: ใส่ค่า `SERVER_URL` (เช่น `https://rmutp-accs.vercel.app`) ใน `config.h`
+2. **Server**: ใส่ค่า `SERVER_URL` (เช่น `https://smartaccess.vercel.app`) ใน `config.h`
 3. **Auth**: ทุก request ใส่ header `X-API-Key: <ESP32_API_KEY>` ตรงกับฝั่งเซิร์ฟเวอร์
 4. **Mode** (กำหนดใน Next.js ผ่าน env `ESP32_MODE`):
    - `mock` — เซิร์ฟเวอร์ไม่ยิงไป ESP32 จริง ใช้ตอนพัฒนา
@@ -74,7 +74,7 @@
 
 ```
 ┌────────────── IDLE ──────────────┐   ┌──────── QR DISPLAY ─────────┐
-│  RMUTP — ห้องปฏิบัติการ ___      │   │   สแกนเพื่อเข้าห้อง         │
+│  SmartAccess — ห้องปฏิบัติการ ___ │   │   สแกนเพื่อเข้าห้อง         │
 │  สถานะ: 🟢 พร้อมใช้งาน           │   │   ┌──────────┐              │
 │  เวลา 14:32                      │   │   │  ▓▓░▓░▓  │ ← QR Code    │
 │  สแกน QR ที่โทรศัพท์เพื่อเข้า   │   │   │  ░▓▓░▓░  │              │

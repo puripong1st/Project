@@ -1,6 +1,6 @@
 /*
   ========================================================================
-  RMUTP Door Access Controller - Configuration Template for ESP32
+  SmartAccess Door Access Controller - Configuration Template for ESP32
   Copy this file to "config.h" and fill in your actual credentials.
   DO NOT commit "config.h" to the repository.
   ========================================================================

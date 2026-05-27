@@ -1,6 +1,6 @@
 # รายงานทดสอบความปลอดภัยและประสิทธิภาพ
 
-**โครงการ:** RMUTP Door Access Controller (`my-app` Next.js + ESP32)  
+**โครงการ:** SmartAccess Door Access Controller (`my-app` Next.js + ESP32)  
 **วันที่ตรวจ:** 2026-05-26  
 **ขอบเขต:** Static code review, dependency audit, configuration review, API route review, lightweight network timing test  
 **ข้อจำกัด:** ไม่ทำ destructive testing, ไม่ brute-force, ไม่โจมตี Vercel/Supabase/Discord ภายนอก และไม่เปิดเผยค่า secret จริงในรายงาน
@@ -64,7 +64,7 @@
 ### 3. High: ESP32 ใช้ `setInsecure()` และ API key ฝังใน firmware
 
 **ไฟล์:** `esp32/esp32.ino`, `esp32C1/esp32C1.ino`, code snippet ใน dashboard/preview  
-**หลักฐาน:** `client->setInsecure()` และ `api_key = "rmutp_secure_door_unlock_token_2026"`  
+**หลักฐาน:** `client->setInsecure()` และ `api_key = "smartaccess_secure_door_unlock_token_2026"`  
 **ผลกระทบ:** อุปกรณ์ยอมรับ TLS certificate ใดก็ได้ และหาก firmware/key หลุด ผู้โจมตีสามารถปลอมตัวเป็นอุปกรณ์หรืออ่านข้อความ API ได้ง่ายขึ้น
 
 **Prompt สำหรับ AI แก้ไข**
@@ -204,7 +204,7 @@
 
 ```powershell
 rg --files
-rg -n "getAdminFromCookie|role|setInsecure|ESP32_API_KEY|rmutp_secure|POSTGRES_URL|webhook|bypass_token|password|token|innerHTML|dangerouslySetInnerHTML|TODO|FIXME" .
+rg -n "getAdminFromCookie|role|setInsecure|ESP32_API_KEY|smartaccess_secure|POSTGRES_URL|webhook|bypass_token|password|token|innerHTML|dangerouslySetInnerHTML|TODO|FIXME" .
 npm audit --audit-level=moderate --json
 npm run lint
 node <lightweight timing script>

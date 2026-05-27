@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-RMUTP ACCS — IoT-based door access control system for Rajamangala University of Technology Phra Nakhon. Students register via a Next.js web app; an ESP32 microcontroller polls the backend to control a solenoid door lock and ILI9341 TFT display.
+SmartAccess — IoT-based door access control system for Innovative system for managing access rights and controlling classroom access via wireless network. Students register via a Next.js web app; an ESP32 microcontroller polls the backend to control a solenoid door lock and ILI9341 TFT display.
 
 **Stack**: Next.js 16 (canary) · React 19 · TypeScript · PostgreSQL via Supabase (`pg` pool, raw SQL) · JWT auth · Tailwind CSS v4 · ESP32 Arduino firmware
 
@@ -106,4 +106,4 @@ These hardened behaviors must not be removed:
 
 ## Styling
 
-Brand colors: `#7C3AED` (RMUTP purple) and `#DB2777` (Faculty of Education pink). Defined in `app/globals.css`. UI language is Thai (`<html lang="th">`).
+Brand colors: `#7C3AED` (SmartAccess purple) and `#DB2777` (Faculty of Education pink). Defined in `app/globals.css`. UI language is Thai (`<html lang="th">`).

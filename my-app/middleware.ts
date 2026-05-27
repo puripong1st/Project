@@ -28,21 +28,21 @@ export function middleware(request: NextRequest) {
 
   // Protect admin dashboard routes
   if (pathname.startsWith("/admin/dashboard")) {
-    const token = request.cookies.get("rmutp_admin_token")?.value;
+    const token = request.cookies.get("smartaccess_admin_token")?.value;
     if (!token) {
       return applySecurityHeaders(NextResponse.redirect(new URL("/admin/login", request.url)), pathname);
     }
     const payload = verifyToken(token);
     if (!payload) {
       const response = NextResponse.redirect(new URL("/admin/login", request.url));
-      response.cookies.delete("rmutp_admin_token");
+      response.cookies.delete("smartaccess_admin_token");
       return applySecurityHeaders(response, pathname);
     }
   }
 
   // Redirect /admin to /admin/dashboard (if logged in) or /admin/login
   if (pathname === "/admin" || pathname === "/admin/") {
-    const token = request.cookies.get("rmutp_admin_token")?.value;
+    const token = request.cookies.get("smartaccess_admin_token")?.value;
     if (token && verifyToken(token)) {
       return applySecurityHeaders(NextResponse.redirect(new URL("/admin/dashboard", request.url)), pathname);
     }

@@ -79,10 +79,10 @@ async function hit(label, url, opts = {}) {
   const fakePayload = Buffer.from(JSON.stringify({ id: 1, username: "admin", role: "owner" })).toString("base64url");
   const fakeJwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${fakePayload}.AAAAAAAAAAAAAAAAAAAAAA`;
   await hit("jwt-forge /api/auth/me", `${BASE}/api/auth/me`, {
-    headers: { Cookie: `rmutp_admin_token=${fakeJwt}` },
+    headers: { Cookie: `smartaccess_admin_token=${fakeJwt}` },
   });
   await hit("jwt-forge /api/students", `${BASE}/api/students`, {
-    headers: { Cookie: `rmutp_admin_token=${fakeJwt}` },
+    headers: { Cookie: `smartaccess_admin_token=${fakeJwt}` },
   });
 
   // ─── 4. Mass-assignment + XSS on registration ─────────────────────

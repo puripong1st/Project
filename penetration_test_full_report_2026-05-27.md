@@ -1,4 +1,4 @@
-# RMUTP Door Access — Full Penetration / Performance / Offline / Tamper Audit
+# SmartAccess Door Access — Full Penetration / Performance / Offline / Tamper Audit
 **วันที่ทดสอบ:** 2026-05-27
 **ผู้ทดสอบ:** AI assistant (Claude Opus 4.7) ภายใต้คำสั่งของเจ้าของระบบ
 **เป้าหมาย:** `https://project-sigma-ivory-21.vercel.app` (Vercel + Supabase Postgres + ESP32 IoT cloud polling)

@@ -158,9 +158,9 @@ export default function PrivacyPage() {
         >
           <p>
             นโยบายความเป็นส่วนตัวฉบับนี้จัดทำขึ้นตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ม.23
-            เพื่อชี้แจงวิธีที่ระบบ <strong style={{ color: "#FFFFFF" }}>RMUTP ACCS</strong>
+            เพื่อชี้แจงวิธีที่ระบบ <strong style={{ color: "#FFFFFF" }}>SmartAccess</strong>
             (ระบบควบคุมการเข้าออกห้องปฏิบัติการ) เก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคล (PII)
-            ของนักศึกษา อาจารย์ และบุคลากรของคณะวิศวกรรมศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร
+            ของนักศึกษา อาจารย์ และบุคลากรของคณะวิศวกรรมศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network
           </p>
 
           <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)" }} />
@@ -170,11 +170,11 @@ export default function PrivacyPage() {
             <h3 style={sectionHeading}>0. ผู้ควบคุมข้อมูลส่วนบุคคล (Data Controller)</h3>
             <table style={tableStyle}>
               <tbody>
-                <tr><td style={tdStyle}><strong>ชื่อ</strong></td><td style={tdStyle}>คณะวิศวกรรมศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร</td></tr>
+                <tr><td style={tdStyle}><strong>ชื่อ</strong></td><td style={tdStyle}>คณะวิศวกรรมศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network</td></tr>
                 <tr><td style={tdStyle}><strong>ที่อยู่</strong></td><td style={tdStyle}>1381 ถนนประชาราษฎร์ 1 แขวงวงศ์สว่าง เขตบางซื่อ กรุงเทพมหานคร 10800</td></tr>
                 <tr><td style={tdStyle}><strong>โทรศัพท์</strong></td><td style={tdStyle}>02-836-3000</td></tr>
-                <tr><td style={tdStyle}><strong>อีเมลทั่วไป</strong></td><td style={tdStyle}>info@eng.rmutp.ac.th</td></tr>
-                <tr><td style={tdStyle}><strong>เจ้าหน้าที่คุ้มครองข้อมูล (DPO)</strong></td><td style={tdStyle}>dpo@rmutp.ac.th · 02-836-3000 ต่อ DPO</td></tr>
+                <tr><td style={tdStyle}><strong>อีเมลทั่วไป</strong></td><td style={tdStyle}>info@eng.smartaccess.ac.th</td></tr>
+                <tr><td style={tdStyle}><strong>เจ้าหน้าที่คุ้มครองข้อมูล (DPO)</strong></td><td style={tdStyle}>dpo@smartaccess.ac.th · 02-836-3000 ต่อ DPO</td></tr>
               </tbody>
             </table>
           </div>
@@ -365,21 +365,21 @@ export default function PrivacyPage() {
                   <td style={tdStyle}>8 ชั่วโมง</td>
                 </tr>
                 <tr>
-                  <td style={tdStyle}><code>rmutp_cookie_consent_v2</code></td>
+                  <td style={tdStyle}><code>smartaccess_cookie_consent_v2</code></td>
                   <td style={tdStyle}>localStorage</td>
                   <td style={tdStyle}>ฟังก์ชัน</td>
                   <td style={tdStyle}>จดจำตัวเลือกความยินยอม</td>
                   <td style={tdStyle}>ถาวรจนผู้ใช้ลบ</td>
                 </tr>
                 <tr>
-                  <td style={tdStyle}><code>rmutp_form_draft</code></td>
+                  <td style={tdStyle}><code>smartaccess_form_draft</code></td>
                   <td style={tdStyle}>localStorage</td>
                   <td style={tdStyle}>ฟังก์ชัน</td>
                   <td style={tdStyle}>Auto-fill ฟอร์มลงทะเบียน</td>
                   <td style={tdStyle}>7 วัน</td>
                 </tr>
                 <tr>
-                  <td style={tdStyle}><code>rmutp_last_room</code></td>
+                  <td style={tdStyle}><code>smartaccess_last_room</code></td>
                   <td style={tdStyle}>localStorage</td>
                   <td style={tdStyle}>ฟังก์ชัน</td>
                   <td style={tdStyle}>จดจำห้องที่เคยเข้า</td>
@@ -431,7 +431,7 @@ export default function PrivacyPage() {
                 <tr>
                   <td style={tdStyle}>ม.30</td>
                   <td style={tdStyle}><strong>สิทธิเข้าถึงและขอสำเนาข้อมูล</strong> (Right to Access)</td>
-                  <td style={tdStyle}>อีเมล dpo@rmutp.ac.th — ตอบสนองภายใน 30 วัน</td>
+                  <td style={tdStyle}>อีเมล dpo@smartaccess.ac.th — ตอบสนองภายใน 30 วัน</td>
                 </tr>
                 <tr>
                   <td style={tdStyle}>ม.31</td>
@@ -517,7 +517,7 @@ export default function PrivacyPage() {
 
           <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", textAlign: "center" }}>
             เวอร์ชัน {POLICY_VERSION} · เริ่มมีผลบังคับใช้ {EFFECTIVE_DATE}<br />
-            ฝ่ายดูแลนโยบายความเป็นส่วนตัว RMUTP ACCS · ติดต่อ DPO: dpo@rmutp.ac.th
+            ฝ่ายดูแลนโยบายความเป็นส่วนตัว SmartAccess · ติดต่อ DPO: dpo@smartaccess.ac.th
           </p>
         </div>
       </div>

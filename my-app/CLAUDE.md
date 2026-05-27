@@ -1,7 +1,7 @@
-# คู่มือโครงการ RMUTP Door Access System
+# คู่มือโครงการ SmartAccess Door Access System
 
 ## ภาพรวมโครงการ
-ระบบควบคุมการเข้าถึงห้องเรียนสำหรับมหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร (RMUTP) ที่ใช้เทคโนโลยี ESP32 หรือ Wokwi Simulator ในการควบคุมประตูห้องเรียน โดยมีการลงทะเบียนนักศึกษาผ่านเว็บแอปพลิเคชัน Next.js และใช้ฐานข้อมูล postgreSQL ในการจัดการข้อมูล
+ระบบควบคุมการเข้าถึงห้องเรียนสำหรับInnovative system for managing access rights and controlling classroom access via wireless network (SmartAccess) ที่ใช้เทคโนโลยี ESP32 หรือ Wokwi Simulator ในการควบคุมประตูห้องเรียน โดยมีการลงทะเบียนนักศึกษาผ่านเว็บแอปพลิเคชัน Next.js และใช้ฐานข้อมูล postgreSQL ในการจัดการข้อมูล
 
 ## สถาปัตยกรรมระบบ
 ```
@@ -28,7 +28,7 @@
    - `esp32.ts`: ไลบรารีสื่อสารกับ ESP32/Wokwi (รองรับ mock mode)
    - `qr.ts`: การสร้างและจัดการ QR Code แบบ dynamic one-time token
    - `discord.ts`: การส่งแจ้งเตือนไปยัง Discord
-   - `faculties.ts`: ข้อมูลคณะและสาขาของ RMUTP
+   - `faculties.ts`: ข้อมูลคณะและสาขาของ SmartAccess
    - `pdf.ts`: การสร้างรายงาน PDF
 
 3. **ฐานข้อมูล postgreSQL**
@@ -150,7 +150,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=admin
-POSTGRES_DATABASE=rmutp_access
+POSTGRES_DATABASE=smartaccess_access
 
 # JWT
 JWT_SECRET=your_super_secret_key_here_change_in_production
@@ -277,4 +277,4 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 * **การเปิดใช้ Turbopack**: ใน Next.js 16.2.6 อาจพบข้อเตือน `Unrecognized key(s) in object: 'turbopack' at "experimental"` ในไฟล์คอนฟิก `next.config.ts` ให้หลีกเลี่ยงการเปิดคีย์ทดลองดังกล่าว หรือปรับให้เหมาะสมตามเวอร์ชันของ Next.js ที่รองรับ
 
 ## 📋 สรุปการประเมินและการซ่อมแซมระบบ
-ปัจจุบันระบบ **RMUTP Door Access System** ได้รับการตรวจสอบและปรับแต่งทั้งในแง่ของสถาปัตยกรรม ประเด็นความมั่นคงปลอดภัย และการวางแผนฮาร์ดแวร์อย่างสมบูรณ์แบบ ขจัดช่องโหว่ระดับสูงและวิกฤตทั้งหมดเรียบร้อยแล้ว พร้อมนำไปใช้ในการทดลองหรือติดตั้งใช้งานจริง!
+ปัจจุบันระบบ **SmartAccess Door Access System** ได้รับการตรวจสอบและปรับแต่งทั้งในแง่ของสถาปัตยกรรม ประเด็นความมั่นคงปลอดภัย และการวางแผนฮาร์ดแวร์อย่างสมบูรณ์แบบ ขจัดช่องโหว่ระดับสูงและวิกฤตทั้งหมดเรียบร้อยแล้ว พร้อมนำไปใช้ในการทดลองหรือติดตั้งใช้งานจริง!

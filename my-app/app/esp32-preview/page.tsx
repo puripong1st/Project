@@ -113,7 +113,7 @@ function ESP32Screen({ mode, displayData, pendingCount, room }: {
         {/* Status bar */}
         <div style={{ background: "#0E111C", padding: "4px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ color: "#E2E8F0", fontSize: 9, fontWeight: 800, letterSpacing: "1px" }}>RMUTP DOOR ACCESS</span>
+            <span style={{ color: "#E2E8F0", fontSize: 9, fontWeight: 800, letterSpacing: "1px" }}>SmartAccess DOOR ACCESS</span>
             <span style={{ fontSize: 8, padding: "1px 4px", background: "rgba(16,185,129,0.15)", color: "#10B981", borderRadius: 3, fontWeight: 700 }}>ACTIVE</span>
           </div>
           <span style={{ color: "#10B981", fontSize: 9, fontWeight: 700 }} className="anim-pulse">● {time}</span>
@@ -497,7 +497,7 @@ function ESP32PreviewPageInner() {
 
             {/* Top PCB brand printing */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, padding: "0 8px" }}>
-              <span style={{ fontSize: 10, color: "#CDD6F4", fontWeight: 700, fontFamily: "monospace", letterSpacing: "1px" }}>RMUTP · ILI9341 3.2&quot; TFT</span>
+              <span style={{ fontSize: 10, color: "#CDD6F4", fontWeight: 700, fontFamily: "monospace", letterSpacing: "1px" }}>SmartAccess · ILI9341 3.2&quot; TFT</span>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span style={{ fontSize: 8, color: "#A6ADC8", fontFamily: "monospace" }}>ESP32 LINK:</span>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: mode === "idle" ? "#10B981" : "#F59E0B", boxShadow: mode === "idle" ? "0 0 10px #10B981" : "0 0 10px #F59E0B" }} />
@@ -593,7 +593,7 @@ function ESP32PreviewPageInner() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: "#E2E8F0" }}>ห้องปฏิบัติการจำลอง:</span>
                 <select 
-                  className="rmutp-input"
+                  className="smartaccess-input"
                   value={simRoom}
                   onChange={e => setSimRoom(e.target.value)}
                   style={{ flex: 1, padding: "8px 12px", fontSize: 12.5, background: "rgba(15,17,23,0.8)", borderColor: "rgba(255,255,255,0.08)", color: "#F0F4F0" }}

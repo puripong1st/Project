@@ -111,7 +111,7 @@ function AdminLoginPageInner() {
         {/* Logo and Titles */}
         <div className="animate-fade-in" style={{ textAlign: "center", marginBottom: 32 }}>
           <div
-            style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#fff", boxShadow: "0 10px 25px rgba(124,58,237,0.25)" }}
+            style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#fff", boxShadow: "0 10px 25px rgba(124,58,237,0.25)" }}
             className="animate-pulse-ring"
           >
             <KeyholeShieldIcon />
@@ -152,7 +152,7 @@ function AdminLoginPageInner() {
               <input
                 id="username"
                 aria-invalid={error ? "true" : "false"}
-                className="rmutp-input"
+                className="smartaccess-input"
                 type="text"
                 placeholder="กรอกชื่อผู้ใช้ของท่าน"
                 value={username}
@@ -169,7 +169,7 @@ function AdminLoginPageInner() {
               <input
                 id="password"
                 aria-invalid={error ? "true" : "false"}
-                className="rmutp-input"
+                className="smartaccess-input"
                 type={showPass ? "text" : "password"}
                 placeholder="กรอกรหัสผ่านของท่าน"
                 value={password}
@@ -212,9 +212,9 @@ function AdminLoginPageInner() {
         {/* Roles information panel */}
         <div className="animate-fade-in-delay-2" style={{ marginTop: 20 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ background: "var(--rmutp-purple-pale)", border: "1px solid var(--border)", borderRadius: 12, padding: 14, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div style={{ color: "var(--rmutp-purple)", marginBottom: 8 }}><CrownIcon /></div>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--rmutp-purple-dark)", marginBottom: 2 }}>Owner Level</div>
+            <div style={{ background: "var(--smartaccess-purple-pale)", border: "1px solid var(--border)", borderRadius: 12, padding: 14, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ color: "var(--smartaccess-purple)", marginBottom: 8 }}><CrownIcon /></div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--smartaccess-purple-dark)", marginBottom: 2 }}>Owner Level</div>
               <div style={{ fontSize: 10.5, color: "var(--text-secondary)", lineHeight: 1.4 }}>พิจารณาสิทธิ์ อนุมัติ และจัดการทั้งหมด</div>
             </div>
             <div style={{ background: "var(--edu-pink-pale)", border: "1px solid rgba(219,39,119,0.1)", borderRadius: 12, padding: 14, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>

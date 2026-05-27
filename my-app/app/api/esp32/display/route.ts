@@ -174,8 +174,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         // Display info for ESP32
-        title: "RMUTP Door Access",
-        subtitle: "มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร",
+        title: "SmartAccess Door Access",
+        subtitle: "Innovative system for managing access rights and controlling classroom access via wireless network",
         ...(isAuthenticatedDevice && { active_token: activeTokenVal }),
         qr_url: `${appUrl}/api/esp32/qr?room=${room}`,
         register_url: `${appUrl}/?room=${room}`,

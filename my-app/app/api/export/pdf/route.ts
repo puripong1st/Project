@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
         ]
       );
 
-      const filename = `rmutp_students_report_${filter}_${formattedDate}.pdf`;
+      const filename = `smartaccess_students_report_${filter}_${formattedDate}.pdf`;
 
       return new NextResponse(pdfBuffer as unknown as BodyInit, {
         status: 200,

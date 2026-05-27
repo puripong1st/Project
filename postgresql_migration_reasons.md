@@ -1,7 +1,7 @@
 # รายงานเหตุผลและความจำเป็นทางสถาปัตยกรรม (Architectural Justification)
 ## การปรับเปลี่ยนระบบฐานข้อมูลจาก Aiven postgreSQL (เดิมคือ MySQL) มาเป็น Supabase PostgreSQL
 
-รายงานฉบับนี้จัดทำขึ้นเพื่อชี้แจงเหตุผลทางวิศวกรรมซอฟต์แวร์ (Software Engineering) และสถาปัตยกรรมระบบคลาวด์ (Cloud Architecture) ในการตัดสินใจย้ายระบบฐานข้อมูลหลักของ **ระบบควบคุมการเข้าออกห้องเรียนอัตโนมัติ (RMUTP Door Access System)** จาก **Aiven postgreSQL (เดิมคือ MySQL)** ไปสู่ **Supabase PostgreSQL** อย่างละเอียดในทุกมิติ
+รายงานฉบับนี้จัดทำขึ้นเพื่อชี้แจงเหตุผลทางวิศวกรรมซอฟต์แวร์ (Software Engineering) และสถาปัตยกรรมระบบคลาวด์ (Cloud Architecture) ในการตัดสินใจย้ายระบบฐานข้อมูลหลักของ **ระบบควบคุมการเข้าออกห้องเรียนอัตโนมัติ (SmartAccess Door Access System)** จาก **Aiven postgreSQL (เดิมคือ MySQL)** ไปสู่ **Supabase PostgreSQL** อย่างละเอียดในทุกมิติ
 
 ---
 

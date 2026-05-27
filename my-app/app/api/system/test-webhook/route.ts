@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         { name: "⚡ สถานะการเชื่อมต่อ", value: "🟢 ONLINE (200 OK)", inline: true },
       ],
       footer: {
-        text: `ทดสอบระบบโดยแอดมิน: ${admin.full_name} | RMUTP ACCS`,
+        text: `ทดสอบระบบโดยแอดมิน: ${admin.full_name} | SmartAccess`,
         icon_url: "https://project-sigma-ivory-21.vercel.app/favicon.ico"
       },
       timestamp: new Date().toISOString(),
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        username: "RMUTP ACCS BOT",
+        username: "SmartAccess BOT",
         avatar_url: "https://project-sigma-ivory-21.vercel.app/favicon.ico",
         embeds: [embed],
       }),

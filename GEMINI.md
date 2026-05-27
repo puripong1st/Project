@@ -1,7 +1,7 @@
-# RMUTP ACCS — IoT-Based Door Access Control System
+# Innovative system for managing access rights and controlling classroom access via wireless network
 
 ## 1. Project Overview
-**RMUTP ACCS** is a Full-Stack IoT-Based Door Access Control System built for Rajamangala University of Technology Phra Nakhon (RMUTP). It integrates a web-based dashboard and dynamic QR code system with an ESP32 microcontroller to securely control physical door locks. The project is highly documented and includes extensive methodology, penetration testing, and security audit reports for university thesis purposes.
+**SmartAccess** is a Full-Stack IoT-Based Door Access Control System built for Innovative system for managing access rights and controlling classroom access via wireless network (SmartAccess). It integrates a web-based dashboard and dynamic QR code system with an ESP32 microcontroller to securely control physical door locks. The project is highly documented and includes extensive methodology, penetration testing, and security audit reports for university thesis purposes.
 
 ### Core Features
 - **Dynamic QR Access:** Students/Users register and scan QR codes for room access.
