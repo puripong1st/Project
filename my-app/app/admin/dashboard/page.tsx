@@ -29,6 +29,7 @@ interface AdminUser {
   is_active: boolean;
   created_at: string;
   last_login?: string;
+  allowed_rooms?: string | null;
 }
 
 interface AccessLog {
@@ -47,7 +48,7 @@ interface CurrentUser {
   id: number;
   username: string;
   full_name: string;
-  role: "owner" | "door_operator";
+  role: "owner" | "door_operator" | "log_viewer";
 }
 
 function formatDateTime(dt: string | null | undefined): string {
@@ -2280,7 +2281,7 @@ void handleLocalWebServerRequest() {
   }, [user, fetchSystemStatus, fetchAll, fetchLogs]);
 
   useEffect(() => {
-    if (tab === "all" && user?.role === "owner") {
+    if (tab === "all" && (user?.role === "owner" || user?.role === "log_viewer")) {
       setTimeout(() => {
         fetchAll();
         fetchLogs();
@@ -2408,18 +2409,47 @@ void handleLocalWebServerRequest() {
   // Create admin user
   async function handleCreateAdmin(e: React.FormEvent) {
     e.preventDefault();
+    const roomsPayload = newAdmin.role === "owner" ? null : newAdminAllowedRooms.join(",");
     const r = await fetch("/api/admin-users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newAdmin),
+      body: JSON.stringify({ ...newAdmin, allowed_rooms: roomsPayload }),
     });
     const d = await r.json();
     if (r.ok) {
       showToast("เพิ่มผู้ดูแลระบบใหม่สำเร็จ");
       setNewAdmin({ username: "", password: "", full_name: "", role: "door_operator" });
+      setNewAdminAllowedRooms([]);
       fetchAdmins();
     } else {
       showToast(d.error, "error");
+    }
+  }
+
+  // Update admin user
+  async function handleUpdateAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingAdmin) return;
+    setEditAdminLoading(true);
+    try {
+      const roomsPayload = editAdminForm.role === "owner" ? null : editAdminAllowedRooms.join(",");
+      const r = await fetch(`/api/admin-users/${editingAdmin.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editAdminForm, allowed_rooms: roomsPayload }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        showToast("แก้ไขข้อมูลผู้ดูแลระบบสำเร็จ");
+        setEditingAdmin(null);
+        fetchAdmins();
+      } else {
+        showToast(d.error, "error");
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
+    } finally {
+      setEditAdminLoading(false);
     }
   }
 
@@ -3298,16 +3328,20 @@ void handleLocalWebServerRequest() {
 
           <nav style={{ flex: 1, padding: "0 12px" }}>
             {[
-              { id: "pending", icon: <ClockIcon />, label: "รายการรออนุมัติ", badge: pendingCount },
+              ...((isOwner || user.role === "log_viewer") ? [
+                { id: "pending", icon: <ClockIcon />, label: "รายการรออนุมัติ", badge: pendingCount },
+              ] : []),
               {
                 id: "rooms",
                 icon: <TVIcon />,
-                label: "\u0e2b\u0e49\u0e2d\u0e07\u0e40\u0e23\u0e35\u0e22\u0e19 & ESP32",
+                label: "ห้องเรียน & ESP32",
                 badge: roomsList.length,
                 badgeColor: "#7C3AED"
               },
-              ...(isOwner ? [
+              ...((isOwner || user.role === "log_viewer") ? [
                 { id: "all", icon: <UsersIcon />, label: "ทำเนียบ & ประวัติเข้าออก", badge: 0 },
+              ] : []),
+              ...(isOwner ? [
                 { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
                 { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
@@ -3929,8 +3963,8 @@ void handleLocalWebServerRequest() {
               </div>
             )}
 
-            {/* ── UNIFIED ทำเนียบ & ประวัติเข้าออก Tab (Owner Only) ── */}
-            {tab === "all" && isOwner && (
+            {/* ── UNIFIED ทำเนียบ & ประวัติเข้าออก Tab ── */}
+            {tab === "all" && (isOwner || user.role === "log_viewer") && (
               <div className="animate-fade-in">
 
                 {/* Export PDF Hub */}
@@ -4373,7 +4407,7 @@ void handleLocalWebServerRequest() {
                                     <span>การ์ด</span>
                                   </button>
 
-                                  {s.status === "approved" && (
+                                  {s.status === "approved" && user.role !== "log_viewer" && (
                                     <button
                                       onClick={() => handleOpenDoor(s.id)}
                                       disabled={loadingId === s.id}
@@ -4384,12 +4418,14 @@ void handleLocalWebServerRequest() {
                                     </button>
                                   )}
 
-                                  <button
-                                    onClick={() => handleDelete(s.id, `${s.first_name} ${s.last_name}`)}
-                                    style={{ padding: "6px 8px", background: "#FEF2F2", border: "1px solid #EF4444", borderRadius: 8, color: "#DC2626", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center" }}
-                                  >
-                                    <TrashIcon />
-                                  </button>
+                                  {isOwner && (
+                                    <button
+                                      onClick={() => handleDelete(s.id, `${s.first_name} ${s.last_name}`)}
+                                      style={{ padding: "6px 8px", background: "#FEF2F2", border: "1px solid #EF4444", borderRadius: 8, color: "#DC2626", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center" }}
+                                    >
+                                      <TrashIcon />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -4674,36 +4710,64 @@ void handleLocalWebServerRequest() {
                             <th>ชื่อ - นามสกุลแอดมิน</th>
                             <th>Username</th>
                             <th style={{ textAlign: "center" }}>ระดับสิทธิ์</th>
+                            <th>ห้องปฏิบัติการที่ดูแล</th>
                             <th>ล็อกอินล่าสุด</th>
-                            <th style={{ width: 40 }}></th>
+                            <th style={{ width: 80 }}></th>
                           </tr>
                         </thead>
                         <tbody>
-                          {admins.map(a => (
-                            <tr key={a.id}>
-                              <td><div style={{ fontWeight: 700 }}>{a.full_name}</div></td>
-                              <td><span style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 500 }}>{a.username}</span></td>
-                              <td style={{ textAlign: "center" }}>
-                                <span className={`badge ${a.role === "owner" ? "badge-approved" : "badge-pending"}`}>
-                                  {a.role === "owner" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><CrownIcon className="w-3 h-3" /> Owner</span> : <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><KeyIcon className="w-3 h-3" /> Operator</span>}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>
-                                {formatDateTime(a.last_login)}
-                              </td>
-                              <td>
-                                {a.id !== user.id && (
-                                  <button
-                                    onClick={() => handleDeleteAdmin(a.id)}
-                                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
-                                    title="ถอดถอนสิทธิ์"
-                                  >
-                                    <TrashIcon />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {admins.map(a => {
+                            const allowedRoomsStr = a.role === "owner" ? "ทุกห้อง (Owner)" : (a.allowed_rooms ? (a.allowed_rooms === "*" ? "ทุกห้อง (*)" : a.allowed_rooms) : "ยังไม่ได้ระบุห้อง");
+                            return (
+                              <tr key={a.id}>
+                                <td><div style={{ fontWeight: 700 }}>{a.full_name}</div></td>
+                                <td><span style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 500 }}>{a.username}</span></td>
+                                <td style={{ textAlign: "center" }}>
+                                  <span className={`badge ${a.role === "owner" ? "badge-approved" : (a.role === "log_viewer" ? "badge-rejected" : "badge-pending")}`}>
+                                    {a.role === "owner" ? (
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><CrownIcon className="w-3 h-3" /> Owner</span>
+                                    ) : a.role === "log_viewer" ? (
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ClockIcon className="w-3 h-3" /> Viewer</span>
+                                    ) : (
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><KeyIcon className="w-3 h-3" /> Operator</span>
+                                    )}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>
+                                    {allowedRoomsStr}
+                                  </span>
+                                </td>
+                                <td style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>
+                                  {formatDateTime(a.last_login)}
+                                </td>
+                                <td>
+                                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    <button
+                                      onClick={() => {
+                                        setEditingAdmin(a);
+                                        setEditAdminForm({ full_name: a.full_name, role: a.role });
+                                        setEditAdminAllowedRooms(a.allowed_rooms ? a.allowed_rooms.split(",") : []);
+                                      }}
+                                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--rmutp-purple)" }}
+                                      title="แก้ไขขอบเขตสิทธิ์"
+                                    >
+                                      ✏️
+                                    </button>
+                                    {a.id !== user.id && (
+                                      <button
+                                        onClick={() => handleDeleteAdmin(a.id)}
+                                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--text-danger)" }}
+                                        title="ถอดถอนสิทธิ์"
+                                      >
+                                        <TrashIcon />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -4746,9 +4810,55 @@ void handleLocalWebServerRequest() {
                           onChange={e => setNewAdmin(a => ({ ...a, role: e.target.value }))}
                         >
                           <option value="door_operator">Door Operator (เปิดประตูได้อย่างเดียว)</option>
+                          <option value="log_viewer">Log Viewer (ดูประวัติและสถิติการเข้าออกห้องได้อย่างเดียว)</option>
                           <option value="owner">Owner (เจ้าของสิทธิ์อนุมัติสิทธิ์และจัดการ)</option>
                         </select>
                       </div>
+
+                      {newAdmin.role !== "owner" && (
+                        <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: "1px dashed var(--border)", background: "rgba(255,255,255,0.01)" }}>
+                          <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+                            ห้องเรียนที่อนุญาตให้เข้าถึง / จัดการได้ *
+                          </label>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 10 }}>
+                            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, color: "var(--rmutp-purple)" }}>
+                              <input
+                                type="checkbox"
+                                checked={newAdminAllowedRooms.includes("*")}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    setNewAdminAllowedRooms(["*"]);
+                                  } else {
+                                    setNewAdminAllowedRooms([]);
+                                  }
+                                }}
+                              />
+                              ทุกห้องเรียน (*)
+                            </label>
+                          </div>
+                          
+                          {!newAdminAllowedRooms.includes("*") && (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+                              {roomsList.map(r => (
+                                <label key={r.room} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, cursor: "pointer" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={newAdminAllowedRooms.includes(r.room)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        setNewAdminAllowedRooms(prev => [...prev.filter(x => x !== "*"), r.room]);
+                                      } else {
+                                        setNewAdminAllowedRooms(prev => prev.filter(x => x !== r.room));
+                                      }
+                                    }}
+                                  />
+                                  {r.room}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <button
                         type="submit"
@@ -5620,6 +5730,151 @@ void handleLocalWebServerRequest() {
           </div>
         </main>
       </div>
+
+      {/* ── EDIT ADMIN MODAL ── */}
+      {editingAdmin && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(15, 23, 42, 0.75)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div className="premium-card animate-fade-in" style={{ width: "100%", maxWidth: 480, padding: 24, background: "var(--bg-primary)", position: "relative" }}>
+            <button
+              onClick={() => setEditingAdmin(null)}
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                background: "rgba(255,255,255,0.05)",
+                border: "none",
+                borderRadius: "50%",
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: 16
+              }}
+            >
+              ✕
+            </button>
+
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text-primary)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+              ✏️ แก้ไขสิทธิ์แอดมิน: <span style={{ color: "var(--rmutp-purple)" }}>{editingAdmin.username}</span>
+            </h3>
+            <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 20 }}>
+              ปรับปรุงชื่อ ตำแหน่ง และขอบเขตการดูแลห้องปฏิบัติการของ {editingAdmin.full_name}
+            </p>
+
+            <form onSubmit={handleUpdateAdmin}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                  ชื่อ - นามสกุล เจ้าหน้าที่ *
+                </label>
+                <input
+                  className="rmutp-input"
+                  type="text"
+                  value={editAdminForm.full_name}
+                  onChange={e => setEditAdminForm(a => ({ ...a, full_name: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label htmlFor="edit_admin_role" style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                  ขอบเขตสิทธิ์ในการทำงาน (Role) *
+                </label>
+                <select
+                  id="edit_admin_role"
+                  className="rmutp-input"
+                  value={editAdminForm.role}
+                  onChange={e => setEditAdminForm(a => ({ ...a, role: e.target.value }))}
+                >
+                  <option value="door_operator">Door Operator (เปิดประตูได้อย่างเดียว)</option>
+                  <option value="log_viewer">Log Viewer (ดูประวัติและสถิติการเข้าออกห้องได้อย่างเดียว)</option>
+                  <option value="owner">Owner (เจ้าของสิทธิ์อนุมัติสิทธิ์และจัดการ)</option>
+                </select>
+              </div>
+
+              {editAdminForm.role !== "owner" && (
+                <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: "1px dashed var(--border)", background: "rgba(255,255,255,0.01)" }}>
+                  <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+                    ห้องเรียนที่อนุญาตให้เข้าถึง / จัดการได้ *
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 10 }}>
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, color: "var(--rmutp-purple)" }}>
+                      <input
+                        type="checkbox"
+                        checked={editAdminAllowedRooms.includes("*")}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setEditAdminAllowedRooms(["*"]);
+                          } else {
+                            setEditAdminAllowedRooms([]);
+                          }
+                        }}
+                      />
+                      ทุกห้องเรียน (*)
+                    </label>
+                  </div>
+
+                  {!editAdminAllowedRooms.includes("*") && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+                      {roomsList.map(r => (
+                        <label key={r.room} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={editAdminAllowedRooms.includes(r.room)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setEditAdminAllowedRooms(prev => [...prev.filter(x => x !== "*"), r.room]);
+                              } else {
+                                setEditAdminAllowedRooms(prev => prev.filter(x => x !== r.room));
+                              }
+                            }}
+                          />
+                          {r.room}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingAdmin(null)}
+                  className="btn-secondary"
+                  style={{ flex: 1, justifyContent: "center", borderRadius: 12, padding: "12px" }}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={editAdminLoading}
+                  className="btn-primary"
+                  style={{ flex: 1, justifyContent: "center", borderRadius: 12, padding: "12px" }}
+                >
+                  {editAdminLoading ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

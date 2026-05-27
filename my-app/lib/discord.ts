@@ -339,49 +339,6 @@ export async function sendDiscordNotification(
         timestamp: new Date().toISOString(),
       };
       break;
-    }in Audit Log" },
-        timestamp: new Date().toISOString(),
-      };
-      break;
-    }
-
-    case "admin_logout": {
-      const roleLabel = data.adminRole === "owner" ? "👑 Owner (ผู้ดูแลสูงสุด)" : "🔑 Door Operator";
-      embed = {
-        title: "🚪 แอดมินออกจากระบบ",
-        description: `**${data.adminName || data.adminUsername || "-"}** ออกจากระบบแล้ว`,
-        color: COLORS.info,
-        fields: [
-          { name: "👤 ชื่อ-นามสกุล", value: data.adminName || "-", inline: true },
-          { name: "🏷️ Username", value: `\`${data.adminUsername || "-"}\``, inline: true },
-          { name: "🎭 ตำแหน่ง", value: roleLabel, inline: true },
-          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
-          { name: "⏰ เวลาออกจากระบบ", value: now, inline: false },
-        ],
-        footer: { text: "RMUTP Admin Audit Log" },
-        timestamp: new Date().toISOString(),
-      };
-      break;
-    }
-
-    case "admin_login_failed": {
-      const deviceInfo = parseUserAgent(data.userAgent || "");
-      embed = {
-        title: "⚠️ พยายามเข้าสู่ระบบล้มเหลว",
-        description: `มีการพยายามล็อกอินด้วย Username **\`${data.adminUsername || "-"}\`** แต่ไม่สำเร็จ`,
-        color: COLORS.warning,
-        fields: [
-          { name: "🏷️ Username ที่ใช้", value: `\`${data.adminUsername || "-"}\``, inline: true },
-          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
-          { name: "💻 อุปกรณ์", value: deviceInfo.device, inline: true },
-          { name: "🌍 Browser", value: deviceInfo.browser, inline: true },
-          { name: "📝 เหตุผล", value: data.reason || "Username หรือ Password ไม่ถูกต้อง", inline: false },
-          { name: "⏰ เวลา", value: now, inline: false },
-        ],
-        footer: { text: "RMUTP Admin Audit Log — Security Alert" },
-        timestamp: new Date().toISOString(),
-      };
-      break;
     }
   }
 
