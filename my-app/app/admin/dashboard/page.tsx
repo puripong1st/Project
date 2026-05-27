@@ -1539,15 +1539,38 @@ void setup() {
   DBG("\\nWiFi connected successfully!");
 
   // Setup NTP for HMAC Time Signature after WiFi connects
-  configTime(7 * 3600, 0, "pool.ntp.org");
+  configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
   Serial.print("[INFO] Waiting for NTP time sync: ");
   time_t now = time(nullptr);
-  while (now < 24 * 3600) {
+  int ntp_timeout = 0;
+  while (now < 24 * 3600 && ntp_timeout < 50) {
     Serial.print(".");
     delay(100);
     now = time(nullptr);
+    ntp_timeout++;
   }
-  Serial.println(" OK");
+  if (ntp_timeout >= 50) {
+    Serial.println(" FAILED (Timeout), trying HTTP Fallback...");
+    HTTPClient httpTime;
+    httpTime.begin("http://worldtimeapi.org/api/timezone/Etc/UTC");
+    int httpCode = httpTime.GET();
+    if (httpCode == 200) {
+      String payload = httpTime.getString();
+      StaticJsonDocument<512> doc;
+      deserializeJson(doc, payload);
+      long unixTime = doc["unixtime"];
+      struct timeval tv;
+      tv.tv_sec = unixTime + 7 * 3600; // GMT+7
+      tv.tv_usec = 0;
+      settimeofday(&tv, NULL);
+      Serial.println("[INFO] HTTP Time Sync OK");
+    } else {
+      Serial.println("[INFO] HTTP Time Sync FAILED");
+    }
+    httpTime.end();
+  } else {
+    Serial.println(" OK");
+  }
 
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();

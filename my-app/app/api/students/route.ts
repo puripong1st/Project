@@ -9,7 +9,11 @@ import { consumeOfflineGrant, consumeQRToken } from "@/lib/qr";
 import { rateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 import { getClientIp } from "@/lib/client-ip";
-import DOMPurify from "isomorphic-dompurify";
+
+function sanitizeString(str: any): string {
+  if (typeof str !== "string") return "";
+  return str.replace(/[<>]/g, "").trim();
+}
 
 let initialized = false;
 async function ensureInit() {
@@ -103,16 +107,13 @@ export async function POST(req: NextRequest) {
     const isOfflineReplay = !!offlineId && !!offlineCreatedAt;
 
     // Sanitize input to prevent XSS
-    const sanitizeHTML = (input: string): string => {
-      return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-    };
-    const sanitizedTitle = sanitizeHTML(title?.trim() ?? '');
-    const sanitizedFirstName = sanitizeHTML(first_name?.trim() ?? '');
-    const sanitizedLastName = sanitizeHTML(last_name?.trim() ?? '');
-    const sanitizedStudentId = sanitizeHTML(student_id?.trim() ?? '');
-    const sanitizedFaculty = sanitizeHTML(faculty?.trim() ?? '');
-    const sanitizedBranch = sanitizeHTML(branch?.trim() ?? '');
-    const sanitizedRequestedRoom = sanitizeHTML(requested_room?.trim() ?? 'default') || 'default';
+    const sanitizedTitle = sanitizeString(title);
+    const sanitizedFirstName = sanitizeString(first_name).slice(0, 100);
+    const sanitizedLastName = sanitizeString(last_name).slice(0, 100);
+    const sanitizedStudentId = sanitizeString(student_id).replace(/[^0-9-]/g, "").slice(0, 30);
+    const sanitizedFaculty = sanitizeString(faculty).slice(0, 150);
+    const sanitizedBranch = sanitizeString(branch).slice(0, 150);
+    const sanitizedRequestedRoom = sanitizeString(requested_room || "default").slice(0, 50);
 
     // Validation
     if (!sanitizedTitle || !["นาย", "นางสาว", "นาง"].includes(sanitizedTitle)) {
