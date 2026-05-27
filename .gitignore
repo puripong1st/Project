@@ -17,7 +17,7 @@ my-app/.claude/
 my-app/dev.log
 
 # Database / Sensitive configs
-my-app/aiven_mysql_config.txt
+my-app/aiven_postgresql_config.txt
 
 # ESP32 Secrets / Board configurations
 esp32/config.h

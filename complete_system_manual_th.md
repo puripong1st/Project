@@ -64,7 +64,7 @@
 - [44. ทำไมหน้าจอ TFT บน ESP32 จึงเปลี่ยนสถานะ "ช้า" ไม่เรียลไทม์](#sec-44)
 
 ### 🎯 ภาคเจาะลึกขั้นสูง (45-70)
-- [45. ทำไมเลือก PostgreSQL + ทำไมย้ายจาก MySQL กลางทาง + Aiven vs Supabase](#sec-45)
+- [45. ทำไมเลือก PostgreSQL + ทำไมย้ายจาก postgreSQL (เดิมคือ MySQL) กลางทาง + Aiven vs Supabase](#sec-45)
 - [46. อธิบายโค้ดทุกไฟล์ใน `lib/` แบบเจาะลึก](#sec-46)
 - [47. Admin Dashboard ทีละ Tab แบบเจาะลึก](#sec-47)
 - [48. React Hydration & SSR Lifecycle](#sec-48)
@@ -2830,7 +2830,7 @@ flowchart TD
 ---
 
 <a id="sec-45"></a>
-## 45. ทำไมเลือก PostgreSQL + ทำไมย้ายจาก MySQL กลางทาง + Aiven vs Supabase
+## 45. ทำไมเลือก PostgreSQL + ทำไมย้ายจาก postgreSQL (เดิมคือ MySQL) กลางทาง + Aiven vs Supabase
 
 หัวข้อนี้สำคัญมากเพราะเป็นการตัดสินใจทางสถาปัตยกรรมที่ส่งผลกระทบกับทุกอย่าง — เลือกผิดต้องเขียนใหม่ครึ่งหนึ่ง
 
@@ -2839,26 +2839,26 @@ flowchart TD
 ```mermaid
 timeline
     title การเปลี่ยน Database ของโปรเจกต์
-    เริ่มโปรเจกต์ : เลือก MySQL บน Aiven (ฟรี tier)
+    เริ่มโปรเจกต์ : เลือก postgreSQL (เดิมคือ MySQL) บน Aiven (ฟรี tier)
                   : เซิร์ฟเวอร์อยู่ "อินเดีย" (Mumbai region)
                   : เพราะคุ้นเคย + Aiven มีฟรี tier
     พบปัญหา      : Latency เฉลี่ย 180-250ms ต่อ query
                   : Connection pooling ไม่ดีกับ Vercel serverless
-                  : Schema migration ของ MySQL ติดขัด
+                  : Schema migration ของ postgreSQL (เดิมคือ MySQL) ติดขัด
     ทดลอง        : เปรียบเทียบ PostgreSQL บน Supabase
                   : เซิร์ฟเวอร์ "สิงคโปร์" (ap-southeast-1)
                   : Latency ลดเหลือ 40-80ms
     ตัดสินใจย้าย : Migrate ทั้งระบบเป็น PostgreSQL + Supabase
-                  : Refactor code ใช้ pg แทน mysql2
+                  : Refactor code ใช้ pg แทน pg
                   : ใช้ pgBouncer pool
     ปัจจุบัน     : รัน production stable
 ```
 
-### 45.2 ทำไมเลือก PostgreSQL (ไม่ใช่ MySQL)
+### 45.2 ทำไมเลือก PostgreSQL (ไม่ใช่ postgreSQL (เดิมคือ MySQL))
 
 #### 45.2.1 เหตุผลทางเทคนิค
 
-| ฟีเจอร์ | MySQL 8 | PostgreSQL 15 | ใครชนะ |
+| ฟีเจอร์ | postgreSQL (เดิมคือ MySQL 8) | PostgreSQL 15 | ใครชนะ |
 |---------|---------|---------------|--------|
 | **JSON support** | JSON type | JSONB (binary, indexable) | 🟢 PG |
 | **Generated columns** | ใช้ได้แต่ index จำกัด | Full GIN/GiST index | 🟢 PG |
@@ -2879,17 +2879,17 @@ timeline
 
 ```sql
 -- รหัสที่ใช้จริง — ทำได้บน PostgreSQL ใน 1 query
--- ใน MySQL ต้องทำ 3 query (SELECT → check → UPDATE → SELECT)
+-- ใน postgreSQL (เดิมคือ MySQL) ต้องทำ 3 query (SELECT → check → UPDATE → SELECT)
 UPDATE dynamic_qr_tokens
 SET is_consumed = TRUE, consumed_at = NOW()
 WHERE token = $1
   AND is_consumed = FALSE
   AND expires_at > NOW()
-RETURNING id, room_code;        -- ← MySQL ทำตรงนี้ไม่ได้
+RETURNING id, room_code;        -- ← postgreSQL (เดิมคือ MySQL) ทำตรงนี้ไม่ได้
 ```
 
 ```sql
--- Rate limit แบบ atomic — MySQL ทำได้แต่ syntax ยุ่งยากกว่า
+-- Rate limit แบบ atomic — postgreSQL (เดิมคือ MySQL) ทำได้แต่ syntax ยุ่งยากกว่า
 INSERT INTO rate_limits (key, count, window_start)
 VALUES ($1, 1, NOW())
 ON CONFLICT (key) DO UPDATE        -- ← PostgreSQL clean syntax
@@ -2904,9 +2904,9 @@ RETURNING count;
 - **Row-Level Security (RLS)**: สำหรับ multi-tenancy ในอนาคต
 - **pgvector**: ถ้าจะเพิ่ม AI/embedding ในอนาคต
 
-### 45.3 ทำไมย้ายจาก MySQL/Aiven → PostgreSQL/Supabase (กลางทาง)
+### 45.3 ทำไมย้ายจาก postgreSQL/Aiven (เดิมคือ MySQL) → PostgreSQL/Supabase (กลางทาง)
 
-#### 45.3.1 ปัญหาที่เจอจริงกับ MySQL/Aiven
+#### 45.3.1 ปัญหาที่เจอจริงกับ postgreSQL/Aiven (เดิมคือ MySQL)
 
 ```mermaid
 flowchart TD
@@ -2927,7 +2927,7 @@ flowchart TD
 #### 45.3.2 ค่า Latency ที่วัดได้จริง
 
 ```
-Aiven MySQL (Mumbai, free tier):
+Aiven postgreSQL (เดิมคือ MySQL) (Mumbai, free tier):
 ├─ TLS handshake     : 95ms
 ├─ Auth roundtrip    : 60ms
 ├─ SELECT 1 (warm)   : 78ms  ← network RTT คือพระเอก
@@ -2952,7 +2952,7 @@ Supabase PostgreSQL (Singapore, free tier):
 flowchart LR
     User["ผู้ใช้ในประเทศไทย"] -->|"~10ms"| ISP["TRUE/AIS/3BB"]
     ISP -->|"~30ms"| VercelSG["Vercel<br/>Singapore"]
-    VercelSG -->|"~80ms"| Mumbai[("MySQL@Aiven<br/>Mumbai, India")]
+    VercelSG -->|"~80ms"| Mumbai[("postgreSQL (เดิมคือ MySQL)@Aiven<br/>Mumbai, India")]
     VercelSG -->|"~20ms"| SGDB[("PostgreSQL@Supabase<br/>Singapore")]
 
     style Mumbai fill:#c0392b,stroke:#7b241c,color:#ffffff
@@ -2967,7 +2967,7 @@ flowchart LR
 
 #### 45.3.4 เหตุผลอื่น ๆ ที่ผลักดันให้ย้าย
 
-| ปัญหา | MySQL/Aiven | PostgreSQL/Supabase |
+| ปัญหา | postgreSQL/Aiven (เดิมคือ MySQL) | PostgreSQL/Supabase |
 |--------|-------------|---------------------|
 | Connection limit free tier | 16 connection | 60 connection (+ pgBouncer pool ใช้ได้เกินก็ไม่ติด) |
 | Backup | manual | automatic daily + point-in-time recovery |
@@ -3007,7 +3007,7 @@ flowchart LR
 - ✅ Dashboard UX ดีกว่า + มี SQL editor ใน browser
 - ✅ ถ้าโตในอนาคตยังต่อยอด Realtime/Edge Function/Storage ได้
 
-#### 45.4.3 ทำไมไม่ใช้ Aiven MySQL เก่า แต่ย้าย region?
+#### 45.4.3 ทำไมไม่ใช้ Aiven postgreSQL (เดิมคือ MySQL) เก่า แต่ย้าย region?
 
 - Aiven free tier **ล็อกเฉพาะ Mumbai** — ย้ายไม่ได้
 - ต้องอัปเกรดเป็น Hobbyist ($19/เดือน) ถึงจะย้ายได้
@@ -3017,12 +3017,12 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A["1. สร้าง Supabase project SG"] --> B["2. แปลง MySQL schema → PG schema"]
+    A["1. สร้าง Supabase project SG"] --> B["2. แปลง postgreSQL (เดิมคือ MySQL) schema → PG schema"]
     B --> C["3. แก้ types: TINYINT(1)→BOOLEAN<br/>AUTO_INCREMENT→SERIAL<br/>DATETIME→TIMESTAMPTZ"]
-    C --> D["4. Export ข้อมูลจาก MySQL (mysqldump)"]
+    C --> D["4. Export ข้อมูลจาก postgreSQL (เดิมคือ MySQL) (mysqldump)"]
     D --> E["5. Transform เป็น PG syntax<br/>(เปลี่ยน backtick ` เป็น quote \")"]
     E --> F["6. Import ลง Supabase ผ่าน psql"]
-    F --> G["7. แก้ code: mysql2 → pg"]
+    F --> G["7. แก้ code: pg → pg"]
     G --> H["8. แก้ query: ? → $1, $2<br/>เพิ่ม RETURNING * ที่ INSERT"]
     H --> I["9. ทดสอบทุก API endpoint"]
     I --> J["10. เปลี่ยน env var ใน Vercel"]
@@ -3034,18 +3034,18 @@ flowchart TD
 | ปัญหา | สาเหตุ | วิธีแก้ |
 |--------|--------|---------|
 | `AUTO_INCREMENT` ใช้ใน PG ไม่ได้ | syntax ต่าง | ใช้ `SERIAL` หรือ `IDENTITY` |
-| `LIMIT 10, 20` PG ไม่รองรับ | MySQL syntax เก่า | ใช้ `LIMIT 20 OFFSET 10` |
+| `LIMIT 10, 20` PG ไม่รองรับ | postgreSQL syntax (เดิมคือ MySQL) เก่า | ใช้ `LIMIT 20 OFFSET 10` |
 | Backtick ` PG ใช้ไม่ได้ | quoting identifier | ใช้ double-quote `"` |
-| `NOW()` ไม่มี timezone ใน MySQL | TIMESTAMP behavior ต่าง | ใช้ `TIMESTAMPTZ` |
+| `NOW()` ไม่มี timezone ใน postgreSQL (เดิมคือ MySQL) | TIMESTAMP behavior ต่าง | ใช้ `TIMESTAMPTZ` |
 | `INT(11)` | display width concept | ใช้ `INTEGER` |
 | Default `CURRENT_TIMESTAMP ON UPDATE` | trigger auto-update | ทำเป็น trigger เอง หรือ update ใน app |
-| `ENUM('a','b')` | MySQL feature | ใช้ `CHECK` constraint หรือ table แยก |
-| `mysql2` placeholder `?` | positional | PG ใช้ `$1, $2` |
-| `INSERT IGNORE` | MySQL only | ใช้ `INSERT ... ON CONFLICT DO NOTHING` |
+| `ENUM('a','b')` | postgreSQL (เดิมคือ MySQL) feature | ใช้ `CHECK` constraint หรือ table แยก |
+| `pg` placeholder `?` | positional | PG ใช้ `$1, $2` |
+| `INSERT IGNORE` | postgreSQL (เดิมคือ MySQL) only | ใช้ `INSERT ... ON CONFLICT DO NOTHING` |
 
 ### 45.6 ผลลัพธ์หลัง Migrate
 
-| Metric | ก่อน (MySQL/Aiven Mumbai) | หลัง (PG/Supabase SG) | ดีขึ้น |
+| Metric | ก่อน (postgreSQL/Aiven (เดิมคือ MySQL) Mumbai) | หลัง (PG/Supabase SG) | ดีขึ้น |
 |--------|---------------------------|------------------------|--------|
 | API p50 latency | 320ms | 75ms | **4.3×** |
 | API p95 latency | 480ms | 110ms | **4.4×** |

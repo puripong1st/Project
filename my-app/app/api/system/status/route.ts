@@ -16,9 +16,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. MySQL Status & Log Retention Stats & Dynamic Configurations
-    let mysqlOnline = false;
-    let mysqlError = "";
+    // 2. PostgreSQL Status & Log Retention Stats & Dynamic Configurations
+    let postgresqlOnline = false;
+    let postgresqlError = "";
     let totalLogs = 0;
     let activeLogs = 0;
     let expiredLogs = 0;
@@ -30,10 +30,10 @@ export async function GET() {
     try {
       pool = getPool();
       const { rows: dbTest } = await pool.query("SELECT 1");
-      if (dbTest) mysqlOnline = true;
+      if (dbTest) postgresqlOnline = true;
 
-      // Only query dynamic settings if MySQL is online
-      if (mysqlOnline) {
+      // Only query dynamic settings if PostgreSQL is online
+      if (postgresqlOnline) {
         // Query Discord webhook settings from DB
         const { rows: webhookRows } = await pool.query(
           "SELECT setting_value FROM system_settings WHERE setting_key LIKE '%webhook%'"
@@ -88,7 +88,7 @@ export async function GET() {
       }
     } catch (error) {
       console.error("[System Status DB Connection Error]:", error);
-      mysqlError = "Database connection error";
+      postgresqlError = "Database connection error";
     }
 
     // 3. Resolve status of ALL configured rooms concurrently
@@ -96,7 +96,7 @@ export async function GET() {
       roomCodes.map(async (roomCode) => {
         let ip = "192.168.1.100";
         ip = fallbackSettings[`room_ip_${roomCode}`] || ip;
-        if (mysqlOnline && pool) {
+        if (postgresqlOnline && pool) {
           try {
             const { rows: ipRows } = await pool.query(
               "SELECT setting_value FROM system_settings WHERE setting_key = $1",
@@ -110,7 +110,7 @@ export async function GET() {
         }
 
         let activeToken = "";
-        if (mysqlOnline) {
+        if (postgresqlOnline) {
           try {
             activeToken = await getOrCreateActiveQRToken(roomCode);
           } catch (tokErr) {
@@ -155,12 +155,12 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        serviceState: getDependencyState([mysqlOnline, devicesList.some((device) => device.online)]),
-        degraded: !mysqlOnline || devicesList.some((device) => !device.online),
-        mode: mysqlOnline ? "online" : "local-fallback",
-        mysql: {
-          online: mysqlOnline,
-          error: mysqlError,
+        serviceState: getDependencyState([postgresqlOnline, devicesList.some((device) => device.online)]),
+        degraded: !postgresqlOnline || devicesList.some((device) => !device.online),
+        mode: postgresqlOnline ? "online" : "local-fallback",
+        postgresql: {
+          online: postgresqlOnline,
+          error: postgresqlError,
         },
         esp32: sanitizedDevices.length > 0 ? {
           online: sanitizedDevices[0].online,

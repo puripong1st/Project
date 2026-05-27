@@ -73,5 +73,5 @@ The frontend will be available at `http://localhost:3000` and the admin panel at
 - **Language:** Code is primarily written in TypeScript for the web app and C++ for the ESP32. Most user-facing documentation, UI labels, and thesis documents are in **Thai**.
 - **Type Safety:** Adhere strictly to TypeScript types. Avoid `any`.
 - **Styling:** Follow the existing minimalistic glassmorphism design system using Tailwind CSS and Vanilla CSS. Use the university colors: Purple (`#7C3AED`) and Pink (`#DB2777`).
-- **Database:** Utilize Supabase features securely. Use `lib/db.ts` for established connection patterns. Note that the project recently migrated from MySQL to Supabase PostgreSQL for better serverless connection pooling.
+- **Database:** Utilize Supabase features securely. Use `lib/db.ts` for established connection patterns. Note that the project recently migrated from postgreSQL to Supabase PostgreSQL for better serverless connection pooling.
 - **Legal Compliance:** When touching logging or authentication features, ensure they respect the established Thai PDPA and Computer Crime Act requirements implemented in the system (e.g., 90-day retention policies, restricted deletion permissions).

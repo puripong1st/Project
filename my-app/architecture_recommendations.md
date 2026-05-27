@@ -14,7 +14,7 @@
 | **การทนทานต่อเน็ตล่ม (Offline Resilience)** | **สูงมาก**<br>หากอินเทอร์เน็ตหลักของมหาวิทยาลัยล่ม ระบบกลอนประตูกับเว็บแอดมินยังเปิดใช้งานได้ตามปกติผ่าน Wi-Fi ภายในห้อง | **ต่ำ**<br>หากอินเทอร์เน็ตล่ม เว็บบอร์ดแอดมินจะเข้าใช้งานไม่ได้ และไม่สามารถส่งสัญญาณมาสั่งปลดล็อกประตูได้ |
 | **การเข้าถึงบอร์ด ESP32** | **ง่ายและปลอดภัย**<br>Next.js ยิงหา IP ภายในห้องของ ESP32 ได้โดยตรงโดยไม่ต้องตั้งค่าความปลอดภัยใดๆ เพิ่มเติม | **ซับซ้อน**<br>Cloud อยู่ภายนอก ไม่สามารถเจาะเข้ามาสั่งการ ESP32 ที่อยู่หลังเราเตอร์ปกติได้ (ต้องใช้ Tunnel เช่น Ngrok/Cloudflare หรือปรับบอร์ดมาใช้ Websocket) |
 | **ค่าใช้จ่ายในการดูแล** | **จ่ายครั้งเดียวจบ (One-Time Cost)**<br>ซื้อบอร์ด Pi 4 และไม่มีค่าบริการรายเดือนสำหรับเว็บโฮสติ้งและดาต้าเบส | **มีค่าบริการรายเดือน**<br>ฟรีในช่วงแรก (Free Tier) แต่หากใช้งานปริมาณมากจะมีค่าบริการคลาวด์และฐานข้อมูลรายเดือน |
-| **ความสะดวกในการดูแล** | **ปานกลาง**<br>ต้องติดตั้งระบบปฏิบัติการ Linux, Node.js และเปิด MySQL ด้วยตัวเองในบอร์ด | **สะดวกสบายสูง**<br>เพียงกด `git push` โค้ดจะได้รับการ deploy และอัปเดตให้อัตโนมัติทันที |
+| **ความสะดวกในการดูแล** | **ปานกลาง**<br>ต้องติดตั้งระบบปฏิบัติการ Linux, Node.js และเปิด postgreSQL ด้วยตัวเองในบอร์ด | **สะดวกสบายสูง**<br>เพียงกด `git push` โค้ดจะได้รับการ deploy และอัปเดตให้อัตโนมัติทันที |
 
 > [!TIP]
 > **สรุปคำแนะนำเชิงวิชาชีพ (Verdict):**
@@ -42,7 +42,7 @@
 sequenceDiagram
     participant AdminBrowser as 💻 Admin Web Page
     participant NextJS as 🚀 Next.js API (Pi 4 Server)
-    participant Database as 🗄️ MySQL Database
+    participant Database as 🗄️ postgreSQL Database
     participant ESP32 as 🔌 ESP32 Board (GPIO 4 Pin)
 
     AdminBrowser->>NextJS: 1. กดอนุมัติผู้ขอรับสิทธิ์เข้าห้อง (Click Approve)
@@ -67,14 +67,13 @@ sequenceDiagram
    # ลง Node.js เวอร์ชันเสถียร
    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
    sudo apt-get install -y nodejs
-   
-   # ลงฐานข้อมูล MySQL
-   sudo apt-get install -y mariadb-server
-   ```
+      # ลงฐานข้อมูล postgreSQL
+    sudo apt-get install -y postgresql postgresql-contrib
+    ```
 3. **กำหนดค่าความปลอดภัยของ Database**:
-   ```bash
-   sudo mysql_secure_installation
-   ```
+    ```bash
+    sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'yourpassword';"
+    ```
 4. **โคลนและนำขึ้นระบบ**: ดึงโฟลเดอร์ `my-app` มาวางไว้ใน Pi สั่งรันบิลด์ระบบเว็บ:
    ```bash
    cd my-app

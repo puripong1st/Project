@@ -310,7 +310,7 @@ Supabase = **PostgreSQL ที่ manage ให้** + auth + storage (เรา
 | `dynamic_qr_tokens` | token, signature, expires_at, is_consumed |
 | `system_settings` | key/value (cache 30 วินาที) |
 
-**ทำไม Supabase ไม่ใช่ MySQL/SQLite?**
+**ทำไม Supabase ถึงใช้ postgreSQL แทนฐานข้อมูลอื่น?**
 - ฟรี tier ใช้งานได้จริง, มี backup อัตโนมัติ
 - รองรับ TLS + connection pooler — เหมาะกับ Vercel ที่เป็น serverless (เปิด connection ใหม่ทุก request)
 

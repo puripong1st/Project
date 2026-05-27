@@ -2077,7 +2077,7 @@ void handleLocalWebServerRequest() {
     serviceState?: "online" | "degraded" | "offline";
     degraded?: boolean;
     mode?: string;
-    mysql: { online: boolean; host: string; database: string; error: string };
+    postgresql: { online: boolean; host: string; database: string; error: string };
     esp32: { online: boolean; doorStatus: string; ip: string; mock: boolean; room?: string };
     esp32Devices?: { room: string; online: boolean; ip: string; doorStatus: string; mock: boolean; mode: string; activeToken?: string }[];
     discord: { configured: boolean };
@@ -3512,9 +3512,9 @@ void handleLocalWebServerRequest() {
                 
                 {/* Database status */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
-                  <span className="badge badge-approved" style={{ display: "inline-flex", padding: "2px 8px", fontSize: 10, background: systemStatus.mysql.online ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)", color: systemStatus.mysql.online ? "#10B981" : "#EF4444", borderColor: systemStatus.mysql.online ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)" }}>
-                    <span className={systemStatus.mysql.online ? 'animate-pulse-ring' : ''} style={{ width: 6, height: 6, borderRadius: "50%", background: systemStatus.mysql.online ? "#10B981" : "#EF4444", display: "inline-block", marginRight: 4 }} />
-                    ฐานข้อมูล Supabase: {systemStatus.mysql.online ? "ONLINE" : "OFFLINE"}
+                  <span className="badge badge-approved" style={{ display: "inline-flex", padding: "2px 8px", fontSize: 10, background: systemStatus.postgresql.online ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)", color: systemStatus.postgresql.online ? "#10B981" : "#EF4444", borderColor: systemStatus.postgresql.online ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)" }}>
+                    <span className={systemStatus.postgresql.online ? 'animate-pulse-ring' : ''} style={{ width: 6, height: 6, borderRadius: "50%", background: systemStatus.postgresql.online ? "#10B981" : "#EF4444", display: "inline-block", marginRight: 4 }} />
+                    ฐานข้อมูล Supabase: {systemStatus.postgresql.online ? "ONLINE" : "OFFLINE"}
                   </span>
                 </div>
 

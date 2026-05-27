@@ -1,7 +1,7 @@
 # 🚪 RMUTP ACCS — IoT-Based Door Access Control System
 ### ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร
 
-ระบบควบคุมการเปิด-ปิดประตูห้องผ่านคิวอาร์โค้ดแบบ Full-Stack เชื่อมต่อกับฮาร์ดแวร์บอร์ดสมองกลฝังตัว ESP32 และฐานข้อมูล MySQL พร้อมฟังก์ชันควบคุมความปลอดภัยและความถูกต้องตามกฎหมายจราจรทางคอมพิวเตอร์อย่างเป็นทางการ
+ระบบควบคุมการเปิด-ปิดประตูห้องผ่านคิวอาร์โค้ดแบบ Full-Stack เชื่อมต่อกับฮาร์ดแวร์บอร์ดสมองกลฝังตัว ESP32 และฐานข้อมูล postgreSQL พร้อมฟังก์ชันควบคุมความปลอดภัยและความถูกต้องตามกฎหมายจราจรทางคอมพิวเตอร์อย่างเป็นทางการ
 
 ---
 
@@ -14,7 +14,7 @@
 
 ### 2. แดชบอร์ดตรวจสอบสถานะระบบระดับองค์กร (Enterprise Status Grid)
 แผงรายงานความพร้อมใช้งานของระบบแบบ Real-time ณ ส่วนหัวสุดของหน้าแอดมิน เพื่อความโปร่งใสและตรวจสอบได้ทันที:
-* **MySQL Database**: บอกชื่อโฮสต์ ฐานข้อมูล และสถานะการออนไลน์
+* **postgreSQL Database**: บอกชื่อโฮสต์ ฐานข้อมูล และสถานะการออนไลน์
 * **ESP32 Controller**: บอกสถานะการออนไลน์ของบอร์ดจริง, IP บอร์ด, โหมดทดสอบ (Mock/Real), และสถิติกลอนแม่เหล็กประตู (🔒 ปิด / 🔓 เปิด)
 * **Discord Alerts**: บอกสถานะความถูกต้องของการผูกระบบบอทพิกัดแจ้งเตือนภัยคุกคาม
 * **Active Operator**: แสดงข้อมูลแอดมินที่กำลังปฏิบัติงานปัจจุบันและระดับสิทธิ์ดำเนินการ
@@ -38,7 +38,7 @@
 
 * **Frontend / API Backend**: Next.js 15+ (App Router), React 19, TypeScript
 * **Styling & Theme**: Vanilla CSS + Tailwind CSS v4 (Harmony Palette Design System)
-* **Database Driver**: MySQL (`mysql2` Connection Pool with automatic migrations)
+* **Database Driver**: postgreSQL (`pg` Connection Pool with automatic migrations)
 * **Server-Side PDF Library**: `pdfkit`
 * **Cryptography**: `bcryptjs` & `jsonwebtoken` (JWT) for secure session manager
 * **Hardware System**: ESP32 Microcontroller, Electromagnetic Solenoid Lock, Relay, Active Buzzer
@@ -57,14 +57,14 @@ my-app/
 │   │   └── dashboard/page.tsx# หน้าบอร์ดควบคุมความปลอดภัยหลัก (Protected Area)
 │   └── api/
 │       ├── system/
-│       │   ├── status/route.ts   # ดึงสถานะ live ตู้ MySQL, ESP32, Discord
+│       │   ├── status/route.ts   # ดึงสถานะ live ตู้ postgreSQL, ESP32, Discord
 │       │   └── logs/cleanup/route# ระบบทำความสะอาดลบประวัติความปลอดภัย
 │       ├── students/route.ts     # ดึงรายชื่อ/ลงทะเบียนข้อมูลนักศึกษา
 │       └── export/pdf/route.ts   # เขียนประวัติ PDF ส่งออกแนวนอน
 ├── esp32/
 │   └── esp32.ino                 # ซอร์สโค้ดอัปโหลดชิปของ ESP32 จริง
 ├── lib/
-│   ├── db.ts                 # ตัวเชื่อมต่อ MySQL และ Migration ตาราง
+│   ├── db.ts                 # ตัวเชื่อมต่อ postgreSQL และ Migration ตาราง
 │   ├── esp32.ts              # ตัวจัดการ HTTP Call สั่งปลดล็อกไปฮาร์ดแวร์
 │   └── discord.ts            # ตัวยิง Webhook แจ้งเตือนบอทห้องแชท
 └── .env.local                # ไฟล์เก็บค่า Config และความลับระบบ
@@ -84,20 +84,20 @@ cd rmutp-door-access/my-app
 npm install
 ```
 
-### 2. เตรียมฐานข้อมูล MySQL
-1. เปิดการทำงานของเซิร์ฟเวอร์ MySQL (เช่น ผ่าน XAMPP, Laragon หรือ cloud MySQL)
+### 2. เตรียมฐานข้อมูล postgreSQL
+1. เปิดการทำงานของเซิร์ฟเวอร์ postgreSQL (เช่น ผ่าน Supabase หรือ local postgreSQL)
 2. สร้างหรือใช้ฐานข้อมูลชื่อ `rmutp_access`
 3. ระบบจะทำการตรวจสอบและสร้างตารางต่างๆ (ตาราง `admin_users`, `students`, `access_logs`) พร้อมป้อนสิทธิ์บัญชีเริ่มต้นให้อัตโนมัติเมื่อสตาร์ทเซิร์ฟเวอร์ในครั้งแรก
 
 ### 3. ตั้งค่าไฟล์สภาพแวดล้อม `.env.local`
 ทำการแก้ไขหรือสร้างไฟล์ `.env.local` ไว้ที่โฟลเดอร์ `my-app/` โดยระบุค่าดังนี้:
 ```env
-# ฐานข้อมูล MySQL
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=ชื่อผู้ใช้ (เช่น root)
-MYSQL_PASSWORD=รหัสผ่านฐานข้อมูล
-MYSQL_DATABASE=rmutp_access
+# ฐานข้อมูล postgreSQL
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=ชื่อผู้ใช้ (เช่น postgres)
+POSTGRES_PASSWORD=รหัสผ่านฐานข้อมูล
+POSTGRES_DATABASE=rmutp_access
 
 # การเข้ารหัสความปลอดภัย JWT
 JWT_SECRET=รหัสลับสุ่มยาวๆความปลอดภัยของคุณ

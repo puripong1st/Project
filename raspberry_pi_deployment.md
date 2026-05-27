@@ -1,7 +1,7 @@
 # คู่มือการติดตั้งและจัดตั้งระบบบน Raspberry Pi 4 อย่างละเอียด (Production Deployment)
 ### ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ มทร.พระนคร (RMUTP ACCS)
 
-คู่มือนี้จะอธิบายขั้นตอนการนำระบบเว็บ **Next.js + MySQL** ไปติดตั้งบนบอร์ดคอมพิวเตอร์ขนาดเล็ก **Raspberry Pi 4** เพื่อจัดตั้งเป็น **Local Server** ประจำตึกเรียน/ห้องเรียน ให้ทำงานร่วมกับกล่องควบคุม **ESP32** แบบออฟไลน์ภายในวงแลนเดียวกันได้อย่างเสถียรที่สุด 24 ชั่วโมงต่อวัน โดยไม่ต้องพึ่งพาระบบคลาวด์ภายนอก
+คู่มือนี้จะอธิบายขั้นตอนการนำระบบเว็บ **Next.js + postgreSQL** ไปติดตั้งบนบอร์ดคอมพิวเตอร์ขนาดเล็ก **Raspberry Pi 4** เพื่อจัดตั้งเป็น **Local Server** ประจำตึกเรียน/ห้องเรียน ให้ทำงานร่วมกับกล่องควบคุม **ESP32** แบบออฟไลน์ภายในวงแลนเดียวกันได้อย่างเสถียรที่สุด 24 ชั่วโมงต่อวัน โดยไม่ต้องพึ่งพาระบบคลาวด์ภายนอก
 
 ---
 
@@ -73,35 +73,26 @@
 
 ---
 
-## 🛠️ ขั้นตอนที่ 4: การติดตั้งและจัดตั้งฐานข้อมูล (Install MariaDB / MySQL)
+## 🛠️ ขั้นตอนที่ 4: การติดตั้งและจัดตั้งฐานข้อมูล (Install postgreSQL)
 
-เราจะใช้ **MariaDB** ซึ่งเป็นเวอร์ชันเปิดเผยซอร์สโค้ดของ MySQL ที่ทำงานได้รวดเร็วและเป็นที่นิยมสูงสุดบนระบบ Linux:
+เราจะใช้ **postgreSQL** ซึ่งเป็นฐานข้อมูลที่ทำงานได้รวดเร็ว ปลอดภัย และยืดหยุ่นสูง:
 
-1. สั่งติดตั้ง MariaDB Server:
+1. สั่งติดตั้ง postgreSQL Server:
    ```bash
-   sudo apt install -y mariadb-server
+   sudo apt install -y postgresql postgresql-contrib
    ```
-2. รันระบบรักษาความปลอดภัยฐานข้อมูลเบื้องต้น:
+2. รันคำสั่งเข้าไปตั้งค่ารหัสผ่านสำหรับผู้ใช้ `postgres`:
    ```bash
-   sudo mysql_secure_installation
+   sudo -u postgres psql
    ```
-   *ทำตามตัวเลือกความปลอดภัยในจอภาพดังนี้:*
-   - Enter current password for root: **กด Enter ข้ามไปได้เลย**
-   - Switch to unix_socket authentication? **พิมพ์ n แล้วกด Enter**
-   - Change the root password? **พิมพ์ y แล้วกด Enter** จากนั้นกรอกรหัสผ่านของแอดมินฐานข้อมูลที่คุณต้องการ (เช่น `admin` หรือรหัสส่วนตัว และจำรหัสนี้ไว้เพื่อนำไปกรอกใน `.env.local`)
-   - Remove anonymous users? **พิมพ์ y แล้วกด Enter**
-   - Disallow root login remotely? **พิมพ์ y แล้วกด Enter**
-   - Remove test database and access to it? **พิมพ์ y แล้วกด Enter**
-   - Reload privilege tables now? **พิมพ์ y แล้วกด Enter**
-3. เข้าไปเปิดฐานข้อมูลเพื่อสร้าง Database หลักของระบบ:
-   ```bash
-   sudo mysql -u root -p
-   ```
-   *(ระบบจะถามรหัสผ่านที่คุณพึ่งตั้งไปในขั้นตอนก่อนหน้า)*
-4. เมื่อเข้ามาที่หน้าจอของ MariaDB (ขึ้นต้นด้วย `MariaDB [(none)]>`) ให้พิมพ์คำสั่งสร้างฐานข้อมูล:
+   และพิมพ์คำสั่งเปลี่ยนรหัสผ่านเพื่อความปลอดภัย:
    ```sql
-   CREATE DATABASE rmutp_access CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   EXIT;
+   ALTER USER postgres PASSWORD 'รหัสผ่านฐานข้อมูลที่คุณต้องการ';
+   ```
+3. สร้าง Database หลักของระบบ:
+   ```sql
+   CREATE DATABASE rmutp_access;
+   \q
    ```
 
 ---
@@ -133,12 +124,12 @@
    ```
 2. คัดลอกข้อความด้านล่างนี้ลงไปในไฟล์ โดยแก้ไขรหัสผ่านและ IP ให้ตรงกับความเป็นจริง:
    ```env
-   # การเชื่อมโยงฐานข้อมูล MySQL (MariaDB ที่รันอยู่ในตัวเครื่อง Pi เอง)
-   MYSQL_HOST=localhost
-   MYSQL_PORT=3306
-   MYSQL_USER=root
-   MYSQL_PASSWORD=ใส่รหัสผ่านฐานข้อมูลที่คุณตั้งในขั้นตอนที่ 4
-   MYSQL_DATABASE=rmutp_access
+   # การเชื่อมโยงฐานข้อมูล postgreSQL (ที่รันอยู่ในตัวเครื่อง Pi เอง)
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=ใส่รหัสผ่านฐานข้อมูลที่คุณตั้งในขั้นตอนที่ 4
+   POSTGRES_DATABASE=rmutp_access
 
    # รหัสความปลอดภัย JWT
    JWT_SECRET=rmutp-door-access-super-secret-key-2024
@@ -164,7 +155,7 @@
    ```bash
    npm run build
    ```
-2. เมื่อบิลด์สำเร็จ ระบบจะตรวจสอบตารางฐานข้อมูลและเริ่มเชื่อมโยงกับ MySQL อัตโนมัติในครั้งแรกที่ถูกเรียกใช้งาน เพื่อรันสคริปต์ Migration ตารางทั้งหมดทันทีโดยที่คุณไม่ต้องไปสั่งสร้างตารางใน SQL เอง
+2. เมื่อบิลด์สำเร็จ ระบบจะตรวจสอบตารางฐานข้อมูลและเริ่มเชื่อมโยงกับ postgreSQL อัตโนมัติในครั้งแรกที่ถูกเรียกใช้งาน เพื่อรันสคริปต์ Migration ตารางทั้งหมดทันทีโดยที่คุณไม่ต้องไปสั่งสร้างตารางใน SQL เอง
 
 ---
 
