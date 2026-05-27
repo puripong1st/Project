@@ -558,9 +558,10 @@ const char *password = "";
 const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
 const char *room_code = "${roomCode}";
 
-// ตั้งค่า UNIQUE API Key สำหรับบอร์ดห้องนี้
-// สามารถตั้งค่าจับคู่บน Vercel environment variables -> ESP32_API_KEY
-const char *api_key = "rmutp-door-access-super-secret-key-2026-esp32";
+// ⚠️ IMPORTANT: Replace with your actual ESP32 API key
+// Get the key from your server administrator
+// DO NOT commit the real key to version control
+const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
 
 // Root CA Certificate สำหรับตรวจสอบใบรับรอง HTTPS Vercel (ISRG Root X1)
 const char *root_ca_cert = \\
@@ -2153,6 +2154,27 @@ void loop() {
                     <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "2px 0 6px 0", lineHeight: 1.4 }}>
                       โปรดสร้างไฟล์ชื่อ <code>config.h</code> ไว้ในโฟลเดอร์เดียวกับโปรเจกต์ Arduino ของท่าน แล้วคัดลอกโค้ดด้านล่างนี้ไปใส่ เพื่อแยกความลับและคีย์ความปลอดภัยออกจากไฟล์โปรแกรมหลัก (อย่าลืมแก้ไข API Key ให้เป็นคีย์ที่ปลอดภัยและไม่ซ้ำกันในแต่ละบอร์ด)
                     </p>
+
+                    {/* ⚠️ API Key placeholder warning */}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      padding: "10px 14px",
+                      background: "rgba(245,158,11,0.08)",
+                      border: "1px solid rgba(245,158,11,0.4)",
+                      borderRadius: 8,
+                      marginBottom: 6
+                    }}>
+                      <span style={{ fontSize: 15, lineHeight: 1, marginTop: 1 }}>⚠️</span>
+                      <span style={{ fontSize: 11.5, color: "#F59E0B", lineHeight: 1.5, fontWeight: 600 }}>
+                        API Key เป็น placeholder — กรุณาขอ key จริงจาก administrator
+                        <span style={{ display: "block", fontWeight: 400, color: "var(--text-secondary)", marginTop: 2 }}>
+                          แก้ไขบรรทัด <code style={{ background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 4 }}>api_key</code> ใน config.h ด้วยค่า <code style={{ background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 4 }}>ESP32_API_KEY</code> จาก Vercel Environment Variables — ห้ามนำ key จริงขึ้น version control
+                        </span>
+                      </span>
+                    </div>
+
                     <div style={{ position: "relative" }}>
                       <button
                         type="button"
