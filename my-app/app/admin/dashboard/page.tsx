@@ -322,7 +322,141 @@ function renderLogNotes(notes?: string) {
   );
 }
 
+const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 นาที
+const WARNING_BEFORE = 2 * 60 * 1000; // เตือนล่วงหน้า 2 นาที
+
+function useIdleTimer(onTimeout: () => void, onWarning: (isWarning: boolean) => void) {
+  const timeoutTimerRef = useRef<any>(null);
+  const warningTimerRef = useRef<any>(null);
+
+  const resetTimer = useCallback(() => {
+    if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+
+    onWarning(false);
+
+    warningTimerRef.current = setTimeout(() => {
+      onWarning(true);
+    }, IDLE_TIMEOUT - WARNING_BEFORE);
+
+    timeoutTimerRef.current = setTimeout(() => {
+      onTimeout();
+    }, IDLE_TIMEOUT);
+  }, [onTimeout, onWarning]);
+
+  useEffect(() => {
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    const handleActivity = () => {
+      resetTimer();
+    };
+
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    resetTimer();
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+    };
+  }, [resetTimer]);
+
+  return { resetTimer };
+}
+
 export default function AdminDashboard() {
+  const router = useRouter();
+  const [showWarning, setShowWarning] = useState(false);
+
+  const handleTimeout = useCallback(() => {
+    fetch("/api/auth/logout", { method: "POST" })
+      .finally(() => {
+        router.push("/admin/login?reason=idle");
+      });
+  }, [router]);
+
+  const handleWarning = useCallback((isWarning: boolean) => {
+    setShowWarning(isWarning);
+  }, []);
+
+  const { resetTimer } = useIdleTimer(handleTimeout, handleWarning);
+
+  return (
+    <>
+      <AdminDashboardInner />
+      {showWarning && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15,17,23,0.75)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 99999,
+        }}>
+          <div style={{
+            background: "#1E1E2E",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 16,
+            padding: 32,
+            maxWidth: 400,
+            width: "90%",
+            textAlign: "center",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+          }}>
+            <div style={{
+              fontSize: 48,
+              marginBottom: 16,
+            }}>
+              ⏳
+            </div>
+            <h3 style={{
+              fontSize: 18,
+              fontWeight: 800,
+              color: "#F0F4F0",
+              marginBottom: 12
+            }}>
+              ไม่มีกิจกรรมมาระยะหนึ่งแล้ว
+            </h3>
+            <p style={{
+              fontSize: 14,
+              color: "#9EA8A0",
+              lineHeight: 1.5,
+              marginBottom: 24
+            }}>
+              Session ของคุณจะหมดอายุภายใน 2 นาที กดเพื่อต่ออายุ Session
+            </p>
+            <button
+              onClick={resetTimer}
+              style={{
+                width: "100%",
+                padding: "12px 24px",
+                borderRadius: 10,
+                background: "linear-gradient(135deg, var(--rmutp-purple) 0%, var(--edu-pink) 100%)",
+                color: "#fff",
+                border: "none",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
+                transition: "all 0.2s"
+              }}
+            >
+              ต่ออายุ Session
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function AdminDashboardInner() {
   const router = useRouter();
   const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot">("pending");
   const [user, setUser] = useState<CurrentUser | null>(null);

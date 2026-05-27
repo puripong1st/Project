@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 //ฟิล์มเอง
 // ─── Minimalist Vector SVGs ───
@@ -62,12 +62,22 @@ const UnlockIcon = () => (
 );
 
 export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0F1117", color: "#F0F4F0", padding: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>กำลังโหลด...</div>}>
+      <AdminLoginPageInner />
+    </Suspense>
+  );
+}
+
+function AdminLoginPageInner() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPass, setShowPass] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isIdle = searchParams.get("reason") === "idle";
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -121,6 +131,13 @@ export default function AdminLoginPage() {
         {/* Login Card */}
         <div className="premium-card animate-fade-in-delay-1" style={{ padding: 36 }}>
           <form onSubmit={handleLogin}>
+            {isIdle && (
+              <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "12px 16px", color: "#D97706", fontSize: 13.5, fontWeight: 600, marginBottom: 20, display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span>Session หมดอายุเนื่องจากไม่มีกิจกรรม</span>
+              </div>
+            )}
+
             {error && (
               <div style={{ background: "var(--edu-pink-pale)", border: "1px solid rgba(219,39,119,0.15)", borderRadius: 12, padding: "12px 16px", color: "var(--edu-pink)", fontSize: 13.5, fontWeight: 600, marginBottom: 20, display: "flex", gap: 8, alignItems: "center" }}>
                 <AlertIcon />
