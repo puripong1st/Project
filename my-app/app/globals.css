@@ -534,7 +534,10 @@ body {
 
 @media (min-width: 768px) {
   .sidebar-responsive {
-    position: static !important;
+    position: sticky !important;
+    top: 0 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
     transform: none !important;
     z-index: 100 !important;
   }

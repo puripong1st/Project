@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
       discord_webhook_register,
       discord_webhook_approve,
       discord_webhook_logs,
+      discord_webhook_admin_audit,
       auto_fill_enabled,
       auto_fill_mode,
       student_id_display_mode,
@@ -109,6 +110,9 @@ export async function POST(req: NextRequest) {
     }
     if (discord_webhook_logs !== undefined) {
       updates.discord_webhook_logs = String(discord_webhook_logs).trim();
+    }
+    if (discord_webhook_admin_audit !== undefined) {
+      updates.discord_webhook_admin_audit = String(discord_webhook_admin_audit).trim();
     }
 
     // อัปเดตการตั้งค่าเพิ่มเติม (custom settings) เช่น รายชื่อห้องเรียน และ IP แยกห้อง

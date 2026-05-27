@@ -1,6 +1,7 @@
 # คู่มือระบบควบคุมประตู RMUTP Door Access ฉบับละเอียด
 
-วันที่จัดทำ: 26 พฤษภาคม 2026  
+วันที่จัดทำ: 26 พฤษภาคม 2026
+อัปเดตล่าสุด: 2026-05-27 18:08:57 (+07:00)  
 โปรเจกต์อ้างอิง: RMUTP Door Access System  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -1378,7 +1379,7 @@ flowchart LR
     C --> E["badge แสดงจำนวน"]
     E --> F[แอดมินกด approve]
     F --> G[POST /api/students/:id/approve]
-    G --> H[refetchPending()]
+    G --> H["refetchPending"]
 ```
 **ทำไม polling 10 วินาที?** — ไม่ใช้ WebSocket เพราะ Vercel Serverless ไม่เหมาะ long-lived connection; 10 วินาทีเพียงพอกับงานอนุมัติคนเดียวกดทีละครั้ง
 
@@ -1539,9 +1540,9 @@ flowchart LR
         EDGE["Edge Functions (ไม่ได้ใช้)"]
     end
     NA["Next.js (Vercel)"] -->|"pg + TLS<br/>raw SQL"| PG
-    NA -.x AUTH
-    NA -.x STO
-    NA -.x EDGE
+    NA -.->|"ไม่ใช้"| AUTH
+    NA -.->|"ไม่ใช้"| STO
+    NA -.->|"ไม่ใช้"| EDGE
 ```
 
 | สิ่งที่ใช้ | สิ่งที่ไม่ใช้ |
