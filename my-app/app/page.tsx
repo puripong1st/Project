@@ -272,6 +272,29 @@ function RegistrationPageInner() {
 
   useEffect(() => {
     const checkConsent = () => {
+      // v2: granular JSON object — accept ถ้า action เป็น granted หรือ updated และมีอย่างน้อย functional=true
+      try {
+        const v2Raw = localStorage.getItem("smartaccess_cookie_consent_v2");
+        if (v2Raw) {
+          const v2 = JSON.parse(v2Raw);
+          if (v2 && v2.action === "withdrawn") {
+            setHasConsented(false);
+            return;
+          }
+          if (v2 && v2.choices && (v2.action === "granted" || v2.action === "updated")) {
+            // ต้องยอมรับ functional cookies เป็นอย่างน้อยเพื่อให้ระบบทำงาน (Auto-fill, จดจำห้อง)
+            setHasConsented(v2.choices.functional === true);
+            return;
+          }
+          if (v2 && v2.action === "declined") {
+            setHasConsented(false);
+            return;
+          }
+        }
+      } catch {
+        /* fall through to v1 */
+      }
+      // v1 backward compat
       const consent = localStorage.getItem("smartaccess_cookie_consent");
       if (consent === "true") {
         setHasConsented(true);
@@ -1027,8 +1050,25 @@ function RegistrationPageInner() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <button
               onClick={() => {
-                localStorage.setItem("smartaccess_cookie_consent", "true");
-                window.dispatchEvent(new Event("smartaccess_cookie_consent_changed"));
+                // v2 format: granular consent — accept all
+                const record = {
+                  version: "2.0",
+                  timestamp: new Date().toISOString(),
+                  choices: { necessary: true, functional: true, analytics: true, marketing: true },
+                  action: "granted" as const,
+                };
+                try {
+                  localStorage.setItem("smartaccess_cookie_consent_v2", JSON.stringify(record));
+                  localStorage.setItem("smartaccess_cookie_consent", "true"); // v1 compat
+                } catch { /* ignore */ }
+                // server-side audit (best effort)
+                fetch("/api/consent", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ functional: true, analytics: true, marketing: true, action: "granted" }),
+                  keepalive: true,
+                }).catch(() => {});
+                window.dispatchEvent(new CustomEvent("smartaccess_cookie_consent_changed", { detail: record }));
               }}
               style={{
                 width: "100%",
