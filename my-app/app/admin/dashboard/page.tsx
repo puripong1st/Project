@@ -1450,7 +1450,8 @@ void syncOfflineLogs() {
   String content = f.readString();
   f.close();
   HTTPClient http;
-  String logUrl = String(server_url).replace("display", "logs/sync");
+  String logUrl = String(server_url);
+  logUrl.replace("display", "logs/sync");
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
 #ifdef WOKWI_SIM
