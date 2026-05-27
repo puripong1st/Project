@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตู RMUTP Door Access ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-27 18:43:08 (+07:00)  
+อัปเดตล่าสุด: 2026-05-27 19:00:10 (+07:00)  
 โปรเจกต์อ้างอิง: RMUTP Door Access System  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -103,6 +103,9 @@
   - [71.10 ตารางวิเคราะห์และแก้ไขปัญหาขัดข้องทางเทคนิค (Step-by-Step Error Diagnostic Matrix)](#sec-71-10)
   - [71.11 คู่มือการบำรุงรักษาเชิงป้องกันและการลดสัญญาณรบกวนในระบบวงจรจริง (Preventive Maintenance & Hardware De-noising)](#sec-71-11)
   - [71.12 แผนการทำระบบอัปเดตเฟิร์มแวร์ไร้สายความปลอดภัยสูง (Secure OTA Update Architecture Concept)](#sec-71-12)
+  - [71.13 ตารางแผนผัง API และสเปกการรับส่งข้อมูล (E2E API Data Contract & Payload Specification)](#sec-71-13)
+  - [71.14 ตารางเปรียบเทียบสถาปัตยกรรมระบบกับกรอบมาตรฐานความปลอดภัยระดับโลก (OWASP Top 10 & ISO 27001 Controls Mapping)](#sec-71-14)
+  - [71.15 แผนการกู้คืนภัยพิบัติระบบฐานข้อมูลและเซิร์ฟเวอร์เลสคลาวด์แบบ Failsafe (Failsafe Disaster Recovery & Database Seeding Runbook)](#sec-71-15)
 
 ---
 
@@ -3583,24 +3586,19 @@ sequenceDiagram
 
 เพื่อเพิ่มความสามารถการพัฒนาเทคโนโลยีในอนาคต (Future-Proofing & Extensibility) สำหรับโครงงานวิจัยระดับสูง การที่ต้องถอดชิป ESP32 ออกจากผนังหน้าห้องเรียนเพื่อเสียบสายแฟลชโปรแกรมใหม่ถือเป็นข้อจำกัดหลักในทางปฏิบัติ ระบบจึงได้รับการวางแผนสถาปัตยกรรม **Secure Over-The-Air (OTA) Updates via HTTPS** ดังนี้:
 
-```text
-                  [ ผู้พัฒนา / แอดมิน ]
-                           │
-                  อัปโหลด esp32.bin (Firmware)
-                           ▼
-                  ┌─────────────────┐
-                  │ Next.js Server  │
-                  └────────┬────────┘
-                           │
-                 /api/esp32/firmware-update
-                           │
-                           │ HTTPS TLS 1.2
-                           ▼
-                  ┌─────────────────┐
-                  │ ESP32 Controller│
-                  │  (Dual Partition│
-                  │    OTA_0/OTA_1) │
-                  └─────────────────┘
+```mermaid
+flowchart TD
+    DEV["👤 ผู้พัฒนา / แอดมิน"] -->|"อัปโหลด esp32.bin (Firmware)"| SRV["🖥️ Next.js Server<br/>(Vercel Cloud)"]
+    SRV -->|"/api/esp32/firmware-update<br/>HTTPS TLS 1.2"| ESP["📟 ESP32 Controller<br/>(Dual Partition: OTA_0 / OTA_1)"]
+
+    %% ทำสีให้มองง่ายและสวยงามสไตล์ Harmony Palette
+    classDef devStyle fill:#7C3AED,stroke:#333,stroke-width:2px,color:#fff;
+    classDef srvStyle fill:#3B82F6,stroke:#333,stroke-width:2px,color:#fff;
+    classDef espStyle fill:#DB2777,stroke:#333,stroke-width:2px,color:#fff;
+
+    class DEV devStyle;
+    class SRV srvStyle;
+    class ESP espStyle;
 ```
 
 #### กลไกการทำงานของระบบ Secure OTA:
@@ -4309,7 +4307,23 @@ flowchart LR
     SRV -.->|"reply ใช้ session ที่ NAT จำได้"| NAT
     NAT -.->|"forward กลับ ESP32"| ESP
 
-    INET2["Server ต้องการเรียก ESP32"] -.x|"❌ ไม่มี mapping"| NAT
+    INET2["Server ต้องการเรียก ESP32"] --x|"❌ ไม่มี mapping"| NAT
+
+    %% ทำสีให้มองง่ายและมีความหมายชัดเจนสไตล์ Harmony Palette
+    classDef purple fill:#7C3AED,stroke:#333,stroke-width:2px,color:#fff;
+    classDef pink fill:#DB2777,stroke:#333,stroke-width:2px,color:#fff;
+    classDef orange fill:#F59E0B,stroke:#333,stroke-width:2px,color:#fff;
+    classDef red fill:#EF4444,stroke:#333,stroke-width:2px,color:#fff;
+    classDef green fill:#10B981,stroke:#333,stroke-width:2px,color:#fff;
+    classDef blue fill:#3B82F6,stroke:#333,stroke-width:2px,color:#fff;
+
+    class ESP purple;
+    class NAT orange;
+    class INET blue;
+    class SRV green;
+    class INET2 red;
+
+    linkStyle 5 stroke:#EF4444,stroke-width:3px,stroke-dasharray: 5 5;
 ```
 
 **NAT Table**:
@@ -5286,6 +5300,6 @@ RETURNING *;
 
 ---
 
-> **อัปเดตล่าสุด**: 2026-05-27 18:42:42 +07:00 — ปรับปรุงลิงก์การเชื่อมต่อเว็บไซต์เป็น Production URL (project-sigma-ivory-21.vercel.app), อัปเดตข้อมูลผลการทดสอบความปลอดภัยล่าสุด (Penetration Test & Vulnerability Remediation ณ วันที่ 27 พฤษภาคม 2026) และเพิ่มหัวข้อ §71 อธิบายสถาปัตยกรรมเชิงลึกเพื่อการทำเล่มวิทยานิพนธ์ระดับสถาบันการศึกษา (Push-via-Poll, Atomic Transaction, Defense-in-Depth, พ.ร.บ. คอมพิวเตอร์ และ PDPA) ครบถ้วนละเอียด 6 บทย่อย พร้อมการคำนวณและประเมินกำลังไฟฟ้าวิศวกรรมไฟฟ้า (Power Budget / Fail-Safe), การกู้คืนสภาวะล้มเหลว (Disaster Recovery / Offline Resilience) และการวิเคราะห์งบประมาณเชิงความคุ้มทุน (Cloud Economics / Cost Analysis) รวมเป็น 9 บทย่อยอย่างสมบูรณ์แบบสูงสุด
+> **อัปเดตล่าสุด**: 2026-05-27 18:58:32 +07:00 — ปรับปรุงลิงก์การเชื่อมต่อเว็บไซต์เป็น Production URL (project-sigma-ivory-21.vercel.app), อัปเดตข้อมูลผลการทดสอบความปลอดภัยล่าสุด (Penetration Test & Vulnerability Remediation), เพิ่มหัวข้อ §71 อธิบายสถาปัตยกรรมเชิงลึกเพื่อการทำเล่มวิทยานิพนธ์ 12 บทย่อย, และแก้ไขบั๊กของแผนภาพ Mermaid (บทที่ 57.1) พร้อมแปลงแผนภาพ OTA (บทที่ 71.12) เป็น Mermaid และปรับแต่งการตกแต่งสีสัน (Color Coding) บนแผนภาพสัญลักษณ์ระบบให้มองง่ายและสวยงาม
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
