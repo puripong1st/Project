@@ -4,7 +4,7 @@ import CookieConsent from "./components/CookieConsent";
 
 export const metadata: Metadata = {
   title: "SmartAccess Door Access System",
-  description: "ระบบควบคุมการเข้าออก Innovative system for managing access rights and controlling classroom access via wireless network",
+  description: "SmartAccess — ระบบควบคุมการเข้าออกห้องเรียนแบบไร้สาย (Innovative system for managing access rights and controlling classroom access via wireless network) คณะครุศาสตร์อุตสาหกรรม มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร",
 };
 
 export default function RootLayout({
