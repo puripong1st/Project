@@ -63,6 +63,71 @@ function formatDateTime(dt: string | null | undefined): string {
   return `${day}/${month}/${year} ${h}:${m}:${s} น.`;
 }
 
+// ─── Pending Auto-Reject Countdown (5 นาทีตรงกับ lib/auto-reject.ts) ───
+const PENDING_TIMEOUT_SECONDS = 300;
+function PendingCountdown({ registeredAt }: { registeredAt: string }) {
+  const [remaining, setRemaining] = useState<number>(() => {
+    const elapsed = (Date.now() - new Date(registeredAt).getTime()) / 1000;
+    return Math.max(0, Math.ceil(PENDING_TIMEOUT_SECONDS - elapsed));
+  });
+  useEffect(() => {
+    const startMs = new Date(registeredAt).getTime();
+    const tick = () => {
+      const elapsed = (Date.now() - startMs) / 1000;
+      setRemaining(Math.max(0, Math.ceil(PENDING_TIMEOUT_SECONDS - elapsed)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [registeredAt]);
+
+  const mm = Math.floor(remaining / 60).toString().padStart(2, "0");
+  const ss = (remaining % 60).toString().padStart(2, "0");
+  const expired = remaining <= 0;
+  const urgent = remaining > 0 && remaining <= 60;
+
+  const bg = expired
+    ? "linear-gradient(135deg, rgba(239,68,68,0.18), rgba(220,38,38,0.12))"
+    : urgent
+    ? "linear-gradient(135deg, rgba(249,115,22,0.18), rgba(234,88,12,0.12))"
+    : "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(219,39,119,0.12))";
+  const border = expired
+    ? "1px solid rgba(239,68,68,0.45)"
+    : urgent
+    ? "1px solid rgba(249,115,22,0.45)"
+    : "1px solid rgba(124,58,237,0.3)";
+  const color = expired ? "#DC2626" : urgent ? "#EA580C" : "var(--smartaccess-purple-dark, #5B21B6)";
+
+  return (
+    <span
+      title={expired ? "เลยกำหนดอนุมัติแล้ว — รอ auto-reject" : "เวลาที่เหลือก่อนถูกปฏิเสธอัตโนมัติ (5 นาที)"}
+      style={{
+        background: bg,
+        border,
+        borderRadius: 8,
+        padding: "4px 10px",
+        fontSize: 11.5,
+        color,
+        fontWeight: 800,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      <span aria-hidden="true">⏳</span>
+      {expired ? (
+        <span>หมดเวลาแล้ว</span>
+      ) : (
+        <>
+          <span>หมดเวลาใน</span>
+          <span style={{ fontSize: 12.5, letterSpacing: 0.5 }}>{mm}:{ss}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
 // ─── Minimalist Vector SVGs ───
 const ClockIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -3711,6 +3776,7 @@ void handleLocalWebServerRequest() {
                                 <BranchIcon />
                                 <span style={{ marginLeft: 4 }}>{s.branch}</span>
                               </span>
+                              <PendingCountdown registeredAt={s.registered_at} />
                             </div>
 
                             <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>

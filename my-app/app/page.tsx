@@ -266,6 +266,9 @@ function RegistrationPageInner() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null); // ตัวแปรนับถอยหลังหมดอายุ 120 วินาที
   const [offlineGrant, setOfflineGrant] = useState("");
   const authChecked = useRef(false);
+  // ref ของสถานะ "ส่งฟอร์มสำเร็จแล้ว" — ใช้ป้องกัน session timer 120s เตะออกหลัง submit
+  // (ตัว success state จริงถูกประกาศที่บรรทัด ~556 — ใช้ ref นี้แทนเพื่อหลีกเลี่ยง use-before-declare)
+  const submittedRef = useRef(false);
 
   // PDPA Cookie & Policy Consent state
   const [hasConsented, setHasConsented] = useState<boolean | null>(null);
@@ -425,8 +428,13 @@ function RegistrationPageInner() {
     if (qrAuthorized !== true) return;
     if (timeLeft === null) return; // wait until timeLeft is initialized by verify/restore
 
+    // ─── BUG FIX (Pending Status Persistence) ───
+    // หากผู้ใช้ส่งฟอร์มสำเร็จและกำลังรอแอดมินอนุมัติแล้ว ห้าม session timer 120s
+    // ตัดผู้ใช้ออกไปหน้า "QR หมดอายุ" — เพราะ pending status มี timeout 5 นาทีของตัวเอง (auto-reject)
+    if (submittedRef.current) return;
+
     if (timeLeft <= 0) {
-      // เมื่อเวลาหมด (ครบ 120 วินาที)
+      // เมื่อเวลาหมด (ครบ 120 วินาที) — เฉพาะกรณียังไม่ submit
       queueMicrotask(() => {
         setQrAuthorized(false);
         setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
@@ -436,11 +444,11 @@ function RegistrationPageInner() {
       } catch {}
       return;
     }
-    
+
     const timer = setTimeout(() => {
       setTimeLeft(prev => (prev !== null ? prev - 1 : null));
     }, 1000);
-    
+
     return () => clearTimeout(timer);
   }, [qrAuthorized, timeLeft, room]);
 
