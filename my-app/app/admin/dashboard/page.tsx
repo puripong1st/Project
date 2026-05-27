@@ -2209,6 +2209,12 @@ void handleLocalWebServerRequest() {
   }, []);
 
   useEffect(() => {
+    if (user?.role === "owner") {
+      fetchAdmins();
+    }
+  }, [user, fetchAdmins]);
+
+  useEffect(() => {
     setTimeout(() => {
       fetchPending();
     }, 0);

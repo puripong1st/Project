@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-27 19:08:27 (+07:00)  
+อัปเดตล่าสุด: 2026-05-27 21:44:42 (+07:00)  
 โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -394,23 +394,23 @@ https://project-sigma-ivory-21.vercel.app/admin/login
 เมื่อกดอนุมัติ ระบบจะทำงานดังนี้
 
 1. เรียก `POST /api/students/{id}/approve`
-2. ตรวจ cookie ว่าเป็น admin และต้องเป็น `owner`
-3. อัปเดต `students.status = 'approved'`
-4. เรียก `openDoor(student_id, requested_room)`
-5. `openDoor()` เขียน `room_cmd_<room> = unlock` ลง `system_settings`
-6. บอร์ด ESP32 polling มาเจอคำสั่งและเปิด relay
-7. บันทึก `access_logs`
-8. ส่ง Discord notification
+2. ตรวจสอบ cookie JWT ว่าเป็นแอดมินที่มีสถานะล็อกอินถูกต้อง และต้องได้รับสิทธิ์ดูแลห้องเรียนนั้น (สำหรับ `owner` ผ่านสิทธิ์อัตโนมัติ สำหรับ `door_operator` ตรวจสอบว่า `requested_room` ของนักศึกษาต้องมีอยู่ในคอลัมน์ `allowed_rooms` ของแอดมินคนนั้น หากไม่มีสิทธิ์จะถูกระงับด้วยสถานะ 403)
+3. อัปเดตตารางฐานข้อมูล `students.status = 'approved'` และ `approved_at = CURRENT_TIMESTAMP`
+4. เรียกใช้ฟังก์ชัน `openDoor(student_id, requested_room)`
+5. ฟังก์ชัน `openDoor()` เขียนคำสั่ง `room_cmd_<room> = unlock` ลงใน `system_settings`
+6. บอร์ด ESP32 Polling ดึงข้อมูลสถานะรอบถัดไปแล้วพบคำสั่งปลดล็อก จึงสั่งการจ่ายไฟเปิด Relay
+7. บันทึกประวัติการผ่านเข้าห้องลงตาราง `access_logs` แบบแก้ไขไม่ได้ (Immutable log)
+8. ส่งแจ้งเตือนอัตโนมัติเข้า Discord Webhook แบบแบ่งแยกหมวดหมู่ประเภทเหตุการณ์ (Event Categorization)
 
 ### 5.5 ปฏิเสธคำขอ
 
 เมื่อกดปฏิเสธ ระบบจะทำงานดังนี้
 
 1. เรียก `POST /api/students/{id}/reject`
-2. ตรวจสิทธิ์ `owner`
-3. อัปเดตสถานะเป็น `rejected`
-4. เก็บ `rejection_reason`
-5. บันทึก log และแจ้ง Discord
+2. ตรวจสอบสิทธิ์และขอบเขตห้องเรียนเหมือนขั้นตอนการอนุมัติ (หากเป็น `door_operator` ต้องมีสิทธิ์ห้องเรียนนั้น)
+3. อัปเดตสถานะในตาราง `students.status = 'rejected'`
+4. บันทึกคำอธิบายเหตุผลในการปฏิเสธ (`rejection_reason`) โดยจำกัดขนาดความยาวข้อมูลไม่เกิน 500 ตัวอักษร เพื่อป้องกัน DoS
+5. บันทึกประวัติลงตาราง `access_logs` และส่งแจ้งเตือนเข้า Discord Webhook ตามหมวดหมู่การปฏิเสธสิทธิ์
 
 ### 5.6 ปลดล็อกด่วนทั้งห้อง
 
@@ -3443,20 +3443,25 @@ const filtered = students.filter(s => {
 <form onSubmit={handleCreateAdmin}>
   <input name="username" pattern="^[a-zA-Z0-9_.]{3,30}$"
          title="3-30 ตัวอักษร: a-z 0-9 _ ." required />
-  <input name="password" type="password" minLength={8} required />
+  <input name="password" type="password" minLength={12} required 
+         title="รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษร มีตัวพิมพ์ใหญ่ พิมพ์เล็ก ตัวเลข และอักขระพิเศษ" />
   <input name="full_name" required />
   <select name="role">
     <option value="door_operator">Door Operator</option>
     <option value="owner">Owner</option>
   </select>
+  {/* เพิ่มฟิลด์ป้อนข้อกำหนดขอบเขตห้องเรียน */}
+  <input name="allowed_rooms" placeholder="CE-401,CE-402 (ว่างไว้ = สิทธิ์เข้าถึงทุกห้อง)" />
   <button>สร้าง</button>
 </form>
 ```
 
-**ทำไม username pattern strict?**
+**ทำไม username pattern strict และรหัสผ่านหนาแน่น?**
+- รหัสผ่านบังคับอย่างน้อย **12 ตัวอักษร** (ตาม Security Policy ใหม่ เพื่อรับมือกับกำลังประมวลผลถอดรหัสลับความเร็วสูงของแฮกเกอร์)
+- ฟิลด์ `allowed_rooms` อนุญาตให้กำหนดสิทธิ์ห้องเรียนแบบระบุรายชื่อแยกตามเครื่องหมายจุลภาค (CSV string) ซึ่งระบบจะนำคีย์อาเรย์นี้ไปคิวรี่เช็คสิทธิ์ในระดับ Middleware และ API เสมอ
 - กัน Unicode lookalike (ตัวอักษรซีริลลิก/ไทย ที่ดูเหมือนละติน)
 - กัน SQL injection ในขั้น input (defense-in-depth)
-- ป้องกัน confused deputy attack
+- ป้องกัน confused deputy attack และความเสี่ยงเรื่องสิทธิ์แอดมินก้าวล่วงสิทธิ์ต่างห้องเรียน (Cross-Room Admin Privilege Abuse)
 
 ### 47.6 Tab "ห้องเรียนและ ESP32"
 
@@ -5424,6 +5429,6 @@ my-app/
 
 ---
 
-> **อัปเดตล่าสุด**: 2026-05-27 19:08:27 +07:00 — เปลี่ยนชื่อโปรเจกต์และระบบทั้งหมดในเอกสารอ้างอิงเชิงวิชาการให้เป็น "Innovative system for managing access rights and controlling classroom access via wireless network", ปรับปรุงลิงก์เป็น Production URL (project-sigma-ivory-21.vercel.app), เพิ่มหัวข้อ §71 อธิบายสถาปัตยกรรมเชิงลึกสำหรับการทำเล่มวิทยานิพนธ์รวม 18 บทย่อยเชิงปฏิบัติสมบูรณ์แบบสูงสุดเพื่อรองรับ NotebookLM อย่างเต็มสตรีม
+> **อัปเดตล่าสุด**: 2026-05-27 21:44:42 +07:00 — เปลี่ยนชื่อโปรเจกต์และระบบทั้งหมดในเอกสารอ้างอิงเชิงวิชาการให้เป็น "Innovative system for managing access rights and controlling classroom access via wireless network", ปรับปรุงลิงก์เป็น Production URL (project-sigma-ivory-21.vercel.app), เพิ่มหัวข้อ §71 อธิบายสถาปัตยกรรมเชิงลึกสำหรับการทำเล่มวิทยานิพนธ์รวม 18 บทย่อยเชิงปฏิบัติสมบูรณ์แบบสูงสุดเพื่อรองรับ NotebookLM อย่างเต็มสตรีม ล่าสุดอัปเดตรายละเอียดเรื่องการแบ่งแยกสิทธิ์ของแอดมินรายห้อง (คอลัมน์ allowed_rooms), นโยบายยกระดับรหัสผ่านแอดมินใหม่ (ความยาวอย่างน้อย 12 ตัวอักษร) และปรับโครงสร้างระบบแจ้งเตือนแบบแบ่งแยกตามหมวดหมู่ประเภทเหตุการณ์ลงในเนื้อหาบทเรียนหลักทั้งหมดเรียบร้อย
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>

@@ -105,20 +105,8 @@ export function setAuthCookie(token: string): {
 export const COOKIE_NAME_EXPORT = COOKIE_NAME;
 
 export function validatePasswordPolicy(password: string): { ok: boolean; error?: string } {
-  if (password.length < 12) {
-    return { ok: false, error: "รหัสผ่านต้องมีความยาวอย่างน้อย 12 ตัวอักษร" };
-  }
-  if (!/[A-Z]/.test(password)) {
-    return { ok: false, error: "รหัสผ่านต้องมีอักษรตัวใหญ่ (A-Z) อย่างน้อย 1 ตัว" };
-  }
-  if (!/[a-z]/.test(password)) {
-    return { ok: false, error: "รหัสผ่านต้องมีอักษรตัวเล็ก (a-z) อย่างน้อย 1 ตัว" };
-  }
-  if (!/[0-9]/.test(password)) {
-    return { ok: false, error: "รหัสผ่านต้องมีตัวเลข (0-9) อย่างน้อย 1 ตัว" };
-  }
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    return { ok: false, error: "รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว" };
+  if (password.length < 6) {
+    return { ok: false, error: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร" };
   }
   return { ok: true };
 }
