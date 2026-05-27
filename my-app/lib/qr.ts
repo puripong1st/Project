@@ -75,8 +75,13 @@ function base64url(input: Buffer | string): string {
   return Buffer.from(input).toString("base64url");
 }
 
+const QR_SIGNING_KEY = process.env.QR_SIGNING_KEY || process.env.JWT_SECRET;
+if (!process.env.QR_SIGNING_KEY) {
+  console.warn('[SECURITY] QR_SIGNING_KEY not set — using JWT_SECRET as fallback');
+}
+
 function getOfflineGrantSecret(): string {
-  const secret = process.env.JWT_SECRET || "";
+  const secret = QR_SIGNING_KEY || "";
   if (!secret || (process.env.NODE_ENV === "production" && secret === "rmutp-secret-key")) {
     throw new Error("Offline grant signing secret is missing or insecure.");
   }
