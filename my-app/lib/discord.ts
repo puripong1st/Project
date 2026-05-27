@@ -73,11 +73,11 @@ export async function sendDiscordNotification(
   // Load dynamic webhook URLs from database
   let targetWebhookUrl = "";
   let logWebhookUrl = "";
-  
+
   try {
     const settings = await getSystemSettings();
     const sanitizedRoom = data.room ? data.room.trim() : "";
-    
+
     // ─── [IoT Cloud Room-Specific 3-Channel Webhook Routing] ───
     // ค้นหาและแยกแยะช่องทาง Webhook ของห้องปฏิบัติการเป้าหมายตามประเภทกิจกรรม
     if (sanitizedRoom) {
@@ -106,7 +106,7 @@ export async function sendDiscordNotification(
 
       // 2. กำหนด Webhook ประจำ Log จราจร/ความปลอดภัยอย่างละเอียด
       logWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || "";
-      
+
       console.log(`[Discord Cloud] Routed room '${sanitizedRoom}' event '${eventType}' to: targetUrl=${targetWebhookUrl ? 'Configured' : 'Global Fallback'}, logUrl=${logWebhookUrl ? 'Configured' : 'Global Fallback'}`);
     } else {
       // หากไม่มีข้อมูลห้องเรียนเป้าหมาย ให้ Fallback ไปยังกิจกรรมส่วนกลาง
@@ -237,7 +237,7 @@ export async function sendDiscordNotification(
         timestamp: new Date().toISOString(),
       };
       break;
-  
+
     case "door_failed":
       embed = {
         title: "⚠️ เปิดประตูไม่สำเร็จ",
@@ -273,8 +273,8 @@ export async function sendDiscordNotification(
       break;
 
     case "admin_login": {
-      const roleLabel = data.adminRole === "owner" 
-        ? "👑 Owner (ผู้ดูแลสูงสุด)" 
+      const roleLabel = data.adminRole === "owner"
+        ? "👑 Owner (ผู้ดูแลสูงสุด)"
         : data.adminRole === "log_viewer"
           ? "📊 Log Viewer (ดูประวัติอย่างเดียว)"
           : "🔑 Door Operator";
@@ -299,8 +299,8 @@ export async function sendDiscordNotification(
     }
 
     case "admin_logout": {
-      const roleLabel = data.adminRole === "owner" 
-        ? "👑 Owner (ผู้ดูแลสูงสุด)" 
+      const roleLabel = data.adminRole === "owner"
+        ? "👑 Owner (ผู้ดูแลสูงสุด)"
         : data.adminRole === "log_viewer"
           ? "📊 Log Viewer (ดูประวัติอย่างเดียว)"
           : "🔑 Door Operator";
@@ -357,7 +357,7 @@ export async function sendDiscordNotification(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: "SmartAccess Door Access",
-          avatar_url: "http://smartaccess.ac.th/icon/favicon-96x96.png",
+          avatar_url: "https://www.rmutp.ac.th/icon/favicon-96x96.png",
           embeds: [embed!],
         }),
       });
@@ -375,7 +375,7 @@ export async function sendDiscordNotification(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: "SmartAccess Audit Log Bot",
-          avatar_url: "http://smartaccess.ac.th/icon/favicon-96x96.png",
+          avatar_url: "https://www.rmutp.ac.th/icon/favicon-96x96.png",
           content: `📊 **[SYSTEM LOG]** ตรวจพบเหตุการณ์ประเภท \`${eventType}\``,
           embeds: [embed!],
         }),
