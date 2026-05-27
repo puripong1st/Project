@@ -1473,17 +1473,6 @@ void syncOfflineLogs() {
 void setup() {
   Serial.begin(115200);
   Serial.println("[BOOT] System starting...");
-  // Setup NTP for HMAC Time Signature
-  configTime(7 * 3600, 0, "pool.ntp.org");
-  Serial.print("[INFO] Waiting for NTP time sync: ");
-  time_t now = time(nullptr);
-  while (now < 24 * 3600) {
-    Serial.print(".");
-    delay(100);
-    now = time(nullptr);
-  }
-  Serial.println(" OK");
-
 
   // Initialize SPIFFS cache storage
   if (!SPIFFS.begin(true)) {
@@ -1548,6 +1537,17 @@ void setup() {
 
   digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
   DBG("\\nWiFi connected successfully!");
+
+  // Setup NTP for HMAC Time Signature after WiFi connects
+  configTime(7 * 3600, 0, "pool.ntp.org");
+  Serial.print("[INFO] Waiting for NTP time sync: ");
+  time_t now = time(nullptr);
+  while (now < 24 * 3600) {
+    Serial.print(".");
+    delay(100);
+    now = time(nullptr);
+  }
+  Serial.println(" OK");
 
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
