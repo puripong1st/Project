@@ -113,11 +113,99 @@ export async function POST(req: NextRequest) {
 
     // อัปเดตการตั้งค่าเพิ่มเติม (custom settings) เช่น รายชื่อห้องเรียน และ IP แยกห้อง
     const { custom_settings } = body;
-    if (custom_settings && typeof custom_settings === "object") {
+    
+    const ALLOWED_SETTING_KEYS = [
+      'discord_webhook_url',
+      'discord_enabled', 
+      'auto_approve',
+      'qr_expiry_seconds',
+      'max_students_per_room',
+      'configured_rooms',
+      // เพิ่มตาม business requirements (ห้องเรียน IP และ Webhooks แยกตามห้อง)
+    ];
+
+    if (custom_settings && typeof custom_settings === 'object') {
       for (const [key, value] of Object.entries(custom_settings)) {
-        if (typeof key === "string" && typeof value === "string") {
-          updates[key] = value.trim();
+        if (typeof key !== 'string' || typeof value !== 'string') {
+          return NextResponse.json(
+            { error: "รูปแบบข้อมูลไม่ถูกต้อง" },
+            { status: 400 }
+          );
         }
+
+        // Whitelist check
+        const isWhitelisted = ALLOWED_SETTING_KEYS.includes(key);
+        const isDynamicRoomKey = key.startsWith("room_ip_") || 
+                                 key.startsWith("room_webhook_register_") || 
+                                 key.startsWith("room_webhook_approve_") || 
+                                 key.startsWith("room_webhook_logs_");
+
+        if (!isWhitelisted && !isDynamicRoomKey) {
+          return NextResponse.json(
+            { error: `Invalid setting key: ${key}` },
+            { status: 400 }
+          );
+        }
+
+        if (isDynamicRoomKey) {
+          const roomPart = key.replace(/^(room_ip_|room_webhook_register_|room_webhook_approve_|room_webhook_logs_)/, "");
+          if (!/^[a-zA-Z0-9_-]+$/.test(roomPart)) {
+            return NextResponse.json(
+              { error: `Invalid setting key format: ${key}` },
+              { status: 400 }
+            );
+          }
+        }
+
+        // Value type/length validation
+        const valStr = value.trim();
+
+        // 1. Length check
+        if (valStr.length >= 500) {
+          return NextResponse.json(
+            { error: `ข้อมูลยาวเกินกำหนดสำหรับคีย์ ${key} (สูงสุด 500 ตัวอักษร)` },
+            { status: 400 }
+          );
+        }
+
+        // 2. URL check (starts with https://)
+        if (key.includes("webhook") || key.includes("url")) {
+          if (valStr !== "" && !valStr.startsWith("https://")) {
+            return NextResponse.json(
+              { error: `รูปแบบ URL ไม่ถูกต้องสำหรับคีย์ ${key} ต้องเริ่มต้นด้วย https://` },
+              { status: 400 }
+            );
+          }
+        }
+
+        // 3. Number check (reasonable range)
+        if (key === "qr_expiry_seconds") {
+          const num = parseInt(valStr, 10);
+          if (isNaN(num) || num < 5 || num > 86400) {
+            return NextResponse.json(
+              { error: `qr_expiry_seconds ต้องเป็นตัวเลขระหว่าง 5 ถึง 86400 วินาที` },
+              { status: 400 }
+            );
+          }
+        } else if (key === "max_students_per_room") {
+          const num = parseInt(valStr, 10);
+          if (isNaN(num) || num < 1 || num > 10000) {
+            return NextResponse.json(
+              { error: `max_students_per_room ต้องเป็นตัวเลขระหว่าง 1 ถึง 10000` },
+              { status: 400 }
+            );
+          }
+        } else if (/^\d+$/.test(valStr)) {
+          const num = parseInt(valStr, 10);
+          if (num < 0 || num > 1000000) {
+            return NextResponse.json(
+              { error: `ค่าตัวเลขสำหรับคีย์ ${key} ไม่อยู่ในช่วงที่กำหนด` },
+              { status: 400 }
+            );
+          }
+        }
+
+        updates[key] = valStr;
       }
     }
 
