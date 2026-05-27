@@ -1234,3 +1234,673 @@ flowchart TD
 | Discord | แจ้งเตือนและ audit log ภายนอก |
 
 จุดที่สำคัญที่สุดของระบบนี้คือ `room_code` และ `requested_room` ต้องตรงกันตลอดสาย ตั้งแต่ QR, ฟอร์ม, database, dashboard, `server_url` ใน `config.h`, และ key `room_cmd_<room>` ใน `system_settings` ถ้าห้องไม่ตรงกัน บอร์ดอาจไม่รับคำสั่งเปิดประตูของห้องนั้น
+
+---
+
+# ภาคผนวก (ส่วนเพิ่มเติม) — สำหรับผู้อ่านที่ไม่เคยรู้จักระบบมาก่อน
+
+ส่วนนี้เขียนสำหรับคนที่ "ไม่เคยใช้งานระบบนี้เลย" และต้องการเข้าใจ **ทุกอย่าง** ตั้งแต่ภาพรวม → รายละเอียดเชิงลึก → เหตุผลทางวิศวกรรมที่อยู่เบื้องหลังการออกแบบ
+
+## 20. นิยามคำศัพท์พื้นฐาน (สำหรับมือใหม่)
+
+| คำ | ความหมายแบบเข้าใจง่าย |
+|----|----------------------|
+| **IoT** | "Internet of Things" — อุปกรณ์ฮาร์ดแวร์ที่ต่ออินเทอร์เน็ตได้ (ในที่นี้คือ ESP32) |
+| **ESP32** | ชิปไมโครคอนโทรลเลอร์ราคาถูก มี Wi-Fi ในตัว ใช้คุม relay/LED/จอ TFT |
+| **Relay** | สวิตช์ไฟฟ้าที่ ESP32 สั่งเปิด-ปิดได้ ใช้ตัด/ต่อไฟให้กลอนประตู |
+| **TFT** | จอสีขนาดเล็ก (ในที่นี้ ILI9341 320×240) แสดง QR + สถานะ |
+| **GPIO** | ขาดิจิทัลของ ESP32 ใช้สั่ง HIGH/LOW |
+| **Polling** | การที่ ESP32 "ถาม" server ทุก ๆ 2 วินาทีว่ามีอะไรใหม่ไหม |
+| **JWT** | "JSON Web Token" — ตั๋วเข้าใช้งานที่ลงนามด้วยกุญแจลับ ใช้แทน session admin |
+| **bcrypt** | อัลกอริทึมแฮชรหัสผ่าน ทำให้ถอดกลับไม่ได้ แม้ฐานข้อมูลรั่ว |
+| **httpOnly cookie** | คุกกี้ที่ JavaScript อ่านไม่ได้ ป้องกัน XSS ขโมย token |
+| **Rate limit** | จำกัดจำนวน request ต่อช่วงเวลา ป้องกัน brute-force และสแปม |
+| **Webhook** | URL ที่ใครส่ง POST มาจะทำงานบางอย่าง (Discord ใช้รับการแจ้งเตือน) |
+| **Serverless** | แนวคิดที่โค้ดวิ่งเฉพาะตอนมี request เข้ามา ไม่ต้องมี server เปิดค้าง |
+| **Edge CDN** | เครือข่ายเซิร์ฟเวอร์ทั่วโลกที่ cache ไฟล์ static ไว้ใกล้ผู้ใช้ |
+| **PostgreSQL** | ฐานข้อมูลเชิงสัมพันธ์ที่ใช้ในโปรเจกต์นี้ (Supabase host ให้) |
+| **TLS/SSL** | การเข้ารหัสการสื่อสารระหว่างเครื่อง (https:// คือ TLS) |
+
+---
+
+## 21. ภาพรวมสถาปัตยกรรมแบบ Layered (4 ชั้น)
+
+```mermaid
+flowchart TB
+    subgraph L1["ชั้นที่ 1: Presentation (UI)"]
+        UI1["หน้าเว็บนักศึกษา /"]
+        UI2["Dashboard Admin /admin/dashboard"]
+        UI3["จอ TFT บน ESP32"]
+        UI4["Discord (ปลายทางแจ้งเตือน)"]
+    end
+    subgraph L2["ชั้นที่ 2: Application (Business Logic)"]
+        API1["Next.js API Routes"]
+        FW["ESP32 Firmware (.ino)"]
+    end
+    subgraph L3["ชั้นที่ 3: Service / Library"]
+        LIB1["lib/auth.ts (JWT)"]
+        LIB2["lib/qr.ts (QR Token)"]
+        LIB3["lib/esp32.ts (Door Queue)"]
+        LIB4["lib/rate-limit.ts"]
+        LIB5["lib/discord.ts"]
+        LIB6["lib/pdf.ts"]
+    end
+    subgraph L4["ชั้นที่ 4: Data / Infrastructure"]
+        DB[("PostgreSQL @ Supabase")]
+        CDN[["Vercel Edge CDN"]]
+        HW["Relay + Lock"]
+    end
+    UI1 --> API1
+    UI2 --> API1
+    UI3 --> FW
+    FW --> API1
+    API1 --> LIB1
+    API1 --> LIB2
+    API1 --> LIB3
+    API1 --> LIB4
+    API1 --> LIB5
+    API1 --> LIB6
+    LIB1 --> DB
+    LIB2 --> DB
+    LIB3 --> DB
+    LIB4 --> DB
+    LIB5 --> UI4
+    UI1 -.->|"static asset"| CDN
+    UI2 -.->|"static asset"| CDN
+    FW --> HW
+```
+
+แต่ละชั้นมีหน้าที่ไม่ทับกัน เปลี่ยน implementation ได้โดยไม่กระทบชั้นอื่น (เช่น ถ้าจะย้ายจาก Supabase → PlanetScale แค่แก้ `lib/db.ts`)
+
+---
+
+## 22. หน้าจอผู้ใช้งานนักศึกษา — เจาะลึกแต่ละ State
+
+หน้า `/` มี State หลัก 6 แบบ ที่ React สลับด้วย `useState`:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Blocked: เปิดเว็บไม่มี ?scan=
+    Blocked --> [*]
+    [*] --> Verifying: มี ?scan=&room=
+    Verifying --> Form: token valid
+    Verifying --> Expired: token หมดอายุ
+    Verifying --> Bypass: มี bypass_token ใน localStorage
+    Form --> Submitting: กดส่ง
+    Submitting --> Pending: ไม่ใช่ช่วง auto-approve
+    Submitting --> Approved: auto-approve เปิด
+    Submitting --> Offline: ไม่มีเน็ต → เก็บใน queue
+    Pending --> Approved: polling เจอ approved
+    Pending --> Rejected: polling เจอ rejected
+    Approved --> [*]: แสดง "ประตูเปิดแล้ว"
+    Bypass --> Approved: เปิดประตูทันทีไม่ต้องกรอก
+    Rejected --> [*]
+    Expired --> [*]
+    Offline --> Submitting: กลับมา online → flush queue
+```
+
+### 22.1 ทำไมต้องมี QR token หมุน 60 วินาที?
+- **ป้องกันการแชร์ลิงก์**: ถ้าคนหนึ่งสแกนแล้วส่งลิงก์ให้เพื่อนนอกห้อง เพื่อนเปิดได้ไม่เกิน 60 วินาที (เพราะ token rotation)
+- **ป้องกัน replay attack**: token ถูก `consume` ครั้งเดียว = ใช้ซ้ำไม่ได้
+- **TTL 300 วินาที** เป็น hard cap ป้องกันการเก็บ token ไว้นาน ๆ
+
+### 22.2 ทำไมต้องมี Bypass 5 นาที?
+- **UX**: ถ้าคนเดินเข้า-ออกห้องบ่อย ไม่ควรต้องสแกนทุกครั้ง
+- **ความปลอดภัย**: 5 นาที สั้นพอที่ถ้าโทรศัพท์หายจะไม่ถูกใช้นาน
+
+### 22.3 Auto-fill ทำงานอย่างไร
+```mermaid
+sequenceDiagram
+    participant U as User (พิมพ์รหัสนักศึกษา)
+    participant W as React Form
+    participant API as /api/students/check-match
+    participant DB as PostgreSQL
+    U->>W: พิมพ์ชื่อ + นามสกุล + รหัส นศ.
+    W->>W: debounce 500ms
+    W->>API: POST {firstName, lastName, studentId}
+    API->>DB: SELECT * FROM students WHERE student_id=$1 ORDER BY created_at DESC LIMIT 1
+    DB-->>API: row หรือ null
+    API-->>W: {match: true, faculty, branch, year}
+    W->>W: ถ้า mode=auto → setForm()
+    W->>W: ถ้า mode=manual → แสดงปุ่ม "ใช้ข้อมูลเดิม"
+```
+
+---
+
+## 23. หน้าจอ Admin — เจาะลึกทุก Tab พร้อมเหตุผลที่ออกแบบแบบนี้
+
+### 23.1 แท็บ "คิวรอตรวจสอบ" (Pending Queue)
+```mermaid
+flowchart LR
+    A["fetchPending() ทุก 10 วินาที"] --> B{มี pending ใหม่?}
+    B -->|ใช่| C["playSoftChime() เสียงแจ้งเตือน"]
+    B -->|ไม่| D[ไม่ทำอะไร]
+    C --> E["badge แสดงจำนวน"]
+    E --> F[แอดมินกด approve]
+    F --> G[POST /api/students/:id/approve]
+    G --> H[refetchPending()]
+```
+**ทำไม polling 10 วินาที?** — ไม่ใช้ WebSocket เพราะ Vercel Serverless ไม่เหมาะ long-lived connection; 10 วินาทีเพียงพอกับงานอนุมัติคนเดียวกดทีละครั้ง
+
+### 23.2 แท็บ "ทำเนียบและประวัติ"
+- ค้นหา: SQL `WHERE first_name ILIKE $1 OR student_id ILIKE $1` (มี index บน `student_id`)
+- Pagination ฝั่ง client: ดึงสูงสุด 200 row แล้วทำ filter ใน React (เร็วเพราะข้อมูลไม่เกินหลักพัน)
+- Export PDF: เรียก server สร้าง PDF (pdfkit) แทนที่จะทำใน browser เพราะฟอนต์ไทยและ rendering คุณภาพดีกว่าบน Node
+
+### 23.3 แท็บ "ผู้ดูแลระบบ" (Admin Users)
+- เฉพาะ `role=owner` เท่านั้น
+- เพิ่ม admin → bcrypt cost factor 10 (~70ms/hash) — สมดุลระหว่างความปลอดภัยกับ UX
+- ลบตัวเองไม่ได้ (กัน lockout)
+
+### 23.4 แท็บ "ห้องเรียนและ ESP32"
+- แสดง heartbeat: `room_last_seen_<room>` (ESP32 อัปเดตทุก poll)
+- ถ้าไม่มี heartbeat เกิน 120 วินาที → แสดง "Offline"
+- ปุ่มทดสอบบอร์ด → ส่งสัญญาณเปิด relay สั้น ๆ (ไม่ปลดล็อกจริง)
+- ปุ่มปลดล็อกด่วน → เขียน `room_cmd_<room>=unlock` ผ่าน `/api/system/unlock-room`
+
+### 23.5 แท็บ "ตั้งค่าระบบ"
+- Auto-approve window: เช่น 08:00–17:00 → ในช่วงนี้คำขอใหม่จะอนุมัติเอง
+- Discord webhook ต่อห้อง: แยก channel ตามห้องเพื่อไม่ปนกัน
+- การแสดงรหัสนักศึกษา: เต็ม / mask 4 ตัวท้าย (สำหรับ privacy)
+
+### 23.6 หน้าจอ "ปลดล็อกบัญชีผู้ใช้งาน"
+- ใช้สำหรับเคสนักศึกษาโดน rate-limit (เช่น พยายามใช้ bypass เกิน 3 ครั้ง/นาที)
+- เรียก endpoint reset rate-limit ตาม `student_id` + IP
+
+---
+
+## 24. หน้าจอ TFT บน ESP32 — เจาะลึก State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Boot
+    Boot --> ConnectingWiFi: setup()
+    ConnectingWiFi --> ConnectingWiFi: WiFi.status() != WL_CONNECTED
+    ConnectingWiFi --> MainScreen: WiFi connected
+    MainScreen --> MainScreen: polling, ข้อมูลไม่เปลี่ยน → update clock เท่านั้น
+    MainScreen --> MainScreen: pending_count/last_approved/token เปลี่ยน → redraw
+    MainScreen --> Scanning: door_trigger="open"
+    Scanning --> Unlocked: หลัง drawScanningScreen 1.2s
+    Unlocked --> Unlocked: RELAY=HIGH, countdown bar 3.8s
+    Unlocked --> MainScreen: RELAY=LOW, reset cache
+    MainScreen --> Offline: WiFi.status() != WL_CONNECTED
+    Offline --> ConnectingWiFi: reconnect
+```
+
+### 24.1 ทำไมต้อง "redraw เฉพาะนาฬิกา"?
+- จอ ILI9341 ใช้ SPI ~40MHz เขียนเต็มจอใช้เวลา ~80ms
+- ถ้า redraw ทั้งจอทุก 2 วินาที = กระพริบรบกวนสายตา
+- เทคนิค **partial redraw**: เก็บ `last_*` cache, เทียบกับค่าใหม่, เปลี่ยนเฉพาะส่วนที่ต่าง
+
+### 24.2 ทำไมต้อง countdown bar?
+- ผู้ใช้รู้ว่าเหลือเวลาเข้าห้องอีกกี่วินาที → UX ดี
+- ใช้ `tft.fillRect()` วาดแถบยาวลดลง 1 พิกเซลต่อ ~50ms → สมูทพอใช้
+
+---
+
+## 25. อธิบายโค้ด `esp32.ino` แบบ "บรรทัดต่อบรรทัด" (ส่วนสำคัญ)
+
+### 25.1 รูปแบบ HTTP request ที่ส่งไป server
+```cpp
+HTTPClient http;
+WiFiClientSecure *client = new WiFiClientSecure;
+client->setCACert(root_ca_cert);        // ทำไม? เพราะ Supabase/Vercel ใช้ TLS, ต้องตรวจ cert
+http.begin(*client, server_url);
+http.setTimeout(1200);                   // 1.2 วิ — เกินกว่านี้ตัดทิ้ง กัน UI ค้าง
+http.addHeader("x-api-key", api_key);    // server ตรวจ header นี้ใน lib/api-security.ts
+int code = http.GET();
+```
+
+### 25.2 ทำไมต้องใช้ `StaticJsonDocument<768>` ไม่ใช่ `DynamicJsonDocument`?
+- `StaticJsonDocument` จองหน่วยความจำบน **stack** ทำให้เร็วและไม่ fragment heap
+- 768 byte เพียงพอกับ JSON ที่ server ส่งกลับ (~400 byte) + buffer
+- ถ้าใช้ `DynamicJsonDocument` บน ESP32 ที่มี RAM 320KB จะเสี่ยง heap fragmentation หลังรันนาน ๆ
+
+### 25.3 ทำไมต้อง delay 1200ms ก่อน drawUnlockedScreen?
+- ให้ผู้ใช้เห็น "scanning" screen ก่อน → รู้สึกว่าระบบกำลังประมวลผล
+- ถ้าเปิด relay ทันที ผู้ใช้จะแปลกใจว่าทำไมไม่มีฟีดแบ็ก
+
+### 25.4 Buzzer pattern
+```cpp
+tone(BUZZER_PIN, 1000, 100); delay(120);
+tone(BUZZER_PIN, 1500, 100); delay(120);
+tone(BUZZER_PIN, 2000, 200);
+```
+- เสียงไล่ขึ้น 3 ขั้น = อนุมัติสำเร็จ (positive feedback ตามหลัก UX sound design)
+- เสียงต่ำเดียว 800Hz = ปิด relay (negative-neutral)
+
+---
+
+## 26. อธิบายโค้ดเว็บแบบ "Request Lifecycle" — รับ request 1 ครั้งเกิดอะไรขึ้นบ้าง
+
+### 26.1 ตัวอย่าง: POST /api/students (นักศึกษาส่งฟอร์ม)
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant V as Vercel Edge
+    participant F as Next.js Function (Node)
+    participant RL as lib/rate-limit.ts
+    participant QR as lib/qr.ts
+    participant DB as Supabase Postgres
+    participant D as Discord
+    participant E as ESP32 (poll)
+    B->>V: POST /api/students (JSON form)
+    V->>F: route ไปยัง function ใน region ใกล้สุด
+    F->>F: parse body, sanitize input
+    F->>RL: rateLimit("register:IP", max=5, window=60s)
+    RL->>DB: INSERT INTO rate_limits ... ON CONFLICT UPDATE counter+1
+    DB-->>RL: counter
+    RL-->>F: ok หรือ 429
+    F->>F: validate (Zod-like): faculty, student_id format, ฯลฯ
+    F->>QR: consumeQRToken(scanToken)
+    QR->>DB: UPDATE dynamic_qr_tokens SET is_consumed=TRUE WHERE token=$1 AND NOT is_consumed AND expires_at > NOW() RETURNING *
+    DB-->>QR: row หรือ ว่าง
+    QR-->>F: success/fail
+    alt token ใช้ไม่ได้
+        F-->>B: 403
+    else token ใช้ได้
+        F->>DB: SELECT auto_approve_settings FROM system_settings
+        DB-->>F: window
+        F->>DB: INSERT INTO students (..., status=auto?'approved':'pending')
+        DB-->>F: student_id
+        F->>DB: INSERT INTO access_logs (action='registered')
+        opt auto-approved
+            F->>DB: UPDATE system_settings SET value='unlock' WHERE key='room_cmd_CE-401'
+        end
+        F-->>D: POST webhook embed (fire-and-forget)
+        F-->>B: 200 {id, status, bypass_token?}
+        Note over E: รอ poll รอบถัดไป (≤2s) จะเห็น door_trigger=open
+    end
+```
+
+### 26.2 ทำไม `consumeQRToken` ใช้ `UPDATE ... WHERE NOT is_consumed RETURNING *`?
+- **Atomic operation** — 2 คนกดพร้อมกันจะมีแค่คนเดียวที่ได้ row
+- ถ้าใช้ `SELECT` แล้วค่อย `UPDATE` แยกกัน → race condition ทั้งสองคนเข้าได้
+
+### 26.3 ทำไม Discord ใช้ "fire-and-forget"?
+```ts
+sendDiscordNotification('student_registered', data).catch(()=>{}) // ไม่ await
+return NextResponse.json({...})                                    // ตอบ user ก่อน
+```
+- Discord อาจตอบช้า 200–800ms
+- ผู้ใช้ไม่ควรรอ Discord — ตอบเขาก่อน, แจ้งเตือนหลังบ้านเป็นเรื่องรอง
+
+---
+
+## 27. Supabase ทำอะไรในระบบนี้ (เจาะลึก)
+
+```mermaid
+flowchart LR
+    subgraph Supabase
+        PG[("PostgreSQL 15<br/>+ pgBouncer pool")]
+        AUTH["Supabase Auth (ไม่ได้ใช้)"]
+        STO["Supabase Storage (ไม่ได้ใช้)"]
+        EDGE["Edge Functions (ไม่ได้ใช้)"]
+    end
+    NA["Next.js (Vercel)"] -->|"pg + TLS<br/>raw SQL"| PG
+    NA -.x AUTH
+    NA -.x STO
+    NA -.x EDGE
+```
+
+| สิ่งที่ใช้ | สิ่งที่ไม่ใช้ |
+|----------|---------------|
+| ✅ PostgreSQL (เก็บข้อมูลทั้งหมด) | ❌ Supabase Auth (เราใช้ JWT เอง) |
+| ✅ Connection Pooling (pgBouncer) | ❌ Row-Level Security (ใช้ JWT verify ใน API แทน) |
+| ✅ SSL/TLS certificate | ❌ Realtime subscriptions |
+| ✅ Backup อัตโนมัติ (Supabase ให้ฟรี) | ❌ Supabase Storage |
+
+### 27.1 ทำไมไม่ใช้ Supabase JS Client?
+- โปรเจกต์ใช้ `pg` (node-postgres) + raw SQL → **performance ดีกว่า** เพราะคุม query ได้เอง
+- ใช้ `EXPLAIN ANALYZE` ตรวจ index ได้ตรง ๆ
+- Supabase JS client มี overhead ของ PostgREST translation
+
+### 27.2 Connection Strategy
+- **Pooled URL** (`POSTGRES_URL` กับ `?pgbouncer=true`) → ใช้กับ query ปกติ (เพราะ Vercel serverless เปิด connection บ่อย)
+- **Direct URL** → ใช้กับ DDL/migration (pgBouncer ไม่รองรับ prepared statement บางแบบ)
+
+### 27.3 SQL ที่น่าสนใจในระบบ
+```sql
+-- Atomic token consume (กัน race condition)
+UPDATE dynamic_qr_tokens
+SET is_consumed = TRUE, consumed_at = NOW()
+WHERE token = $1
+  AND is_consumed = FALSE
+  AND expires_at > NOW()
+RETURNING id, room_code;
+
+-- Upsert หลาย setting ในครั้งเดียว
+INSERT INTO system_settings (setting_key, setting_value)
+SELECT * FROM UNNEST($1::text[], $2::text[])
+ON CONFLICT (setting_key) DO UPDATE
+SET setting_value = EXCLUDED.setting_value,
+    updated_at = NOW();
+
+-- Rate limit แบบ atomic
+INSERT INTO rate_limits (key, count, window_start)
+VALUES ($1, 1, NOW())
+ON CONFLICT (key) DO UPDATE
+SET count = CASE
+    WHEN rate_limits.window_start < NOW() - $2::interval THEN 1
+    ELSE rate_limits.count + 1
+  END,
+  window_start = CASE
+    WHEN rate_limits.window_start < NOW() - $2::interval THEN NOW()
+    ELSE rate_limits.window_start
+  END
+RETURNING count;
+```
+
+---
+
+## 28. Vercel ทำอะไรกับ my-app (เจาะลึก)
+
+```mermaid
+flowchart TB
+    DEV["git push main"] --> GH["GitHub Repo"]
+    GH -->|"webhook"| VB["Vercel Build"]
+    VB --> NB["next build (Turbopack)"]
+    NB --> ART["Build Artifact<br/>(static + serverless bundles)"]
+    ART --> CDN["Edge CDN (global)"]
+    ART --> FN["Serverless Functions"]
+    USER["ผู้ใช้"] --> CDN
+    CDN -->|"static (HTML/CSS/JS)"| USER
+    USER -->|"/api/*"| FN
+    FN -->|"pg connection"| SB[("Supabase")]
+    ENV["Env Vars (Dashboard)"] --> FN
+    DOMAIN["Custom Domain + HTTPS auto"] --> CDN
+```
+
+### 28.1 สิ่งที่ Vercel ทำให้ฟรี
+1. **HTTPS อัตโนมัติ** — สร้าง Let's Encrypt cert ให้
+2. **Edge CDN** — cache static assets ทั่วโลก (รวมถึง favicon, _next/static/*)
+3. **Preview deployment** — ทุก PR ได้ URL ใหม่
+4. **Rollback** — กลับไป build เก่าได้ใน 1 คลิก
+5. **Logs** — ดู runtime log ของ serverless function ได้
+6. **Analytics** — Core Web Vitals (LCP, FID, CLS)
+
+### 28.2 ข้อจำกัดที่ต้องระวัง
+| ข้อจำกัด | กระทบอย่างไร | วิธีแก้ในโปรเจกต์ |
+|----------|----------------|---------------------|
+| Function timeout 10s (Hobby) | export PDF ใหญ่อาจ timeout | จำกัดช่วงวันที่, pagination |
+| Cold start ~300-800ms | request แรกหลัง idle ช้า | ใช้ ping cron / Edge runtime |
+| 4.5MB body limit | upload ไฟล์ใหญ่ไม่ได้ | ไม่ได้ใช้ upload ในระบบนี้ |
+| ไม่มี long-lived process | ใช้ in-memory cache ระวัง | settings cache 30s โอเคเพราะ stateless |
+| ไม่มี filesystem persist | เขียนไฟล์ไม่ได้ | ทุกอย่างเก็บใน DB |
+
+---
+
+## 29. เปรียบเทียบ: ทำไมบางส่วนเร็ว / บางส่วนช้า
+
+```mermaid
+flowchart LR
+    subgraph FAST["🚀 ส่วนที่เร็ว"]
+        F1["โหลดหน้าเว็บแรก<br/>~80-150ms"]
+        F2["JWT verify<br/>~1ms (HS256 in-memory)"]
+        F3["อ่าน settings<br/>~0ms (cache 30s)"]
+        F4["Rate-limit check<br/>~5ms (1 SQL)"]
+        F5["LAN unlock direct<br/>~50-150ms (ถ้าวงเดียวกัน)"]
+    end
+    subgraph SLOW["🐢 ส่วนที่ช้า"]
+        S1["Cold start API<br/>~300-800ms"]
+        S2["รอ ESP32 รับคำสั่ง<br/>0-2000ms (polling)"]
+        S3["bcrypt verify<br/>~70ms (login)"]
+        S4["Export PDF<br/>500-3000ms"]
+        S5["Discord webhook<br/>~200-800ms"]
+        S6["QR PNG generation<br/>~50-150ms"]
+    end
+```
+
+### 29.1 ตารางสรุป + เหตุผลทางวิศวกรรม
+
+| ส่วน | เวลา | เหตุผลที่เร็ว/ช้า | ทำให้เร็วขึ้นได้อย่างไร |
+|------|------|--------------------|---------------------------|
+| โหลด HTML หน้า `/` | ~80ms | CDN cache + static | ใช้ ISR ถ้ามี dynamic |
+| JWT verify | <1ms | HS256 = HMAC-SHA256, symmetric ไม่ต้องคุย DB | คงไว้ |
+| อ่าน system_settings | 0-5ms | in-memory cache 30s | เพิ่ม TTL ถ้าข้อมูลนิ่งกว่านี้ |
+| Rate limit query | ~5ms | 1 SQL `INSERT ON CONFLICT` | คงไว้ — race-condition safe |
+| Login (bcrypt) | ~70ms | bcrypt cost 10 รอบ | ลด cost = ไม่ปลอดภัย, อย่าลด |
+| Cold start | 300-800ms | Vercel ปลุก Node runtime + load module | ping cron ทุก 5 นาที / ย้ายไป Edge runtime |
+| ESP32 polling delay | 0-2000ms | poll ทุก 2s เป็น worst case | ลด poll interval = traffic เพิ่ม |
+| LAN direct unlock | 50-150ms | HTTP ตรงในวง LAN | ใช้เมื่อ ESP32 และ server อยู่วงเดียว |
+| Export PDF 1000 row | 1500-3000ms | pdfkit render + font + DB query | ใช้ stream + cache font |
+| Discord webhook | 200-800ms | external HTTP ไป discord.com | fire-and-forget (ทำแล้ว) |
+| QR PNG | 50-150ms | qrcode lib + PNG encode | cache ตาม token (ทำได้ในอนาคต) |
+| consumeQRToken | 5-15ms | 1 atomic SQL | คงไว้ |
+| Dashboard JS bundle | 200-500ms parse | 5,620 บรรทัดใน 1 ไฟล์ | แยกเป็น sub-route + dynamic import |
+
+### 29.2 หลักการสำคัญที่ทำให้ระบบลื่น
+1. **อ่านบ่อย → cache** (settings 30s, JWT in-memory)
+2. **เขียน critical แล้ว fire-and-forget ส่วนที่เหลือ** (Discord, LAN call)
+3. **Atomic SQL แทน multi-step transaction** (consume token, rate-limit)
+4. **Static asset ไปทาง CDN** (Vercel จัดการอัตโนมัติ)
+5. **Index ที่ถูกจุด**: `students.status`, `students.student_id`, `access_logs.created_at DESC`, `dynamic_qr_tokens.token UNIQUE`
+6. **Connection pooling** ผ่าน pgBouncer ลด TLS handshake
+
+---
+
+## 30. อัลกอริทึมสำคัญ (Pseudocode)
+
+### 30.1 generateActiveQRToken(roomCode)
+```
+function getOrCreateActiveQRToken(roomCode):
+    // ลบ token หมดอายุของห้องนี้
+    DELETE FROM dynamic_qr_tokens
+    WHERE room_code = roomCode AND expires_at < NOW()
+
+    // หา token ที่ยัง valid, ยังไม่ consume, และ rotate window ยังไม่ครบ
+    SELECT * FROM dynamic_qr_tokens
+    WHERE room_code = roomCode
+      AND is_consumed = FALSE
+      AND created_at > NOW() - 60s
+      AND expires_at > NOW()
+    LIMIT 1
+    IF found: return existing
+
+    // สร้างใหม่
+    token = crypto.randomBytes(16).toString('hex')   // 32 hex chars
+    INSERT INTO dynamic_qr_tokens (token, room_code, expires_at)
+    VALUES (token, roomCode, NOW() + 300s)
+    return new token
+```
+
+### 30.2 ESP32 main loop
+```
+loop():
+    if WiFi.status() != CONNECTED:
+        blink LED_WIFI
+        WiFi.reconnect()
+        return
+
+    response = httpGET(server_url, headers={x-api-key: API_KEY}, timeout=1200ms)
+    if response.code != 200:
+        delay(polling_delay)
+        return
+
+    json = parse(response.body)
+    qrText = json.register_url + "?scan=" + json.active_token + "&room=" + json.requested_room
+
+    if json.door_trigger == "open":
+        drawScanningScreen()
+        tone(1500, 100); delay(1200)
+        drawUnlockedScreen(json.last_approved, ...)
+        digitalWrite(RELAY_PIN, HIGH)
+        playSuccessMelody()
+        drawCountdownBar(3800ms)
+        digitalWrite(RELAY_PIN, LOW)
+        tone(800, 200)
+        resetCache()  // บังคับ redraw รอบหน้า
+    else if data_changed(json):
+        drawMainScreen(json.pending_count, json.last_approved, time, qrText)
+        cacheLastData(json)
+    else:
+        drawClockOnly(time)
+
+    delay(polling_delay)  // 2000ms
+```
+
+### 30.3 Admin login + rate limit
+```
+POST /api/auth/login:
+    ip = getClientIp(req)
+    rateLimit(key="login:" + ip, max=5, window=60s)  // ถ้าเกิน → 429
+
+    user = SELECT * FROM admin_users WHERE username=$1
+    if not user: return 401
+    if not bcrypt.compare(password, user.password_hash): return 401
+
+    token = jwt.sign({id, username, role}, JWT_SECRET, alg=HS256, exp=8h)
+    setCookie('rmutp_admin_token', token, httpOnly, secure, sameSite=lax, maxAge=8h)
+    UPDATE admin_users SET last_login=NOW() WHERE id=user.id
+    return 200 {user}
+```
+
+---
+
+## 31. Network & Security Architecture
+
+```mermaid
+flowchart TB
+    subgraph Internet
+        BR["เบราว์เซอร์<br/>(นักศึกษา/Admin)"]
+    end
+    subgraph LAN["LAN มหาวิทยาลัย"]
+        ESP["ESP32"]
+        LOCK["กลอนประตู"]
+    end
+    subgraph CloudVercel["Cloud (Vercel)"]
+        EDGE["Edge: HTTPS termination<br/>+ CDN cache"]
+        FN["Serverless Function<br/>+ JWT verify<br/>+ Rate limit<br/>+ API-key check"]
+    end
+    subgraph CloudSB["Cloud (Supabase)"]
+        PG[("PostgreSQL<br/>TLS only")]
+    end
+    BR -->|"HTTPS 443<br/>+ httpOnly cookie"| EDGE
+    EDGE --> FN
+    FN -->|"TLS 5432<br/>+ pgBouncer"| PG
+    ESP -->|"HTTPS 443<br/>+ X-API-Key header"| EDGE
+    ESP -->|"GPIO12"| LOCK
+    FN -.->|"LAN direct (optional)<br/>HTTP 80 + X-API-Key"| ESP
+```
+
+### 31.1 ชั้นการป้องกัน (Defense in Depth)
+1. **Network**: HTTPS ทุกฝั่ง, ESP32 → server ใช้ TLS + custom CA verify
+2. **API Gateway**: Vercel filter DDoS เบื้องต้น
+3. **Auth**: JWT HS256 + httpOnly cookie (กัน XSS) + sameSite=lax (กัน CSRF)
+4. **Authorization**: ตรวจ role ทุก endpoint (`owner` vs `door_operator`)
+5. **Input validation**: sanitize ทุก field + regex รหัสนักศึกษา
+6. **Rate limit**: ต่อ IP + ต่อ student
+7. **SQL injection**: parametrized query 100% (ไม่มี string concat)
+8. **Audit log**: ทุก action เขียน `access_logs`
+9. **Compliance**: ลบ log < 90 วันต้องยืนยันรหัส (พ.ร.บ. คอมฯ ม.26)
+10. **Secret rotation**: `JWT_SECRET`, `ESP32_API_KEY`, `QR_SIGNING_KEY` ตั้งใน env, ไม่อยู่ใน git
+
+### 31.2 ภัยที่ระบบป้องกันได้ vs ป้องกันไม่ได้
+
+| ภัย | ป้องกันได้? | กลไก |
+|-----|------------|------|
+| Brute-force login | ✅ | rate limit 5/min/IP + bcrypt slow hash |
+| SQL injection | ✅ | parametrized queries |
+| XSS ขโมย token | ✅ | httpOnly cookie |
+| CSRF | ✅ | sameSite=lax + double POST |
+| Replay QR | ✅ | one-time token (consume) |
+| MITM | ✅ | HTTPS ทุกฝั่ง |
+| ESP32 spoofing | ✅ | X-API-Key header |
+| Insider abuse (admin) | ⚠️ | audit log แต่ไม่ป้องกันการกระทำ |
+| Physical tampering (ตัดสาย relay) | ❌ | ต้องใส่ tamper switch + กล่องล็อก |
+| Lost cookie จากเครื่อง admin | ⚠️ | JWT หมดอายุใน 8 ชม. |
+| DDoS ใหญ่ | ⚠️ | Vercel มี basic protection แต่ไม่กัน L7 หนัก ๆ |
+
+---
+
+## 32. Flowchart รวม "End-to-End" (สมัคร → เข้าห้อง)
+
+```mermaid
+flowchart TD
+    A["นักศึกษามาที่ห้อง CE-401"] --> B["มองจอ TFT บน ESP32"]
+    B --> C["เปิดกล้องมือถือ สแกน QR"]
+    C --> D["browser เปิด /?scan=TOKEN&room=CE-401"]
+    D --> E["GET /api/esp32/qr/verify"]
+    E -->|invalid| EX["แสดงหน้า expired"]
+    E -->|valid| F["แสดงฟอร์มลงทะเบียน"]
+    F --> G["พิมพ์รหัส นศ. + ชื่อ"]
+    G --> H["debounce 500ms → /api/students/check-match"]
+    H --> I{มีประวัติ?}
+    I -->|ใช่| J["auto-fill คณะ/สาขา/ชั้นปี"]
+    I -->|ไม่| K["กรอกเอง"]
+    J --> L["กด ส่ง"]
+    K --> L
+    L --> M["POST /api/students"]
+    M --> N["rate-limit ตรวจ"]
+    N -->|เกิน| NX["429"]
+    N -->|ผ่าน| O["consumeQRToken atomic"]
+    O -->|ใช้แล้ว| OX["403"]
+    O -->|ok| P{ในช่วง auto-approve?}
+    P -->|ใช่| Q["status=approved + room_cmd_CE-401=unlock"]
+    P -->|ไม่| R["status=pending"]
+    Q --> S["INSERT access_logs"]
+    R --> S
+    S --> T["Discord webhook (fire-forget)"]
+    T --> U["return 200 + bypass_token (ถ้า approved)"]
+    U --> V{approved?}
+    V -->|ใช่| W["browser แสดง รอ ESP32 เปิดประตู"]
+    V -->|ไม่| X["browser polling /api/students/:id ทุก 3s"]
+    X --> Y{เปลี่ยน status?}
+    Y -->|approved| W
+    Y -->|rejected| YX["แสดง 'ปฏิเสธ'"]
+    Y -->|ยัง pending| X
+    W --> Z["ESP32 polling /api/esp32/display ทุก 2s"]
+    Z --> AA["server พบ room_cmd=unlock"]
+    AA --> AB["ตอบ door_trigger=open<br/>+ set room_cmd=consumed"]
+    AB --> AC["ESP32 drawScanningScreen"]
+    AC --> AD["RELAY_PIN=HIGH"]
+    AD --> AE["solenoid/maglock ปลดล็อก 5s"]
+    AE --> AF["นักศึกษาเปิดประตูเข้า"]
+    AF --> AG["RELAY_PIN=LOW → ล็อกอัตโนมัติ"]
+    AG --> AH["บันทึก access_logs action=door_opened"]
+```
+
+---
+
+## 33. คำถามที่พบบ่อย (FAQ)
+
+**Q1: ทำไมไม่ใช้ WebSocket แทน Polling?**
+A: Vercel Serverless ไม่รองรับ long-lived connection ดี + ESP32 อยู่หลัง NAT มหาวิทยาลัย, server เรียกตรงไม่ได้เสมอ → polling เรียบง่ายและ debug ง่าย
+
+**Q2: ทำไมเก็บคำสั่งเปิดประตูใน `system_settings` แทนตารางเฉพาะ?**
+A: `room_cmd_<room>` คือ key/value ใช้ตารางเดียวกันกับ settings ลดความซับซ้อน + ESP32 อ่าน settings เดียวกันได้ทั้งคำสั่งและ config
+
+**Q3: ถ้า ESP32 ค้างกลางคำสั่ง unlock ประตูจะค้างเปิดไหม?**
+A: ไม่ — เพราะ relay จะกลับ LOW เมื่อ ESP32 reboot (เพราะ `pinMode(RELAY, OUTPUT); digitalWrite(RELAY, LOW)` ใน setup) แต่ถ้าใช้ magnetic lock fail-safe (ไฟตัด = ปลดล็อก) ประตูจะปลดล็อก ⚠️ → ใช้ fail-secure ถ้าต้องการล็อกเมื่อไฟตัด
+
+**Q4: คนแปลกหน้าสแกน QR ที่หน้าห้องแล้วใช้กรอกฟอร์มจากที่บ้านได้ไหม?**
+A: ได้ถ้าทำเร็วพอ (< 60 วินาที) แต่ยัง:
+  - ต้องกรอกรหัสนักศึกษาจริง (admin ตรวจได้)
+  - log มี IP + user-agent ตามตัวได้
+  - แนะนำเพิ่ม `location-based check` ในอนาคต
+
+**Q5: ทำไม dashboard เป็นไฟล์เดียว 5,620 บรรทัด?**
+A: เพราะใช้ state เดียวร่วมกันทุก tab (`pending`, `students`, `logs`, `settings`) — ถ้าแยก route ต้อง lift state ขึ้น context หรือ Zustand ในอนาคตควรแยกเพื่อลด JS bundle
+
+**Q6: PostgreSQL บน Supabase หาย ระบบจะเป็นยังไง?**
+A: API ทั้งหมดจะ 500 + ESP32 polling ไม่ได้ข้อมูล → จอจะค้าง state สุดท้าย (ไม่มีการเปิดประตูใหม่) → ปลอดภัยแบบ "fail-secure"
+
+**Q7: เพิ่มห้องใหม่ทำยังไง?**
+A:
+  1. ใน Dashboard → แท็บห้องและ ESP32 → เพิ่มห้อง (เช่น CE-403)
+  2. เขียน `room_ip_CE-403` ถ้าใช้ LAN direct
+  3. Flash firmware อีกบอร์ดด้วย `config.h` ที่ `room_code = "CE-403"`
+  4. ตั้ง webhook เฉพาะห้องถ้าต้องการ
+
+**Q8: ทำไมต้องมี `requested_room` แยกจาก `room_code`?**
+A: `room_code` = ห้องที่ ESP32 ตัวนี้รับผิดชอบ, `requested_room` = ห้องที่นักศึกษาขอเข้า (มาจาก QR) — ต้องตรงกันถึงจะเปิดประตู
+
+---
+
+## 34. สรุปแบบ "1 นาที"
+
+> RMUTP ACCS คือระบบที่ทำให้นักศึกษา **สแกน QR ที่จอหน้าห้อง → กรอกข้อมูล → ประตูเปิดอัตโนมัติ** (หรือรอ admin อนุมัติ) โดยมี Next.js เป็นสมอง, Supabase PostgreSQL เป็นความจำ, ESP32 เป็นมือ-ตา-หู, และ Discord เป็นปาก
+>
+> ทุกการสื่อสารเป็น HTTPS, ทุก action ถูก log, ทุก credential ถูก hash/sign, และทุกการเปิดประตูใช้ token แบบ one-time ที่หมุนทุก 60 วินาที — เพื่อให้สมดุลระหว่าง **ใช้งานง่าย** กับ **ปลอดภัยตามมาตรฐาน พ.ร.บ. คอมพิวเตอร์ พ.ศ. 2560**
+
