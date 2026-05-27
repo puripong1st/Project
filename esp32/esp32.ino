@@ -5,38 +5,37 @@
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-#define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!
-#define DEBUG_MODE false  // ⚠️ Set true for development ONLY
+#define WOKWI_SIM  // Wokwi Simulator — NEVER define this in production!
+#define DEBUG_MODE false // ⚠️ Set true for development ONLY
 
 #if DEBUG_MODE
-  #define DBG(x) Serial.println(x)
-  #define DBGF(fmt, ...) Serial.printf(fmt, __VA_ARGS__)
+#define DBG(x) Serial.println(x)
+#define DBGF(fmt, ...) Serial.printf(fmt, __VA_ARGS__)
 #else
-  #define DBG(x)
-  #define DBGF(fmt, ...)
+#define DBG(x)
+#define DBGF(fmt, ...)
 #endif
 
-#include <FS.h>
-#include <SPIFFS.h>
-#include <mbedtls/md.h>
 #include "ricmoo_qrcode.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
+#include <FS.h>
 #include <HTTPClient.h>
 #include <SPI.h>
+#include <SPIFFS.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
-
+#include <mbedtls/md.h>
 
 #include "config.h"
 
 // ─── Compile-time production safety guard ───────────────────────────────────
 // Prevents accidentally shipping a Wokwi simulation build to a real device.
 #ifdef PRODUCTION
-  #ifdef WOKWI_SIM
-    #error "WOKWI_SIM must not be defined in production builds!"
-  #endif
+#ifdef WOKWI_SIM
+#error "WOKWI_SIM must not be defined in production builds!"
+#endif
 #endif
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -312,12 +311,12 @@ int api_fail_count = 0;
 unsigned long last_student_sync = 0;
 unsigned long last_log_sync = 0;
 const unsigned long SYNC_STUDENTS_INTERVAL = 300000; // 5 minutes
-const unsigned long SYNC_LOGS_INTERVAL = 60000;     // 1 minute
+const unsigned long SYNC_LOGS_INTERVAL = 60000;      // 1 minute
 
 String cached_qr_key = "";
-const char* cache_students_file = "/student_cache.json";
-const char* cache_logs_file = "/offline_logs.json";
-const char* cache_key_file = "/qr_key.bin";
+const char *cache_students_file = "/student_cache.json";
+const char *cache_logs_file = "/offline_logs.json";
+const char *cache_key_file = "/qr_key.bin";
 
 WiFiServer localServer(80);
 bool localServerStarted = false;
@@ -344,16 +343,19 @@ String base64Decode(String input) {
     input += "=";
   }
   int len = input.length();
-  uint8_t* out = (uint8_t*)malloc(len);
+  uint8_t *out = (uint8_t *)malloc(len);
   int decoded_len = 0;
-  const char* lookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const char *lookup =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   int bits = 0;
   int val = 0;
   for (int i = 0; i < len; i++) {
     char c = input[i];
-    if (c == '=') break;
-    const char* p = strchr(lookup, c);
-    if (!p) continue;
+    if (c == '=')
+      break;
+    const char *p = strchr(lookup, c);
+    if (!p)
+      continue;
     int idx = p - lookup;
     val = (val << 6) | idx;
     bits += 6;
@@ -376,13 +378,16 @@ String generateHMAC(String payload, String key) {
   mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
   mbedtls_md_init(&ctx);
   mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
-  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)key.c_str(), key.length());
-  mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload.c_str(), payload.length());
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char *)key.c_str(),
+                         key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload.c_str(),
+                         payload.length());
   mbedtls_md_hmac_finish(&ctx, hmacResult);
   mbedtls_md_free(&ctx);
 
   String encoded = "";
-  const char* lookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const char *lookup =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
   int bits = 0;
   int val = 0;
   for (int i = 0; i < 32; i++) {
@@ -405,17 +410,18 @@ bool validateOfflineQR(String grant) {
     return false;
   }
   int dotIdx = grant.indexOf(".");
-  if (dotIdx == -1) return false;
-  
+  if (dotIdx == -1)
+    return false;
+
   String encodedPayload = grant.substring(0, dotIdx);
   String signature = grant.substring(dotIdx + 1);
-  
+
   String expectedSignature = generateHMAC(encodedPayload, cached_qr_key);
   if (!secureCompare(signature.c_str(), expectedSignature.c_str())) {
     DBG("Offline signature verification failed!");
     return false;
   }
-  
+
   String decoded = base64Decode(encodedPayload);
   StaticJsonDocument<384> doc;
   DeserializationError err = deserializeJson(doc, decoded);
@@ -423,23 +429,24 @@ bool validateOfflineQR(String grant) {
     DBG("Failed to parse decoded payload JSON!");
     return false;
   }
-  
-  const char* room = doc["room"];
-  const char* student_id = doc["student_id"];
-  
+
+  const char *room = doc["room"];
+  const char *student_id = doc["student_id"];
+
   if (String(room) != String(room_code)) {
     DBG("Room mismatch in offline grant!");
     return false;
   }
-  
+
   if (!SPIFFS.exists(cache_students_file)) {
     DBG("No student cache JSON file exists!");
     return false;
   }
-  
+
   File f = SPIFFS.open(cache_students_file, "r");
-  if (!f) return false;
-  
+  if (!f)
+    return false;
+
   StaticJsonDocument<2048> cacheDoc;
   DeserializationError cacheErr = deserializeJson(cacheDoc, f);
   f.close();
@@ -447,7 +454,7 @@ bool validateOfflineQR(String grant) {
     DBG("Failed to parse student cache JSON file!");
     return false;
   }
-  
+
   JsonArray arr = cacheDoc.as<JsonArray>();
   bool found = false;
   for (JsonVariant v : arr) {
@@ -501,37 +508,38 @@ void triggerDoorOpenOffline(String grant) {
   StaticJsonDocument<256> doc;
   deserializeJson(doc, decoded);
   String student_id = doc["student_id"].as<String>();
-  
+
   saveOfflineLog(student_id);
-  
+
   Serial.println("[INFO] Door unlocked");
   DBG("🔓 OFFLINE ACCESS GRANTED! Opening door...");
-  
+
   drawScanningScreen();
   tone(BUZZER_PIN, 1500, 100);
   delay(1200);
-  
+
   drawUnlockedScreen("OFFLINE MEMBER", student_id);
   digitalWrite(RELAY_PIN, HIGH);
-  
+
   tone(BUZZER_PIN, 1000, 150);
   delay(180);
   tone(BUZZER_PIN, 1500, 150);
   delay(180);
   tone(BUZZER_PIN, 2000, 300);
-  
+
   int countdownMs = 3800;
   int stepSize = 320 / 38;
   for (int i = 0; i < 38; i++) {
     tft.fillRect(0, 236, 320 - (i * stepSize), 4, tft.color565(16, 185, 129));
-    tft.fillRect(320 - (i * stepSize), 236, stepSize, 4, tft.color565(6, 78, 59));
+    tft.fillRect(320 - (i * stepSize), 236, stepSize, 4,
+                 tft.color565(6, 78, 59));
     delay(100);
   }
   digitalWrite(RELAY_PIN, LOW);
   Serial.println("[INFO] Door locked");
   DBG("🔒 Door auto locked (Offline).");
   tone(BUZZER_PIN, 800, 250);
-  
+
   last_queue_count = -1;
   last_approved_name = "FORCE_REDRAW";
   last_active_token = "FORCE_REDRAW";
@@ -539,7 +547,8 @@ void triggerDoorOpenOffline(String grant) {
 
 void handleLocalValidation() {
   WiFiClient client = localServer.available();
-  if (!client) return;
+  if (!client)
+    return;
   DBG("New client connected to local offline validation server.");
   unsigned long timeout = millis() + 2000;
   String req = "";
@@ -547,19 +556,21 @@ void handleLocalValidation() {
     if (client.available()) {
       char c = client.read();
       req += c;
-      if (req.endsWith("\r\n\r\n")) break;
+      if (req.endsWith("\r\n\r\n"))
+        break;
     }
   }
   if (req.indexOf("POST /unlock") != -1 || req.indexOf("GET /unlock") != -1) {
     int grantIdx = req.indexOf("grant=");
     if (grantIdx != -1) {
       int endIdx = req.indexOf(" ", grantIdx);
-      if (endIdx == -1) endIdx = req.indexOf("\r", grantIdx);
+      if (endIdx == -1)
+        endIdx = req.indexOf("\r", grantIdx);
       String grant = req.substring(grantIdx + 6, endIdx);
       grant.replace("%2E", ".");
       grant.replace("%2D", "-");
       grant.replace("%5F", "_");
-      
+
       bool valid = validateOfflineQR(grant);
       if (valid) {
         client.println("HTTP/1.1 200 OK");
@@ -581,11 +592,14 @@ void handleLocalValidation() {
     client.println("Content-Type: text/html; charset=utf-8");
     client.println("Connection: close");
     client.println();
-    client.println("<!DOCTYPE html><html><head><meta charset='utf-8'><title>RMUTP Offline Mode</title></head>");
-    client.println("<body style='font-family:sans-serif; text-align:center; padding:50px;'>");
+    client.println("<!DOCTYPE html><html><head><meta "
+                   "charset='utf-8'><title>RMUTP Offline Mode</title></head>");
+    client.println("<body style='font-family:sans-serif; text-align:center; "
+                   "padding:50px;'>");
     client.println("<h1 style='color:#F59E0B;'>⚠️ OFFLINE MODE ACTIVE</h1>");
     client.println("<p>ระบบอยู่ในโหมดออฟไลน์ (อินเทอร์เน็ตขัดข้อง)</p>");
-    client.println("<p>กรุณาสแกนคีย์ QR โค้ดปลดล็อกของท่านเพื่อยืนยันสิทธิ์กับบอร์ดโดยตรง</p>");
+    client.println(
+        "<p>กรุณาสแกนคีย์ QR โค้ดปลดล็อกของท่านเพื่อยืนยันสิทธิ์กับบอร์ดโดยตรง</p>");
     client.println("</body></html>");
   }
   delay(1);
@@ -593,16 +607,17 @@ void handleLocalValidation() {
 }
 
 void syncStudentCache() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (WiFi.status() != WL_CONNECTED)
+    return;
   HTTPClient http;
   String syncUrl = String(server_url) + "&sync=1";
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
-  #ifdef WOKWI_SIM
+#ifdef WOKWI_SIM
   client->setInsecure();
-  #else
+#else
   client->setCACert(root_ca_cert);
-  #endif
+#endif
   http.begin(*client, syncUrl);
   http.addHeader("x-api-key", api_key);
   int httpCode = http.GET();
@@ -612,7 +627,7 @@ void syncStudentCache() {
     DeserializationError error = deserializeJson(doc, payload);
     if (!error) {
       if (doc.containsKey("qr_key")) {
-        const char* key = doc["qr_key"];
+        const char *key = doc["qr_key"];
         cached_qr_key = String(key);
         File f = SPIFFS.open(cache_key_file, "w");
         if (f) {
@@ -635,10 +650,13 @@ void syncStudentCache() {
 }
 
 void syncOfflineLogs() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  if (!SPIFFS.exists(cache_logs_file)) return;
+  if (WiFi.status() != WL_CONNECTED)
+    return;
+  if (!SPIFFS.exists(cache_logs_file))
+    return;
   File f = SPIFFS.open(cache_logs_file, "r");
-  if (!f) return;
+  if (!f)
+    return;
   String content = f.readString();
   f.close();
   HTTPClient http;
@@ -646,11 +664,11 @@ void syncOfflineLogs() {
   logUrl.replace("display", "logs/sync");
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
-  #ifdef WOKWI_SIM
+#ifdef WOKWI_SIM
   client->setInsecure();
-  #else
+#else
   client->setCACert(root_ca_cert);
-  #endif
+#endif
   http.begin(*client, logUrl);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-api-key", api_key);
@@ -746,7 +764,7 @@ void loop() {
   if (is_offline_mode) {
     startLocalServer();
     handleLocalValidation();
-    
+
     // Status indicators
     bool hasCache = SPIFFS.exists(cache_students_file);
     if (hasCache) {
@@ -758,14 +776,15 @@ void loop() {
         digitalWrite(LED_WIFI, ledState ? HIGH : LOW);
         digitalWrite(LED_REJECT, LOW);
       }
-      
+
       unsigned long sec = millis() / 1000;
       unsigned long hh = (sec / 3600) % 24;
       unsigned long mm = (sec / 60) % 60;
       unsigned long ss = sec % 60;
       char timeBuf[10];
-      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
-      
+      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm,
+               (int)ss);
+
       static unsigned long lastScreenUpdate = 0;
       if (millis() - lastScreenUpdate > 5000) {
         lastScreenUpdate = millis();
@@ -774,7 +793,7 @@ void loop() {
     } else {
       digitalWrite(LED_WIFI, LOW);
       digitalWrite(LED_REJECT, HIGH);
-      
+
       static unsigned long lastScreenUpdate = 0;
       if (millis() - lastScreenUpdate > 5000) {
         lastScreenUpdate = millis();
@@ -804,7 +823,8 @@ void loop() {
     unsigned long mm = (sec / 60) % 60;
     unsigned long ss = sec % 60;
     char timeBuf[10];
-    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
+    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm,
+             (int)ss);
     time_str = String(timeBuf);
 
     HTTPClient http;
@@ -812,11 +832,11 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
-        #ifdef WOKWI_SIM
-        client->setInsecure(); // Wokwi does not support CA cert verification
-        #else
-        client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริงเพื่อความปลอดภัยสูงสุด
-        #endif
+#ifdef WOKWI_SIM
+        client->setInsecure(); // Wokwi สภาพแวดล้อมจำลอง — ไม่รองรับ TLS cert จริง
+#else
+        client->setCACert(root_ca_cert); // Production: ตรวจสอบ Root CA เสมอ
+#endif
         http.begin(*client, server_url);
       } else {
         Serial.println("[ERROR] Connection failed");
@@ -888,7 +908,8 @@ void loop() {
                    "&room=" + String(requested_room);
         }
 
-        DBGF("Door command: %s | Queue: %d\n", door_trigger ? door_trigger : "NULL", pending_count);
+        DBGF("Door command: %s | Queue: %d\n",
+             door_trigger ? door_trigger : "NULL", pending_count);
 
         // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
         if (String(door_trigger) == "open") {
@@ -964,7 +985,8 @@ void loop() {
       if (api_fail_count >= 3) {
         if (!is_offline_mode) {
           is_offline_mode = true;
-          DBG("Entering offline fallback mode due to consecutive API failures.");
+          DBG("Entering offline fallback mode due to consecutive API "
+              "failures.");
         }
       }
     }
@@ -982,11 +1004,11 @@ void loop() {
 
 // ─── Security Hardening Helper: Constant-Time Comparison (VULN-036) ──────────
 // Prevents Timing Attacks when comparing sensitive keys or passwords.
-bool secureCompare(const char* a, const char* b) {
+bool secureCompare(const char *a, const char *b) {
   size_t lenA = strlen(a);
   size_t lenB = strlen(b);
   size_t len = (lenA > lenB) ? lenA : lenB;
-  
+
   volatile uint8_t result = lenA ^ lenB;
   for (size_t i = 0; i < len; i++) {
     uint8_t ca = (i < lenA) ? a[i] : 0;
@@ -996,7 +1018,8 @@ bool secureCompare(const char* a, const char* b) {
   return result == 0;
 }
 
-// NOTE: The following rate limiting block is prepared for future local web server implementation:
+// NOTE: The following rate limiting block is prepared for future local web
+// server implementation:
 /*
 void handleLocalWebServerRequest() {
   static unsigned long lastRequest = 0;
