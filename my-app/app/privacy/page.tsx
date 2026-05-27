@@ -1,8 +1,15 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function PrivacyPage() {
+  const [queryString, setQueryString] = useState("");
+
+  useEffect(() => {
+    // Preserve token and room params when returning to registration page
+    setQueryString(window.location.search || "");
+  }, []);
+
   return (
     <div
       style={{
@@ -64,7 +71,7 @@ export default function PrivacyPage() {
         {/* Navigation */}
         <div style={{ marginBottom: "32px" }}>
           <Link
-            href="/"
+            href={`/${queryString}`}
             style={{
               display: "inline-flex",
               alignItems: "center",

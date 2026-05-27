@@ -5,8 +5,12 @@ import Link from "next/link";
 
 export default function CookieConsent() {
   const [isVisible, setIsVisible] = useState(false);
+  const [queryString, setQueryString] = useState("");
 
   useEffect(() => {
+    // Save current query string (preserving token and room parameters)
+    setQueryString(window.location.search || "");
+
     // Check if the user has already consented
     const consent = localStorage.getItem("rmutp_cookie_consent");
     if (!consent) {
@@ -190,7 +194,7 @@ export default function CookieConsent() {
             <h4 className="rmutp-cookie-title">นโยบายความเป็นส่วนตัวและคุกกี้ 🍪</h4>
             <p className="rmutp-cookie-desc">
               ระบบควบคุมประตูห้องปฏิบัติการ RMUTP ACCS ใช้คุกกี้เพื่อระบุตัวตนและจัดเก็บประวัติ Log เข้าออกตาม พ.ร.บ. คอมพิวเตอร์ฯ 2560 และ PDPA ของไทย ท่านสามารถศึกษาได้ที่{" "}
-              <Link href="/privacy" className="rmutp-cookie-link">นโยบายความเป็นส่วนตัว</Link> และ <Link href="/terms" className="rmutp-cookie-link-alt">ข้อกำหนดการใช้งาน</Link>
+              <Link href={`/privacy${queryString}`} className="rmutp-cookie-link">นโยบายความเป็นส่วนตัว</Link> และ <Link href={`/terms${queryString}`} className="rmutp-cookie-link-alt">ข้อกำหนดการใช้งาน</Link>
             </p>
           </div>
         </div>
