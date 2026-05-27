@@ -1018,7 +1018,7 @@ function RegistrationPageInner() {
             </button>
 
             <Link
-              href="/privacy"
+              href={`/privacy${typeof window !== 'undefined' ? window.location.search : ''}`}
               style={{
                 color: "rgba(255,255,255,0.4)",
                 fontSize: 13,
