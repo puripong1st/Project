@@ -22,7 +22,16 @@ export async function GET() {
       `SELECT id, first_name, last_name, student_id, year, faculty, branch, status, registered_at, ip_address, requested_room
        FROM students WHERE status = 'pending' ORDER BY registered_at DESC`
     );
-    return NextResponse.json({ students: rows });
+    
+    const sanitized = rows.map((s: any) => {
+      if (admin.role !== 'owner') {
+        const { ip_address, ...rest } = s;
+        return rest;
+      }
+      return s;
+    });
+    
+    return NextResponse.json({ students: sanitized });
   } catch (error) {
     console.error("[Students/Pending] error:", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });

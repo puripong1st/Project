@@ -13,6 +13,19 @@ async function ensureInit() {
     try {
       const pool = getPool();
       await pool.query("ALTER TABLE access_logs ALTER COLUMN action TYPE VARCHAR(50), ALTER COLUMN action SET NOT NULL");
+      // Add columns for the audit log if they don't exist
+      await pool.query("ALTER TABLE access_logs ADD COLUMN IF NOT EXISTS room VARCHAR(50)");
+      await pool.query("ALTER TABLE access_logs ADD COLUMN IF NOT EXISTS method VARCHAR(50)");
+      await pool.query("ALTER TABLE access_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(50)");
+      await pool.query("ALTER TABLE access_logs ADD COLUMN IF NOT EXISTS details TEXT");
+      
+      // Try to alter student_id to VARCHAR(50) by dropping foreign key constraint first if it exists
+      try {
+        await pool.query("ALTER TABLE access_logs DROP CONSTRAINT IF EXISTS access_logs_student_id_fkey");
+      } catch (fkErr) {
+        console.log("[PDF Route] dropping foreign key failed:", fkErr);
+      }
+      await pool.query("ALTER TABLE access_logs ALTER COLUMN student_id TYPE VARCHAR(50)");
     } catch (e) {
       console.log("[PDF Route] access_logs column modification skipped:", e);
     }
@@ -78,6 +91,21 @@ export async function GET(req: NextRequest) {
         ]
       );
 
+      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+      await pool.query(
+        `INSERT INTO access_logs (student_id, action, room, method, ip_address, details)
+         VALUES ('SYSTEM', 'PDF_EXPORT', 'ALL', 'admin', $1, $2)`,
+        [
+          ip,
+          JSON.stringify({
+            admin_id: admin.id,
+            admin_name: admin.full_name,
+            record_count: students.length,
+            filters: { filter, startDate, endDate }
+          })
+        ]
+      );
+
       const cleanName = `${student.first_name}_${student.last_name}`.replace(/\s+/g, "_");
       const filename = `student_card_${student.student_id}_${cleanName}_${formattedDate}.pdf`;
 
@@ -127,6 +155,21 @@ export async function GET(req: NextRequest) {
         [
           admin.id,
           `ส่งออกรายงาน PDF แบบรายชื่อรวม: filter=${filter} ช่วงเวลา=${startDate || "เริ่มต้น"} ถึง ${endDate || "ปัจจุบัน"} จำนวน ${students.length} รายการ`
+        ]
+      );
+
+      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+      await pool.query(
+        `INSERT INTO access_logs (student_id, action, room, method, ip_address, details)
+         VALUES ('SYSTEM', 'PDF_EXPORT', 'ALL', 'admin', $1, $2)`,
+        [
+          ip,
+          JSON.stringify({
+            admin_id: admin.id,
+            admin_name: admin.full_name,
+            record_count: students.length,
+            filters: { filter, startDate, endDate }
+          })
         ]
       );
 
