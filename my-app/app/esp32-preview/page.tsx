@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface DisplayState {
   title: string;
@@ -327,6 +327,21 @@ function ESP32PreviewPageInner() {
   const [esp32Status, setEsp32Status] = useState<ESP32Status | null>(null);
   
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          router.push("/admin/login");
+        } else {
+          setAuthenticated(true);
+        }
+      });
+  }, []);
+
   const initialRoom = searchParams.get("room") || "CE-401";
   const [simRoom, setSimRoom] = useState(initialRoom);
   const [originUrl] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
@@ -363,6 +378,7 @@ function ESP32PreviewPageInner() {
   };
 
   useEffect(() => {
+    if (!authenticated) return;
     queueMicrotask(() => {
       fetchDisplay(simRoom);
       fetchESP32Status(simRoom);
@@ -371,7 +387,7 @@ function ESP32PreviewPageInner() {
     const i2 = setInterval(() => fetchESP32Status(simRoom), 4000);
     return () => { clearInterval(i1); clearInterval(i2); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simRoom]);
+  }, [simRoom, authenticated]);
 
   function simulateApprove() {
     setMode("scanning");
@@ -382,6 +398,29 @@ function ESP32PreviewPageInner() {
     setMode("scanning");
     setTimeout(() => setMode("rejected"), 1500);
     setTimeout(() => setMode("idle"), 5000);
+  }
+
+  if (!authenticated) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0F1117", color: "#F0F4F0", padding: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div style={{
+          width: 48,
+          height: 48,
+          border: "4px solid rgba(16,185,129,0.15)",
+          borderTopColor: "#10B981",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+          marginBottom: 16
+        }} />
+        <p style={{ color: "#9EA8A0", fontSize: 14, fontWeight: "bold" }}>กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
@@ -602,7 +641,7 @@ function ESP32PreviewPageInner() {
                 <div style={{ fontSize: 10, color: "#6B7A70", background: "rgba(0,0,0,0.3)", padding: 10, borderRadius: 8, wordBreak: "break-all", fontFamily: "monospace", border: "1px solid rgba(255,255,255,0.03)" }}>
                   <strong style={{ color: "#9EA8A0" }}>ลิงก์สำหรับคลิกทดสอบ (คลิกเพื่อก็อปปี้หรือเปิดใช้งาน):</strong><br />
                   <a href={`${originUrl}/?scan=${displayData.active_token}&room=${simRoom}`} target="_blank" rel="noopener noreferrer" style={{ color: "#10B981", textDecoration: "none", display: "inline-block", marginTop: 4 }}>
-                    {`${originUrl}/?scan=${displayData.active_token}&room=${simRoom}`}
+                    {`${originUrl}/?scan=${displayData.active_token.slice(0, 8)}...&room=${simRoom}`}
                   </a>
                 </div>
               )}
