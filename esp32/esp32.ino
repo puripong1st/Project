@@ -5,7 +5,7 @@
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-#define WOKWI_SIM // <-- ต้องมีบรรทัดนี้อยู่บนสุดของโค้ดใน Wokwi
+// #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!
 #include "ricmoo_qrcode.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
@@ -17,6 +17,15 @@
 
 
 #include "config.h"
+
+// ─── Compile-time production safety guard ───────────────────────────────────
+// Prevents accidentally shipping a Wokwi simulation build to a real device.
+#ifdef PRODUCTION
+  #ifdef WOKWI_SIM
+    #error "WOKWI_SIM must not be defined in production builds!"
+  #endif
+#endif
+// ────────────────────────────────────────────────────────────────────────────
 
 // --- การต่อขาอุปกรณ์ (Hardware Pins) ---
 #define TFT_CS 15
@@ -368,11 +377,10 @@ void loop() {
       static WiFiClientSecure secureClient;
       WiFiClientSecure *client = &secureClient;
       if (client) {
-        #ifdef WOKWI_SIM
-          client->setInsecure(); // ข้ามการเช็ค SSL CA Cert ชั่วคราวบน Wokwi Simulator (เนื่องจาก Simulator ไม่มีนาฬิกา Real-time ที่ซิงค์ตรงทำให้เช็คใบรับรองไม่ผ่าน)
-        #else
-          client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริงเพื่อความปลอดภัยสูงสุด
-        #endif
+        client->setCACert(root_ca_cert); // ตรวจสอบใบรับรอง Root CA บนบอร์ดจริงเพื่อความปลอดภัยสูงสุด
+        // NOTE: For Wokwi simulation, you may temporarily use:
+        // client->setInsecure();
+        // WARNING: NEVER deploy to production with setInsecure()!
         http.begin(*client, server_url);
       } else {
         Serial.println("Unable to create WiFiClientSecure");
