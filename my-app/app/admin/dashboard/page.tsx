@@ -748,6 +748,7 @@ ${wokwiDefine}
 
 
 #include "config.h"
+#include <time.h>
 
 // ─── Compile-time production safety guard ───────────────────────────────────
 // Prevents accidentally shipping a Wokwi simulation build to a real device.
@@ -1372,6 +1373,33 @@ void handleLocalValidation() {
   client.stop();
 }
 
+
+String getTimestamp() {
+  time_t now = time(nullptr);
+  return String((long)now);
+}
+
+String generateCloudHMAC(String timestamp, String path) {
+  String payload = timestamp + ":" + path;
+  uint8_t hmacResult[32];
+  mbedtls_md_context_t ctx;
+  mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)api_key, strlen(api_key));
+  mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload.c_str(), payload.length());
+  mbedtls_md_hmac_finish(&ctx, hmacResult);
+  mbedtls_md_free(&ctx);
+
+  String encoded = "";
+  const char* hex = "0123456789abcdef";
+  for(int i=0; i<32; i++){
+    encoded += hex[hmacResult[i] >> 4];
+    encoded += hex[hmacResult[i] & 0x0F];
+  }
+  return encoded;
+}
+
 void syncStudentCache() {
   if (WiFi.status() != WL_CONNECTED) return;
   HTTPClient http;
@@ -1444,6 +1472,17 @@ void syncOfflineLogs() {
 void setup() {
   Serial.begin(115200);
   Serial.println("[BOOT] System starting...");
+  // Setup NTP for HMAC Time Signature
+  configTime(7 * 3600, 0, "pool.ntp.org");
+  Serial.print("[INFO] Waiting for NTP time sync: ");
+  time_t now = time(nullptr);
+  while (now < 24 * 3600) {
+    Serial.print(".");
+    delay(100);
+    now = time(nullptr);
+  }
+  Serial.println(" OK");
+
 
   // Initialize SPIFFS cache storage
   if (!SPIFFS.begin(true)) {
@@ -1618,6 +1657,9 @@ void loop() {
       http.setTimeout(1200);
       http.addHeader("Content-Type", "application/json");
       http.addHeader("x-api-key", api_key);
+      String ts3 = getTimestamp();
+      http.addHeader("x-timestamp", ts3);
+      http.addHeader("x-hmac-signature", generateCloudHMAC(ts3, "/api/esp32/display"));
 
       int httpCode = http.GET();
       if (httpCode == 200) {

@@ -5,6 +5,7 @@ import { initDatabase, getPool } from "@/lib/db";
 import { getOrCreateActiveQRToken } from "@/lib/qr";
 import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
+import { verifyEsp32Security } from "@/lib/api-security";
 
 // Restrict CORS to the configured app origin only — never open wildcard in production
 const ALLOWED_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || "https://project-sigma-ivory-21.vercel.app").replace(/\/$/, "");
@@ -42,6 +43,13 @@ export async function GET(req: NextRequest) {
         { status: 429, headers: { "Retry-After": "60", ...CORS_HEADERS } }
       );
     }
+
+    // --- Strict Zero-Trust Security Validation ---
+    const securityCheck = verifyEsp32Security(req, "/api/esp32/display");
+    if (!securityCheck.allowed && securityCheck.errorResponse) {
+      return securityCheck.errorResponse;
+    }
+    // ---------------------------------------------
     const host = req.headers.get("host") || "localhost:3000";
     const protocol = req.headers.get("x-forwarded-proto") || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
@@ -146,21 +154,7 @@ export async function GET(req: NextRequest) {
       console.error("[IoT Polling Heartbeat] Failed to update heartbeat:", heartbeatErr);
     });
 
-    // Only expose the active_token if the caller authenticates with ESP32 API key
-    const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_placeholder";
-    
-    if (
-      process.env.NODE_ENV === "production" &&
-      (!process.env.ESP32_API_KEY || process.env.ESP32_API_KEY === "rmutp_secure_door_unlock_token_placeholder")
-    ) {
-      throw new Error(
-        "Production Security Error: ESP32_API_KEY is using the default placeholder value. " +
-        "You MUST configure a secure, unique ESP32_API_KEY environment variable in your production environment."
-      );
-    }
-    
-    const callerKey = req.headers.get("x-api-key") || "";
-    const isAuthenticatedDevice = callerKey === esp32ApiKey;
+    const isAuthenticatedDevice = true; // Security passed above
 
     let activeTokenVal: string | undefined;
     if (isAuthenticatedDevice) {
@@ -240,10 +234,14 @@ export async function POST(req: NextRequest) {
         { status: 429, headers: { "Retry-After": "60", ...CORS_HEADERS } }
       );
     }
-    // Authenticate: accept either a valid ESP32 API key (for IoT devices) or an admin cookie (for browser-side calls)
-    const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_placeholder";
-    const callerKey = req.headers.get("x-api-key") || "";
-    const isAuthenticatedDevice = callerKey === esp32ApiKey;
+    // Authenticate: accept either a valid ESP32 HMAC context or an admin cookie
+    let isAuthenticatedDevice = false;
+    
+    // Check HMAC Security
+    const securityCheck = verifyEsp32Security(req, "/api/esp32/display");
+    if (securityCheck.allowed) {
+      isAuthenticatedDevice = true;
+    }
 
     if (!isAuthenticatedDevice) {
       const admin = await getAdminFromCookie();

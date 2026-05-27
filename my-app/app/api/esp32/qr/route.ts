@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateQRCodeBuffer, getOrCreateActiveQRToken } from "@/lib/qr";
 import { getAdminFromCookie } from "@/lib/auth";
+import { verifyEsp32Security } from "@/lib/api-security";
 
 const DEFAULT_ESP32_API_KEY = "rmutp_secure_door_unlock_token_placeholder";
 
@@ -46,13 +47,16 @@ function getNetworkUrl(req: NextRequest): string {
 
 export async function GET(req: NextRequest) {
   try {
-    const esp32ApiKey = getConfiguredEsp32ApiKey();
-    const callerKey = req.headers.get("x-api-key") || "";
-    const isAuthenticatedDevice = callerKey === esp32ApiKey;
     const isDevelopment = process.env.NODE_ENV !== "production";
-    const admin = isAuthenticatedDevice ? null : await getAdminFromCookie();
+    const admin = await getAdminFromCookie();
+
+    const securityCheck = verifyEsp32Security(req, "/api/esp32/qr");
+    let isAuthenticatedDevice = securityCheck.allowed;
 
     if (!isAuthenticatedDevice && !isDevelopment && !admin) {
+      if (securityCheck.errorResponse) {
+        return securityCheck.errorResponse;
+      }
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
