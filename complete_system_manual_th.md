@@ -2525,10 +2525,10 @@ flowchart LR
     G --> H["Redraw TFT<br/>~80–400ms"]
     H --> I["ผู้ใช้เห็นการเปลี่ยน"]
 
-    style C fill:#ffcccc
-    style D fill:#ffe0b3
-    style F fill:#ffe0b3
-    style H fill:#ffe0b3
+    style C fill:#c0392b,stroke:#7b241c,color:#ffffff
+    style D fill:#d35400,stroke:#873600,color:#ffffff
+    style F fill:#d35400,stroke:#873600,color:#ffffff
+    style H fill:#d35400,stroke:#873600,color:#ffffff
 ```
 
 **รวมแล้ว worst case ~3.1 วินาที, best case ~500ms** — เปรียบเทียบกับเว็บเรียลไทม์ที่ ~50ms
