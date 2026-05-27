@@ -13,10 +13,10 @@ const cspDirectives = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  // 'strict-dynamic' allows scripts loaded by already-trusted scripts (needed by Next.js).
-  // 'unsafe-inline' is kept as a fallback for browsers that do not support strict-dynamic.
-  // 'unsafe-eval' has been removed.
-  "script-src 'self' 'unsafe-inline' 'strict-dynamic'",
+  // Next.js App Router ships inline bootstrap/hydration scripts without nonces by default.
+  // 'strict-dynamic' would cause modern browsers to ignore 'self' and 'unsafe-inline',
+  // blocking those inline scripts and leaving the app stuck on a loading spinner.
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob:",
