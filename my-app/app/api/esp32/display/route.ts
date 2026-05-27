@@ -6,14 +6,14 @@ import { getOrCreateActiveQRToken } from "@/lib/qr";
 import { getAdminFromCookie } from "@/lib/auth";
 
 // Restrict CORS to the configured app origin only — never open wildcard in production
-function getAllowedOrigin(req: NextRequest): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (configured) return configured;
-  // Fallback: mirror the request origin (safe for same-host ESP32 setups)
-  const host = req.headers.get("host") || "localhost:3000";
-  const protocol = req.headers.get("x-forwarded-proto") || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
-  return `${protocol}://${host}`;
-}
+const ALLOWED_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || "https://project-sigma-ivory-21.vercel.app").replace(/\/$/, "");
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
+  "Vary": "Origin",
+} as const;
 
 let initialized = false;
 async function ensureInit() {
@@ -21,6 +21,14 @@ async function ensureInit() {
     await initDatabase();
     initialized = true;
   }
+}
+
+// ─── OPTIONS — preflight handler for browser CORS ───────────────────────────
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -189,8 +197,8 @@ export async function GET(req: NextRequest) {
       {
         headers: {
           "Cache-Control": "no-store",
-          "Access-Control-Allow-Origin": getAllowedOrigin(req),
           "Content-Type": "application/json",
+          ...CORS_HEADERS,
         },
       }
     );
@@ -214,7 +222,7 @@ export async function GET(req: NextRequest) {
         requested_room: room,
         door_trigger: "idle",
       },
-      { status: 503, headers: { "Access-Control-Allow-Origin": getAllowedOrigin(req) } }
+      { status: 503, headers: { ...CORS_HEADERS } }
     );
   }
 }
@@ -232,7 +240,7 @@ export async function POST(req: NextRequest) {
       if (!admin) {
         return NextResponse.json(
           { error: "Unauthorized" },
-          { status: 401, headers: { "Access-Control-Allow-Origin": getAllowedOrigin(req) } }
+          { status: 401, headers: { ...CORS_HEADERS } }
         );
       }
     }
@@ -241,7 +249,7 @@ export async function POST(req: NextRequest) {
     console.log("[ESP32] Status update received:", body);
     return NextResponse.json(
       { received: true, server_time: new Date().toISOString() },
-      { headers: { "Access-Control-Allow-Origin": getAllowedOrigin(req) } }
+      { headers: { ...CORS_HEADERS } }
     );
   } catch {
     return NextResponse.json({ received: false }, { status: 400 });
