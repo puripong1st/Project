@@ -6,6 +6,16 @@
   ==============================================================
 */
 // #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!
+#define DEBUG_MODE false  // ⚠️ Set true for development ONLY
+
+#if DEBUG_MODE
+  #define DBG(x) Serial.println(x)
+  #define DBGF(fmt, ...) Serial.printf(fmt, __VA_ARGS__)
+#else
+  #define DBG(x)
+  #define DBGF(fmt, ...)
+#endif
+
 #include "ricmoo_qrcode.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
@@ -295,8 +305,9 @@ void drawRejectedScreen() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("[BOOT] System starting...");
 
-  // กำหนดรูปแบบอินพุตเอาต์พุตพิน
+  // 定義อินพุตเอาต์พุตพิน
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_WIFI, OUTPUT);
   pinMode(LED_REJECT, OUTPUT);
@@ -330,7 +341,7 @@ void setup() {
   tft.setCursor(40, 140);
   tft.print("SSID Virtual Router: Wokwi-GUEST");
 
-  Serial.print("Connecting to Wi-Fi...");
+  DBG("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
 
   // ระบบกะพริบไฟสถานะระหว่างรอ WiFi
@@ -339,11 +350,11 @@ void setup() {
     wifi_led_state = !wifi_led_state;
     digitalWrite(LED_WIFI, wifi_led_state ? HIGH : LOW);
     delay(400);
-    Serial.print(".");
+    DBG(".");
   }
 
   digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
-  Serial.println("\nWiFi connected successfully!");
+  DBG("\nWiFi connected successfully!");
 
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
@@ -369,7 +380,7 @@ void loop() {
     unsigned long mm = (sec / 60) % 60;
     unsigned long ss = sec % 60;
     char timeBuf[10];
-    sprintf(timeBuf, "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
+    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
     time_str = String(timeBuf);
 
     HTTPClient http;
@@ -383,7 +394,8 @@ void loop() {
         // WARNING: NEVER deploy to production with setInsecure()!
         http.begin(*client, server_url);
       } else {
-        Serial.println("Unable to create WiFiClientSecure");
+        Serial.println("[ERROR] Connection failed");
+        DBG("Unable to create WiFiClientSecure");
         return;
       }
     } else {
@@ -437,14 +449,12 @@ void loop() {
                    "&room=" + String(requested_room);
         }
 
-        Serial.print("Door command: ");
-        Serial.print(door_trigger);
-        Serial.print(" | Queue: ");
-        Serial.println(pending_count);
+        DBGF("Door command: %s | Queue: %d\n", door_trigger ? door_trigger : "NULL", pending_count);
 
         // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
         if (String(door_trigger) == "open") {
-          Serial.println("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
+          Serial.println("[INFO] Door unlocked");
+          DBG("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
 
           // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) 1.2 วินาทีเพื่อความเหมือนจริง!
           drawScanningScreen();
@@ -477,7 +487,8 @@ void loop() {
           }
 
           digitalWrite(RELAY_PIN, LOW); // ดึงพินกลับคืนประตูล็อก
-          Serial.println("🔒 Door auto locked.");
+          Serial.println("[INFO] Door locked");
+          DBG("🔒 Door auto locked.");
 
           // เสียงติ๊ดสั้นเมื่อประตูล็อกกลับคืน
           tone(BUZZER_PIN, 800, 250);
@@ -508,8 +519,8 @@ void loop() {
         }
       }
     } else {
-      Serial.print("HTTP Error: ");
-      Serial.println(httpCode);
+      Serial.println("[ERROR] Connection failed");
+      DBGF("HTTP Error: %d\n", httpCode);
     }
     http.end();
   } else {
