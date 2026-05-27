@@ -1235,7 +1235,42 @@ void loop() {
   }
   
   delay(polling_delay);
-}`;
+}
+
+// ─── Security Hardening Helper: Constant-Time Comparison (VULN-036) ──────────
+// Prevents Timing Attacks when comparing sensitive keys or passwords.
+bool secureCompare(const char* a, const char* b) {
+  size_t lenA = strlen(a);
+  size_t lenB = strlen(b);
+  size_t len = (lenA > lenB) ? lenA : lenB;
+  
+  volatile uint8_t result = lenA ^ lenB;
+  for (size_t i = 0; i < len; i++) {
+    uint8_t ca = (i < lenA) ? a[i] : 0;
+    uint8_t cb = (i < lenB) ? b[i] : 0;
+    result |= ca ^ cb;
+  }
+  return result == 0;
+}
+
+// NOTE: The following rate limiting block is prepared for future local web server implementation:
+/*
+void handleLocalWebServerRequest() {
+  static unsigned long lastRequest = 0;
+  static int requestCount = 0;
+  if (millis() - lastRequest < 60000) {
+    requestCount++;
+    if (requestCount > 30) {  // max 30 req/min
+      // server.send(429, "text/plain", "Too many requests");
+      return;
+    }
+  } else {
+    requestCount = 0;
+    lastRequest = millis();
+  }
+}
+*/
+`;
   };
 
   const highlightArduinoCode = (code: string) => {
