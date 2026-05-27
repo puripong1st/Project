@@ -1,7 +1,7 @@
 // app/api/admin-users/[id]/route.ts — Delete admin user
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase } from "@/lib/db";
-import { getAdminFromCookie } from "@/lib/auth";
+import { getAdminFromCookie, invalidateAdminActiveCache } from "@/lib/auth";
 
 let initialized = false;
 async function ensureInit() {
@@ -33,6 +33,8 @@ export async function DELETE(
 
     const pool = getPool();
     await pool.query("DELETE FROM admin_users WHERE id = $1", [targetId]);
+    // V02 fix: clear the is_active cache so deleted admin is rejected immediately
+    invalidateAdminActiveCache(targetId);
     return NextResponse.json({ success: true, message: "ลบ Admin สำเร็จ" });
   } catch {
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });

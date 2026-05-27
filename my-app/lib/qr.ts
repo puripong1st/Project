@@ -73,17 +73,14 @@ function base64url(input: Buffer | string): string {
   return Buffer.from(input).toString("base64url");
 }
 
+// V01 fix: no fallback — crash loudly if key missing
 const QR_SIGNING_KEY = process.env.QR_SIGNING_KEY;
 if (!QR_SIGNING_KEY) {
-  console.warn('[SECURITY] QR_SIGNING_KEY not set — using development fallback. DO NOT USE IN PRODUCTION.');
+  throw new Error("FATAL: QR_SIGNING_KEY environment variable is not set. Set it in .env.local (development) or Vercel Project Settings (production).");
 }
 
 function getOfflineGrantSecret(): string {
-  const secret = QR_SIGNING_KEY || "";
-  if (!secret && process.env.NODE_ENV === "production") {
-    throw new Error("Offline grant signing secret is missing or insecure. Set QR_SIGNING_KEY in environment variables.");
-  }
-  return secret || "rmutp-dev-offline-grant-secret";
+  return QR_SIGNING_KEY!;
 }
 
 function hashNonce(nonce: string): string {

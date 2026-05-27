@@ -291,17 +291,38 @@ function RegistrationPageInner() {
       return;
     }
 
-    // If this tab session has already successfully scanned and verified for this specific room, skip the dynamic token check
-    let isSessionVerified = false;
+    // QR Timer bug fix: restore remaining time from saved scan timestamp instead of restarting at 120s
+    const TIMER_DURATION = 120;
+    let savedScanTs: number | null = null;
     try {
-      if (sessionStorage.getItem(`rmutp_qr_verified_${room}`) === "1") {
-        isSessionVerified = true;
+      const raw = sessionStorage.getItem(`rmutp_qr_verified_${room}`);
+      if (raw && raw !== "1") {
+        savedScanTs = parseInt(raw, 10);
+      } else if (raw === "1") {
+        // migrate old format: treat as "just verified"
+        savedScanTs = Date.now();
+        sessionStorage.setItem(`rmutp_qr_verified_${room}`, String(savedScanTs));
       }
     } catch {}
 
-    if (isSessionVerified) {
-      queueMicrotask(() => setQrAuthorized(true));
-      return;
+    if (savedScanTs !== null) {
+      const elapsed = (Date.now() - savedScanTs) / 1000;
+      const remaining = Math.floor(TIMER_DURATION - elapsed);
+      if (remaining > 0) {
+        queueMicrotask(() => {
+          setTimeLeft(remaining);
+          setQrAuthorized(true);
+        });
+        return;
+      } else {
+        // timer expired while page was closed — clear and block
+        try { sessionStorage.removeItem(`rmutp_qr_verified_${room}`); } catch {}
+        queueMicrotask(() => {
+          setQrAuthorized(false);
+          setBlockedMessage("ลิงก์เชื่อมต่อหมดอายุเนื่องจากความปลอดภัย (กรุณาสแกน QR Code ใหม่อีกครั้งที่หน้าห้องเรียน)");
+        });
+        return;
+      }
     }
 
     const scanToken = searchParams.get("scan");
@@ -326,7 +347,8 @@ function RegistrationPageInner() {
         const data = await res.json();
         if (res.ok && data.success) {
           try {
-            sessionStorage.setItem(`rmutp_qr_verified_${room}`, "1");
+            // QR timer bug fix: save scan timestamp so timer continues on page reload
+            sessionStorage.setItem(`rmutp_qr_verified_${room}`, String(Date.now()));
             if (data.offline_grant) {
               sessionStorage.setItem(`rmutp_offline_grant_${room}`, data.offline_grant);
             }
@@ -334,6 +356,7 @@ function RegistrationPageInner() {
           if (data.offline_grant) {
             setOfflineGrant(data.offline_grant);
           }
+          setTimeLeft(120);
           setQrAuthorized(true);
         } else {
           setQrAuthorized(false);
@@ -353,13 +376,8 @@ function RegistrationPageInner() {
   // หากนักศึกษาปล่อยค้างหน้าจอลงทะเบียนไว้นานเกิน 120 วินาที ระบบจะบังคับให้หมดอายุทันที ป้องกันการแชร์ลิงก์ข้ามเครือข่าย!
   useEffect(() => {
     if (qrAuthorized !== true) return;
-    
-    // ตั้งค่าเริ่มต้นของ Timer นับถอยหลังเป็น 120 วินาที
-    if (timeLeft === null) {
-      queueMicrotask(() => setTimeLeft(120));
-      return;
-    }
-    
+    if (timeLeft === null) return; // wait until timeLeft is initialized by verify/restore
+
     if (timeLeft <= 0) {
       // เมื่อเวลาหมด (ครบ 120 วินาที)
       queueMicrotask(() => {
@@ -412,6 +430,8 @@ function RegistrationPageInner() {
 
     const delayDebounceFn = setTimeout(async () => {
       try {
+        // V06 fix: send offline_grant so server can verify QR authorization
+        const grant = offlineGrant || sessionStorage.getItem(`rmutp_offline_grant_${room}`) || "";
         const res = await fetch("/api/students/check-match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -419,6 +439,7 @@ function RegistrationPageInner() {
             first_name: fName,
             last_name: lName,
             student_id: sId,
+            offline_grant: grant,
           }),
         });
         if (res.ok) {
@@ -459,7 +480,7 @@ function RegistrationPageInner() {
     }, 600); // 600ms debounce
 
     return () => clearTimeout(delayDebounceFn);
-  }, [form.first_name, form.last_name, form.student_id]);
+  }, [form.first_name, form.last_name, form.student_id, offlineGrant, room]);
 
   function applyManualAutoFill() {
     if (matchedHistory) {

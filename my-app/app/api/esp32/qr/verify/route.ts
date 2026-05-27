@@ -1,6 +1,6 @@
 // app/api/esp32/qr/verify/route.ts - Validate dynamic scan token and issue offline grant
 import { NextRequest, NextResponse } from "next/server";
-import { createOfflineGrant, validateQRToken } from "@/lib/qr";
+import { createOfflineGrant, consumeQRToken } from "@/lib/qr";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/client-ip";
 
@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ไม่พบข้อมูลรหัสสแกน" }, { status: 400 });
     }
 
-    const success = await validateQRToken(token, roomCode);
+    // V05 fix: consume token at scan time (not just validate) so only one person
+    // can get an offline_grant per QR display rotation. Each scanner gets their own
+    // offline_grant (unique nonce), but the QR token itself is single-use.
+    const success = await consumeQRToken(token, roomCode);
 
     if (success) {
       return NextResponse.json({

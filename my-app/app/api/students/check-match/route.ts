@@ -20,7 +20,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { first_name, last_name, student_id } = body;
+    const { first_name, last_name, student_id, offline_grant } = body;
+
+    // V06 fix: require a valid offline_grant to prevent unauthenticated PII enumeration
+    if (!offline_grant || typeof offline_grant !== "string" || offline_grant.trim().length < 10) {
+      return NextResponse.json({ found: false, error: "ไม่พบหลักฐานการสแกน QR Code" }, { status: 401 });
+    }
 
     // ชำระล้างข้อมูลและลบช่องว่างส่วนเกิน
     const sanitizedFirstName = String(first_name ?? "").trim();

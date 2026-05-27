@@ -5,6 +5,24 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "./lib/auth";
 
+// V07 fix: security headers applied to all non-ESP32 responses
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "X-DNS-Prefetch-Control": "off",
+};
+
+function applySecurityHeaders(response: NextResponse, pathname: string): NextResponse {
+  // Skip ESP32 routes — they have their own CORS headers
+  if (pathname.startsWith("/api/esp32")) return response;
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -12,13 +30,13 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith("/admin/dashboard")) {
     const token = request.cookies.get("rmutp_admin_token")?.value;
     if (!token) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return applySecurityHeaders(NextResponse.redirect(new URL("/admin/login", request.url)), pathname);
     }
     const payload = verifyToken(token);
     if (!payload) {
       const response = NextResponse.redirect(new URL("/admin/login", request.url));
       response.cookies.delete("rmutp_admin_token");
-      return response;
+      return applySecurityHeaders(response, pathname);
     }
   }
 
@@ -26,12 +44,13 @@ export function middleware(request: NextRequest) {
   if (pathname === "/admin" || pathname === "/admin/") {
     const token = request.cookies.get("rmutp_admin_token")?.value;
     if (token && verifyToken(token)) {
-      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+      return applySecurityHeaders(NextResponse.redirect(new URL("/admin/dashboard", request.url)), pathname);
     }
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    return applySecurityHeaders(NextResponse.redirect(new URL("/admin/login", request.url)), pathname);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  return applySecurityHeaders(response, pathname);
 }
 
 export const config = {

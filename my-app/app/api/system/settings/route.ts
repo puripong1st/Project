@@ -168,13 +168,24 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // 2. URL check (starts with https://)
+        // V03 fix: strict domain allowlist for webhook URLs (prevent SSRF)
         if (key.includes("webhook") || key.includes("url")) {
-          if (valStr !== "" && !valStr.startsWith("https://")) {
-            return NextResponse.json(
-              { error: `รูปแบบ URL ไม่ถูกต้องสำหรับคีย์ ${key} ต้องเริ่มต้นด้วย https://` },
-              { status: 400 }
-            );
+          if (valStr !== "") {
+            const ALLOWED_WEBHOOK_HOSTS = ["discord.com", "discordapp.com", "ptb.discord.com", "canary.discord.com"];
+            try {
+              const parsed = new URL(valStr);
+              if (parsed.protocol !== "https:" || !ALLOWED_WEBHOOK_HOSTS.includes(parsed.hostname)) {
+                return NextResponse.json(
+                  { error: `Webhook URL ต้องเป็น Discord URL (discord.com) เท่านั้น` },
+                  { status: 400 }
+                );
+              }
+            } catch {
+              return NextResponse.json(
+                { error: `รูปแบบ URL ไม่ถูกต้องสำหรับคีย์ ${key}` },
+                { status: 400 }
+              );
+            }
           }
         }
 

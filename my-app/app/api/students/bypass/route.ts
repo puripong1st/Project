@@ -55,23 +55,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Student MUST be approved by an administrator to bypass
+    // V09 fix: normalize all rejection responses to same status (403) to avoid state disclosure
     if (student.status !== "approved") {
-      return NextResponse.json({ error: "ไม่สามารถ Bypass ได้เนื่องจากสิทธิ์ของคุณถูกระงับหรือยังไม่อนุมัติ" }, { status: 403 });
+      return NextResponse.json({ error: "ข้อมูลตรวจสอบสิทธิ์อุปกรณ์ไม่ถูกต้อง" }, { status: 403 });
     }
 
     if (student.diff_seconds === null) {
-      return NextResponse.json({ error: "ไม่พบประวัติการอนุมัติล่าสุดเพื่อประมวลผล Bypass" }, { status: 400 });
+      return NextResponse.json({ error: "ข้อมูลตรวจสอบสิทธิ์อุปกรณ์ไม่ถูกต้อง" }, { status: 403 });
     }
 
     const diffSeconds = Number(student.diff_seconds);
 
-    // Check if within 5 minutes limit (300 seconds)
-    // Absolute value check handles very minor db/server clock differences safely
-    if (Math.abs(diffSeconds) > 300) {
-      return NextResponse.json({ 
-        expired: true, 
-        error: "เกินกำหนดเวลา 5 นาทีแล้ว กรุณากรอกข้อมูลลงทะเบียนเพื่อยื่นสิทธิ์ใหม่" 
+    // V10 fix: directional check — reject negative (future approved_at) and expired
+    if (diffSeconds < 0 || diffSeconds > 300) {
+      return NextResponse.json({
+        expired: true,
+        error: "เกินกำหนดเวลา 5 นาทีแล้ว กรุณากรอกข้อมูลลงทะเบียนเพื่อยื่นสิทธิ์ใหม่"
       }, { status: 400 });
     }
 

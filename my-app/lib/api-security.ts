@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { getClientIp } from "./client-ip";
 
 // ============================================================================
 // ESP32 Zero-Trust API Security Module
@@ -13,19 +14,18 @@ export interface SecurityCheckResult {
 }
 
 export function verifyEsp32Security(req: NextRequest, endpointPath: string): SecurityCheckResult {
-  const esp32ApiKey = process.env.ESP32_API_KEY || "rmutp_secure_door_unlock_token_placeholder";
-  
-  // 1. Strict User-Agent Checking (Optional but recommended for IoT)
-  const userAgent = req.headers.get("user-agent") || "";
-  if (userAgent.toLowerCase().includes("curl") || userAgent.toLowerCase().includes("postman")) {
-    console.warn(`[Security] Blocked suspicious User-Agent: ${userAgent}`);
-    return { allowed: false, errorResponse: new NextResponse(null, { status: 403 }) };
+  // V01 fix: no fallback for API key
+  const esp32ApiKey = process.env.ESP32_API_KEY;
+  if (!esp32ApiKey) {
+    console.error("[Security] ESP32_API_KEY is not set — rejecting all ESP32 requests");
+    return { allowed: false, errorResponse: new NextResponse(JSON.stringify({ error: "Server misconfigured" }), { status: 503, headers: { "Content-Type": "application/json" } }) };
   }
 
-  // 2. IP Allowlisting (If configured)
-  const forwardedFor = req.headers.get("x-forwarded-for");
-  const realIp = req.headers.get("x-real-ip");
-  const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : (realIp || "unknown");
+  // V08 fix: removed User-Agent blocking — trivially bypassed, provides false security
+  // Authentication relies on API Key + HMAC only
+
+  // V04 fix: use getClientIp() (rightmost XFF = Vercel-appended, cannot be spoofed)
+  const clientIp = getClientIp(req);
   
   const allowedIps = process.env.ALLOWED_IP_RANGES;
   if (allowedIps && allowedIps !== "*") {

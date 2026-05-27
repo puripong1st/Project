@@ -2,12 +2,38 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET || "rmutp-secret-key";
+// V01 fix: no fallback — app must crash loudly if secret is missing
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET environment variable is not set. Set it in .env.local (development) or Vercel Project Settings (production).");
+}
 
-function verifyJwtSecretSecurity() {
-  if (JWT_SECRET === "rmutp-secret-key" && process.env.NODE_ENV === "production") {
-    throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing or insecurely configured in production!");
+// V02 fix: in-memory cache for admin is_active check (30s TTL per admin id)
+const globalForAuth = globalThis as unknown as {
+  adminActiveCache?: Map<number, { isActive: boolean; expiresAt: number }>;
+};
+
+async function checkAdminIsActive(id: number): Promise<boolean> {
+  const now = Date.now();
+  const cache = globalForAuth.adminActiveCache ?? (globalForAuth.adminActiveCache = new Map());
+  const cached = cache.get(id);
+  if (cached && cached.expiresAt > now) return cached.isActive;
+
+  try {
+    const { getPool } = await import("./db");
+    const pool = getPool();
+    const { rows } = await pool.query("SELECT is_active FROM admin_users WHERE id = $1", [id]);
+    const isActive = rows[0]?.is_active === true;
+    cache.set(id, { isActive, expiresAt: now + 30_000 });
+    return isActive;
+  } catch {
+    // fail-open: if DB unreachable, don't lock everyone out
+    return true;
   }
+}
+
+export function invalidateAdminActiveCache(id: number): void {
+  globalForAuth.adminActiveCache?.delete(id);
 }
 
 const COOKIE_NAME = "rmutp_admin_token";
@@ -28,14 +54,12 @@ export function canOperateRoom(admin: AdminPayload, roomCode: string): boolean {
 }
 
 export function signToken(payload: AdminPayload): string {
-  verifyJwtSecretSecurity();
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
+  return jwt.sign(payload, JWT_SECRET!, { expiresIn: "8h" });
 }
 
 export function verifyToken(token: string): AdminPayload | null {
-  verifyJwtSecretSecurity();
   try {
-    return jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as AdminPayload;
+    return jwt.verify(token, JWT_SECRET!, { algorithms: ["HS256"] }) as AdminPayload;
   } catch {
     return null;
   }
@@ -46,7 +70,12 @@ export async function getAdminFromCookie(): Promise<AdminPayload | null> {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
     if (!token) return null;
-    return verifyToken(token);
+    const payload = verifyToken(token);
+    if (!payload) return null;
+    // V02 fix: verify admin is still active in DB (30s cache, fail-open)
+    const isActive = await checkAdminIsActive(payload.id);
+    if (!isActive) return null;
+    return payload;
   } catch {
     return null;
   }
