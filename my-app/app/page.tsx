@@ -858,6 +858,8 @@ function RegistrationPageInner() {
       if (!res.ok) {
         setError(data.error || "เกิดข้อผิดพลาดในการลงทะเบียน");
       } else {
+        // ทำเครื่องหมายว่า submit สำเร็จ → หยุด session timer 120s ไม่ให้เตะออก
+        submittedRef.current = true;
         setSuccess({
           id: data.id,
           student_id: form.student_id,
@@ -1283,6 +1285,7 @@ function RegistrationPageInner() {
             className="btn-secondary"
             style={{ width: "100%", borderRadius: 14 }}
             onClick={() => {
+              submittedRef.current = false;
               setSuccess(null);
               setForm({ title: "นาย", first_name: "", last_name: "", student_id: "", year: "", faculty: "", branch: "" });
               setBranches([]);
