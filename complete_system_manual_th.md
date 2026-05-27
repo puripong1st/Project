@@ -2424,12 +2424,20 @@ flowchart TD
 - [ ] backup Supabase enable
 - [ ] log retention policy (90 วันขึ้นไป ตาม พ.ร.บ.)
 
-**หลักการทำงานการแบ่งชั้นสถาปัตยกรรม (Separation of Concerns):**
-- **Presentation Layer (app/page.tsx):** มีหน้าที่เฉพาะในการติดต่อและส่งเสริมการตอบรับของผู้ใช้ (User Interface) และไม่มีการเชื่อมต่อกับฐานข้อมูล PostgreSQL โดยตรง
-- **API Controller Layer (app/api/):** ทำหน้าที่เป็นพนักงานรับสาร แปลง HTTP request ตรวจสอบโครงสร้างข้อมูล ปรับล้างข้อมูลอินพุต และส่งต่อให้ส่วนลอจิกถัดไป
-- **Business Logic Layer (lib/):** คลังเก็บกฎธุรกิจที่สำคัญที่สุด (เช่น นโยบายรหัสผ่านแอดมิน, วงจรชีวิตโทเคนคิวอาร์) ทำหน้าที่เชื่อมโยงข้อมูลกับฐานข้อมูล และบริการภายนอก (Discord Webhook)
+### 38.3 Rollback ฉุกเฉิน
+1. Vercel Dashboard → Deployments → กด "Promote to Production" บน build เก่าที่ทำงานได้
+2. ถ้า schema เพี้ยน: restore Supabase backup (ใน dashboard มี point-in-time)
+3. ถ้า ESP32 รับคำสั่งเปิดประตูค้าง: เข้า Dashboard → ตั้ง `room_cmd_<room>` = `idle` ผ่าน Settings
 
-<a id="sec-71-19"></a>
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<!-- RELOCATED_71_19_START -->
+<!-- SECTIONS 71.19–71.23 MOVED TO PROPER §71 LOCATION (see below) -->
+<!-- RELOCATED_71_19_END_PLACEHOLDER -->
+<!-- ORIGINAL_REMOVED_START
+<a id="sec-71-19-removed"></a>
 ### 71.19 การปฏิบัติตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล (PDPA Compliance & Implementation)
 
 โครงการระบบควบคุมประตูเข้าออกนี้ได้รับการออกแบบโดยยึดหลัก **Privacy by Design** เพื่อให้สอดคล้องกับพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) อย่างเคร่งครัดตามข้อกำหนดสากล:
@@ -2502,18 +2510,7 @@ flowchart TD
    - ระบบจัดเก็บข้อมูลประวัติการขอผ่านประตูและการลงทะเบียนไว้ในฐานข้อมูลเป็นเวลาอย่างน้อย 90 วันตามพระราชบัญญัติคอมพิวเตอร์ และเมื่อครบกำหนดระยะเวลาดังกล่าวหรือเมื่อเสร็จสิ้นปีการศึกษา ระบบจะมีตรรกะการลบทำลายข้อมูลประวัติการสแกนเก่าทิ้งอัตโนมัติ (Data Pruning)
 5. **สิทธิ์ในการเข้าถึงและขอทำลายข้อมูลส่วนบุคคล (Data Subject Rights):**
    - นักศึกษามีสิทธิ์ในการยื่นคำร้องผ่านทางคณะวิศวกรรมศาสตร์เพื่อขอเข้าตรวจสอบประวัติการลงทะเบียนของตนเอง หรือขอใช้สิทธิ์ในการลบทำลายข้อมูลส่วนบุคคลของตนเองออกนอกระบบควบคุม (Right to be Forgotten) ได้ทุกเมื่อ หากนักศึกษาหมดความจำเป็นในการเข้าใช้ห้องปฏิบัติการดังกล่าวแล้ว
-
-<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
-
----
-
-### 38.3 Rollback ฉุกเฉิน
-1. Vercel Dashboard → Deployments → กด "Promote to Production" บน build เก่าที่ทำงานได้
-2. ถ้า schema เพี้ยน: restore Supabase backup (ใน dashboard มี point-in-time)
-3. ถ้า ESP32 รับคำสั่งเปิดประตูค้าง: เข้า Dashboard → ตั้ง `room_cmd_<room>` = `idle` ผ่าน Settings
-
----
-
+ORIGINAL_REMOVED_END -->
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
 

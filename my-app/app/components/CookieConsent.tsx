@@ -33,167 +33,173 @@ export default function CookieConsent() {
   if (!isVisible) return null;
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
-        position: "fixed",
-        bottom: "24px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "calc(100% - 48px)",
-        maxWidth: "560px",
-        zIndex: 9999,
-        background: "rgba(15, 12, 41, 0.8)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255, 255, 255, 0.15)",
-        borderRadius: "20px",
-        padding: "24px",
-        boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "16px",
-        animation: "fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
-      }}
-    >
-      <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
-        {/* Glowing Shield Icon */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(219, 39, 119, 0.2))",
-            border: "1px solid rgba(167, 139, 250, 0.4)",
-            borderRadius: "12px",
-            padding: "10px",
-            color: "#A78BFA",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            boxShadow: "0 0 15px rgba(124, 58, 237, 0.2)",
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
+    <>
+      <style>{`
+        .rmutp-cookie-banner {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: 100%;
+          z-index: 9999;
+          background: rgba(15, 12, 41, 0.85);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border-top: 1px solid rgba(255, 255, 255, 0.15);
+          box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+          padding: 14px 40px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 32px;
+          animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .rmutp-cookie-content {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex: 1;
+        }
+        .rmutp-cookie-icon {
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(219, 39, 119, 0.2));
+          border: 1px solid rgba(167, 139, 250, 0.4);
+          borderRadius: 12px;
+          padding: 8px;
+          color: #A78BFA;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
+        }
+        .rmutp-cookie-text-container {
+          text-align: left;
+        }
+        .rmutp-cookie-title {
+          color: #FFFFFF;
+          font-size: 14.5px;
+          font-weight: 700;
+          margin-bottom: 2px;
+          font-family: 'Noto Sans Thai', sans-serif;
+        }
+        .rmutp-cookie-desc {
+          color: rgba(255, 255, 255, 0.75);
+          font-size: 12.5px;
+          line-height: 1.5;
+          font-weight: 400;
+          font-family: 'Noto Sans Thai', sans-serif;
+        }
+        .rmutp-cookie-link {
+          color: #F472B6;
+          text-decoration: underline;
+          font-weight: 600;
+          transition: color 0.2s ease;
+        }
+        .rmutp-cookie-link:hover {
+          color: #DB2777;
+        }
+        .rmutp-cookie-link-alt {
+          color: #A78BFA;
+          text-decoration: underline;
+          font-weight: 600;
+          transition: color 0.2s ease;
+        }
+        .rmutp-cookie-link-alt:hover {
+          color: #7C3AED;
+        }
+        .rmutp-cookie-buttons {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-shrink: 0;
+        }
+        .btn-cookie-decline {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 10px;
+          color: rgba(255, 255, 255, 0.85);
+          padding: 8px 18px;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: 'Noto Sans Thai', sans-serif;
+        }
+        .btn-cookie-decline:hover {
+          background: rgba(255, 255, 255, 0.15);
+          color: #FFFFFF;
+        }
+        .btn-cookie-accept {
+          background: linear-gradient(135deg, #7C3AED 0%, #DB2777 100%);
+          border: none;
+          border-radius: 10px;
+          color: #FFFFFF;
+          padding: 8px 22px;
+          font-size: 12.5px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+          font-family: 'Noto Sans Thai', sans-serif;
+        }
+        .btn-cookie-accept:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45);
+        }
+        @media (max-width: 991px) {
+          .rmutp-cookie-banner {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+            padding: 16px 24px;
+          }
+          .rmutp-cookie-buttons {
+            justify-content: flex-end;
+          }
+        }
+        @media (max-width: 480px) {
+          .rmutp-cookie-content {
+            align-items: flex-start;
+          }
+          .rmutp-cookie-icon {
+            display: none;
+          }
+          .rmutp-cookie-buttons {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .btn-cookie-decline, .btn-cookie-accept {
+            width: 100%;
+            text-align: center;
+            padding: 10px;
+          }
+        }
+      `}</style>
+
+      <div className="rmutp-cookie-banner" role="status" aria-live="polite">
+        <div className="rmutp-cookie-content">
+          <div className="rmutp-cookie-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+
+          <div className="rmutp-cookie-text-container">
+            <h4 className="rmutp-cookie-title">นโยบายความเป็นส่วนตัวและคุกกี้ 🍪</h4>
+            <p className="rmutp-cookie-desc">
+              ระบบควบคุมประตูห้องปฏิบัติการ RMUTP ACCS ใช้คุกกี้เพื่อระบุตัวตนและจัดเก็บประวัติ Log เข้าออกตาม พ.ร.บ. คอมพิวเตอร์ฯ 2560 และ PDPA ของไทย ท่านสามารถศึกษาได้ที่{" "}
+              <Link href="/privacy" className="rmutp-cookie-link">นโยบายความเป็นส่วนตัว</Link> และ <Link href="/terms" className="rmutp-cookie-link-alt">ข้อกำหนดการใช้งาน</Link>
+            </p>
+          </div>
         </div>
 
-        {/* Text */}
-        <div style={{ flex: 1 }}>
-          <h4
-            style={{
-              color: "#FFFFFF",
-              fontSize: "16px",
-              fontWeight: 700,
-              marginBottom: "6px",
-              fontFamily: "'Noto Sans Thai', sans-serif",
-            }}
-          >
-            นโยบายความเป็นส่วนตัวและคุกกี้ 🍪
-          </h4>
-          <p
-            style={{
-              color: "rgba(255, 255, 255, 0.7)",
-              fontSize: "13px",
-              lineHeight: "1.6",
-              fontWeight: 400,
-              fontFamily: "'Noto Sans Thai', sans-serif",
-            }}
-          >
-            ระบบควบคุมประตูห้องปฏิบัติการ RMUTP ACCS ใช้คุกกี้เพื่อวัตถุประสงค์ในการระบุตัวตน เซสชันความปลอดภัย และการเก็บรักษา Log เข้าออกตาม พ.ร.บ. คอมพิวเตอร์ฯ 2560 และกฎหมายคุ้มครองข้อมูลส่วนบุคคล (PDPA) ของไทย ท่านสามารถอ่านรายละเอียดได้ที่{" "}
-            <Link
-              href="/privacy"
-              style={{
-                color: "#F472B6",
-                textDecoration: "underline",
-                fontWeight: 600,
-                transition: "color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#DB2777")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#F472B6")}
-            >
-              นโยบายความเป็นส่วนตัว
-            </Link>{" "}
-            และ{" "}
-            <Link
-              href="/terms"
-              style={{
-                color: "#A78BFA",
-                textDecoration: "underline",
-                fontWeight: 600,
-                transition: "color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#7C3AED")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#A78BFA")}
-            >
-              ข้อกำหนดการใช้งาน
-            </Link>
-          </p>
+        <div className="rmutp-cookie-buttons">
+          <button onClick={handleDecline} className="btn-cookie-decline">ปฏิเสธ</button>
+          <button onClick={handleAccept} className="btn-cookie-accept">ยอมรับทั้งหมด</button>
         </div>
       </div>
-
-      {/* Buttons */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: "12px",
-          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-          paddingTop: "16px",
-        }}
-      >
-        <button
-          onClick={handleDecline}
-          style={{
-            background: "rgba(255, 255, 255, 0.08)",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            borderRadius: "10px",
-            color: "rgba(255, 255, 255, 0.8)",
-            padding: "8px 18px",
-            fontSize: "13px",
-            fontWeight: 600,
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            fontFamily: "'Noto Sans Thai', sans-serif",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
-            e.currentTarget.style.color = "#FFFFFF";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
-            e.currentTarget.style.color = "rgba(255, 255, 255, 0.8)";
-          }}
-        >
-          ปฏิเสธ
-        </button>
-        <button
-          onClick={handleAccept}
-          style={{
-            background: "linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)",
-            border: "none",
-            borderRadius: "10px",
-            color: "#FFFFFF",
-            padding: "8px 22px",
-            fontSize: "13px",
-            fontWeight: 700,
-            cursor: "pointer",
-            transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-            boxShadow: "0 4px 15px rgba(124, 58, 237, 0.3)",
-            fontFamily: "'Noto Sans Thai', sans-serif",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-1px)";
-            e.currentTarget.style.boxShadow = "0 6px 20px rgba(124, 58, 237, 0.45)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 15px rgba(124, 58, 237, 0.3)";
-          }}
-        >
-          ยอมรับทั้งหมด
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
