@@ -160,7 +160,7 @@ export default function PrivacyPage() {
             นโยบายความเป็นส่วนตัวฉบับนี้จัดทำขึ้นตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ม.23
             เพื่อชี้แจงวิธีที่ระบบ <strong style={{ color: "#FFFFFF" }}>SmartAccess</strong>
             (ระบบควบคุมการเข้าออกห้องปฏิบัติการ) เก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคล (PII)
-            ของนักศึกษา อาจารย์ และบุคลากรของคณะวิศวกรรมศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network
+            ของนักศึกษา อาจารย์ และบุคลากรของ Innovative system for managing access rights and controlling classroom access via wireless network
           </p>
 
           <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.08)" }} />
@@ -170,7 +170,7 @@ export default function PrivacyPage() {
             <h3 style={sectionHeading}>0. ผู้ควบคุมข้อมูลส่วนบุคคล (Data Controller)</h3>
             <table style={tableStyle}>
               <tbody>
-                <tr><td style={tdStyle}><strong>ชื่อ</strong></td><td style={tdStyle}>คณะวิศวกรรมศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network</td></tr>
+                <tr><td style={tdStyle}><strong>ชื่อ</strong></td><td style={tdStyle}> Innovative system for managing access rights and controlling classroom access via wireless network</td></tr>
                 <tr><td style={tdStyle}><strong>ที่อยู่</strong></td><td style={tdStyle}>1381 ถนนประชาราษฎร์ 1 แขวงวงศ์สว่าง เขตบางซื่อ กรุงเทพมหานคร 10800</td></tr>
                 <tr><td style={tdStyle}><strong>โทรศัพท์</strong></td><td style={tdStyle}>02-836-3000</td></tr>
                 <tr><td style={tdStyle}><strong>อีเมลทั่วไป</strong></td><td style={tdStyle}>info@eng.smartaccess.ac.th</td></tr>
@@ -259,7 +259,7 @@ export default function PrivacyPage() {
               </thead>
               <tbody>
                 <tr>
-                  <td style={tdStyle}>แอดมินคณะวิศวกรรมศาสตร์</td>
+                  <td style={tdStyle}>แอดมินSmartAccess</td>
                   <td style={tdStyle}>Data User ภายใน</td>
                   <td style={tdStyle}>ประเทศไทย</td>
                   <td style={tdStyle}>ข้อมูลทั้งหมด (จำกัดสิทธิ์ตาม role)</td>
@@ -456,7 +456,7 @@ export default function PrivacyPage() {
                 <tr>
                   <td style={tdStyle}>ม.36</td>
                   <td style={tdStyle}><strong>สิทธิให้แก้ไขข้อมูลให้ถูกต้อง</strong> (Right to Rectification)</td>
-                  <td style={tdStyle}>แจ้งคณะวิศวกรรมศาสตร์ หรืออีเมล DPO</td>
+                  <td style={tdStyle}>แจ้ง หรืออีเมล DPO</td>
                 </tr>
                 <tr>
                   <td style={tdStyle}>ม.73</td>

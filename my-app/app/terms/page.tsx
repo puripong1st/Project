@@ -133,7 +133,7 @@ export default function TermsPage() {
         >
           <p>
             ข้อกำหนดและเงื่อนไขนี้ ("<strong style={{ color: "#FFFFFF" }}>ข้อตกลง</strong>") เป็นสัญญาระหว่าง
-            <strong style={{ color: "#FFFFFF" }}> คณะวิศวกรรมศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network</strong>
+            <strong style={{ color: "#FFFFFF" }}>  Innovative system for managing access rights and controlling classroom access via wireless network</strong>
             ("สถาบัน") และ <strong style={{ color: "#FFFFFF" }}>ผู้ใช้</strong> ที่ลงทะเบียนเพื่อใช้บริการระบบควบคุมการเข้าออกห้องปฏิบัติการอัจฉริยะ
             SmartAccess ("ระบบ") โปรดอ่านข้อกำหนดต่อไปนี้อย่างละเอียดก่อนใช้บริการ
           </p>
@@ -186,7 +186,7 @@ export default function TermsPage() {
             <p>
               สิทธิ์การเข้าใช้งานห้องปฏิบัติการผ่านระบบเป็นสิทธิ์เฉพาะตัวของผู้ใช้ที่ได้รับการอนุมัติเท่านั้น
               <strong style={{ color: "#FFFFFF" }}> ผู้ใช้ตกลงจะไม่นำ QR Token, Bypass Token, รหัสผ่านแอดมิน,
-              หรือสิทธิ์ใด ๆ ที่ได้รับ ไปแบ่งปัน ส่งต่อ ขาย หรืออนุญาตให้บุคคลอื่นที่ไม่มีสิทธิ์ใช้งานเด็ดขาด</strong>
+                หรือสิทธิ์ใด ๆ ที่ได้รับ ไปแบ่งปัน ส่งต่อ ขาย หรืออนุญาตให้บุคคลอื่นที่ไม่มีสิทธิ์ใช้งานเด็ดขาด</strong>
             </p>
             <p>
               ในกรณีที่ผู้ใช้ทำสิทธิ์การเข้าถึงหายหรือถูกขโมย ผู้ใช้ต้องแจ้งสถาบันโดยทันทีเพื่อระงับสิทธิ์ดังกล่าว
@@ -311,7 +311,7 @@ export default function TermsPage() {
             <ul style={{ paddingLeft: "20px" }}>
               <li><strong>ผู้ดูแลระบบ:</strong> admin@eng.smartaccess.ac.th</li>
               <li><strong>เจ้าหน้าที่คุ้มครองข้อมูล (DPO):</strong> dpo@smartaccess.ac.th</li>
-              <li><strong>ที่อยู่:</strong> คณะวิศวกรรมศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network 1381 ถ.ประชาราษฎร์ 1 แขวงวงศ์สว่าง เขตบางซื่อ กรุงเทพฯ 10800</li>
+              <li><strong>ที่อยู่:</strong>  Innovative system for managing access rights and controlling classroom access via wireless network 1381 ถ.ประชาราษฎร์ 1 แขวงวงศ์สว่าง เขตบางซื่อ กรุงเทพฯ 10800</li>
               <li><strong>โทร:</strong> 02-836-3000</li>
             </ul>
           </div>
@@ -329,7 +329,7 @@ export default function TermsPage() {
 
           <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", textAlign: "center" }}>
             ข้อกำหนดเวอร์ชัน {TERMS_VERSION} · เริ่มมีผลบังคับใช้ {EFFECTIVE_DATE}<br />
-            ฝ่ายบริหารระบบควบคุมการเข้าออก SmartAccess · คณะวิศวกรรมศาสตร์ มทร.พระนคร
+            ฝ่ายบริหารระบบควบคุมการเข้าออก SmartAccess ·  มทร.พระนคร
           </p>
         </div>
       </div>
