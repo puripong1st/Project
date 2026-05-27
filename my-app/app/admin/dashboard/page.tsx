@@ -1926,6 +1926,30 @@ void handleLocalWebServerRequest() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [healthData, setHealthData] = useState<{
+    status: "healthy" | "degraded" | "unhealthy";
+    timestamp: string;
+    components: {
+      database: { status: "up" | "down"; latency_ms: number };
+      rate_limiter: { status: "up" | "down" };
+      memory: { rss_mb: number; heap_used_mb: number };
+    };
+    uptime_seconds: number;
+    last_qr_scan: string | null;
+  } | null>(null);
+
+  const fetchHealthData = useCallback(async () => {
+    try {
+      const r = await fetch("/api/system/health");
+      if (r.ok) {
+        const d = await r.json();
+        setHealthData(d);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const fetchSystemStatus = useCallback(async () => {
     try {
       const r = await fetch("/api/system/status");
@@ -2040,6 +2064,13 @@ void handleLocalWebServerRequest() {
     const interval = setInterval(fetchSystemStatus, 15000);
     return () => clearInterval(interval);
   }, [fetchSystemStatus]);
+
+  // Polling System Health (every 30s)
+  useEffect(() => {
+    fetchHealthData();
+    const interval = setInterval(fetchHealthData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchHealthData]);
 
   useEffect(() => {
     if (settingsLoaded || roomsList.length > 0 || !systemStatus?.esp32Devices?.length) return;
@@ -3844,6 +3875,94 @@ void handleLocalWebServerRequest() {
                     <span style={{ color: "var(--text-muted)" }}>|</span>
                     <span>ตารางและสถิติด้านล่างจะกรองตามช่วงเวลาที่คุณเลือกแบบเรียลไทม์ทันที!</span>
                   </div>
+                </div>
+
+                {/* ── System Health Card ── */}
+                <div className="premium-card" style={{ padding: 24, marginBottom: 24, borderLeft: "4px solid " + (healthData?.status === "healthy" ? "#10B981" : healthData?.status === "degraded" ? "#F59E0B" : healthData ? "#EF4444" : "var(--border)") }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 10px", borderRadius: 8, background: healthData?.status === "healthy" ? "rgba(16,185,129,0.1)" : healthData?.status === "degraded" ? "rgba(245,158,11,0.1)" : healthData ? "rgba(239,68,68,0.1)" : "var(--bg-primary)", color: healthData?.status === "healthy" ? "#059669" : healthData?.status === "degraded" ? "#D97706" : healthData ? "#DC2626" : "var(--text-secondary)", fontSize: 11.5, fontWeight: 800, marginBottom: 8 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" /></svg>
+                        {healthData ? (healthData.status === "healthy" ? "HEALTHY" : healthData.status === "degraded" ? "DEGRADED" : "UNHEALTHY") : "กำลังตรวจสอบ..."}
+                      </div>
+                      <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+                        System Health Monitor
+                      </h3>
+                      {healthData && (
+                        <p style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 4 }}>
+                          อัปเดตล่าสุด: {new Date(healthData.timestamp).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} · Auto-refresh ทุก 30 วินาที
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={fetchHealthData}
+                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-secondary)" }}
+                    >
+                      ↻ รีเฟรช
+                    </button>
+                  </div>
+
+                  {healthData ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+                      {/* DB */}
+                      <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase" }}>Database</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: healthData.components.database.status === "up" ? "#10B981" : "#EF4444", display: "inline-block" }} />
+                          <span style={{ fontSize: 13, fontWeight: 800, color: healthData.components.database.status === "up" ? "#059669" : "#DC2626" }}>
+                            {healthData.components.database.status === "up" ? "Online" : "Offline"}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: healthData.components.database.latency_ms > 300 ? "#F59E0B" : "var(--text-primary)" }}>
+                          {healthData.components.database.latency_ms} ms
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Latency</div>
+                      </div>
+
+                      {/* Rate Limiter */}
+                      <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase" }}>Rate Limiter</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: healthData.components.rate_limiter.status === "up" ? "#10B981" : "#EF4444", display: "inline-block" }} />
+                          <span style={{ fontSize: 13, fontWeight: 800, color: healthData.components.rate_limiter.status === "up" ? "#059669" : "#DC2626" }}>
+                            {healthData.components.rate_limiter.status === "up" ? "Active" : "Down"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Memory */}
+                      <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase" }}>Memory</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>{healthData.components.memory.rss_mb} MB</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>RSS · Heap {healthData.components.memory.heap_used_mb} MB</div>
+                      </div>
+
+                      {/* Uptime */}
+                      <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase" }}>Uptime</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
+                          {Math.floor(healthData.uptime_seconds / 3600)}h {Math.floor((healthData.uptime_seconds % 3600) / 60)}m
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{healthData.uptime_seconds.toLocaleString()} วินาที</div>
+                      </div>
+
+                      {/* Last QR Scan */}
+                      <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase" }}>Last QR Scan</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.4 }}>
+                          {healthData.last_qr_scan
+                            ? new Date(healthData.last_qr_scan).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
+                            : "ยังไม่มีข้อมูล"}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-secondary)", fontSize: 13 }}>
+                      <span className="animate-spin" style={{ display: "inline-block", width: 16, height: 16, border: "2px solid rgba(124,58,237,0.2)", borderTopColor: "var(--rmutp-purple)", borderRadius: "50%", marginRight: 8 }} />
+                      กำลังโหลดข้อมูล Health...
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Log Data Retention & Maintenance Compliance Card ── */}
