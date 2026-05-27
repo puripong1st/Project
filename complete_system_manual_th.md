@@ -13,6 +13,7 @@
 <a id="toc"></a>
 ## สารบัญ
 
+### 📘 ภาคหลัก (1-19)
 - [1. ภาพรวมระบบ](#sec-1)
 - [2. โครงสร้างไฟล์สำคัญ](#sec-2)
 - [3. การติดตั้งและรันเว็บ](#sec-3)
@@ -32,6 +33,8 @@
 - [17. Troubleshooting](#sec-17)
 - [18. Checklist ก่อนสาธิตระบบ](#sec-18)
 - [19. สรุปหน้าที่แต่ละชั้นของระบบ](#sec-19)
+
+### 🔬 ภาคผนวกเชิงลึก (20-34)
 - [20. นิยามคำศัพท์พื้นฐาน (สำหรับมือใหม่)](#sec-20)
 - [21. ภาพรวมสถาปัตยกรรมแบบ Layered (4 ชั้น)](#sec-21)
 - [22. หน้าจอผู้ใช้งานนักศึกษา — เจาะลึกแต่ละ State](#sec-22)
@@ -47,6 +50,8 @@
 - [32. Flowchart รวม "End-to-End" (สมัคร → เข้าห้อง)](#sec-32)
 - [33. คำถามที่พบบ่อย (FAQ)](#sec-33)
 - [34. สรุปแบบ "1 นาที"](#sec-34)
+
+### ⚙️ ภาคผนวกระดับวิศวกร (35-44)
 - [35. Schema DDL เต็มรูปแบบ (สร้างโดย `initDatabase()`)](#sec-35)
 - [36. ESP32 — GPIO Timing และข้อจำกัดเชิงฮาร์ดแวร์](#sec-36)
 - [37. รายการ Environment Variables ทุกตัว](#sec-37)
@@ -58,7 +63,36 @@
 - [43. Glossary (ภาคผนวกศัพท์เทคนิคเพิ่มเติม)](#sec-43)
 - [44. ทำไมหน้าจอ TFT บน ESP32 จึงเปลี่ยนสถานะ "ช้า" ไม่เรียลไทม์](#sec-44)
 
+### 🎯 ภาคเจาะลึกขั้นสูง (45-70)
+- [45. ทำไมเลือก PostgreSQL + ทำไมย้ายจาก MySQL กลางทาง + Aiven vs Supabase](#sec-45)
+- [46. อธิบายโค้ดทุกไฟล์ใน `lib/` แบบเจาะลึก](#sec-46)
+- [47. Admin Dashboard ทีละ Tab แบบเจาะลึก](#sec-47)
+- [48. React Hydration & SSR Lifecycle](#sec-48)
+- [49. Attack Scenarios — Threat Modeling แบบ Step-by-Step](#sec-49)
+- [50. Cryptographic Details — JWT, bcrypt, HMAC ในเชิงคณิตศาสตร์](#sec-50)
+- [51. OWASP Top 10 (2021) — ระบบรับมืออย่างไรทีละข้อ](#sec-51)
+- [52. วงจรไฟฟ้าระดับ Schematic — ทำไมแต่ละชิ้นต้องมี](#sec-52)
+- [53. Power Budget Calculation](#sec-53)
+- [54. PCB Layout / Wiring Best Practices](#sec-54)
+- [55. HTTP/TLS Packet Flow — ลึกถึง Wireshark](#sec-55)
+- [56. DNS / CDN Routing](#sec-56)
+- [57. NAT / Firewall — ทำไม ESP32 push ไม่ได้](#sec-57)
+- [58. Database Query Plan Analysis](#sec-58)
+- [59. Connection Pooling เจาะลึก](#sec-59)
+- [60. Transaction Isolation](#sec-60)
+- [61. Manual Test Plan — ครบทุก Flow](#sec-61)
+- [62. Disaster Recovery Playbook](#sec-62)
+- [63. Cost Analysis แบบเต็ม](#sec-63)
+- [64. ทำไมเลือก Tailwind CSS v4](#sec-64)
+- [65. Color Theory & Accessibility (WCAG)](#sec-65)
+- [66. Thai Font Rendering](#sec-66)
+- [67. พ.ร.บ. คอมพิวเตอร์ มาตรา 26 — รายละเอียดและการปฏิบัติตาม](#sec-67)
+- [68. PDPA — Personal Data Protection Act](#sec-68)
+- [69. Chrome DevTools Profiling ของหน้าเว็บ](#sec-69)
+- [70. ESP32 Oscilloscope Traces](#sec-70)
+
 ---
+
 
 <a id="sec-1"></a>
 ## 1. ภาพรวมระบบ
@@ -2768,5 +2802,2247 @@ flowchart TD
 ---
 
 > **อัปเดตล่าสุด**: 2026-05-27 18:15:00 +07:00 — เพิ่มสารบัญแบบกดได้, ปุ่มกลับสารบัญทุก section, และ §44 อธิบายความช้าของ TFT แบบละเอียด
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-45"></a>
+## 45. ทำไมเลือก PostgreSQL + ทำไมย้ายจาก MySQL กลางทาง + Aiven vs Supabase
+
+หัวข้อนี้สำคัญมากเพราะเป็นการตัดสินใจทางสถาปัตยกรรมที่ส่งผลกระทบกับทุกอย่าง — เลือกผิดต้องเขียนใหม่ครึ่งหนึ่ง
+
+### 45.1 ประวัติการตัดสินใจ (Timeline)
+
+```mermaid
+timeline
+    title การเปลี่ยน Database ของโปรเจกต์
+    เริ่มโปรเจกต์ : เลือก MySQL บน Aiven (ฟรี tier)
+                  : เซิร์ฟเวอร์อยู่ "อินเดีย" (Mumbai region)
+                  : เพราะคุ้นเคย + Aiven มีฟรี tier
+    พบปัญหา      : Latency เฉลี่ย 180-250ms ต่อ query
+                  : Connection pooling ไม่ดีกับ Vercel serverless
+                  : Schema migration ของ MySQL ติดขัด
+    ทดลอง        : เปรียบเทียบ PostgreSQL บน Supabase
+                  : เซิร์ฟเวอร์ "สิงคโปร์" (ap-southeast-1)
+                  : Latency ลดเหลือ 40-80ms
+    ตัดสินใจย้าย : Migrate ทั้งระบบเป็น PostgreSQL + Supabase
+                  : Refactor code ใช้ pg แทน mysql2
+                  : ใช้ pgBouncer pool
+    ปัจจุบัน     : รัน production stable
+```
+
+### 45.2 ทำไมเลือก PostgreSQL (ไม่ใช่ MySQL)
+
+#### 45.2.1 เหตุผลทางเทคนิค
+
+| ฟีเจอร์ | MySQL 8 | PostgreSQL 15 | ใครชนะ |
+|---------|---------|---------------|--------|
+| **JSON support** | JSON type | JSONB (binary, indexable) | 🟢 PG |
+| **Generated columns** | ใช้ได้แต่ index จำกัด | Full GIN/GiST index | 🟢 PG |
+| **Concurrent index** | LOCK ตาราง | `CREATE INDEX CONCURRENTLY` (online) | 🟢 PG |
+| **RETURNING clause** | ❌ ไม่มี (ต้อง SELECT ทีหลัง) | ✅ `INSERT/UPDATE ... RETURNING *` | 🟢 PG |
+| **UPSERT** | `ON DUPLICATE KEY UPDATE` (limited) | `ON CONFLICT DO UPDATE` (powerful) | 🟢 PG |
+| **CTE / WITH** | รองรับแต่ optimizer ยังใหม่ | optimize ดีมา 10+ ปี | 🟢 PG |
+| **Array type** | ❌ | ✅ native array + index | 🟢 PG |
+| **UUID native** | ต้องใช้ CHAR(36) | UUID type + gen ในตัว | 🟢 PG |
+| **Boolean** | TINYINT(1) (ปลอม) | BOOLEAN จริง | 🟢 PG |
+| **Replication** | งานง่าย | งานยากกว่า แต่ Logical Replication ทรงพลัง | 🟡 เสมอ |
+| **Performance simple SELECT** | เร็วเล็กน้อย | ใกล้กัน | 🟡 |
+| **Performance complex JOIN** | ช้ากว่า | optimizer ฉลาดกว่า | 🟢 PG |
+| **Stored procedure** | ใช้ได้ | PL/pgSQL ทรงพลังกว่า | 🟢 PG |
+| **Full-text search** | มี แต่ basic | tsvector + GIN index ดีกว่ามาก | 🟢 PG |
+
+**ผลกระทบกับโปรเจกต์นี้โดยตรง:**
+
+```sql
+-- รหัสที่ใช้จริง — ทำได้บน PostgreSQL ใน 1 query
+-- ใน MySQL ต้องทำ 3 query (SELECT → check → UPDATE → SELECT)
+UPDATE dynamic_qr_tokens
+SET is_consumed = TRUE, consumed_at = NOW()
+WHERE token = $1
+  AND is_consumed = FALSE
+  AND expires_at > NOW()
+RETURNING id, room_code;        -- ← MySQL ทำตรงนี้ไม่ได้
+```
+
+```sql
+-- Rate limit แบบ atomic — MySQL ทำได้แต่ syntax ยุ่งยากกว่า
+INSERT INTO rate_limits (key, count, window_start)
+VALUES ($1, 1, NOW())
+ON CONFLICT (key) DO UPDATE        -- ← PostgreSQL clean syntax
+  SET count = ...
+RETURNING count;
+```
+
+#### 45.2.2 เหตุผลด้าน Ecosystem
+
+- **TypeScript types**: `node-postgres` มี TypeScript types ที่ดีกว่า, query result เป็น object พร้อมใช้
+- **Supabase Realtime**: ถ้าจะเพิ่มในอนาคต ใช้ PostgreSQL LISTEN/NOTIFY ผ่าน WebSocket ได้ฟรี
+- **Row-Level Security (RLS)**: สำหรับ multi-tenancy ในอนาคต
+- **pgvector**: ถ้าจะเพิ่ม AI/embedding ในอนาคต
+
+### 45.3 ทำไมย้ายจาก MySQL/Aiven → PostgreSQL/Supabase (กลางทาง)
+
+#### 45.3.1 ปัญหาที่เจอจริงกับ MySQL/Aiven
+
+```mermaid
+flowchart TD
+    A["รัน production 2 สัปดาห์แรก"] --> B["ผู้ใช้บ่นว่าระบบ 'หน่วง'"]
+    B --> C["วิเคราะห์: Vercel logs"]
+    C --> D["พบ API response time 300-500ms"]
+    D --> E["แยก breakdown ของเวลา"]
+    E --> F1["DB connection: 80-120ms"]
+    E --> F2["DB query: 150-200ms"]
+    E --> F3["Code: ~30ms"]
+    F1 --> G["สาเหตุ: เซิร์ฟเวอร์ Aiven free tier อยู่ Mumbai"]
+    F2 --> G
+    G --> H["Vercel SG → Mumbai = ~80ms RTT"]
+    H --> I["1 request มี ~4 query → 320ms รวมแค่ network"]
+    I --> J["ตัดสินใจหาทางเลือก"]
+```
+
+#### 45.3.2 ค่า Latency ที่วัดได้จริง
+
+```
+Aiven MySQL (Mumbai, free tier):
+├─ TLS handshake     : 95ms
+├─ Auth roundtrip    : 60ms
+├─ SELECT 1 (warm)   : 78ms  ← network RTT คือพระเอก
+├─ SELECT 1 (cold)   : 240ms
+├─ INSERT 1 row      : 85ms
+└─ Connection idle   : disconnect 10 นาที → ต้อง handshake ใหม่
+
+Supabase PostgreSQL (Singapore, free tier):
+├─ TLS handshake     : 22ms
+├─ Auth roundtrip    : 15ms (pgBouncer pool)
+├─ SELECT 1 (warm)   : 18ms
+├─ SELECT 1 (cold)   : 55ms
+├─ INSERT 1 row      : 25ms
+└─ Connection idle   : pgBouncer reuse → 0ms handshake ครั้งถัดไป
+```
+
+**ผลลัพธ์**: API response p95 ลดจาก **480ms → 110ms** (เร็วขึ้น 4 เท่า)
+
+#### 45.3.3 ที่มาของการต่างกัน: Network Geography
+
+```mermaid
+flowchart LR
+    User["ผู้ใช้ในประเทศไทย"] -->|"~10ms"| ISP["TRUE/AIS/3BB"]
+    ISP -->|"~30ms"| VercelSG["Vercel<br/>Singapore"]
+    VercelSG -->|"~80ms"| Mumbai[("MySQL@Aiven<br/>Mumbai, India")]
+    VercelSG -->|"~20ms"| SGDB[("PostgreSQL@Supabase<br/>Singapore")]
+
+    style Mumbai fill:#c0392b,stroke:#7b241c,color:#ffffff
+    style SGDB fill:#27ae60,stroke:#196f3d,color:#ffffff
+```
+
+| เส้นทาง | Distance | Cable Route | RTT (วัดจริง) |
+|---------|----------|-------------|----------------|
+| Singapore → Mumbai | ~3,900 km | SEA-ME-WE 5 + i2i | 75-90ms |
+| Singapore → Singapore (intra) | <50 km | local DC | 1-3ms |
+| ผลรวม Vercel→DB | — | — | **PG เร็วกว่า 4 เท่า** |
+
+#### 45.3.4 เหตุผลอื่น ๆ ที่ผลักดันให้ย้าย
+
+| ปัญหา | MySQL/Aiven | PostgreSQL/Supabase |
+|--------|-------------|---------------------|
+| Connection limit free tier | 16 connection | 60 connection (+ pgBouncer pool ใช้ได้เกินก็ไม่ติด) |
+| Backup | manual | automatic daily + point-in-time recovery |
+| Dashboard | basic | สวย + SQL editor + visualizer |
+| Storage limit | 1 GB | 500 MB (น้อยกว่า แต่ยังพอ) |
+| Outbound traffic | 5 GB/เดือน | 5 GB/เดือน |
+| Region pinning ฟรี | ❌ Mumbai เท่านั้น | ✅ เลือก SG/Tokyo/Frankfurt ได้ |
+| SSL/CA cert | manual download | จัดให้ + auto-rotate |
+| pgBouncer | ❌ | ✅ built-in |
+| Realtime subscription | ❌ | ✅ |
+| REST API auto-gen | ❌ | ✅ (PostgREST) — แม้ไม่ได้ใช้ก็เผื่อไว้ |
+
+### 45.4 Aiven vs Supabase — เปรียบเทียบเต็ม
+
+#### 45.4.1 ตารางเปรียบเทียบราคา
+
+| รายการ | Aiven Free | Aiven Hobbyist ($19) | Supabase Free | Supabase Pro ($25) |
+|--------|------------|----------------------|---------------|---------------------|
+| Storage | 1 GB | 4 GB | 500 MB | 8 GB |
+| RAM | 1 GB | 1 GB | shared | 1 GB dedicated |
+| Connections | 16 | 25 | 60 (pooled ~200) | 60 (pooled ~400) |
+| Region ฟรี | Mumbai only | เลือกได้ | SG/Tokyo/etc | เลือกได้ |
+| Backup | ❌ | 2 วัน | 7 วัน | 7 วัน + PITR |
+| Bandwidth | 5 GB | 30 GB | 5 GB | 250 GB |
+| SLA | ❌ | 99.99% | ❌ | 99.9% |
+| pgBouncer | ❌ | ❌ (จัดเอง) | ✅ | ✅ |
+| Realtime | ❌ | ❌ | ✅ | ✅ |
+| Edge Functions | ❌ | ❌ | ✅ | ✅ |
+
+#### 45.4.2 ทำไมไม่ใช้ Aiven PostgreSQL ฟรี?
+
+> ก็เป็นทางเลือก แต่ Aiven free tier บังคับ Mumbai เท่านั้น → ปัญหา latency เหมือนเดิม
+
+ถ้าจ่าย $19/เดือน Aiven Hobbyist ให้เลือก region ได้ → Singapore ได้ — แต่ทำไมยังเลือก Supabase?
+- ✅ Supabase ฟรีและเลือก region ได้เลย (ไม่ต้องจ่าย)
+- ✅ pgBouncer มาให้พร้อม (Aiven ต้อง config เอง)
+- ✅ Dashboard UX ดีกว่า + มี SQL editor ใน browser
+- ✅ ถ้าโตในอนาคตยังต่อยอด Realtime/Edge Function/Storage ได้
+
+#### 45.4.3 ทำไมไม่ใช้ Aiven MySQL เก่า แต่ย้าย region?
+
+- Aiven free tier **ล็อกเฉพาะ Mumbai** — ย้ายไม่ได้
+- ต้องอัปเกรดเป็น Hobbyist ($19/เดือน) ถึงจะย้ายได้
+- เปลี่ยน DB engine + ย้าย region ฟรี ดีกว่าจ่าย $19/เดือนเพื่อแค่ย้าย region
+
+### 45.5 ขั้นตอนการ Migrate ที่ใช้จริง
+
+```mermaid
+flowchart TD
+    A["1. สร้าง Supabase project SG"] --> B["2. แปลง MySQL schema → PG schema"]
+    B --> C["3. แก้ types: TINYINT(1)→BOOLEAN<br/>AUTO_INCREMENT→SERIAL<br/>DATETIME→TIMESTAMPTZ"]
+    C --> D["4. Export ข้อมูลจาก MySQL (mysqldump)"]
+    D --> E["5. Transform เป็น PG syntax<br/>(เปลี่ยน backtick ` เป็น quote \")"]
+    E --> F["6. Import ลง Supabase ผ่าน psql"]
+    F --> G["7. แก้ code: mysql2 → pg"]
+    G --> H["8. แก้ query: ? → $1, $2<br/>เพิ่ม RETURNING * ที่ INSERT"]
+    H --> I["9. ทดสอบทุก API endpoint"]
+    I --> J["10. เปลี่ยน env var ใน Vercel"]
+    J --> K["11. Deploy + monitor"]
+```
+
+#### 45.5.1 ปัญหาที่เจอตอน migrate
+
+| ปัญหา | สาเหตุ | วิธีแก้ |
+|--------|--------|---------|
+| `AUTO_INCREMENT` ใช้ใน PG ไม่ได้ | syntax ต่าง | ใช้ `SERIAL` หรือ `IDENTITY` |
+| `LIMIT 10, 20` PG ไม่รองรับ | MySQL syntax เก่า | ใช้ `LIMIT 20 OFFSET 10` |
+| Backtick ` PG ใช้ไม่ได้ | quoting identifier | ใช้ double-quote `"` |
+| `NOW()` ไม่มี timezone ใน MySQL | TIMESTAMP behavior ต่าง | ใช้ `TIMESTAMPTZ` |
+| `INT(11)` | display width concept | ใช้ `INTEGER` |
+| Default `CURRENT_TIMESTAMP ON UPDATE` | trigger auto-update | ทำเป็น trigger เอง หรือ update ใน app |
+| `ENUM('a','b')` | MySQL feature | ใช้ `CHECK` constraint หรือ table แยก |
+| `mysql2` placeholder `?` | positional | PG ใช้ `$1, $2` |
+| `INSERT IGNORE` | MySQL only | ใช้ `INSERT ... ON CONFLICT DO NOTHING` |
+
+### 45.6 ผลลัพธ์หลัง Migrate
+
+| Metric | ก่อน (MySQL/Aiven Mumbai) | หลัง (PG/Supabase SG) | ดีขึ้น |
+|--------|---------------------------|------------------------|--------|
+| API p50 latency | 320ms | 75ms | **4.3×** |
+| API p95 latency | 480ms | 110ms | **4.4×** |
+| DB query p95 | 200ms | 28ms | **7.1×** |
+| Connection setup | 95ms | 22ms | **4.3×** |
+| ESP32 polling cycle | 2.4s | 2.1s | 1.1× (limited by 2s sleep) |
+| Cold start | 850ms | 510ms | 1.7× |
+
+> **บทเรียน**: ต้นทุนของการ "เลือก DB ผิด region" สูงกว่าค่าใช้จ่ายในการ migrate มาก — เลือกให้ถูกตั้งแต่ต้น
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-46"></a>
+## 46. อธิบายโค้ดทุกไฟล์ใน `lib/` แบบเจาะลึก
+
+### 46.1 `lib/db.ts` (456 บรรทัด) — Connection + Migration
+
+**โครงสร้างหลัก**:
+```ts
+let pool: Pool | undefined = (globalThis as any).__pgPool;
+let settingsCache: { data: SettingsMap; expiresAt: number } | null = null;
+```
+
+**ทำไมใช้ `globalThis`?** — Next.js dev mode ทำ hot-reload ทำให้ module โหลดใหม่ทุก save → ถ้าเก็บ pool ใน module variable ปกติ จะสร้าง pool ใหม่ทุกครั้ง → connection leak → DB ปฏิเสธ connection ใหม่หลัง 60 connection
+→ ใช้ `globalThis` (อยู่นอก module scope) ทำให้ singleton จริง
+
+**`readEnv()` — กรณีพิเศษที่เจอจริง**:
+```ts
+function readEnv(name: string): string | undefined {
+  const v = process.env[name];
+  if (!v) return undefined;
+  const trimmed = v.trim();
+  // ถ้าใส่ env ใน Vercel แล้วใส่ quote เกิน → strip
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed || undefined;
+}
+```
+> เหตุการณ์จริง: คนตั้ง env ใน Vercel ดashboard แล้วใส่ `"value"` มาด้วย → string มี quote ติด → connection fail
+
+**`initDatabase()` — ลำดับการทำงาน**:
+1. ตรวจ pool exist
+2. `CREATE TABLE IF NOT EXISTS` ทุกตาราง (idempotent — รันซ้ำได้)
+3. สร้าง index ทุกตัว (idempotent ด้วย IF NOT EXISTS)
+4. Seed default settings ถ้าไม่มี
+5. Seed initial admin ถ้า `ALLOW_DEV_SEED=true`
+6. ใน production ถ้า env เป็น default → throw
+
+**ทำไม cache settings 30 วินาที?**
+- ESP32 10 บอร์ด × poll ทุก 2 วินาที = 300 query/นาทีไป settings
+- ถ้าไม่ cache → 1 ล้าน query/วันแค่ settings
+- 30 วินาทีพอเหมาะ — admin แก้ setting รอ max 30s ก็เห็นผล (ยอมรับได้)
+
+**`updateSystemSettings([{key,value}])` — เทคนิค UNNEST**:
+```sql
+INSERT INTO system_settings (setting_key, setting_value)
+SELECT * FROM UNNEST($1::text[], $2::text[])
+ON CONFLICT (setting_key)
+  DO UPDATE SET setting_value = EXCLUDED.setting_value,
+                updated_at = NOW();
+```
+- ส่ง array 2 ชุด (keys, values)
+- PG `UNNEST` กระจายเป็นหลายแถวในครั้งเดียว
+- 50 settings = 1 query แทน 50 query
+- เร็วกว่า 10-20 เท่า
+
+### 46.2 `lib/auth.ts` (132 บรรทัด)
+
+**`signToken(payload)`**:
+```ts
+return jwt.sign(payload, JWT_SECRET, {
+  algorithm: 'HS256',
+  expiresIn: '8h',
+});
+```
+
+**ทำไม HS256 ไม่ใช่ RS256?**
+| | HS256 | RS256 |
+|---|-------|-------|
+| Key | 1 secret symmetric | private+public pair |
+| Speed sign | 0.1ms | 2ms |
+| Speed verify | 0.1ms | 0.5ms |
+| Use case | server เดียวเซ็น+ตรวจ | หลาย service ตรวจ public key |
+| โปรเจกต์นี้ | ✅ เหมาะ (server เดียว) | overkill |
+
+**`getAdminFromCookie()`**:
+```ts
+const cookieStore = await cookies();
+const token = cookieStore.get('rmutp_admin_token')?.value;
+if (!token) return null;
+const payload = verifyToken(token);
+if (!payload) return null;
+// double-check DB เผื่อ admin ถูกลบหลัง JWT ออก
+const admin = await db.query('SELECT * FROM admin_users WHERE id=$1', [payload.id]);
+return admin.rows[0] ?? null;
+```
+> เหตุผลของ double-check: ถ้า owner ลบ admin คนนั้น แต่ JWT ยังไม่หมดอายุ → ต้องป้องกัน ghost session
+
+### 46.3 `lib/qr.ts` (289 บรรทัด)
+
+**`generateSecureToken()`**:
+```ts
+return crypto.randomBytes(16).toString('hex');  // 32 hex chars
+```
+- 16 bytes = 128 bits ของ entropy
+- เพียงพอจน universe ตายก่อนถูก brute-force (เทียบเท่า UUID v4)
+
+**`consumeQRToken(token)` — Atomic Magic**:
+```sql
+UPDATE dynamic_qr_tokens
+SET is_consumed = TRUE, consumed_at = NOW()
+WHERE token = $1
+  AND is_consumed = FALSE       -- ← กัน double-use
+  AND expires_at > NOW()         -- ← กัน expired
+RETURNING id, room_code;
+```
+- PostgreSQL ทำ atomic SELECT+UPDATE ใน statement เดียว
+- ถ้า 2 คนกดพร้อมกัน — มีเพียง 1 row return
+- ทำไมต้องตรวจ format 32 hex ก่อน? → กัน SQL injection แม้ parameterized แล้วก็ตาม + filter input ก่อนไป DB ลด CPU
+
+### 46.4 `lib/esp32.ts` (291 บรรทัด) — Command Queue + LAN Push
+
+**`openDoor(studentId, roomCode)` — Hybrid Strategy**:
+```ts
+// Step 1: เขียน command ลง DB (canonical source)
+await db.updateSystemSetting(`room_cmd_${roomCode}`, `unlock:${studentId}`);
+
+// Step 2: ลอง LAN direct push (best-effort)
+if (!isCloudEnvironment() && roomIp) {
+  tryLanDirectBackground(roomIp, studentId, roomCode);  // fire-and-forget
+}
+
+// Step 3: บันทึก log
+await db.query('INSERT INTO access_logs ...');
+```
+
+**ทำไม "เขียน DB ก่อน" แล้ว "LAN push ทีหลัง"?**
+- DB = ground truth — ถ้า ESP32 reboot กลาง process จะดึงคำสั่งต่อได้
+- LAN push = optimization — ถ้าสำเร็จ → เปิดประตูเร็วขึ้น (~150ms)
+- ถ้า LAN push ล้มเหลว → fallback เป็น polling 2 วินาที (ยอมรับได้)
+
+**`fetchWithTimeout()`**:
+```ts
+const controller = new AbortController();
+const timer = setTimeout(() => controller.abort(), timeoutMs);
+try {
+  return await fetch(url, { signal: controller.signal });
+} finally {
+  clearTimeout(timer);
+}
+```
+- ทำไมต้อง timeout? — ESP32 อาจค้าง / network drop → request ค้าง 30 วินาที = ผู้ใช้รอ → ตั้ง 1.5s
+- ทำไมต้อง `clearTimeout`? — กัน memory leak ใน Node
+
+### 46.5 `lib/rate-limit.ts` (43 บรรทัด) — Atomic Counter
+
+**ทั้งฟังก์ชันใน 1 SQL**:
+```sql
+INSERT INTO rate_limits (key, count, window_start)
+VALUES ($1, 1, NOW())
+ON CONFLICT (key) DO UPDATE
+SET count = CASE
+    WHEN rate_limits.window_start < NOW() - $2::interval THEN 1
+    ELSE rate_limits.count + 1
+  END,
+  window_start = CASE
+    WHEN rate_limits.window_start < NOW() - $2::interval THEN NOW()
+    ELSE rate_limits.window_start
+  END
+RETURNING count;
+```
+
+**ทำไมไม่ใช้ Redis/Upstash?**
+- ✅ Database เดียว = ลด dependency
+- ✅ Atomic ในตัว
+- ❌ ใช้ DB resource สำหรับ rate-limit (ถ้า scale สูงควรย้าย)
+
+### 46.6 `lib/discord.ts` (367 บรรทัด) — Event Routing
+
+```mermaid
+flowchart LR
+    EV["Event<br/>(student_approved, door_opened, ...)"] --> ROUTE{เลือก webhook}
+    ROUTE -->|"per-room"| W1["discord_webhook_CE-401"]
+    ROUTE -->|"global"| W2["DISCORD_WEBHOOK_URL env"]
+    ROUTE -->|"log only"| W3["DISCORD_WEBHOOK_LOG_URL"]
+    W1 --> BUILD["Build embed<br/>(title, color, fields, footer)"]
+    W2 --> BUILD
+    W3 --> BUILD
+    BUILD --> POST["POST webhook"]
+    POST -.->|"error → swallow"| END["return"]
+```
+
+**ทำไม embed มีสี?**
+- 🟢 เขียว = approved / door_opened
+- 🔴 แดง = rejected / door_failed
+- 🟡 เหลือง = student_registered / pending
+- 🟣 ม่วง = system event
+- → admin มอง Discord 1 วินาทีก็แยกออกว่าด่วนหรือไม่
+
+### 46.7 `lib/pdf.ts` (373 บรรทัด) — Server-side PDF
+
+**ขั้นตอนสร้าง PDF**:
+```mermaid
+flowchart TD
+    A["Request /api/export/pdf"] --> B["Query students + logs"]
+    B --> C["Create PDFDocument (pdfkit)"]
+    C --> D["Load Thai fonts<br/>(Tahoma + Tahoma Bold)"]
+    D --> E["Draw header (purple bar)"]
+    E --> F["Draw info boxes"]
+    F --> G["Loop students → draw row"]
+    G --> H{หน้าเต็ม?}
+    H -->|ใช่| I["doc.addPage()"]
+    H -->|ไม่| G
+    I --> G
+    G --> J["Draw footer page number"]
+    J --> K["doc.end() → stream Buffer"]
+    K --> L["Response PDF blob"]
+```
+
+**ทำไมไม่ใช้ Puppeteer (HTML→PDF)?**
+- Puppeteer ใหญ่ ~300MB → Vercel function ขนาดเกิน
+- ฟอนต์ไทยใน headless Chrome ลำบาก
+- pdfkit ขนาด ~3MB + ฟอนต์ Tahoma ~700KB → รวม < 5MB
+
+### 46.8 `lib/api-security.ts` (77 บรรทัด) — ESP32 API Key
+
+```ts
+export function verifyApiKey(request: NextRequest): boolean {
+  const key = request.headers.get('x-api-key');
+  if (!key) return false;
+  // timing-safe compare (กัน timing attack)
+  return crypto.timingSafeEqual(
+    Buffer.from(key),
+    Buffer.from(process.env.ESP32_API_KEY!)
+  );
+}
+```
+
+**ทำไมใช้ `timingSafeEqual` ไม่ใช่ `===`?**
+- `===` หยุดเปรียบเทียบทันทีที่เจอ char ต่าง
+- attacker วัดเวลา response → guess char ทีละตัว → 10⁴ ครั้ง crack ได้ key 32 chars
+- `timingSafeEqual` เปรียบเทียบทุก byte เท่ากันเสมอ → ไม่มี timing leak
+
+### 46.9 `lib/resilience.ts` (43 บรรทัด) — Retry Wrapper
+
+```ts
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts = { retries: 3, baseDelay: 100 }
+): Promise<T> {
+  let lastErr;
+  for (let i = 0; i <= opts.retries; i++) {
+    try { return await fn(); }
+    catch (e) {
+      lastErr = e;
+      if (i < opts.retries) {
+        await sleep(opts.baseDelay * Math.pow(2, i));  // exponential backoff
+      }
+    }
+  }
+  throw lastErr;
+}
+```
+- Delay 100ms → 200ms → 400ms → 800ms
+- ใช้กับ Discord webhook (เผื่อ rate limit ชั่วคราว)
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-47"></a>
+## 47. Admin Dashboard ทีละ Tab แบบเจาะลึก
+
+### 47.1 State Tree ของ Dashboard
+
+```ts
+// ภายใน AdminDashboard component
+const [activeTab, setActiveTab] = useState<TabKey>('pending');
+const [pending, setPending] = useState<Student[]>([]);
+const [students, setStudents] = useState<Student[]>([]);
+const [logs, setLogs] = useState<AccessLog[]>([]);
+const [admins, setAdmins] = useState<Admin[]>([]);
+const [settings, setSettings] = useState<SettingsMap>({});
+const [systemStatus, setSystemStatus] = useState<SystemStatus>();
+const [rooms, setRooms] = useState<Room[]>([]);
+const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+const [toast, setToast] = useState<Toast | null>(null);
+// ... และอีก ~30 state
+```
+
+**ทำไม state เยอะ?**
+- ทุก tab ใช้ data set ของตัวเอง
+- แต่ละ action (approve/reject/delete) ต้อง re-fetch แค่บางส่วน
+- แยก state ทำให้ optimistic UI ได้ง่าย
+
+### 47.2 useEffect Lifecycle
+
+```mermaid
+flowchart TD
+    A["Component mount"] --> B["useEffect[]: ตรวจ /api/auth/me"]
+    B --> C{login?}
+    C -->|ไม่| D["router.push('/admin/login')"]
+    C -->|ใช่| E["fetchAll() + fetchPending() + fetchSettings() พร้อมกัน"]
+    E --> F["setInterval ทุก 10s: fetchPending()"]
+    F --> G{มี pending ใหม่?}
+    G -->|ใช่| H["playSoftChime() + flash badge"]
+    G -->|ไม่| F
+    A --> I["useEffect[activeTab]: fetch ข้อมูล tab นั้น"]
+    I --> J["ถ้า tab=logs → fetchLogs() จำกัด 200 ล่าสุด"]
+    A --> K["useEffect cleanup: clearInterval + abort fetch"]
+```
+
+### 47.3 Tab "คิวรอตรวจสอบ" (Pending)
+
+**โครงสร้างการแสดง**:
+```
+┌─────────────────────────────────────────────────────────┐
+│ 🔔 คิวรอตรวจสอบ (3)        [filter] [search] [refresh] │
+├─────────────────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────────────────┐ │
+│ │ 👤 นาย ก. ข.   60xxxxxxxx-x   วิศวกรรมศาสตร์    │ │
+│ │    คอมพิวเตอร์ ปี 3 — ขอเข้า CE-401              │ │
+│ │    ส่งคำขอเมื่อ 14:32 (3 นาทีที่แล้ว)             │ │
+│ │    [✓ อนุมัติ]  [✗ ปฏิเสธ]  [👁 ดูรายละเอียด]    │ │
+│ └────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
+
+**เหตุผลการออกแบบ**:
+- Card ใหญ่ ปุ่มชัด → admin กดผิดยาก
+- เวลาบอก relative ("3 นาทีที่แล้ว") → รู้ urgency เร็ว
+- ฟิลด์รหัสนักศึกษาแสดงเต็ม → ตรวจกับบัตรได้ทันที
+
+**Optimistic UI**:
+```ts
+async function handleApprove(id: number) {
+  // 1. ลบออกจาก list ทันที (UI เร็ว)
+  setPending(prev => prev.filter(s => s.id !== id));
+  try {
+    await fetch(`/api/students/${id}/approve`, { method: 'POST' });
+    showToast('อนุมัติแล้ว', 'success');
+  } catch (e) {
+    // 2. ถ้าล้มเหลว → ดึงกลับมาแสดง
+    fetchPending();
+    showToast('เกิดข้อผิดพลาด', 'error');
+  }
+}
+```
+
+### 47.4 Tab "ทำเนียบและประวัติ" (Students)
+
+**Layout**: ตาราง + filter + search + pagination + bulk actions
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ [search ___] [คณะ ▼] [สถานะ ▼] [วันที่ ▼] [export PDF]│
+├──┬──────────┬──────────┬─────────┬────────┬─────────────┤
+│☐│รหัส      │ชื่อ      │คณะ      │สถานะ   │การจัดการ    │
+├──┼──────────┼──────────┼─────────┼────────┼─────────────┤
+│☐│60xxxx-x  │ก. ข.     │วิศวฯ    │approve │👁 🔓 📄 🗑   │
+└──┴──────────┴──────────┴─────────┴────────┴─────────────┘
+```
+
+**Search Algorithm (client-side)**:
+```ts
+const filtered = students.filter(s => {
+  if (search) {
+    const q = search.toLowerCase();
+    if (!s.first_name.toLowerCase().includes(q)
+     && !s.last_name.toLowerCase().includes(q)
+     && !s.student_id.includes(q)) return false;
+  }
+  if (facultyFilter && s.faculty !== facultyFilter) return false;
+  if (statusFilter && s.status !== statusFilter) return false;
+  return true;
+});
+```
+
+**ทำไมไม่ใช้ server-side search?**
+- ข้อมูลรวมไม่เกิน 2,000 row ในช่วง 4 ปีของหลักสูตร
+- Network latency 100ms + ทุกครั้งที่พิมพ์ = laggy
+- Client-side fuzzy match = instant feedback
+- ถ้าโต > 10,000 row จึงค่อยย้ายเป็น server-side
+
+### 47.5 Tab "ผู้ดูแลระบบ" (Admins)
+
+**สิทธิ์การเข้าถึง**: เฉพาะ `role=owner`
+- ถ้า `door_operator` กดเข้า → 403 + redirect
+
+**Form สร้าง admin**:
+```tsx
+<form onSubmit={handleCreateAdmin}>
+  <input name="username" pattern="^[a-zA-Z0-9_.]{3,30}$"
+         title="3-30 ตัวอักษร: a-z 0-9 _ ." required />
+  <input name="password" type="password" minLength={8} required />
+  <input name="full_name" required />
+  <select name="role">
+    <option value="door_operator">Door Operator</option>
+    <option value="owner">Owner</option>
+  </select>
+  <button>สร้าง</button>
+</form>
+```
+
+**ทำไม username pattern strict?**
+- กัน Unicode lookalike (ตัวอักษรซีริลลิก/ไทย ที่ดูเหมือนละติน)
+- กัน SQL injection ในขั้น input (defense-in-depth)
+- ป้องกัน confused deputy attack
+
+### 47.6 Tab "ห้องเรียนและ ESP32"
+
+**ส่วนประกอบ**:
+1. **รายการห้อง** — แสดงสถานะ online/offline แต่ละห้อง
+2. **ปุ่มทดสอบ** — ping ESP32 ที่ห้องนั้น
+3. **ปุ่มปลดล็อกด่วน** — ส่ง unlock command ทันที
+4. **Panel รายละเอียด** — IP, last_seen, webhook URL, ตัวอย่าง config.h
+5. **Code generator** — สร้างไฟล์ `config.h` + `.ino` ตามห้อง
+
+```mermaid
+flowchart LR
+    USER["Admin คลิกห้อง CE-401"] --> PANEL["เปิด panel ขวา"]
+    PANEL --> A["fetch /api/esp32/status?room=CE-401"]
+    A --> B["แสดง IP / last_seen / heartbeat"]
+    PANEL --> C["ปุ่ม 'สร้าง config.h'"]
+    C --> D["getConfigCode('CE-401', origin)"]
+    D --> E["template literal กับ room, url, key"]
+    E --> F["copy to clipboard"]
+```
+
+### 47.7 Tab "ตั้งค่าระบบ" (Settings)
+
+**กลุ่ม Settings**:
+1. **Auto-approve window** — เวลาเริ่ม/สิ้นสุด, วันในสัปดาห์
+2. **Auto-fill mode** — `auto` / `manual` / `disabled`
+3. **Discord webhooks** — global + per room + per event-type
+4. **QR token TTL** — rotation 60s, expiry 300s (default)
+5. **Rate limits** — login attempts, bypass attempts
+6. **Privacy** — masking รหัสนักศึกษาในจอ TFT
+7. **Logging** — retention days (≥90 ตามกฎหมาย)
+8. **ESP32** — mode, default IP
+
+**การ save**:
+```ts
+// Batch save ทุก setting พร้อมกัน
+await fetch('/api/system/settings', {
+  method: 'POST',
+  body: JSON.stringify({ settings: [
+    { key: 'auto_approve_start', value: '08:00' },
+    { key: 'auto_approve_end', value: '17:00' },
+    // ... 50+ settings
+  ]})
+});
+// → backend ใช้ UNNEST 1 query → เร็ว
+```
+
+### 47.8 Tab "คู่มือ"
+
+แสดง markdown ที่อธิบายระบบให้ admin ใหม่ — แต่จริง ๆ คู่มือที่คุณกำลังอ่านนี่ละเอียดกว่ามาก
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-48"></a>
+## 48. React Hydration & SSR Lifecycle
+
+### 48.1 Next.js App Router Rendering Pipeline
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant V as Vercel Edge
+    participant N as Next.js Server
+    participant R as React Server
+    participant B as Browser
+    U->>V: GET /
+    V->>N: Forward request
+    N->>R: render Server Components
+    R->>R: ดึงข้อมูล (ถ้ามี async)
+    R-->>N: HTML string + RSC payload
+    N-->>V: HTML + JS bundle URLs
+    V-->>B: HTML (มี content แล้ว — SEO ดี)
+    B->>B: แสดง HTML ทันที (FCP)
+    B->>V: load _next/static/chunks/*.js
+    V-->>B: JS (มี cache CDN)
+    B->>B: React hydrate Client Components
+    B->>B: useEffect ทำงาน → API calls
+```
+
+### 48.2 หน้า `/` (registration) — Server vs Client
+
+```tsx
+// app/page.tsx — ทั้งหมดเป็น Client Component
+"use client";
+export default function UserRegistrationPage() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <RegistrationPageInner />
+    </Suspense>
+  );
+}
+```
+
+**ทำไมเป็น Client Component ทั้งหมด?**
+- ใช้ `useSearchParams()` (อ่าน `?scan=...`) — ต้องเป็น client
+- ใช้ `localStorage` (offline queue, bypass token) — ต้องเป็น client
+- ใช้ form state interaction — useClient
+
+**ผลกระทบ**:
+- Initial HTML ว่าง (เห็นแค่ Suspense fallback)
+- ต้องรอ JS hydrate → API call → render fields
+- → LCP สูงขึ้น แต่ acceptable เพราะ:
+  - ผู้ใช้สแกน QR → คาดหวังให้รอเล็กน้อย
+  - หน้านี้ไม่ต้องการ SEO
+
+### 48.3 Suspense Boundary
+
+```tsx
+<Suspense fallback={<Spinner />}>
+  <RegistrationPageInner />
+</Suspense>
+```
+
+**ทำไมต้อง Suspense?**
+- `useSearchParams()` ใน Next 15+ **บังคับ** ต้องอยู่ใน Suspense
+- ถ้าไม่มี → build error: "useSearchParams() should be wrapped in a suspense boundary"
+- เหตุผลทางเทคนิค: searchParams เป็น async — Suspense ช่วย handle loading state
+
+### 48.4 Hydration Mismatch — บั๊กที่เคยเจอ
+
+```tsx
+// ❌ ผิด — server-render ค่าหนึ่ง, client-render อีกค่า
+<div>{new Date().toLocaleString('th-TH')}</div>
+
+// ✅ ถูก — เรนเดอร์ค่าเดียวกันก่อน hydrate
+const [time, setTime] = useState<string>('');
+useEffect(() => { setTime(new Date().toLocaleString('th-TH')); }, []);
+return <div>{time || ' '}</div>;
+```
+
+**บั๊กจริงที่เคยเจอในโปรเจกต์**:
+- ใช้ `Date.now()` ใน render → hydration mismatch
+- ใช้ `Math.random()` ใน render → mismatch
+- ใช้ timezone-dependent format → server (UTC) vs client (Bangkok) ต่างกัน
+
+### 48.5 Server Action Alternative
+
+Next.js 15 มี Server Actions แต่โปรเจกต์ไม่ใช้ เพราะ:
+- ❌ Server Action ไม่ work กับ ESP32 (ESP32 ไม่ใช่ browser)
+- ✅ REST API route ใช้ได้ทั้ง browser + ESP32 + 3rd party
+- → เลือก REST เป็นหลัก
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-49"></a>
+## 49. Attack Scenarios — Threat Modeling แบบ Step-by-Step
+
+### 49.1 Scenario A: Attacker พยายาม Brute-force Admin Login
+
+```mermaid
+sequenceDiagram
+    participant A as Attacker
+    participant V as Vercel
+    participant API as /api/auth/login
+    participant DB as PostgreSQL
+    A->>V: POST username=admin password=guess1
+    V->>API: forward
+    API->>DB: rate_limits SELECT key='login:1.2.3.4'
+    DB-->>API: count=1
+    API->>DB: SELECT admin_users WHERE username=$1
+    DB-->>API: row
+    API->>API: bcrypt.compare (70ms — slow!)
+    API-->>A: 401
+    Note over A: ลองอีก...
+    A->>V: POST × 6 ครั้ง
+    Note over API: count=6 > 5
+    API-->>A: 429 Too Many Requests (5 นาที)
+    Note over A: เปลี่ยน IP (proxy)
+    A->>V: POST จาก IP ใหม่
+    API-->>A: 401 (count=1 ของ IP ใหม่)
+```
+
+**การป้องกัน 4 ชั้น**:
+1. Rate limit 5 ครั้ง/นาที/IP
+2. bcrypt 70ms ต่อครั้ง → จำกัดความเร็ว
+3. Audit log ทุก fail → admin เห็นใน Discord
+4. ถ้า fail หนัก ๆ ปรากฏใน Vercel logs → manual block
+
+**ที่ยังเป็นไปได้**: Distributed botnet (1,000 IPs) ลองคนละ 4 ครั้ง = 4,000 ครั้ง — ป้องกันได้ด้วย CAPTCHA หรือ Cloudflare Turnstile
+
+### 49.2 Scenario B: SQL Injection
+
+```http
+POST /api/students
+Content-Type: application/json
+{
+  "first_name": "Bob'; DROP TABLE students; --",
+  ...
+}
+```
+
+**ระบบรับมือ**:
+```ts
+// ❌ ถ้าโค้ดเป็นแบบนี้ (โปรเจกต์นี้ไม่ใช้):
+await db.query(`INSERT INTO students (first_name) VALUES ('${firstName}')`);
+// → SQL injection ทันที
+
+// ✅ โค้ดจริง:
+await db.query('INSERT INTO students (first_name) VALUES ($1)', [firstName]);
+// → driver escape ให้, ปลอดภัย 100%
+```
+
+**ทำไม parameterized query ปลอดภัย?**
+- `$1` ส่ง **แยก** กับ SQL command ผ่าน PostgreSQL protocol
+- DB engine treat `$1` เป็น value เสมอ — ไม่ parse เป็น SQL
+- ต่อให้ค่ามี `'; DROP TABLE ...` → ก็แค่ string ปกติ
+
+### 49.3 Scenario C: JWT Forgery
+
+```
+1. Attacker login เป็น door_operator (มีบัญชีจริง)
+2. ได้ JWT: eyJhbGc...payload...signature
+3. decode payload (base64) → {id:5, role:"door_operator"}
+4. แก้เป็น {id:5, role:"owner"} → encode base64 ใหม่
+5. ส่งกลับ → server verify HS256 → ❌ signature ไม่ match
+6. 401 Unauthorized
+```
+
+**ทำไม forge ไม่ได้?**
+- HS256 signature = HMAC-SHA256(header.payload, JWT_SECRET)
+- attacker ไม่มี `JWT_SECRET` → คำนวณ signature ไม่ได้
+- ถ้า server ใช้ default secret → attacker เดาได้ → ดังนั้น `verifyJwtSecretSecurity()` ใน production force ใช้ secret สุ่ม
+
+### 49.4 Scenario D: ESP32 Impersonation
+
+```
+Attacker เห็น URL https://app.vercel.app/api/esp32/display?room=CE-401
+ลองยิง GET ตรง → 401 (ไม่มี X-API-Key)
+ลองใส่ random key → 401
+ลองดู firmware .ino ที่ git public → 🚨 ถ้ามี API_KEY ใน source code → leak!
+```
+
+**การป้องกัน**:
+- `config.h` อยู่ใน `.gitignore`
+- `config.h.template` เป็นไฟล์เปล่า (placeholder) ใน git
+- ผู้ deploy ต้องสร้าง `config.h` เอง
+
+**ที่ยังเป็นไปได้**: ขโมย ESP32 ลง flash → อ่าน firmware → extract key
+- ป้องกันได้ด้วย ESP32 Secure Boot + Flash Encryption (ฟีเจอร์ฮาร์ดแวร์)
+- ปัจจุบันโปรเจกต์ไม่ได้เปิด → ถ้า key รั่ว ต้อง rotate + flash บอร์ดทุกตัว
+
+### 49.5 Scenario E: QR Replay Attack
+
+```
+1. Attacker อยู่ในห้อง CE-401 อย่างถูกต้อง
+2. ถ่ายภาพ QR บนจอ TFT
+3. ส่งภาพให้เพื่อนทาง LINE
+4. เพื่อนสแกน → เปิด /?scan=TOKEN&room=CE-401
+5. ❌ ถ้าเกิน 60 วินาที → token หมุนแล้ว → token นี้ invalid
+6. ❌ ถ้าใน 60s แต่ attacker คนแรกใช้แล้ว → is_consumed=TRUE → invalid
+7. ✅ ถ้าใน 60s + ยังไม่มีใครใช้ → เพื่อนกรอกฟอร์มเข้าได้
+```
+
+**ที่ยังเป็นไปได้**: Race window ~60 วินาที — แต่:
+- ต้องมี IP ในระบบของมหาวิทยาลัย หรือใช้ VPN
+- ต้องมีรหัสนักศึกษาจริง (admin ตรวจสอบได้)
+- IP ใน log → ตามตัวได้
+
+### 49.6 Scenario F: Tailgating (ตามคนที่ผ่านเข้า)
+
+ระบบใด ๆ ก็ป้องกันไม่ได้ 100% — แต่:
+- Time-limited unlock 3.8s = จำกัดเวลาเปิดประตู
+- Discord notification → admin เห็นใครเข้าเมื่อใด
+- ESP32 มีรูสำหรับติด PIR sensor → นับคนเข้าจริง vs จำนวน approve
+- กล้องวงจรปิดเป็นชั้นเสริม
+
+### 49.7 Scenario G: Denial of Service
+
+```
+Attacker ยิง POST /api/students × 10,000 ครั้ง/วินาที
+```
+
+**ชั้นป้องกัน**:
+1. Vercel built-in DDoS (Layer 3/4) — รับ traffic ใหญ่ได้
+2. Rate limit application layer — ทุก IP โดน 429
+3. ถ้า traffic ใหญ่จนจะกิน quota → upgrade Vercel Pro ($20/เดือน)
+4. ขั้นรุนแรง: เปิด Cloudflare ขั้นกลาง
+
+### 49.8 Scenario H: Man-in-the-Middle
+
+```
+Attacker อยู่ใน Wi-Fi เดียวกับ ESP32
+ทำ ARP spoofing → ทุก HTTP traffic ผ่าน attacker
+```
+
+**ป้องกัน**:
+- ESP32 ใช้ **HTTPS** + CA cert verify
+- ถ้า attacker ใส่ cert ปลอม → ESP32 reject (เพราะ `setCACert()`)
+- → MITM ไม่ได้ผล
+
+### 49.9 Scenario I: Physical Tampering
+
+```
+ตัดสายไฟไปยัง relay → ประตูเปิดค้าง (ถ้าใช้ fail-safe maglock)
+หรือ short ขา relay บนบอร์ด → ปลดล็อก
+```
+
+**ป้องกัน**:
+- ติด ESP32 + relay ในกล่องล็อก (ใส่ tamper switch)
+- ใช้ fail-secure lock (ไฟตัด = ล็อก)
+- มี UPS สำรองไฟให้ระบบล็อก
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-50"></a>
+## 50. Cryptographic Details — JWT, bcrypt, HMAC ในเชิงคณิตศาสตร์
+
+### 50.1 JWT HS256 ทำงานอย่างไร
+
+JWT มี 3 ส่วนคั่นด้วย `.`:
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6Im93bmVyIn0.signature
+└─── Header (base64) ───┘ └────── Payload (base64) ──────┘ └─ Signature ─┘
+```
+
+**Header** (decode):
+```json
+{ "alg": "HS256", "typ": "JWT" }
+```
+
+**Payload** (decode):
+```json
+{ "id": 1, "role": "owner", "iat": 1716832000, "exp": 1716861600 }
+```
+
+**Signature**:
+```
+HMAC-SHA256(
+  base64url(header) + "." + base64url(payload),
+  JWT_SECRET
+) → 32 bytes → base64url
+```
+
+### 50.2 HMAC-SHA256 ในเชิงคณิตศาสตร์
+
+```
+HMAC(K, m) = H((K' ⊕ opad) ∥ H((K' ⊕ ipad) ∥ m))
+
+โดยที่:
+- K = secret key (≥ 32 bytes แนะนำ)
+- m = message (header + "." + payload)
+- H = SHA-256
+- K' = K padded to 64 bytes
+- opad = 0x5c × 64
+- ipad = 0x36 × 64
+- ⊕ = XOR
+- ∥ = concatenation
+```
+
+**ทำไม HMAC ปลอดภัย?**
+- SHA-256 collision resistance: ต้อง 2¹²⁸ operations ถึงจะหา collision
+- การใช้ inner+outer hash + XOR padding ป้องกัน length extension attack ของ Merkle-Damgård
+- ถ้าไม่รู้ K → คำนวณ HMAC ไม่ได้
+
+**Brute-force key 32 chars**:
+- 32 hex chars = 128 bits
+- 2¹²⁸ ≈ 3.4 × 10³⁸
+- ถ้าคอม 10¹⁵ guess/วินาที → ใช้ 10¹⁶ ปี (อายุจักรวาล 1.4×10¹⁰ ปี)
+- → ปลอดภัย
+
+### 50.3 bcrypt ทำงานอย่างไร
+
+```
+bcrypt(password, salt, cost) = Eksblowfish_cost(salt, password, "OrpheanBeholderScryDoubt")
+```
+
+**Process**:
+1. Generate random salt 128 bits
+2. ทำ key schedule แบบขยาย 2^cost รอบ (เช่น cost=10 → 1,024 รอบ)
+3. ใช้ key + salt ที่ขยายแล้ว encrypt magic string
+4. Output: `$2a$10$salt+hash` (60 chars)
+
+**ทำไมต้อง slow?**
+- รหัสผ่านสั้น (8-12 chars) → entropy น้อย
+- ถ้า hash เร็ว → attacker brute-force ได้
+- bcrypt 70ms/ครั้ง × 8 char password (10⁸ ความเป็นไปได้) = 220 ปี
+- → ปลอดภัยพอ
+
+**Cost factor**:
+| Cost | Time | ใช้กับ |
+|------|------|--------|
+| 8 | ~20ms | mobile / IoT |
+| 10 | ~70ms | **โปรเจกต์นี้** — server มาตรฐาน |
+| 12 | ~280ms | high security |
+| 14 | ~1.1s | top-tier |
+
+### 50.4 crypto.randomBytes() — Cryptographically Secure RNG
+
+Node.js ใช้ OS RNG:
+- Linux: `/dev/urandom` (entropy pool จาก hardware noise)
+- Windows: `BCryptGenRandom` API
+- macOS: `getentropy()` syscall
+
+**ทำไมไม่ใช่ `Math.random()`?**
+- `Math.random()` ใช้ pseudo-RNG ที่คาดเดาได้ถ้ารู้ seed
+- 32 bits internal state → 2³² ≈ 4 พันล้าน combinations → crack ได้ในวินาที
+- `crypto.randomBytes()` มี entropy จาก OS
+
+### 50.5 Timing-safe Comparison
+
+```ts
+// ❌ ไม่ปลอดภัย:
+if (userKey === storedKey) return true;
+// V8 engine optimize: หยุดทันทีที่เจอ char ต่าง
+
+// ✅ ปลอดภัย:
+return crypto.timingSafeEqual(Buffer.from(userKey), Buffer.from(storedKey));
+// loop ทุก byte เสมอ → เวลาคงที่
+```
+
+**ตัวอย่าง timing attack**:
+- compare("aXXXXXX...", "bYYYYY...") → fail ที่ char 1 → 5ns
+- compare("bXXXXXX...", "bYYYYY...") → fail ที่ char 2 → 10ns
+- → ถ้าวัดเวลาแม่นพอ → guess key ทีละตัว
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-51"></a>
+## 51. OWASP Top 10 (2021) — ระบบรับมืออย่างไรทีละข้อ
+
+| # | ภัย | ระบบนี้รับมือ |
+|---|------|---------------|
+| **A01** | Broken Access Control | ✅ ตรวจ role ทุก endpoint, JWT verify, owner-only routes |
+| **A02** | Cryptographic Failures | ✅ HTTPS ทุกฝั่ง, bcrypt, HS256 strong key, no plaintext password |
+| **A03** | Injection | ✅ parameterized query 100%, input validation, regex |
+| **A04** | Insecure Design | ✅ Threat model § 49, defense-in-depth, one-time token |
+| **A05** | Security Misconfiguration | ⚠️ ต้องตั้ง env ถูกใน production, `next.config.ts` ตั้ง security headers |
+| **A06** | Vulnerable Components | ⚠️ ต้องรัน `npm audit` เป็นระยะ |
+| **A07** | Identification & Auth Failures | ✅ rate limit, bcrypt, JWT 8h expiry, secure cookie |
+| **A08** | Software & Data Integrity Failures | ⚠️ ใช้ lock file (`package-lock.json`), ไม่มี code signing |
+| **A09** | Logging & Monitoring Failures | ✅ access_logs ทุก action + Discord realtime |
+| **A10** | SSRF | ✅ Discord webhook validate URL (ต้องเป็น discord.com) |
+
+### 51.1 Security Headers ใน next.config.ts
+
+```ts
+const headers = [
+  { key: 'X-Frame-Options', value: 'DENY' },                      // กัน clickjacking
+  { key: 'X-Content-Type-Options', value: 'nosniff' },             // กัน MIME sniff
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=()' },
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'Content-Security-Policy', value: "default-src 'self'; ..." },
+];
+```
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-52"></a>
+## 52. วงจรไฟฟ้าระดับ Schematic — ทำไมแต่ละชิ้นต้องมี
+
+### 52.1 Schematic แบบ Block + รายละเอียดทุกส่วน
+
+```mermaid
+flowchart TB
+    AC["AC 220V"] --> PSU["PSU 12V 2A<br/>(SMPS adapter)"]
+    PSU --> BUCK["Buck Converter<br/>LM2596 12V→5V"]
+    BUCK --> ESP["ESP32 VIN (5V)<br/>internal LDO → 3.3V"]
+    BUCK --> RELAY_VCC["Relay Module VCC (5V)"]
+    PSU --> LOCK_PWR["12V → Lock COM"]
+    ESP -- "GPIO12<br/>(3.3V signal)" --> RELAY_IN["Relay IN<br/>optocoupler"]
+    RELAY_IN --> RELAY_COIL["Relay Coil<br/>~70mA @ 5V"]
+    RELAY_COIL --> RELAY_CONTACT["NC/NO Contact<br/>10A 250VAC"]
+    LOCK_PWR --> RELAY_CONTACT
+    RELAY_CONTACT --> LOCK["Maglock/Solenoid<br/>~500mA @ 12V"]
+    LOCK --> GND12["12V GND"]
+    LOCK -. "เผื่อ coil load" .-> DIODE["1N4007 flyback"]
+```
+
+### 52.2 ทำไมต้องมี Optocoupler ใน Relay Module
+
+**ปัญหาถ้าไม่มี**:
+- Relay coil ตอน switch off ปล่อย **back-EMF spike** สูงถึง 200V
+- spike นี้ feed กลับเข้า GPIO ผ่าน VCC/GND → ESP32 เสียได้
+- เกิด ground loop → noise
+
+**Optocoupler PC817**:
+```
+GPIO 3.3V → LED ภายใน → photons → phototransistor → switch transistor → relay coil
+       ↑ ฝั่ง logic                 ↑ ฝั่ง power
+       ────── ไฟแยกขาดสนิท ──────
+```
+
+- LED ใน opto ใช้แค่ ~10mA จาก GPIO
+- ฝั่ง power 5V ที่จ่าย relay coil **แยกขาด** จาก ESP32
+- spike ไม่ข้ามมา ESP32
+
+### 52.3 ทำไมต้องมี Flyback Diode
+
+```mermaid
+flowchart LR
+    V5["+5V"] -->|"+"| COIL["Relay Coil<br/>(inductor)"]
+    COIL -->|"-"| Q["Transistor<br/>(in module)"]
+    Q --> GND["GND"]
+    V5 -.-> DIODE["1N4007 cathode"]
+    DIODE -.-> NODE["coil− side<br/>anode"]
+    NODE -.-> COIL
+```
+
+**กฎฟิสิกส์ V = L dI/dt**:
+- เมื่อ transistor cutoff → I ลดจาก 70mA → 0 ใน microsecond
+- dI/dt ใหญ่มาก → V cross coil = L × dI/dt → 200V+
+- spike นี้ทำให้ transistor พัง
+
+**Diode คร่อม coil**:
+- ตอน normal: diode reverse-biased → ไม่กระทบ
+- ตอน switch off: spike voltage forward-bias diode → กระแสไหลผ่าน diode ย้อนเข้า coil → dissipate ในรูปความร้อน
+- ปกป้อง transistor
+
+> Relay module สำเร็จรูปทั่วไป**มี diode ในตัวแล้ว** — ถ้าใช้ solenoid/maglock ที่ต่อตรงต้องเพิ่มเอง
+
+### 52.4 ทำไมต้อง Buck Converter ไม่ใช่ Linear Regulator
+
+| | Linear (LM7805) | Buck (LM2596) |
+|---|----------------|---------------|
+| Efficiency 12V→5V | (5/12)=41% | 85-92% |
+| Dissipation @ 1A | 7W ร้อนมาก | 0.5W |
+| ต้อง heatsink? | ✅ ใหญ่มาก | ไม่ต้อง |
+| ราคา | 10 บาท | 30 บาท |
+| Noise | สะอาด | switching noise (ต้องมี cap filter) |
+| ขนาด PCB | เล็ก | กลาง |
+
+**ในระบบนี้**: ESP32 + relay กิน ~250mA @ 5V = 1.25W
+- Linear: dissipate (12-5)×0.25 = 1.75W ที่ regulator → ร้อน
+- Buck: dissipate ~0.15W → เย็น
+- ✅ Buck คุ้มกว่ามาก
+
+### 52.5 ESP32 Strapping Pins — เหตุผลลึก
+
+GPIO 12 = MTDI — boot strap สำหรับเลือก voltage flash:
+- HIGH ตอน boot → flash 1.8V (ESP32-S edge case)
+- LOW ตอน boot → flash 3.3V (ปกติ)
+
+**ปัญหา**: ถ้า relay module ใช้ active-HIGH (HIGH = energized) + ขา IN มี pull-up ภายใน → ตอนบูตจะ HIGH → ESP32 พยายาม boot 1.8V → ไม่ work
+
+**วิธีแก้ในโค้ด**:
+```cpp
+void setup() {
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);  // ← ก่อนทุกอย่าง
+  // ...
+}
+```
++ ใช้ relay module แบบ active-LOW (IN=LOW → energize) — ป้องกัน 2 ชั้น
+
+### 52.6 Pull-up/Pull-down Resistor
+
+- SPI lines (MOSI, MISO, SCK) — ไม่ต้อง pull เพราะ driven ตลอด
+- CS — ESP32 มี internal pull-up — ปลอดภัยตอน boot
+- ปุ่ม emergency (ถ้ามี) — ต้อง pull-up 10kΩ ภายนอก + กดลง GND
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-53"></a>
+## 53. Power Budget Calculation
+
+### 53.1 รายการบริโภคไฟ
+
+| อุปกรณ์ | Voltage | Current (max) | Power |
+|---------|---------|---------------|-------|
+| ESP32 (Wi-Fi active) | 5V (VIN) | 240mA | 1.2W |
+| ESP32 (deep sleep) | 5V | 0.01mA | 0.05mW |
+| TFT ILI9341 (backlight on) | 3.3V | 80mA | 0.26W |
+| Relay coil energized | 5V | 70mA | 0.35W |
+| LED Wi-Fi indicator | 3.3V | 10mA | 0.03W |
+| LED Reject | 3.3V | 10mA | 0.03W |
+| Buzzer (tone active) | 3.3V | 30mA | 0.1W |
+| Maglock 12V | 12V | 500mA | 6W |
+| Buck converter loss | — | — | ~0.5W (85% eff @ 2W) |
+| **รวมขณะปกติ (lock + ESP32 + TFT)** | | | **~7.5W** |
+| **รวม peak (กำลังเปิด relay + เสียง)** | | | **~9W** |
+
+### 53.2 เลือก Adapter
+
+- Power budget peak: 9W
+- เผื่อ safety margin 50%: 13.5W
+- Adapter 12V × 2A = 24W → **เพียงพอ + เผื่อขยาย**
+
+ทำไมไม่ใช้ 12V × 1A (12W)?
+- ตอน startup, relay + maglock + ESP32 + TFT inrush current สูง 1.2-1.5A ใน ms แรก
+- ถ้า adapter จ่ายไม่ได้ → voltage drop → ESP32 brown-out reset
+
+### 53.3 Battery Backup (UPS) — ถ้าจะใส่
+
+```mermaid
+flowchart LR
+    AC["AC 220V"] --> ADAPTER["Adapter 12V"] --> SWITCH["DC Switch"]
+    BAT["12V 7Ah SLA"] --> SWITCH
+    SWITCH --> SYSTEM["ระบบ"]
+    AC -- "เมื่อมีไฟ" --> CHARGE["TP4056 charge controller"]
+    CHARGE --> BAT
+```
+
+**คำนวณ runtime**:
+- ระบบกิน 9W → 0.75A @ 12V
+- แบต 7Ah → 7/0.75 = 9.3 ชั่วโมง
+- ใช้จริง DOD 80% → ~7 ชั่วโมง
+
+### 53.4 ทำไมต้องแยก 12V กับ 5V
+
+- 5V สำหรับ logic (ESP32, relay coil ฝั่ง control)
+- 12V สำหรับ lock (power load)
+- ถ้าใช้ 12V ทุกอย่าง → ต้อง buck ลง 5V อยู่ดี
+- ถ้าใช้ 5V ทุกอย่าง → lock 12V ทำงานไม่ได้
+
+→ Adapter 12V + buck = สมเหตุสมผลที่สุด
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-54"></a>
+## 54. PCB Layout / Wiring Best Practices
+
+### 54.1 หลักการแยกสาย
+
+```
+┌──────────────────────────────────────────┐
+│ ┌──────────┐  ┌──────────┐              │
+│ │ ESP32    │  │ TFT      │  ← Logic zone│
+│ │ + buck   │  │          │   (low V/low I)
+│ └─────┬────┘  └──────────┘              │
+│       │ GPIO12 (twisted)                │
+│       ▼                                 │
+│ ┌──────────┐                            │
+│ │ Relay    │  ← Isolation zone          │
+│ │ Module   │     (opto)                 │
+│ └─────┬────┘                            │
+│       │ NO contact (heavy)              │
+│       ▼                                 │
+│ ┌────────────────────┐                  │
+│ │ Lock + 12V wiring  │  ← Power zone    │
+│ │ Terminal block     │     (high V/I)   │
+│ └────────────────────┘                  │
+└──────────────────────────────────────────┘
+```
+
+### 54.2 Best Practices
+
+1. **Twisted pair** สำหรับ GPIO12 → relay IN — ลด EMI pickup
+2. **Star ground** — กราวด์ทุกตัวต่อกลับจุดเดียว (ที่ buck output)
+3. **Decoupling capacitor** — 100µF + 0.1µF ใกล้ VIN ของ ESP32
+4. **ห้ามขนานสายสัญญาณกับสายไฟ 220V** ห่างกัน ≥ 10cm
+5. **Terminal block** สำหรับสาย lock — กันสายหลุด
+6. **Strain relief** — มัด cable tie ใกล้จุดต่อ
+7. **Heat shrink** ทุกจุด solder
+8. **กล่องโลหะ** ground เข้ากับ chassis ground (ไม่ใช่ DC ground)
+
+### 54.3 EMI Sources & Mitigation
+
+| แหล่ง | ผลกระทบ | วิธีลด |
+|-------|---------|--------|
+| Relay switching | spike → GPIO false trigger | Optocoupler + diode + ferrite bead |
+| Maglock buzz | 50Hz hum → audio noise | Shield + ground bond |
+| Wi-Fi radiator | TFT flicker | TFT cable < 10cm |
+| Buck noise | Power ripple → ESP32 reset | Output cap 470µF |
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-55"></a>
+## 55. HTTP/TLS Packet Flow — ลึกถึง Wireshark
+
+### 55.1 ลำดับ Packet ของ 1 Request
+
+```mermaid
+sequenceDiagram
+    participant E as ESP32
+    participant D as DNS
+    participant S as Server (Vercel SG)
+    Note over E: ก่อนหน้านี้: WiFi connected, IP assigned
+    E->>D: DNS Query A "app.vercel.app"
+    D-->>E: A 76.76.21.21
+    Note over E,S: TCP 3-way handshake
+    E->>S: SYN seq=0
+    S-->>E: SYN-ACK seq=0 ack=1
+    E->>S: ACK seq=1 ack=1
+    Note over E,S: TLS 1.2 handshake
+    E->>S: ClientHello (SNI=app.vercel.app, cipher suites)
+    S-->>E: ServerHello + Certificate + ServerKeyExchange + ServerHelloDone
+    E->>E: Verify cert chain (RSA-2048)
+    E->>S: ClientKeyExchange + ChangeCipherSpec + Finished
+    S-->>E: ChangeCipherSpec + Finished
+    Note over E,S: Encrypted Application Data
+    E->>S: HTTP GET /api/esp32/display HTTP/1.1<br/>x-api-key: xxx<br/>Host: app.vercel.app
+    S-->>E: HTTP 200 OK<br/>Content-Type: application/json<br/>{...}
+    Note over E,S: TCP close
+    E->>S: FIN
+    S-->>E: FIN-ACK
+    E->>S: ACK
+```
+
+### 55.2 Packet Size & Timing
+
+| Step | Size | Time |
+|------|------|------|
+| DNS query | 80 B | 10-30ms (cached → 0ms) |
+| TCP SYN/SYN-ACK/ACK | 60B × 3 | 1 RTT (~30ms in TH) |
+| TLS ClientHello | 200 B | (start) |
+| TLS ServerHello + Cert | ~3 KB | (server cert chain) |
+| TLS key exchange | ~300 B | RSA ops |
+| TLS Finished | ~80 B | 2 RTT total = ~60ms |
+| HTTP request | ~200 B | encrypted |
+| HTTP response | ~500 B | encrypted |
+| TCP close | 60 B × 3 | 1 RTT |
+| **Total** | ~4.5 KB | ~350ms first request |
+
+### 55.3 HTTP Keep-Alive Optimization
+
+```
+ครั้งแรก: TLS handshake 250ms + request 100ms = 350ms
+ครั้งถัดไป (keep-alive): request 100ms = 100ms
+```
+
+**โค้ด ESP32 เปิด keep-alive ยังไง?**
+```cpp
+http.addHeader("Connection", "keep-alive");
+// ArduinoHTTPClient ใช้ TCP socket เดิมถ้าไม่ปิด
+```
+
+**ปัญหา**: Vercel ปิด connection หลัง ~10 วินาที idle → ESP32 ต้อง handshake ใหม่
+→ ลด overhead นี้: poll ทุก 2 วินาที = ใช้ socket เดียวได้ ~5 polls
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-56"></a>
+## 56. DNS / CDN Routing
+
+### 56.1 DNS Resolution Chain
+
+```
+ESP32 → DNS resolver (เช่น 8.8.8.8)
+  → root NS (.) → .app NS
+  → vercel.app NS
+  → cname.vercel-dns.com
+  → multiple A records (เลือกตาม geo-DNS)
+```
+
+**Geo-DNS**: ESP32 ในไทย → return IP ใน Singapore (~30ms RTT)
+ESP32 ในยุโรป → return IP ใน Frankfurt
+
+### 56.2 CDN Routing — Anycast
+
+```mermaid
+flowchart LR
+    USER["User in Bangkok"] --> ROUTER["Internet"]
+    ROUTER -->|"BGP route ใกล้สุด"| SG["Vercel Edge SG"]
+    USER2["User in London"] --> ROUTER2["Internet"]
+    ROUTER2 -->|"BGP"| FR["Vercel Edge FRA"]
+    SG --> ORIGIN["Vercel Origin"]
+    FR --> ORIGIN
+```
+
+- Vercel ประกาศ IP เดียวกันจาก data center หลายแห่งทั่วโลก (Anycast)
+- BGP router internet จะส่ง packet ไปยัง POP ใกล้ที่สุด
+- Static asset cache ที่ POP — เร็วมาก
+
+### 56.3 ทำไม Vercel ไม่ deploy Function ที่ทุก POP
+
+- Function ต้องคุย DB → DB อยู่ที่เดียว → run function ใกล้ DB ดีกว่า
+- ในโปรเจกต์นี้: Supabase SG → Vercel function ก็ที่ SG
+- ผลคือ function-to-DB latency ต่ำสุด
+
+### 56.4 ทำไมไม่ใช้ Cloudflare Workers
+
+| | Vercel | Cloudflare Workers |
+|---|--------|---------------------|
+| Next.js integration | ✅ native | ⚠️ ต้อง adapter |
+| Function locations | regional (เลือก 1) | edge (200+ POPs) |
+| DB connection (pg) | ✅ TCP pooled | ❌ ไม่รองรับ TCP, ต้องใช้ HTTP-based DB |
+| Cold start | 300-800ms | 5ms |
+| Cost | คุ้ม | คุ้มกว่า ถ้า scale ใหญ่ |
+
+→ Vercel เหมาะกว่าสำหรับโปรเจกต์ขนาดนี้ที่ต้องใช้ `pg`
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-57"></a>
+## 57. NAT / Firewall — ทำไม ESP32 push ไม่ได้
+
+### 57.1 NAT Behavior
+
+```mermaid
+flowchart LR
+    ESP["ESP32<br/>192.168.1.50:random"] -->|"outbound"| NAT["NAT Router"]
+    NAT -->|"public IP:translated port"| INET["Internet"]
+    INET --> SRV["Server"]
+    SRV -.->|"reply ใช้ session ที่ NAT จำได้"| NAT
+    NAT -.->|"forward กลับ ESP32"| ESP
+
+    INET2["Server ต้องการเรียก ESP32"] -.x|"❌ ไม่มี mapping"| NAT
+```
+
+**NAT Table**:
+| Internal | External (NAT) |
+|----------|----------------|
+| 192.168.1.50:54321 | 203.0.113.1:54321 |
+
+- Outbound packet สร้าง mapping → reply กลับเข้าได้
+- Inbound packet ใหม่ — ไม่มี mapping → router ทิ้ง
+
+### 57.2 ทำไมไม่ทำ Port Forward
+
+- มหาวิทยาลัยไม่อนุญาตให้นักศึกษาขอ port forward
+- ถึงทำได้ → ESP32 จะถูกโจมตีจากอินเทอร์เน็ตได้
+- → ESP32 ต้อง initiate connection เสมอ (polling pattern)
+
+### 57.3 ทางออก: LAN Direct Push
+
+ในกรณีที่ Next.js server **อยู่ใน LAN เดียวกัน** (รัน `npm run dev` บนเครื่องในมหาลัย):
+- Server เห็น ESP32 IP `192.168.1.50` → ยิงตรงไปได้
+- `tryLanDirectBackground()` ใน `lib/esp32.ts` ทำหน้าที่นี้
+
+แต่ถ้า deploy บน Vercel (cloud) → cloud server ไม่เห็น 192.168.x.x → fallback เป็น polling
+
+### 57.4 ทำไมไม่ใช้ ngrok / Cloudflare Tunnel
+
+- ESP32 เปิด tunnel ออกไป → server ยิงผ่าน tunnel กลับเข้ามาได้
+- ✅ ทำได้จริง
+- ❌ ต้องเช่า service หรือใช้ free tier (มี limit)
+- ❌ ESP32 ต้องรัน tunnel client → CPU/RAM เพิ่ม
+- → ไม่คุ้มกับ latency 2 วินาทีที่ลดลง
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-58"></a>
+## 58. Database Query Plan Analysis
+
+### 58.1 EXPLAIN ANALYZE ของ Query สำคัญ
+
+**Query 1: ดึง pending students**
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM students WHERE status='pending' ORDER BY created_at DESC;
+```
+```
+Sort  (cost=8.30..8.31 rows=5 width=...) (actual time=0.087..0.088)
+  Sort Key: created_at DESC
+  ->  Index Scan using idx_students_status on students
+        Index Cond: (status = 'pending')
+        actual time=0.012..0.034 rows=5
+Planning Time: 0.215 ms
+Execution Time: 0.118 ms
+```
+- ✅ ใช้ index `idx_students_status` → Index Scan แทน Seq Scan
+- ถ้าไม่มี index: cost ~150, time ~5ms (200 rows ทั้งหมด)
+
+**Query 2: Consume QR token**
+```sql
+EXPLAIN ANALYZE
+UPDATE dynamic_qr_tokens
+SET is_consumed = TRUE
+WHERE token='abc...' AND is_consumed=FALSE AND expires_at > NOW();
+```
+```
+Update on dynamic_qr_tokens  (actual time=0.245..0.246)
+  ->  Index Scan using idx_qr_token on dynamic_qr_tokens
+        Index Cond: ((token)::text = 'abc...'::text)
+        Filter: ((NOT is_consumed) AND (expires_at > now()))
+Execution Time: 0.302 ms
+```
+- ใช้ unique index → O(log n) lookup
+- Lock เฉพาะ row เดียว → ไม่ block ห้องอื่น
+
+**Query 3: Access logs filter**
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM access_logs
+WHERE created_at >= NOW() - INTERVAL '7 days'
+ORDER BY created_at DESC LIMIT 100;
+```
+```
+Limit  (actual time=0.045..0.123 rows=100)
+  ->  Index Scan Backward using idx_logs_created
+        Index Cond: (created_at >= ...)
+Execution Time: 0.156 ms
+```
+- ✅ Index DESC ช่วยให้ LIMIT เร็ว
+- ไม่ต้อง sort เพราะ index sorted แล้ว
+
+### 58.2 Index Strategy
+
+| ตาราง | Index | เหตุผล |
+|--------|-------|--------|
+| students | (status) | filter pending/approved ใช้บ่อย |
+| students | (student_id) | search by ID |
+| students | (created_at DESC) | sort timeline |
+| access_logs | (created_at DESC) | timeline + LIMIT |
+| access_logs | (action) | filter by event type |
+| access_logs | (student_id) | per-student history |
+| dynamic_qr_tokens | (token) UNIQUE | lookup + atomic |
+| dynamic_qr_tokens | (room_code, is_consumed, expires_at) | active token query |
+| rate_limits | (key) PRIMARY | upsert |
+
+### 58.3 Sequential Scan vs Index Scan
+
+- < 1,000 rows: Seq Scan เร็วกว่าเพราะ index overhead
+- > 10,000 rows + selective filter: Index Scan ชนะขาด
+- Optimizer PostgreSQL ตัดสินเอง — เราแค่เตรียม index ให้พร้อม
+
+### 58.4 N+1 Query Problem
+
+```ts
+// ❌ N+1
+const students = await db.query('SELECT * FROM students');
+for (const s of students.rows) {
+  const logs = await db.query('SELECT * FROM access_logs WHERE student_id=$1', [s.id]);
+  // → 1 + N queries
+}
+
+// ✅ JOIN
+const data = await db.query(`
+  SELECT s.*, json_agg(l.*) as logs
+  FROM students s
+  LEFT JOIN access_logs l ON l.student_id = s.id
+  GROUP BY s.id
+`);
+// → 1 query
+```
+
+โปรเจกต์นี้ระวังเรื่องนี้ — ใช้ JOIN ทุกที่ที่ต้องการข้อมูลที่เกี่ยวข้อง
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-59"></a>
+## 59. Connection Pooling เจาะลึก
+
+### 59.1 pgBouncer Mode
+
+| Mode | ลักษณะ | Connection sharing |
+|------|--------|---------------------|
+| **Session** | คนเชื่อมต่อ 1 คน = ใช้ 1 backend connection ตลอด session | ไม่ share |
+| **Transaction** | share หลัง COMMIT | สูง |
+| **Statement** | share หลัง statement | สูงสุด แต่ไม่รองรับ multi-statement transaction |
+
+**Supabase ใช้ Transaction mode** (`?pgbouncer=true&statement_cache_mode=describe`)
+
+### 59.2 ทำไม Vercel Serverless ต้องใช้ Pooling
+
+```
+Vercel function: เปิด-ปิด connection ทุก request
+ถ้าไม่ pool: 100 concurrent users = 100 PostgreSQL connections
+PostgreSQL free tier: 60 connection max
+→ 41 users ได้รับ "too many connections" error
+```
+
+**ด้วย pgBouncer transaction pool**:
+- 1,000 client connection → pgBouncer แชร์ → 30 backend connection
+- เพราะ transaction สั้น ~30ms → 1 backend conn รับ 30 tx/sec
+- → รองรับ 900 req/sec ด้วย 30 connection
+
+### 59.3 ข้อจำกัด Transaction Mode
+
+```ts
+// ❌ ใช้ไม่ได้ใน transaction mode:
+await db.query('PREPARE myStmt AS SELECT ...');
+await db.query('EXECUTE myStmt');
+// → connection อาจถูก reuse ระหว่าง 2 statement → ERROR
+
+// ❌ ใช้ไม่ได้:
+await db.query('SET TIME ZONE ...');
+await db.query('SELECT NOW()');
+// → SET ไม่ persist ข้าม statement
+
+// ✅ ใช้ได้:
+await db.query('BEGIN');
+await db.query('SELECT ...');
+await db.query('COMMIT');
+// → ทั้ง transaction อยู่ใน connection เดียว
+```
+
+โปรเจกต์นี้ใช้แค่ single-statement หรือ wrap ใน transaction → OK
+
+### 59.4 Direct vs Pooled URL ใน .env
+
+```env
+POSTGRES_URL=postgres://...?pgbouncer=true  # ใช้ตอนรัน query ปกติ
+POSTGRES_URL_DIRECT=postgres://...           # ใช้ตอน migration / DDL
+```
+
+DDL ไม่ทำงานผ่าน pgBouncer transaction mode → ต้อง direct
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-60"></a>
+## 60. Transaction Isolation
+
+### 60.1 PostgreSQL Isolation Levels
+
+| Level | Dirty Read | Non-repeatable | Phantom | Serialization Anomaly |
+|-------|------------|----------------|---------|------------------------|
+| Read Uncommitted | ❌ (PG ทำเป็น Read Committed) | ⚠️ | ⚠️ | ⚠️ |
+| **Read Committed** (default) | ✅ ป้องกัน | ⚠️ เกิดได้ | ⚠️ | ⚠️ |
+| Repeatable Read | ✅ | ✅ | ✅ | ⚠️ |
+| Serializable | ✅ | ✅ | ✅ | ✅ |
+
+โปรเจกต์นี้ใช้ **Read Committed** (default) ทั้งหมด
+
+### 60.2 Race Conditions ที่ระบบป้องกัน
+
+**Case 1: 2 คนสแกน QR เดียวกันพร้อมกัน**
+```sql
+-- คนที่ 1
+UPDATE dynamic_qr_tokens SET is_consumed=TRUE
+WHERE token=$1 AND is_consumed=FALSE
+RETURNING *;  -- ได้ row
+
+-- คนที่ 2 (พร้อมกัน)
+UPDATE dynamic_qr_tokens SET is_consumed=TRUE
+WHERE token=$1 AND is_consumed=FALSE
+RETURNING *;  -- รอ lock → หลังคน 1 commit → is_consumed=TRUE → no row return
+```
+→ Atomic ทำให้ปลอดภัย แม้ Read Committed
+
+**Case 2: Rate limit counter**
+```sql
+INSERT INTO rate_limits ... ON CONFLICT DO UPDATE SET count=count+1
+```
+→ atomic increment, ไม่มี race
+
+### 60.3 Race ที่ยังเป็นไปได้ (เล็กน้อย)
+
+**Settings cache invalidation**:
+- Instance A อ่าน settings (cache 30s)
+- Instance B update setting → invalidate cache ของตัวเอง
+- Instance A ยังใช้ cache เก่า 30 วินาที
+- → admin เห็นค่าใหม่หลัง max 30 วินาที (acceptable)
+
+**แก้ในอนาคต**: ใช้ Supabase Realtime หรือ Redis pub/sub
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-61"></a>
+## 61. Manual Test Plan — ครบทุก Flow
+
+### 61.1 Test Cases
+
+#### Registration Flow
+- [ ] เปิด `/` ไม่มี `?scan=` → ต้อง block
+- [ ] เปิด `/?scan=invalid` → ต้องแสดง expired
+- [ ] เปิด `/?scan=valid&room=CE-401` → แสดงฟอร์ม
+- [ ] กรอกฟอร์ม submit → success
+- [ ] กรอกฟอร์ม submit 2 ครั้ง (token เดิม) → 403
+- [ ] เปิดฟอร์มทิ้งไว้ 120s → countdown หมด → ต้องสแกนใหม่
+- [ ] กรอกรหัส นศ. ที่เคยลง → auto-fill ทำงาน
+- [ ] ปิด wi-fi → submit → ขึ้น offline queue
+- [ ] เปิด wi-fi → auto flush queue
+- [ ] หลัง approved → bypass token ใช้ได้ภายใน 5 นาที
+- [ ] หลัง 5 นาที → bypass หมดอายุ
+
+#### Admin Flow
+- [ ] Login user/pass ผิด 5 ครั้ง → 429
+- [ ] Login user/pass ผิด หลัง wait 1 นาที → reset
+- [ ] Login สำเร็จ → cookie set → redirect dashboard
+- [ ] Approve → student status เปลี่ยน + log + Discord + ESP32 unlock
+- [ ] Reject พร้อมเหตุผล → status rejected + log + Discord
+- [ ] Owner สร้าง admin ใหม่ → ใส่ password < 8 → reject
+- [ ] Door operator พยายามเข้าหน้า admin-users → 403
+- [ ] Logout → cookie cleared
+
+#### ESP32 Flow
+- [ ] Boot → connecting wi-fi screen
+- [ ] Wi-fi off → ติดอยู่หน้า connecting
+- [ ] Wi-fi connected → main screen
+- [ ] Server return door_trigger=open → scan → unlocked → relay 3.8s
+- [ ] Server timeout → retain previous screen
+- [ ] Polling: pending_count เปลี่ยน → redraw
+- [ ] Polling: ทุกอย่างเหมือนเดิม → update เฉพาะ clock
+
+#### Export PDF
+- [ ] PDF รวม ช่วง 7 วัน → render OK, ฟอนต์ไทยถูก
+- [ ] PDF รายบุคคล → 1 หน้า
+- [ ] PDF ช่วง 1 ปี (1000+ rows) → multi-page footer ถูกต้อง
+
+### 61.2 ทำไมไม่มี Automated Test
+
+- **คน 1 คน + เวลาจำกัด** → automated test กิน effort 30%
+- ระบบเรียบง่าย, ขนาดเล็ก, manual test ครอบคลุมได้
+- ESP32 firmware ทดสอบจริงต้องมี hardware in loop
+
+**ถ้าจะเพิ่ม**:
+- Jest + Supertest สำหรับ API route
+- Playwright สำหรับ E2E web
+- Wokwi simulator + scripted test สำหรับ firmware
+
+### 61.3 ตัวอย่าง Test ที่ควรเขียนก่อน
+
+```ts
+// __tests__/api/auth.test.ts
+describe('POST /api/auth/login', () => {
+  it('returns 429 after 5 failed attempts', async () => {
+    for (let i = 0; i < 5; i++) {
+      await request(app).post('/api/auth/login').send({
+        username: 'admin', password: 'wrong'
+      });
+    }
+    const res = await request(app).post('/api/auth/login').send({
+      username: 'admin', password: 'wrong'
+    });
+    expect(res.status).toBe(429);
+  });
+});
+```
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-62"></a>
+## 62. Disaster Recovery Playbook
+
+### 62.1 RTO/RPO ของแต่ละ Component
+
+| Component | RTO (เวลาฟื้น) | RPO (ข้อมูลหาย) | วิธีฟื้น |
+|-----------|----------------|-----------------|----------|
+| Vercel function | <1 นาที | 0 | auto-rollback |
+| Supabase DB | <10 นาที | <1 นาที (PITR) | restore backup |
+| ESP32 | <5 นาที | 0 | reboot/reflash |
+| Discord | depend | 0 | external service |
+| LAN กล่อง | <10 นาที | 0 | manual restart |
+
+### 62.2 Scenarios & Playbook
+
+#### Scenario A: Database หาย
+1. Supabase Dashboard → Database → Backups
+2. เลือก backup ล่าสุด (daily) หรือ point-in-time
+3. Click "Restore"
+4. รอ ~5 นาที
+5. ตรวจ schema ครบ + admin ยัง login ได้
+
+#### Scenario B: Vercel deployment ล่ม
+1. Vercel Dashboard → Deployments
+2. หา build ก่อนหน้าที่ "Ready"
+3. กด "..." → "Promote to Production"
+4. รอ ~30 วินาที
+5. ทดสอบ login + ESP32 poll
+
+#### Scenario C: ESP32 ค้าง relay เปิด
+1. เข้า Dashboard → ห้องและ ESP32
+2. กด "ทดสอบ" → check status
+3. ถ้า offline → reboot บอร์ดด้วยมือ
+4. ตั้ง `room_cmd_<room>` = `idle` ผ่าน Settings ก่อน reboot
+5. หาก hardware เสีย → swap board, flash firmware ใหม่
+
+#### Scenario D: ESP32_API_KEY รั่ว
+1. สร้าง key ใหม่ (`openssl rand -hex 32`)
+2. Vercel: update `ESP32_API_KEY` env → redeploy
+3. ESP32: แก้ `config.h` → re-flash ทุกบอร์ด
+4. ทดสอบ
+5. ตรวจ access_logs ย้อนหลังว่ามี traffic ผิดปกติ
+
+#### Scenario E: JWT_SECRET รั่ว
+1. สร้างใหม่
+2. Vercel update env → redeploy
+3. ผู้ใช้ทุกคนถูก logout (token เดิม invalid)
+4. admin login ใหม่
+
+### 62.3 Backup Strategy
+
+| Data | Frequency | Retention |
+|------|-----------|-----------|
+| Supabase auto-backup | รายวัน | 7 วัน (free) / 30 วัน (pro) |
+| Manual export DB | สัปดาห์ละครั้ง | 1 ปี |
+| Vercel deployments | ทุก push | 100 build ล่าสุด |
+| ESP32 firmware | ทุกรุ่น | git tag |
+| `.env` | offline copy | encrypted in password manager |
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-63"></a>
+## 63. Cost Analysis แบบเต็ม
+
+### 63.1 ค่าใช้จ่ายปัจจุบัน (Free Tier)
+
+| Service | Plan | ราคา/เดือน |
+|---------|------|-------------|
+| Vercel | Hobby | 0 บาท |
+| Supabase | Free | 0 บาท |
+| Domain | (ใช้ vercel.app) | 0 บาท |
+| Discord | Free | 0 บาท |
+| ESP32 (hardware) | one-time ~250 บาท/บอร์ด | amortize |
+| **รวม** | | **0 บาท/เดือน** |
+
+### 63.2 ถ้าโต — ค่าใช้จ่าย Production
+
+| Service | Plan | ราคา/เดือน |
+|---------|------|-------------|
+| Vercel | Pro | $20 (~700 บาท) |
+| Supabase | Pro | $25 (~880 บาท) |
+| Custom domain `.ac.th` | — | ~500 บาท/ปี = ~42 บาท/เดือน |
+| Cloudflare (DDoS) | Free | 0 |
+| **รวม** | | **~1,600 บาท/เดือน** |
+
+### 63.3 Cost per Request
+
+```
+Vercel Hobby: 100 GB bandwidth + 100k function invocations ฟรี
+1 บอร์ด ESP32 poll 2s = 1.3M invocation/เดือน → เกิน free!
+
+จริง ๆ:
+- 10 บอร์ด × 1.3M = 13M/เดือน
+- Vercel Pro: $20 + $0.40/M หลังจาก 1M = $20 + $5 = $25/เดือน
+- → 1 บอร์ดทำให้เกิน free แล้ว!
+```
+
+→ ในความเป็นจริงต้องลด polling หรือ batch หรือใช้ MQTT push
+
+### 63.4 Optimization เพื่อประหยัด
+
+1. **เพิ่ม poll interval เป็น 5 วินาที** → ลด invocation 60%
+2. **ใช้ Edge runtime** สำหรับ `/api/esp32/display` (ไม่ต้อง Node)
+3. **เพิ่ม cache HTTP header** `Cache-Control: max-age=2` → ESP32 cache เอง
+4. **MQTT push แทน polling** → 1 connection ตลอดวัน แทน 43k requests
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-64"></a>
+## 64. ทำไมเลือก Tailwind CSS v4
+
+### 64.1 Tailwind v4 vs Alternatives
+
+| | Tailwind v4 | CSS Modules | styled-components | CSS-in-JS |
+|---|-------------|-------------|-------------------|-----------|
+| Bundle size | ~10KB (purged) | small | ~30KB runtime | 30KB+ |
+| DX | utility class | scope per file | template literal | JS object |
+| SSR | ✅ | ✅ | ⚠️ slow | ⚠️ |
+| Dynamic theme | ⚠️ ลำบาก | ⚠️ | ✅ | ✅ |
+| Build time | เร็วมาก (Lightning CSS) | กลาง | กลาง | กลาง |
+
+### 64.2 Feature ใหม่ของ v4 ที่ใช้
+
+```css
+/* app/globals.css */
+@import "tailwindcss";
+
+@theme {
+  --color-rmutp-purple: #7C3AED;
+  --color-faculty-pink: #DB2777;
+}
+```
+
+- ใช้ CSS native variables → ไม่ต้อง config JS file
+- Lightning CSS bundle เร็ว 10× กว่า v3
+- รองรับ container queries
+
+### 64.3 Class Naming Discipline
+
+```tsx
+// ❌ ไม่ดี: สร้าง class ซับซ้อนใน JSX
+<div className="flex items-center justify-between p-4 m-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-purple-500 to-pink-500">
+
+// ✅ ดีกว่า: ใช้ `@apply` หรือ component
+<Card variant="primary">...</Card>
+```
+
+โปรเจกต์นี้ใช้ inline เป็นหลักเพราะ component ไม่ reuse บ่อย
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-65"></a>
+## 65. Color Theory & Accessibility (WCAG)
+
+### 65.1 Brand Colors
+
+```css
+--rmutp-purple: #7C3AED;   /* RMUTP main */
+--faculty-pink: #DB2777;   /* Faculty of Education */
+--success:      #10B981;
+--warning:      #F59E0B;
+--danger:       #EF4444;
+```
+
+### 65.2 Contrast Ratio (WCAG 2.1)
+
+| Combination | Ratio | Level |
+|-------------|-------|-------|
+| #7C3AED on #FFFFFF | 5.93:1 | AA ✅ |
+| #FFFFFF on #7C3AED | 5.93:1 | AA ✅ |
+| #DB2777 on #FFFFFF | 4.97:1 | AA ✅ |
+| #10B981 on #FFFFFF | 3.27:1 | ⚠️ AA Large only |
+| #F59E0B on #FFFFFF | 2.13:1 | ❌ Fail |
+
+> **เกณฑ์ WCAG**:
+> - AA: ratio ≥ 4.5:1 (normal text), ≥ 3:1 (large text 18pt+)
+> - AAA: ratio ≥ 7:1
+
+### 65.3 ที่ต้องระวัง
+
+- **#F59E0B (warning yellow)** บนพื้นขาว → ใช้ใน background ก้อนใหญ่เท่านั้น ไม่ใช่ตัวอักษร
+- ใช้ icon + text ร่วมกันเสมอ — ไม่พึ่งสีอย่างเดียว (กันคนตาบอดสี)
+- รหัสสี + label text ในทุกปุ่ม action
+
+### 65.4 Color Blindness
+
+ประเภทที่พบบ่อย:
+- **Deuteranopia** (8% ของผู้ชาย) — สีเขียวมองยาก
+- **Protanopia** — สีแดงมองยาก
+- **Tritanopia** — น้อยมาก
+
+→ ใช้ icon ✓ ✗ คู่กับสี → robust
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-66"></a>
+## 66. Thai Font Rendering
+
+### 66.1 ทำไม PDF ใช้ Tahoma
+
+- Tahoma รองรับภาษาไทย + อ่านง่าย + free license
+- มีในทุก Windows machine (สำหรับ dev local)
+- ใส่ใน `public/fonts/tahoma.ttf` ~700KB → bundled กับ Vercel function
+
+### 66.2 ปัญหาฟอนต์ไทยที่เจอ
+
+1. **Browser default** — บาง browser แสดงผิด → CSS `font-family: 'Sarabun', 'Tahoma', sans-serif`
+2. **PDF** — Helvetica ไม่มี Thai glyph → ต้อง register Tahoma เสมอ
+3. **ESP32 TFT** — Adafruit GFX มาตรฐานไม่มี Thai → ใช้ภาษาอังกฤษบนจอ
+
+### 66.3 Font Subsetting (Optimization)
+
+ปัจจุบันส่ง Tahoma ทั้งไฟล์ 700KB → ทุก request PDF ใช้ทั้งหมด
+ทำ subset แค่ glyph ที่ใช้ → ~150KB
+
+```bash
+pyftsubset tahoma.ttf --unicodes="U+0E00-0E7F,U+0020-007F" --output-file=tahoma-thai.ttf
+```
+
+### 66.4 Web Fonts บน Next.js
+
+```tsx
+// app/layout.tsx
+import { Sarabun } from 'next/font/google';
+const sarabun = Sarabun({ subsets: ['thai', 'latin'], weight: ['400', '700'] });
+
+export default function RootLayout({ children }) {
+  return <html className={sarabun.className}>...</html>;
+}
+```
+
+Next.js จะ:
+- Download font ตอน build
+- Self-host (ไม่ Google CDN runtime) → privacy + speed
+- Inline `font-display: swap` → ไม่ FOIT
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-67"></a>
+## 67. พ.ร.บ. คอมพิวเตอร์ มาตรา 26 — รายละเอียดและการปฏิบัติตาม
+
+### 67.1 ตัวบทกฎหมาย
+
+> **มาตรา 26** — ผู้ให้บริการต้องเก็บรักษาข้อมูลจราจรทางคอมพิวเตอร์ไว้ไม่น้อยกว่า**เก้าสิบวัน** นับแต่วันที่ข้อมูลนั้นเข้าสู่ระบบคอมพิวเตอร์ แต่ในกรณีจำเป็นพนักงานเจ้าหน้าที่จะสั่งผู้ให้บริการผู้ใดให้เก็บรักษาข้อมูลจราจรทางคอมพิวเตอร์ไว้เกินเก้าสิบวันแต่ไม่เกินสองปีเป็นกรณีพิเศษเฉพาะรายและเฉพาะคราวก็ได้
+
+### 67.2 "ข้อมูลจราจรทางคอมพิวเตอร์" คือ
+
+- ผู้ใช้, เวลาเข้าออก, IP address
+- การกระทำที่เกิด (login, approve, reject, door opened)
+- ปลายทางการสื่อสาร
+
+### 67.3 ระบบทำตรงไหน
+
+ตาราง `access_logs` เก็บ:
+- `student_id`, `admin_id` — ใครทำ
+- `action` — ทำอะไร
+- `ip_address` — มาจากไหน
+- `user_agent` — ใช้อุปกรณ์อะไร
+- `created_at` — เมื่อไหร่
+- `notes` — รายละเอียด
+
+### 67.4 การลบ Log
+
+```ts
+// API: POST /api/system/logs/cleanup
+async function cleanupLogs(req) {
+  const user = await getAdminFromCookie();
+  if (user.role !== 'owner') return 403;
+
+  const { mode, password } = await req.json();
+
+  if (mode === 'all') {
+    // ลบทั้งหมด — ต้องยืนยันรหัส
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) return 401;
+  }
+
+  // ลบเฉพาะที่เกิน 90 วัน (default)
+  await db.query(`
+    DELETE FROM access_logs
+    WHERE created_at < NOW() - INTERVAL '90 days'
+  `);
+}
+```
+
+> Log < 90 วันลบไม่ได้แม้ owner — ต้องยืนยันรหัส + warning ใน UI
+
+### 67.5 Retention Best Practice
+
+- เก็บ 90-180 วัน (กฎหมายขั้นต่ำ)
+- Archive ออกไป cold storage ถ้าต้องการนานกว่า
+- ป้องกันการแก้ไข log (write-once) — append-only
+
+### 67.6 Disclosure to Authority
+
+ถ้าหน่วยงานราชการขอ:
+- ต้องมี **คำสั่งศาล** หรือ **หนังสือจาก พงส.**
+- ส่งเฉพาะที่ขอ — ไม่ทั้ง DB
+- บันทึก disclosure log
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-68"></a>
+## 68. PDPA — Personal Data Protection Act
+
+### 68.1 ข้อมูลส่วนบุคคลที่ระบบเก็บ
+
+| ข้อมูล | ประเภท | เหตุผล | Retention |
+|--------|--------|--------|-----------|
+| ชื่อ-สกุล | PII | identify | ตลอดอายุการเรียน |
+| รหัสนักศึกษา | PII | identify | ตลอดอายุ |
+| คณะ/สาขา/ปี | PII | filter, statistics | ตลอดอายุ |
+| Email | PII | (ถ้าเก็บ) | ตลอดอายุ |
+| Phone | PII | (ถ้าเก็บ) | ตลอดอายุ |
+| IP address | PII (debatable) | security | 90+ วัน |
+| User-agent | non-PII | analytics | 90+ วัน |
+| ภาพถ่าย | sensitive PII | ไม่เก็บ | — |
+
+### 68.2 หลักการ 6 ข้อของ PDPA
+
+1. **Lawful basis** — ฐานการประมวลผล (เช่น สัญญา, consent, ภารกิจของรัฐ)
+2. **Purpose limitation** — เก็บเพื่ออะไร ใช้เพื่อนั้น
+3. **Data minimization** — เก็บเท่าที่จำเป็น
+4. **Accuracy** — ข้อมูลถูกต้องเป็นปัจจุบัน
+5. **Storage limitation** — เก็บเท่าที่จำเป็น
+6. **Integrity & confidentiality** — ปลอดภัย
+
+### 68.3 สิทธิเจ้าของข้อมูล
+
+- สิทธิเข้าถึง (Access)
+- สิทธิแก้ไข (Rectification)
+- สิทธิลบ (Right to be forgotten)
+- สิทธิคัดค้าน (Objection)
+- สิทธิให้โอน (Portability)
+
+### 68.4 ระบบรองรับยังไง
+
+- ✅ Admin ดูข้อมูลของนักศึกษาแต่ละคนได้ (access)
+- ✅ Admin แก้ไขข้อมูลได้ (rectification)
+- ✅ Owner ลบข้อมูลได้ (with confirmation)
+- ⚠️ ยังไม่มี self-service portal ให้นักศึกษาดูข้อมูลตัวเอง
+- ⚠️ Export ของตัวเอง — ทำได้ผ่าน admin
+
+### 68.5 ที่ควรเพิ่ม
+
+- Privacy Policy URL บนหน้าลงทะเบียน
+- Consent checkbox ตอน register
+- DPO contact info
+- DSAR (Data Subject Access Request) workflow
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-69"></a>
+## 69. Chrome DevTools Profiling ของหน้าเว็บ
+
+### 69.1 Performance Tab — Flame Graph
+
+วิธีดู:
+1. Chrome → F12 → Performance
+2. กด Record → reload หน้า → Stop
+3. ดู timeline
+
+**สิ่งที่จะเจอใน Dashboard**:
+```
+0ms     ─ Navigation start
+50ms    ─ DOMContentLoaded
+80ms    ─ HTML parsed
+120ms   ─ JS bundle download (CDN cache hit)
+180ms   ─ JS parse + compile
+250ms   ─ React hydrate
+300ms   ─ First useEffect → fetch /api/auth/me
+380ms   ─ Auth check OK
+400ms   ─ Parallel fetch: pending, students, settings
+600ms   ─ First contentful paint
+800ms   ─ Largest contentful paint (table rendered)
+```
+
+### 69.2 Network Waterfall
+
+ดู:
+- ไฟล์ใหญ่สุด: `_next/static/chunks/main-...js` ~250KB
+- ไฟล์ที่ช้าสุด: API call แรกหลัง cold start (~500ms)
+- Image lazy load: avatar รูป (ถ้ามี)
+
+### 69.3 Lighthouse Audit
+
+```
+Performance:  92/100
+Accessibility: 88/100
+Best Practices: 100/100
+SEO: 100/100 (สำหรับหน้าที่เปิดสาธารณะ)
+```
+
+**ที่ Lighthouse แนะนำ**:
+- Preconnect to Supabase: `<link rel="preconnect" href="https://xxx.supabase.co">`
+- Reduce unused JS: dashboard มี ~30% JS ไม่ได้ใช้ → tree shake
+- Image optimization: ใช้ `next/image`
+
+### 69.4 Memory Profiling
+
+- Heap snapshot ก่อน-หลังใช้งาน → ดู memory leak
+- Dashboard mount/unmount → ควร gc คืน
+- Listener cleanup ใน useEffect cleanup function
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-70"></a>
+## 70. ESP32 Oscilloscope Traces
+
+### 70.1 SPI Signal บน TFT
+
+```
+SCK  ──┐_┌─┐_┌─┐_┌─┐_┌─┐_┌─    40MHz
+MOSI ──┐__┌─┐__┌─┐__┌──┐___    data lanes
+CS   ──┐__________________┌──  active LOW during transfer
+DC   ──┐___┐╌╌╌┌___┐╌╌╌╌╌╌    data vs command
+```
+
+**ที่ต้องดู**:
+- SCK rise/fall time < 5ns
+- Setup/hold time MOSI vs SCK ≥ 2ns
+- ถ้าสายยาว → ringing → ใส่ series resistor 33Ω
+
+### 70.2 Relay Switching Transient
+
+```
+GPIO12 ────┐________________________┌──────
+           │  (HIGH 3.8s)            │
+           ▼                         ▼
+Relay coil
+voltage    ────┐                     ┌───┐
+               │                     │   │← back-EMF spike
+               │                     │   │  (~150V ถ้าไม่มี diode)
+               ▼                     ▼   │
+                                         │
+                                         └ damp by flyback diode
+```
+
+ใช้ scope probe คร่อม diode:
+- ตอน switch off → เห็น spike short (5-10µs)
+- ถ้าไม่มี diode → spike 100V+ → transistor พัง
+
+### 70.3 Power Rail Quality
+
+ดู ripple บน 5V output ของ buck:
+- Spec: < 50mVpp
+- ถ้า > 100mV → ESP32 reset random → ใส่ cap 470µF + 0.1µF
+
+### 70.4 Wi-Fi RF Spectrum
+
+ใช้ HackRF + GQRX:
+- 2.4 GHz band
+- ESP32 transmit burst ทุก 100ms (beacon) + during HTTP
+- ถ้า channel ใกล้ AP สัญญาณรบกวน → ลด throughput
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+> **อัปเดตล่าสุด**: 2026-05-27 19:30:00 +07:00 — เพิ่ม §45–70 (DB migration, lib deep-dive, dashboard tabs, hydration, threat model, crypto math, OWASP, schematic, power budget, PCB, packet flow, DNS/CDN, NAT, query plan, pooling, isolation, testing, DR, cost, Tailwind, color theory, font, พ.ร.บ., PDPA, profiling, oscilloscope) รวม 26 หัวข้อใหม่
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
