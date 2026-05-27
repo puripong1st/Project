@@ -251,6 +251,12 @@ export async function initDatabase(): Promise<void> {
     const isProd = process.env.NODE_ENV === "production";
 
     if (adminCount === 0) {
+      // Guard: explicitly warn and block dev seed if ALLOW_DEV_SEED is misconfigured in production
+      if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_SEED === "true") {
+        console.error("[SECURITY] ALLOW_DEV_SEED=true in production! Ignoring.");
+        // ข้าม dev seed ใน production เสมอ
+      }
+
       if (isProd) {
         // Production: secure initial admin provisioning via environment variables
         const initialUsername = process.env.INITIAL_ADMIN_USERNAME;
@@ -266,9 +272,19 @@ export async function initDatabase(): Promise<void> {
         }
 
         // Enforce strong password policy for production admin
-        if (initialPassword.length < 8) {
+        if (initialPassword.length < 12) {
           throw new Error(
-            "Production Database Initialization Error: The INITIAL_ADMIN_PASSWORD must be at least 8 characters long."
+            "Production Database Initialization Error: INITIAL_ADMIN_PASSWORD must be at least 12 characters."
+          );
+        }
+        if (!/[A-Z]/.test(initialPassword)) {
+          throw new Error(
+            "Production Database Initialization Error: INITIAL_ADMIN_PASSWORD must contain uppercase letter."
+          );
+        }
+        if (!/[0-9]/.test(initialPassword)) {
+          throw new Error(
+            "Production Database Initialization Error: INITIAL_ADMIN_PASSWORD must contain a number."
           );
         }
 
