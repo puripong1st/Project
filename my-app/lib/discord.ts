@@ -9,7 +9,10 @@ export type DiscordEventType =
   | "student_rejected"
   | "door_opened"
   | "door_failed"
-  | "esp32_offline";
+  | "esp32_offline"
+  | "admin_login"
+  | "admin_logout"
+  | "admin_login_failed";
 
 interface DiscordEmbed {
   title: string;
@@ -28,6 +31,27 @@ const COLORS = {
   purple: 0x9b59b6,    // Purple
 };
 
+function parseUserAgent(ua: string): { browser: string; device: string } {
+  if (!ua) return { browser: "ไม่ทราบ", device: "ไม่ทราบ" };
+
+  let browser = "Other";
+  if (ua.includes("Edg/")) browser = "Microsoft Edge";
+  else if (ua.includes("Chrome/") && !ua.includes("Chromium/")) browser = "Google Chrome";
+  else if (ua.includes("Firefox/")) browser = "Mozilla Firefox";
+  else if (ua.includes("Safari/") && !ua.includes("Chrome/")) browser = "Apple Safari";
+  else if (ua.includes("OPR/") || ua.includes("Opera/")) browser = "Opera";
+
+  let device = "Desktop";
+  if (/Android/i.test(ua)) device = "Android Mobile";
+  else if (/iPhone|iPad|iPod/i.test(ua)) device = "iOS Device";
+  else if (/Windows Phone/i.test(ua)) device = "Windows Phone";
+  else if (/Windows/i.test(ua)) device = "Windows PC";
+  else if (/Macintosh|Mac OS/i.test(ua)) device = "Mac";
+  else if (/Linux/i.test(ua)) device = "Linux";
+
+  return { browser, device };
+}
+
 export async function sendDiscordNotification(
   eventType: DiscordEventType,
   data: {
@@ -37,9 +61,13 @@ export async function sendDiscordNotification(
     branch?: string;
     year?: number;
     adminName?: string;
+    adminUsername?: string;
+    adminRole?: string;
     reason?: string;
     esp32Response?: string;
-    room?: string; // เพิ่มฟิลด์ห้องสำหรับแยกสิทธิ์และ Webhook รายห้อง
+    room?: string;
+    ip?: string;
+    userAgent?: string;
   }
 ): Promise<boolean> {
   // Load dynamic webhook URLs from database
@@ -61,14 +89,19 @@ export async function sendDiscordNotification(
       if (eventType === "student_registered") {
         targetWebhookUrl = roomRegWebhook || settings.discord_webhook_register || "";
       } else if (
-        eventType === "student_approved" || 
-        eventType === "student_rejected" || 
-        eventType === "door_opened" || 
+        eventType === "student_approved" ||
+        eventType === "student_rejected" ||
+        eventType === "door_opened" ||
         eventType === "door_failed"
       ) {
         targetWebhookUrl = roomApproveWebhook || settings.discord_webhook_approve || "";
-      } else if (eventType === "esp32_offline") {
-        targetWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || "";
+      } else if (
+        eventType === "esp32_offline" ||
+        eventType === "admin_login" ||
+        eventType === "admin_logout" ||
+        eventType === "admin_login_failed"
+      ) {
+        targetWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || settings.discord_webhook_admin_audit || "";
       }
 
       // 2. กำหนด Webhook ประจำ Log จราจร/ความปลอดภัยอย่างละเอียด
@@ -80,12 +113,18 @@ export async function sendDiscordNotification(
       if (eventType === "student_registered") {
         targetWebhookUrl = settings.discord_webhook_register || "";
       } else if (
-        eventType === "student_approved" || 
-        eventType === "student_rejected" || 
-        eventType === "door_opened" || 
+        eventType === "student_approved" ||
+        eventType === "student_rejected" ||
+        eventType === "door_opened" ||
         eventType === "door_failed"
       ) {
         targetWebhookUrl = settings.discord_webhook_approve || "";
+      } else if (
+        eventType === "admin_login" ||
+        eventType === "admin_logout" ||
+        eventType === "admin_login_failed"
+      ) {
+        targetWebhookUrl = settings.discord_webhook_admin_audit || settings.discord_webhook_logs || "";
       }
       logWebhookUrl = settings.discord_webhook_logs || "";
     }
@@ -217,6 +256,67 @@ export async function sendDiscordNotification(
         timestamp: new Date().toISOString(),
       };
       break;
+
+    case "admin_login": {
+      const roleLabel = data.adminRole === "owner" ? "👑 Owner (ผู้ดูแลสูงสุด)" : "🔑 Door Operator";
+      const deviceInfo = parseUserAgent(data.userAgent || "");
+      embed = {
+        title: "🔐 แอดมินเข้าสู่ระบบ",
+        description: `**${data.adminName || data.adminUsername || "-"}** เข้าสู่ระบบสำเร็จ`,
+        color: COLORS.purple,
+        fields: [
+          { name: "👤 ชื่อ-นามสกุล", value: data.adminName || "-", inline: true },
+          { name: "🏷️ Username", value: `\`${data.adminUsername || "-"}\``, inline: true },
+          { name: "🎭 ตำแหน่ง", value: roleLabel, inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "💻 อุปกรณ์", value: deviceInfo.device, inline: true },
+          { name: "🌍 Browser", value: deviceInfo.browser, inline: true },
+          { name: "⏰ เวลาเข้าสู่ระบบ", value: now, inline: false },
+        ],
+        footer: { text: "RMUTP Admin Audit Log" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
+
+    case "admin_logout": {
+      const roleLabel = data.adminRole === "owner" ? "👑 Owner (ผู้ดูแลสูงสุด)" : "🔑 Door Operator";
+      embed = {
+        title: "🚪 แอดมินออกจากระบบ",
+        description: `**${data.adminName || data.adminUsername || "-"}** ออกจากระบบแล้ว`,
+        color: COLORS.info,
+        fields: [
+          { name: "👤 ชื่อ-นามสกุล", value: data.adminName || "-", inline: true },
+          { name: "🏷️ Username", value: `\`${data.adminUsername || "-"}\``, inline: true },
+          { name: "🎭 ตำแหน่ง", value: roleLabel, inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "⏰ เวลาออกจากระบบ", value: now, inline: false },
+        ],
+        footer: { text: "RMUTP Admin Audit Log" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
+
+    case "admin_login_failed": {
+      const deviceInfo = parseUserAgent(data.userAgent || "");
+      embed = {
+        title: "⚠️ พยายามเข้าสู่ระบบล้มเหลว",
+        description: `มีการพยายามล็อกอินด้วย Username **\`${data.adminUsername || "-"}\`** แต่ไม่สำเร็จ`,
+        color: COLORS.warning,
+        fields: [
+          { name: "🏷️ Username ที่ใช้", value: `\`${data.adminUsername || "-"}\``, inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "💻 อุปกรณ์", value: deviceInfo.device, inline: true },
+          { name: "🌍 Browser", value: deviceInfo.browser, inline: true },
+          { name: "📝 เหตุผล", value: data.reason || "Username หรือ Password ไม่ถูกต้อง", inline: false },
+          { name: "⏰ เวลา", value: now, inline: false },
+        ],
+        footer: { text: "RMUTP Admin Audit Log — Security Alert" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
   }
 
   // แทรกแท็กระบุห้องเรียนลงใน Embed ก่อนทำการส่ง เพื่อความชัดเจนและเรียบร้อยใน Discord

@@ -27,6 +27,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h> // สำหรับรัน HTTPS บนระบบคลาวด์ Vercel
 #include <mbedtls/md.h>
+#include <time.h> // สำหรับ NTP time sync (ใช้ใน HMAC timestamp)
 
 #include "config.h"
 
@@ -372,6 +373,26 @@ String base64Decode(String input) {
   return res;
 }
 
+// Hex-encoded HMAC-SHA256 — ตรงกับ Node.js crypto.createHmac('sha256', key).digest('hex')
+// ใช้สำหรับ x-hmac-signature header ที่ server ตรวจสอบ
+String generateHMACHex(String payload, String key) {
+  uint8_t hmacResult[32];
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char *)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload.c_str(), payload.length());
+  mbedtls_md_hmac_finish(&ctx, hmacResult);
+  mbedtls_md_free(&ctx);
+  char hexBuf[65];
+  for (int i = 0; i < 32; i++) {
+    sprintf(hexBuf + i * 2, "%02x", hmacResult[i]);
+  }
+  hexBuf[64] = '\0';
+  return String(hexBuf);
+}
+
+// Base64url-encoded HMAC-SHA256 (ใช้สำหรับ offline grant validation)
 String generateHMAC(String payload, String key) {
   uint8_t hmacResult[32];
   mbedtls_md_context_t ctx;
@@ -810,6 +831,19 @@ void setup() {
   digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
   DBG("\nWiFi connected successfully!");
 
+  // ─── NTP Time Sync (จำเป็นสำหรับ HMAC timestamp) ───────────────────
+  // UTC+7 (Bangkok ICT) — offset 7*3600 = 25200
+  configTime(25200, 0, "pool.ntp.org", "time.cloudflare.com");
+  // รอให้ได้เวลาจริงจาก NTP (สูงสุด 5 วินาที)
+  {
+    int ntp_wait = 0;
+    while (time(nullptr) < 1000000000UL && ntp_wait < 50) {
+      delay(100);
+      ntp_wait++;
+    }
+  }
+  Serial.println("[INFO] NTP synced: " + String((long)time(nullptr)));
+
   // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
 
@@ -910,7 +944,7 @@ void loop() {
           Serial.println("[ERROR] Connection failed");
           DBG("Unable to create WiFiClientSecure");
           api_fail_count++;
-          if (api_fail_count >= 3) {
+          if (api_fail_count >= 5) {
             is_offline_mode = true;
           }
           return;
@@ -919,9 +953,17 @@ void loop() {
         http.begin(server_url);
       }
 
-      http.setTimeout(1200);
+      http.setTimeout(5000);
       http.addHeader("Content-Type", "application/json");
       http.addHeader("x-api-key", api_key);
+
+      // HMAC-SHA256 timestamp authentication (V11 fix)
+      time_t nowTs = time(nullptr);
+      String timestampStr = String((long)nowTs);
+      String hmacPayload = timestampStr + ":/api/esp32/display";
+      String signature = generateHMACHex(hmacPayload, String(api_key));
+      http.addHeader("x-timestamp", timestampStr);
+      http.addHeader("x-hmac-signature", signature);
 
       int httpCode = http.GET();
       if (httpCode == 200) {
@@ -981,10 +1023,10 @@ void loop() {
             Serial.println("[INFO] Door unlocked");
             DBG("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
 
-            // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) 1.2 วินาทีเพื่อความเหมือนจริง!
+            // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) สั้นๆ แล้วไปแสดงผลอนุมัติทันที
             drawScanningScreen();
             tone(BUZZER_PIN, 1500, 100);
-            delay(1200);
+            delay(300);
 
             // ขั้น 2: แสดงหน้าจออนุมัติ (Access Granted)
             drawUnlockedScreen(approvedName, studentId);
@@ -1046,7 +1088,7 @@ void loop() {
         Serial.println("[ERROR] Connection failed");
         DBGF("HTTP Error: %d\n", httpCode);
         api_fail_count++;
-        if (api_fail_count >= 3) {
+        if (api_fail_count >= 5) {
           if (!is_offline_mode) {
             is_offline_mode = true;
             DBG("Entering offline fallback mode due to consecutive API "

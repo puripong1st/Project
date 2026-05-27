@@ -523,6 +523,7 @@ function AdminDashboardInner() {
     discord_webhook_register: "",
     discord_webhook_approve: "",
     discord_webhook_logs: "",
+    discord_webhook_admin_audit: "",
     auto_fill_enabled: true,
     auto_fill_mode: "auto",
     student_id_display_mode: "full",
@@ -561,6 +562,7 @@ function AdminDashboardInner() {
             discord_webhook_register: data.settings.discord_webhook_register || "",
             discord_webhook_approve: data.settings.discord_webhook_approve || "",
             discord_webhook_logs: data.settings.discord_webhook_logs || "",
+            discord_webhook_admin_audit: data.settings.discord_webhook_admin_audit || "",
             auto_fill_enabled: data.settings.auto_fill_enabled === "1",
             auto_fill_mode: data.settings.auto_fill_mode || "auto",
             student_id_display_mode: data.settings.student_id_display_mode || "full",
@@ -618,7 +620,7 @@ function AdminDashboardInner() {
     }
   };
 
-  const handleTestWebhook = async (webhookUrl: string, type: "register" | "approve" | "logs", room?: string) => {
+  const handleTestWebhook = async (webhookUrl: string, type: "register" | "approve" | "logs" | "admin_audit", room?: string) => {
     if (!webhookUrl || !webhookUrl.trim().startsWith("https://discord.com/api/webhooks/")) {
       showToast("❌ ลิงก์ Discord Webhook ไม่ถูกต้อง หรือไม่ได้ระบุ", "error");
       return;
@@ -680,30 +682,71 @@ function AdminDashboardInner() {
 
   const getConfigCode = (roomCode: string, origin: string, mode: "wokwi" | "physical" = "physical") => {
     const wifiBlock = mode === "wokwi"
-      ? `const char *ssid = "Wokwi-GUEST";\nconst char *password = "";`
-      : `const char *ssid = "YOUR_WIFI_SSID";      // ← แก้เป็นชื่อ Wi-Fi จริง\nconst char *password = "YOUR_WIFI_PASSWORD"; // ← แก้เป็นรหัส Wi-Fi จริง`;
+      ? `const char *ssid     = "Wokwi-GUEST";
+const char *password = "";`
+      : `const char *ssid     = "YOUR_WIFI_SSID";      // ← แก้เป็นชื่อ Wi-Fi จริง
+const char *password = "YOUR_WIFI_PASSWORD"; // ← แก้เป็นรหัส Wi-Fi จริง`;
 
     const certBlock = mode === "wokwi"
-      ? `// Wokwi Simulator — ไม่ต้องใช้ CA Certificate (setInsecure() ถูกใช้แทน)\n// สำหรับบอร์ดจริงให้เปลี่ยนโหมดเป็น Physical ESP32 เพื่อดู CA Cert`
-      : `// Root CA Certificate สำหรับตรวจสอบใบรับรอง HTTPS Vercel (ISRG Root X1)\nconst char *root_ca_cert = \\\n"-----BEGIN CERTIFICATE-----\\n" \\\n"MIIFazCCA1OgAwIBAgIRAIIRxZ96RhG2Hae8TZtOGMEwDQYJKoZIhvcNAQELBQAw\\n" \\\n"TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\\n" \\\n"cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\\n" \\\n"WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\\n" \\\n"ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\\n" \\\n"MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzmHwXyEFD\\n" \\\n"aVY+5gE2Dux6ClJHdEEXJKmcfcPChBkuv3Gz/kOHegC6MyTPd50rtW71mMR6ZkvF\\n" \\\n"m5yOYyFL9PJA65geg8gCyRFyat6J4Rg8L3AzoU3dZCPqy8gKKHWMVfuxgpJEnt4f\\n" \\\n"mCjOt21KKOAQCFAJUsT18H3OPC9CDH5SM5KC9CTWgrOB8Uo18m1751g6M6Wd095M\\n" \\\n"O44692GUP8xQG07xEQ2g5K31LCT79kXyNdc29F257754sTA+772YtB77c5sS2t72\\n" \\\n"K17578t1A2C317187sT8sT118t1A2sT8t17sT8sT8sT8sT8sT8sT8sT8sT8sT8sT\\n" \\\n"-----END CERTIFICATE-----\\n";`;
+      ? `// Wokwi Simulator — ไม่ต้องใช้ CA Certificate (setInsecure() ถูกใช้แทน)
+// สำหรับบอร์ดจริงให้เปลี่ยนโหมดเป็น Physical ESP32 เพื่อดู CA Cert`
+      : `// --- TLS Security: Root CA Certificate ---
+// ⚠️  Wokwi builds (#define WOKWI_SIM) skip this and use setInsecure() instead.
+// Production: replace with full ISRG Root X1 PEM from https://letsencrypt.org/certs/isrgrootx1.pem
+const char *root_ca_cert =
+"-----BEGIN CERTIFICATE-----\\n"
+"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\\n"
+"-----END CERTIFICATE-----\\n";`;
 
     return `/*
   ========================================================================
-  RMUTP Door Access Controller - config.h for Classroom ${roomCode}
+  RMUTP Door Access Controller - Configuration for ESP32
+  ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
   โหมด: ${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
   ========================================================================
 */
+
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// --- WiFi Configuration ---
 ${wifiBlock}
 
+// --- IoT Cloud Server Configuration ---
 const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
-const char *room_code = "${roomCode}";
+const char *room_code  = "${roomCode}";
 
-// ⚠️ IMPORTANT: Replace with your actual ESP32 API key
-// Get the key from your server administrator
-// DO NOT commit the real key to version control
+// --- Security Provisioning: Shared Pre-shared API Key ---
+// ⚠️ IMPORTANT: ใส่ค่าจาก ESP32_API_KEY ใน Vercel Environment Variables
+// ห้ามนำ key จริงขึ้น version control
 const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
 
 ${certBlock}
@@ -1580,6 +1623,9 @@ void setup() {
   delay(180);
   tone(BUZZER_PIN, 1600, 250);
 
+  // สตาร์ตเซิร์ฟเวอร์เว็บท้องถิ่นเพื่อการซิงค์แบบเรียลไทม์ (Real-Time Push)
+  startLocalServer();
+
   // วาดแผงหน้าจอหลักเริ่มต้น
   drawMainScreen(0, "", "12:00:00", "");
 }
@@ -1669,7 +1715,7 @@ void loop() {
           Serial.println("[ERROR] Connection failed");
           DBG("Unable to create WiFiClientSecure");
           api_fail_count++;
-          if (api_fail_count >= 3) {
+          if (api_fail_count >= 5) {
             is_offline_mode = true;
           }
           return;
@@ -1678,7 +1724,7 @@ void loop() {
         http.begin(server_url);
       }
 
-      http.setTimeout(1200);
+      http.setTimeout(5000);
       http.addHeader("Content-Type", "application/json");
       http.addHeader("x-api-key", api_key);
       String ts3 = getTimestamp();
@@ -1745,10 +1791,10 @@ void loop() {
             Serial.println("[INFO] Door unlocked");
             DBG("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
 
-            // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) 1.2 วินาทีเพื่อความเหมือนจริง!
+            // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) สั้นๆ แล้วไปแสดงผลอนุมัติทันที
             drawScanningScreen();
             tone(BUZZER_PIN, 1500, 100);
-            delay(1200);
+            delay(300);
 
             // ขั้น 2: แสดงหน้าจออนุมัติ (Access Granted)
             drawUnlockedScreen(approvedName, studentId);
@@ -1810,7 +1856,7 @@ void loop() {
         Serial.println("[ERROR] Connection failed");
         DBGF("HTTP Error: %d\\n", httpCode);
         api_fail_count++;
-        if (api_fail_count >= 3) {
+        if (api_fail_count >= 5) {
           if (!is_offline_mode) {
             is_offline_mode = true;
             DBG("Entering offline fallback mode due to consecutive API "
@@ -5225,6 +5271,34 @@ void handleLocalWebServerRequest() {
                           <button
                             type="button"
                             onClick={() => handleTestWebhook(settings.discord_webhook_logs, "logs")}
+                            className="btn-ghost"
+                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                          >
+                            🧪 ทดสอบส่ง
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                          🔐 แจ้งเตือน Admin เข้า/ออกระบบ (Audit Log)
+                          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "1px 8px", borderRadius: 8 }}>Security</span>
+                        </label>
+                        <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "0 0 6px" }}>
+                          รับแจ้งเตือนทุกครั้งที่แอดมินเข้า/ออกระบบ พร้อม IP, อุปกรณ์, ตำแหน่ง และการล็อกอินล้มเหลว
+                        </p>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            className="rmutp-input"
+                            type="url"
+                            placeholder="กรอก URL สำหรับ Admin Audit Log"
+                            value={settings.discord_webhook_admin_audit || ""}
+                            onChange={e => setSettings(s => ({ ...s, discord_webhook_admin_audit: e.target.value }))}
+                            style={{ flex: 1, fontSize: 12.5 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleTestWebhook(settings.discord_webhook_admin_audit || "", "admin_audit")}
                             className="btn-ghost"
                             style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
                           >

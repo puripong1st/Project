@@ -8,6 +8,7 @@ export const DEFAULT_SYSTEM_SETTINGS: Record<string, string> = {
   discord_webhook_register: "",
   discord_webhook_approve: "",
   discord_webhook_logs: "",
+  discord_webhook_admin_audit: "",
   auto_fill_enabled: "1",
   auto_fill_mode: "auto",
   configured_rooms: DEFAULT_ROOMS.join(","),
