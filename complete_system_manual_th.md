@@ -114,6 +114,21 @@
   - [71.21 พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ (Computer Crime Act Compliance)](#sec-71-21)
   - [71.22 ข้อตกลงและเงื่อนไขการใช้บริการอย่างเป็นทางการ (Terms and Conditions Guide)](#sec-71-22)
   - [71.23 นโยบายความเป็นส่วนตัวของระบบควบคุมห้องเรียน (Official Privacy Policy)](#sec-71-23)
+  - [71.24 Threat Model แบบ STRIDE และการประเมิน DREAD](#sec-71-24)
+  - [71.25 Data Flow Diagram (DFD) ระดับ 0/1/2 — สำหรับ PDPA DPIA](#sec-71-25)
+  - [71.26 กฎหมายอื่นที่ต้องปฏิบัติตาม (Cybersecurity Act, ก.พ.อ., License Audit)](#sec-71-26)
+  - [71.27 ROC (Record of Processing) ตาม PDPA มาตรา 39](#sec-71-27)
+  - [71.28 Schematic + PCB Layout + BOM (Bill of Materials)](#sec-71-28)
+  - [71.29 Timing Diagram ของ Relay + Flyback Diode](#sec-71-29)
+  - [71.30 API Reference (OpenAPI 3.0 Spec)](#sec-71-30)
+  - [71.31 CI/CD Pipeline + Branch Strategy](#sec-71-31)
+  - [71.32 Incident Response Plan (NIST 800-61) + แบบฟอร์มแจ้ง สคส.](#sec-71-32)
+  - [71.33 Accessibility (a11y) — เกินกว่า WCAG Color](#sec-71-33)
+  - [71.34 User Acceptance Test (UAT) + System Usability Scale (SUS)](#sec-71-34)
+  - [71.35 Literature Review — เปรียบเทียบกับงานวิจัยอื่น](#sec-71-35)
+  - [71.36 Hardware Reliability — MTBF, IP Rating, สภาพแวดล้อม](#sec-71-36)
+  - [71.37 Network Topology — Campus Deployment + Firewall Request](#sec-71-37)
+  - [71.38 คู่มือผู้ใช้แยกเล่ม (Student / Operator / Owner Quick Guides)](#sec-71-38)
 
 ---
 
@@ -5514,6 +5529,1194 @@ my-app/
 
 ---
 
-> **อัปเดตล่าสุด**: 2026-05-27 21:44:42 +07:00 — เปลี่ยนชื่อโปรเจกต์และระบบทั้งหมดในเอกสารอ้างอิงเชิงวิชาการให้เป็น "Innovative system for managing access rights and controlling classroom access via wireless network", ปรับปรุงลิงก์เป็น Production URL (project-sigma-ivory-21.vercel.app), เพิ่มหัวข้อ §71 อธิบายสถาปัตยกรรมเชิงลึกสำหรับการทำเล่มวิทยานิพนธ์รวม 18 บทย่อยเชิงปฏิบัติสมบูรณ์แบบสูงสุดเพื่อรองรับ NotebookLM อย่างเต็มสตรีม ล่าสุดอัปเดตรายละเอียดเรื่องการแบ่งแยกสิทธิ์ของแอดมินรายห้อง (คอลัมน์ allowed_rooms), นโยบายยกระดับรหัสผ่านแอดมินใหม่ (ความยาวอย่างน้อย 12 ตัวอักษร) และปรับโครงสร้างระบบแจ้งเตือนแบบแบ่งแยกตามหมวดหมู่ประเภทเหตุการณ์ลงในเนื้อหาบทเรียนหลักทั้งหมดเรียบร้อย
+<a id="sec-71-19"></a>
+### 71.19 การปฏิบัติตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล (PDPA Compliance & Implementation)
+
+โครงการระบบควบคุมประตูเข้าออกนี้ได้รับการออกแบบโดยยึดหลัก **Privacy by Design** เพื่อให้สอดคล้องกับพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) อย่างเคร่งครัด:
+
+1. **กลไกการขอความยินยอม (Consent Management):** Component `CookieConsent.tsx` บันทึกค่าใน `localStorage` คีย์ `rmutp_cookie_consent` และส่ง Custom Event `rmutp_cookie_consent_changed` กรณีผู้ใช้ปฏิเสธจะบล็อกฟอร์มลงทะเบียนทั้งหมด
+2. **Data Masking บน UI:** รหัสนักศึกษาแสดงแบบ `1164******45` ป้องกัน door_operator คัดลอกข้อมูลออกนอกระบบ
+3. **Row-Level Security (RLS):** Supabase PostgreSQL ตั้ง RLS เฉพาะ JWT ที่ผ่านการตรวจสอบเท่านั้นที่ query ได้
+
+<a id="sec-71-20"></a>
+### 71.20 สถาปัตยกรรมการรักษาความปลอดภัยข้อมูล (Information Security Framework)
+
+1. **Allowed Rooms Verification:** API `/api/students/[id]/approve` แกะ `allowed_rooms` (CSV) จาก JWT แล้วเทียบกับ `requested_room` หากไม่ตรง → **403 Forbidden** (Cross-Room Privilege Abuse prevention)
+2. **Security Key Segregation:** `QR_SIGNING_KEY` แยกจาก `JWT_SECRET` — แฮกเกอร์ที่ดักคีย์ QR ไม่สามารถปลอม JWT แอดมินได้ (Blast Radius Containment)
+3. **Discord Webhook แบ่งหมวด:** 🚨 SYSTEM ALERT / 🔓 ACCESS GRANT / 🔌 HARDWARE OFFLINE (>10s polling gap)
+
+<a id="sec-71-21"></a>
+### 71.21 พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ (Computer Crime Act Compliance)
+
+1. **มาตรา 26 — เก็บ log ≥ 90 วัน:** ตาราง `access_logs` เก็บ timestamp, ชื่อ-นามสกุล, IP (right-most client IP), User-Agent, รหัสห้อง
+2. **Immutable Logs:** ไม่มี API `UPDATE`/`DELETE` บน `access_logs` (รองรับ Digital Forensics)
+3. **มาตรา 5, 7, 8:** บล็อก unauthorized DB access ผ่าน RLS + API key authentication
+
+<a id="sec-71-22"></a>
+### 71.22 ข้อตกลงและเงื่อนไขการใช้บริการ (Terms and Conditions)
+
+หน้า `terms/page.tsx` ระบุ:
+1. **Access Rights Scope:** สิทธิ์เป็นของบุคคลเฉพาะ ห้ามแชร์ QR/Bypass token
+2. **Anti-Tailgating:** ทุกคนต้องสแกนทีละคน — บุคคลสุดท้ายในระบบรับผิดชอบเหตุทรัพย์สิน
+3. **Limitation of Liability:** ไม่รับผิดชอบทรัพย์สินส่วนตัวที่นำเข้าห้อง
+4. **Disciplinary Enforcement:** เจาะระบบ/ปลอมคำร้อง → ระงับสิทธิ์ทันที + ส่งวินัยนักศึกษา
+
+<a id="sec-71-23"></a>
+### 71.23 นโยบายความเป็นส่วนตัว (Official Privacy Policy)
+
+หน้า `privacy/page.tsx`:
+1. **Types of PII:** คำนำหน้า, ชื่อ-นามสกุล, รหัส นศ., คณะ/สาขา, ห้องที่ขอ, timestamp, IP, User-Agent
+2. **Purposes:** จับคู่ยืนยันตน → ปลดล็อกประตู + log จราจร (ป้องกันอัคคีภัย/โจรกรรม)
+3. **Sharing:** Discord Webhook เจ้าหน้าที่เท่านั้น — ไม่ขาย/ส่งบุคคลที่สาม
+4. **Retention:** ≥ 90 วัน, Data Pruning เมื่อสิ้นปีการศึกษา
+5. **Data Subject Rights:** Right to Access + Right to be Forgotten ผ่านคณะวิศวกรรมศาสตร์
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-24"></a>
+### 71.24 Threat Model แบบ STRIDE และการประเมิน DREAD
+
+วิเคราะห์ภัยคุกคามตามกรอบ Microsoft STRIDE โดยแยก trust boundary 4 ชั้น: Browser → Vercel Edge → Supabase → ESP32 LAN
+
+#### 71.24.1 Threat Actors
+
+| Actor | Motivation | Capability | สิ่งที่อยากได้ |
+|---|---|---|---|
+| **นักศึกษาขี้โกง** | เข้าห้องโดยไม่ลงทะเบียน, แชร์สิทธิ์ | Web/Mobile, ไม่มี root | bypass QR หรือ replay token |
+| **เจ้าหน้าที่ผู้ไม่หวังดี (Malicious Insider)** | คัดลอก PII นักศึกษา | door_operator role | dump ตาราง students |
+| **Script Kiddie** | สแปม brute-force | Hydra/Burp Suite | ทำให้ระบบล่ม |
+| **APT (Advanced Persistent Threat)** | ขโมยข้อมูลทั้งระบบ | 0-day, social engineering | full control of dashboard |
+| **คนเดินตามหลัง (Tailgater)** | เข้าห้องฟรี | physical only | เปิดประตูตามคนอื่น |
+
+#### 71.24.2 STRIDE Matrix
+
+| ภัย | คำอธิบาย | จุดในระบบ | การป้องกัน | ความเสี่ยงคงเหลือ |
+|---|---|---|---|---|
+| **S**poofing | ปลอม JWT, ปลอม X-API-Key, ปลอม QR | Cookie, Header, QR payload | HS256 (256-bit), HMAC QR, API Key 32 chars | ต่ำ |
+| **T**ampering | แก้ request body, แก้ DB direct | API payload, Supabase | parameterized SQL, RLS, Zod validation | ต่ำ |
+| **R**epudiation | ปฏิเสธว่าไม่ได้เปิดประตู | access_logs | Immutable logs + IP + UA + timestamp | ต่ำมาก |
+| **I**nformation Disclosure | leak PII จาก dashboard | /admin/dashboard | Data masking, role-based view | กลาง (mask แค่ display) |
+| **D**enial of Service | ยิงถล่ม API, ทำ DB หมดคอนเนคชัน | /api/auth/login | rate-limit 10/5min, Vercel auto-scale | กลาง (Vercel free tier limit) |
+| **E**levation of Privilege | door_operator → owner | role check ใน API | ตรวจ role ทุก endpoint, allowed_rooms CSV | ต่ำ |
+
+#### 71.24.3 DREAD Scoring (0-10)
+
+สูตร: `Risk = (D + R + E + A + D) / 5`
+
+| Threat | Damage | Reprod. | Exploit. | Affected | Discov. | **Total** |
+|---|---|---|---|---|---|---|
+| Replay QR token ใน 60 วิน | 6 | 9 | 8 | 3 | 7 | **6.6** |
+| Tailgating (เดินตามหลัง) | 7 | 10 | 10 | 8 | 10 | **9.0** ⚠️ |
+| Brute-force admin login | 8 | 6 | 4 | 9 | 5 | **6.4** |
+| Insider PII dump | 9 | 8 | 6 | 10 | 4 | **7.4** |
+| ESP32 LAN MITM (no TLS) | 5 | 4 | 3 | 5 | 6 | **4.6** |
+| JWT_SECRET รั่ว | 10 | 9 | 9 | 10 | 3 | **8.2** ⚠️ |
+
+**สรุป:** ภัยที่ต้องเฝ้าระวังสูงสุดคือ Tailgating (ต้องแก้ด้วย hardware: turnstile/sensor) และ secret leakage (ต้องแก้ด้วย rotation policy + Vault)
+
+#### 71.24.4 Trust Boundaries Diagram
+
+```mermaid
+flowchart LR
+    subgraph PUB["🌐 Public Internet (Untrusted)"]
+        BROWSER["Browser นักศึกษา"]
+        ATTACKER["Attacker"]
+    end
+    subgraph EDGE["🟣 Vercel Edge (Semi-trusted)"]
+        MW["middleware.ts<br/>JWT verify"]
+        API["API Routes"]
+    end
+    subgraph DB["🟢 Supabase (Trusted)"]
+        PG["PostgreSQL + RLS"]
+    end
+    subgraph LAN["🟠 Campus LAN (Semi-trusted)"]
+        ESP["ESP32"]
+        DOOR["Solenoid + ประตูจริง"]
+    end
+    BROWSER -->|"TLS 1.3"| MW
+    ATTACKER -.->|"blocked by<br/>rate-limit + WAF"| MW
+    MW --> API
+    API -->|"pg pool<br/>SSL"| PG
+    API -->|"HTTP LAN<br/>X-API-Key"| ESP
+    ESP -->|"GPIO 12"| DOOR
+    
+    style PUB fill:#fee
+    style EDGE fill:#eef
+    style DB fill:#efe
+    style LAN fill:#fef
+```
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-25"></a>
+### 71.25 Data Flow Diagram (DFD) ระดับ 0/1/2 — สำหรับ PDPA DPIA
+
+DFD เป็นเครื่องมือมาตรฐานที่สำนักงาน กคส. (สคส.) แนะนำใช้ใน Data Protection Impact Assessment (PDPA ม.37)
+
+#### 71.25.1 Level 0 — Context Diagram
+
+```mermaid
+flowchart LR
+    S["นักศึกษา<br/>(Data Subject)"]
+    A["แอดมิน<br/>(Data Processor)"]
+    SYS(("ระบบควบคุม<br/>ประตู RMUTP"))
+    D["Discord<br/>(3rd Party)"]
+    SUP["Supabase<br/>(Sub-Processor<br/>AWS Singapore)"]
+    
+    S -->|"PII: ชื่อ, รหัส, IP"| SYS
+    SYS -->|"QR Token"| S
+    A <-->|"Approve/Reject"| SYS
+    SYS -->|"Event Notification"| D
+    SYS <-->|"Encrypted DB Query<br/>TLS"| SUP
+```
+
+#### 71.25.2 Level 1 — Major Processes
+
+```mermaid
+flowchart TB
+    S["นักศึกษา"]
+    P1[["1.0<br/>Register"]]
+    P2[["2.0<br/>Authenticate QR"]]
+    P3[["3.0<br/>Admin Approve"]]
+    P4[["4.0<br/>Unlock Door"]]
+    P5[["5.0<br/>Log Event"]]
+    DS1[("D1: students")]
+    DS2[("D2: dynamic_qr_tokens")]
+    DS3[("D3: access_logs")]
+    DS4[("D4: room_commands")]
+    A["แอดมิน"]
+    E["ESP32"]
+    
+    S -->|"form data"| P1 --> DS1
+    S -->|"scan QR"| P2 <--> DS2
+    P2 --> DS1
+    A -->|"approve"| P3 --> DS1
+    P3 --> P4 --> DS4
+    DS4 <-->|"poll"| E
+    P4 --> P5 --> DS3
+    P2 --> P5
+```
+
+#### 71.25.3 Level 2 — Process "Register" เจาะลึก
+
+```mermaid
+flowchart TB
+    S["นักศึกษา"]
+    P11[["1.1<br/>Validate QR Token"]]
+    P12[["1.2<br/>Sanitize Input<br/>(Zod schema)"]]
+    P13[["1.3<br/>Hash IP<br/>(SHA-256, no salt)"]]
+    P14[["1.4<br/>Insert students"]]
+    P15[["1.5<br/>Consume QR<br/>(atomic UPDATE)"]]
+    DS1[("students")]
+    DS2[("dynamic_qr_tokens")]
+    LOG[("access_logs")]
+    
+    S --> P11 --> P12 --> P13 --> P14 --> DS1
+    P11 <--> DS2
+    P14 --> P15 --> DS2
+    P14 --> LOG
+```
+
+#### 71.25.4 ตารางคู่ DFD ↔ PDPA Articles
+
+| Process | PDPA Article | Lawful Basis | DPIA Risk |
+|---|---|---|---|
+| 1.0 Register | ม.24(5) | Legitimate Interest (ความปลอดภัยอาคาร) | Low (พร้อม consent) |
+| 2.0 Authenticate QR | ม.24(5) | LI | Low |
+| 3.0 Admin Approve | ม.24(5) | LI | Medium (admin view PII) |
+| 5.0 Log Event | ม.26 (พ.ร.บ.คอม) | Legal Obligation | High (เก็บ IP, 90+ วัน) |
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-26"></a>
+### 71.26 กฎหมายอื่นที่ต้องปฏิบัติตาม (Cybersecurity Act, ก.พ.อ., License Audit)
+
+#### 71.26.1 พ.ร.บ.การรักษาความมั่นคงปลอดภัยไซเบอร์ พ.ศ. 2562 (CCSA)
+
+| มาตรา | สิ่งที่บังคับ | ระบบเราทำตามยังไง |
+|---|---|---|
+| ม.13 | กำหนดผู้รับผิดชอบความมั่นคงไซเบอร์ | ระบุ owner role + ผู้ดูแลใน Discord |
+| ม.45 | แจ้งเหตุภัยคุกคามต่อ กมช. ใน 24 ชม. | เชื่อม Discord webhook + Runbook §71.32 |
+| ม.46 | จัดทำแผนเผชิญเหตุภัยคุกคามไซเบอร์ | DR Plan §62 + IRP §71.32 |
+| ม.50 | สร้างมาตรการป้องกันไซเบอร์ขั้นต่ำ | Rate-limit, RLS, HTTPS, JWT |
+
+**หมายเหตุ:** ระบบนี้ไม่จัดเป็น CII (Critical Information Infrastructure) เนื่องจากเป็นระบบเฉพาะภายในสถาบันการศึกษา ขนาดเล็ก แต่ควรปฏิบัติตาม "good practice" ของกฎหมาย
+
+#### 71.26.2 ประกาศ ก.พ.อ. เรื่องการเก็บข้อมูลนักศึกษา
+
+- กำหนดให้สถาบันอุดมศึกษาเก็บข้อมูลนักศึกษาตามแบบ มคอ./AUNQA
+- ระบบเชื่อมข้อมูลผ่าน `student_id` (foreign key concept) แต่ไม่ดึงข้อมูลจาก SIS โดยตรง — เก็บเฉพาะข้อมูลที่จำเป็น (data minimization)
+
+#### 71.26.3 กฎกระทรวงฉบับที่ 47 (พ.ศ. 2540) — มาตรฐานความปลอดภัยอาคาร
+
+**ข้อบังคับสำคัญ:** ประตูทางหนีไฟต้อง **เปิดได้จากด้านในเสมอแม้ไฟดับ** (Fail-Safe to Open)
+
+| รูปแบบล็อก | Fail-safe state | เหมาะกับ |
+|---|---|---|
+| **Magnetic Lock (จ่ายไฟค้างเพื่อล็อก)** | เปิด (ปลอดภัย) ✅ | ทางหนีไฟ, ประตูหลัก |
+| **Solenoid/Electric Strike (จ่ายไฟชั่วครู่เพื่อปลด)** | ล็อก (อันตราย) ⚠️ | ห้องปกติที่ไม่ใช่ทางหนีไฟ |
+
+**ข้อสรุปสำหรับโครงการ:** ใช้ Magnetic Lock สำหรับประตูที่เป็นทางหนีไฟตามกฎหมาย + UPS สำรองไฟ + ปุ่ม REX (Request to Exit) แบบกลไก
+
+#### 71.26.4 License Audit — Library ที่ใช้
+
+| Library | License | Commercial OK | Attribution? |
+|---|---|---|---|
+| next | MIT | ✅ | No |
+| react | MIT | ✅ | No |
+| pg (node-postgres) | MIT | ✅ | No |
+| jsonwebtoken | MIT | ✅ | No |
+| bcrypt | MIT | ✅ | No |
+| pdfkit | MIT | ✅ | No |
+| qrcode | MIT | ✅ | No |
+| tailwindcss | MIT | ✅ | No |
+| TFT_eSPI (Arduino) | **FreeBSD/BSD-3** | ✅ | Yes (BSD) |
+| ArduinoJson | MIT | ✅ | No |
+
+**ไม่มี GPL/AGPL ในระบบ** — ปลอดภัยเรื่อง copyleft contagion (สามารถใช้เชิงพาณิชย์ได้โดยไม่ต้องเปิดซอร์ส)
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-27"></a>
+### 71.27 ROC (Record of Processing Activities) ตาม PDPA มาตรา 39
+
+ตามมาตรา 39 ผู้ควบคุมข้อมูลส่วนบุคคล (Data Controller) **ต้องจัดทำบันทึกรายการประมวลผล** ให้พร้อมแสดงต่อ สคส. (PDPC) เมื่อถูกตรวจสอบ
+
+#### 71.27.1 ตาราง ROPA ของระบบ
+
+| # | Field | ค่า |
+|---|---|---|
+| 1 | **ชื่อกิจกรรม** | ระบบควบคุมการเข้าห้องเรียน RMUTP-ACCS |
+| 2 | **Data Controller** | คณะวิศวกรรมศาสตร์ มทร.พระนคร |
+| 3 | **DPO Contact** | dpo@rmutp.ac.th (ตัวอย่าง) |
+| 4 | **Data Processor** | Supabase Inc. (AWS Singapore) |
+| 5 | **วัตถุประสงค์** | ควบคุมการเข้าออกห้องปฏิบัติการเพื่อความปลอดภัย, ป้องกันโจรกรรม |
+| 6 | **Lawful Basis** | Legitimate Interest (PDPA ม.24(5)) + Legal Obligation (พ.ร.บ.คอม ม.26) |
+| 7 | **ประเภทข้อมูล** | ชื่อ-นามสกุล, รหัส นศ., คณะ-สาขา, IP, User-Agent, timestamp |
+| 8 | **ประเภทเจ้าของข้อมูล** | นักศึกษา + อาจารย์ผู้ใช้ห้อง |
+| 9 | **ผู้รับข้อมูล** | แอดมินคณะ, Discord webhook ภายใน |
+| 10 | **ส่งข้อมูลออกนอก ปทท.** | ใช่ — Supabase AWS Singapore + Discord (EU/US) |
+| 11 | **Safeguards** | TLS 1.3, Standard Contractual Clauses (Supabase SOC2), Encryption at-rest |
+| 12 | **ระยะเวลาเก็บ** | access_logs ≥ 90 วัน (พ.ร.บ.คอม) / students = จนจบ ปกศ. + 1 ปี |
+| 13 | **มาตรการความปลอดภัย** | JWT, bcrypt, RLS, rate-limit, RBAC, audit logs |
+| 14 | **Risk Level** | Medium (มี PII แต่ไม่มี Sensitive Data ตาม ม.26) |
+
+#### 71.27.2 Sensitive Data Check (PDPA ม.26)
+
+ระบบ **ไม่เก็บ** ข้อมูลที่จัดเป็น "ข้อมูลอ่อนไหว":
+- ❌ เชื้อชาติ, ศาสนา, ความคิดเห็นการเมือง
+- ❌ ข้อมูลสุขภาพ, ชีวภาพ (Biometric)
+- ❌ ประวัติอาชญากรรม, ข้อมูลทางพันธุกรรม
+
+⚠️ **ถ้าอนาคตเพิ่ม Face Recognition / Fingerprint** → ต้องขอ Explicit Consent ตามม.26 และจัด DPIA ใหม่
+
+#### 71.27.3 DPIA Trigger Criteria (PDPA ม.39 วรรค 2)
+
+| Trigger | ระบบเรามี? |
+|---|---|
+| Systematic monitoring of public area | ⚠️ บางส่วน (log การเข้าออก) |
+| Large-scale processing | ❌ ไม่เกิน 5,000 รายการ/เทอม |
+| Sensitive data | ❌ |
+| Innovative tech with high risk | ❌ (IoT มาตรฐาน) |
+
+**ผลประเมิน:** ระบบไม่บังคับต้องทำ DPIA เต็มรูปแบบ แต่ทำ ROPA + DFD §71.25 ก็เพียงพอตามแนวปฏิบัติ
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-28"></a>
+### 71.28 Schematic + PCB Layout + BOM (Bill of Materials)
+
+#### 71.28.1 Schematic วงจร ESP32 + Relay + TFT (ASCII)
+
+```
+                    ┌─── 5V USB ───┐
+                    │              │
+                    │   ┌──────────┴──────────┐
+                    │   │     ESP32 DevKit    │
+                    │   │  (NodeMCU-32S)      │
+                    │   │                     │
+                    │   │  GPIO12 ────────────┼──[330Ω]──┐
+                    │   │  GPIO27 (Buzzer) ───┼──────────┼─┐
+                    │   │  GPIO15 (TFT_CS) ───┼──┐       │ │
+                    │   │  GPIO 2 (TFT_DC) ───┼──┤       │ │
+                    │   │  GPIO 4 (TFT_RST) ──┼──┤       │ │
+                    │   │  GPIO18 (SCLK) ─────┼──┤       │ │
+                    │   │  GPIO23 (MOSI) ─────┼──┤       │ │
+                    │   │  3V3 ───────────────┼──┤       │ │
+                    │   │  GND ──┬────────────┘  │       │ │
+                    │   └────────┘               │       │ │
+                    │                            ▼       ▼ ▼
+                    │                         ┌─────┐  ┌────┐ ┌──────┐
+                    │                         │ILI9341│  │BUZZ│ │Relay │
+                    │                         │ TFT  │  │ ER │ │Module│
+                    │                         │ 240x │  │5V  │ │ 5V   │
+                    │                         │ 320  │  └─┬──┘ │ Opto │
+                    │                         └──┬───┘    │    └─┬─┬──┘
+                    │                            │        │      │ │
+                    └────────────────────────────┴────────┴──────┘ │
+                                                                   │
+                                                  ┌────────────────┘
+                                                  │
+                                          ┌───────▼───────┐
+                                          │ Magnetic Lock │
+                                          │   12V/24V     │  ◄── PSU แยก
+                                          │   Fail-Safe   │      ผ่าน relay COM/NO
+                                          └───────────────┘
+```
+
+**Note:** Relay module ต้องเลือกแบบมี **opto-isolation** (PC817) เพื่อแยก ground เสียงรบกวนจาก motor inductance
+
+#### 71.28.2 BOM (Bill of Materials) — ราคา 27 พ.ค. 2026
+
+| # | Part | Spec | จำนวน | ราคา/หน่วย | รวม | Supplier (TH) |
+|---|---|---|---|---|---|---|
+| 1 | ESP32 DevKit v1 | ESP32-WROOM-32, 30-pin | 1 | ฿180 | ฿180 | Cytron, Inex |
+| 2 | TFT Display | ILI9341 2.8" 240×320 SPI | 1 | ฿250 | ฿250 | Lazada/Shopee |
+| 3 | Buzzer 5V | Active, 85dB | 1 | ฿15 | ฿15 | Arduitronics |
+| 4 | Relay Module | SRD-05VDC, opto, 10A | 1 | ฿45 | ฿45 | Cytron |
+| 5 | Magnetic Lock | 180kg, 12V, fail-safe | 1 | ฿850 | ฿850 | HIP, Hikvision |
+| 6 | Power Supply | 12V 3A switching | 1 | ฿320 | ฿320 | Mean Well RS-15-12 |
+| 7 | Step-down DC-DC | LM2596, 12V→5V | 1 | ฿35 | ฿35 | Generic |
+| 8 | Flyback Diode | 1N4007, 1A 1000V | 2 | ฿2 | ฿4 | Local |
+| 9 | Push Button (REX) | Mechanical, 5A NO | 1 | ฿60 | ฿60 | Schneider |
+| 10 | Enclosure | ABS Plastic 15×10×5 cm | 1 | ฿120 | ฿120 | Local |
+| 11 | สายไฟ + DuPont | 22 AWG, jumper wires | 1 set | ฿80 | ฿80 | Local |
+| 12 | PCB Prototype | Universal board 7×9 cm | 1 | ฿40 | ฿40 | Cytron |
+| | | | | **รวม/ห้อง** | **฿1,999** | |
+
+**ราคา full-scale 50 ห้อง:** ≈ ฿100,000 (ไม่รวมค่าติดตั้ง)
+
+#### 71.28.3 PCB Layout Guidelines
+
+- **Trace width:** Relay control line ≥ 0.5 mm (1A current), TFT signal ≥ 0.2 mm
+- **Ground plane:** ใช้ ground pour เต็มชั้นล่างเพื่อลด EMI
+- **Decoupling cap:** 100nF + 10µF ใกล้ VCC ของ ESP32, TFT
+- **Crystal placement:** อยู่ใกล้ ESP32 ระยะ < 1 cm (ปกติติดมากับ DevKit)
+- **High-current trace:** แยกชั้นไป relay coil — อย่าวิ่งใต้ ESP32 RF antenna
+- **Antenna keep-out:** อย่าวาง trace ใต้ ESP32 antenna 8mm × 6mm
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-29"></a>
+### 71.29 Timing Diagram ของ Relay + Flyback Diode
+
+#### 71.29.1 Sequence การปล่อยกระแสและการเกิด Back-EMF
+
+```
+GPIO12 (ESP32)
+  HIGH ────────┐                            ┌─────
+               │                            │
+  LOW          └────────────────────────────┘
+              t=0                         t=5000ms
+              
+Relay Coil Current
+                ╱─────────────────────────╲
+               ╱                            ╲
+              ╱                              ╲ ← Back-EMF spike ที่นี่!
+  0A ────────╱                                ╲────────
+            t=0+5ms                       t=5000+2ms
+            (rise time)                   (release time)
+              
+Flyback Voltage (ที่ collector)
+  +12V ─────┐                            ┌──── สูงสุด 500-1000V
+            │                            │     ถ้าไม่มี flyback diode!
+            └────────────────────────────┘
+                                          ↑
+                              1N4007 clamp ไว้ที่ +12.7V (Vf=0.7V)
+```
+
+#### 71.29.2 ทำไมต้องมี Flyback Diode
+
+เมื่อปิดกระแสที่ไหลผ่าน inductor (relay coil) กระทันหัน พลังงานที่เก็บใน magnetic field จะปลดปล่อยเป็น **Back-EMF** ตามสมการ:
+
+```
+V_back = -L · (di/dt)
+```
+
+ตัวอย่าง: relay coil L = 100mH, di/dt = 50mA / 1µs = 50,000 A/s
+→ V_back = -0.1 × 50,000 = **-5,000V** ⚡
+
+แรงดันลบนี้จะ:
+- ทำลาย transistor/MOSFET driver
+- ทำลายขา GPIO ของ ESP32 (ทนได้ไม่เกิน -0.3V ตาม datasheet)
+- สร้างประกายไฟที่หน้าสัมผัส relay (arc) → ลดอายุการใช้งาน
+
+**Flyback Diode (1N4007)** ต่อแบบ **คร่อม coil** ด้านขั้วกลับ (anode→GND side, cathode→+V side) จะ clamp แรงดันให้ไม่เกิน +V + 0.7V
+
+#### 71.29.3 เลือก Diode ถูกต้องอย่างไร
+
+| Parameter | ต้องการ | 1N4007 spec | OK? |
+|---|---|---|---|
+| Reverse voltage (V_R) | ≥ 2× V_coil = 24V | 1000V | ✅ |
+| Forward current (I_F) | ≥ I_coil = 70mA | 1A | ✅ |
+| Recovery time (t_rr) | < 100µs | ~2µs | ✅ |
+| ราคา | ต่ำ | ฿2 | ✅ |
+
+**Alternative:** Schottky diode (1N5819) — เร็วกว่าแต่แพงกว่า (฿8); ใช้กับ MOSFET driver ที่ต้อง switch เร็ว
+
+#### 71.29.4 RC Snubber (เสริม) สำหรับ Inductive Load หนัก
+
+หากต่อ solenoid ขนาดใหญ่ (>500mA) เพิ่ม RC snubber คร่อมหน้าสัมผัส relay ลด arc:
+
+```
+R = √(L/C) = √(0.1H / 100nF) = 1kΩ
+C = 100nF, 400V (X7R ceramic)
+```
+
+ต่อ R+C อนุกรม คร่อม COM-NO contact
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-30"></a>
+### 71.30 API Reference (OpenAPI 3.0 Spec)
+
+#### 71.30.1 Public Endpoints (ไม่ต้อง auth)
+
+##### `POST /api/students` — ลงทะเบียนนักศึกษา
+
+```yaml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required: [prefix, firstName, lastName, studentId, faculty, major, room, qrToken]
+        properties:
+          prefix:      { type: string, enum: [นาย, นางสาว, นาง] }
+          firstName:   { type: string, minLength: 1, maxLength: 50 }
+          lastName:    { type: string, minLength: 1, maxLength: 50 }
+          studentId:   { type: string, pattern: '^\d{10,13}$' }
+          faculty:     { type: string, maxLength: 100 }
+          major:       { type: string, maxLength: 100 }
+          room:        { type: string, pattern: '^[A-Z]{2,4}-\d{3,4}$' }
+          qrToken:     { type: string, minLength: 32, maxLength: 256 }
+responses:
+  '201': { description: Created, body: { studentId: number, status: 'pending' } }
+  '400': { description: Validation error }
+  '409': { description: Duplicate studentId in pending state }
+  '429': { description: Rate limit exceeded (5 reg/min/IP) }
+```
+
+##### `POST /api/esp32/qr/verify` — ตรวจสอบ QR token
+
+```yaml
+headers:
+  X-API-Key: { required: true, type: string }
+requestBody:
+  schema:
+    type: object
+    properties:
+      token: { type: string }
+      room: { type: string }
+responses:
+  '200': { description: Valid, body: { valid: true, room: string, ttl: number } }
+  '401': { description: Invalid token or expired }
+  '403': { description: Wrong X-API-Key }
+```
+
+#### 71.30.2 Admin Endpoints (require JWT cookie)
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| POST | /api/auth/login | - | Login, set cookie `admin_token` |
+| POST | /api/auth/logout | any | Clear cookie |
+| GET | /api/auth/me | any | Get current admin info |
+| GET | /api/students/pending | any | List pending students (filtered by allowed_rooms) |
+| POST | /api/students/[id]/approve | any | Approve + queue unlock |
+| POST | /api/students/[id]/reject | any | Reject with reason |
+| POST | /api/students/[id]/bypass | any | Re-unlock within 5 min (rate-limited 3/min) |
+| GET | /api/admin/users | owner | List all admins |
+| POST | /api/admin/users | owner | Create admin |
+| PATCH | /api/admin/users/[id] | owner | Update role/allowed_rooms |
+| DELETE | /api/admin/users/[id] | owner | Soft-delete admin |
+| GET | /api/logs | any | Paginated access logs |
+| POST | /api/logs/export | any | Generate PDF report |
+| DELETE | /api/logs/cleanup | owner | Cleanup logs >90 days (requires password re-verify) |
+
+#### 71.30.3 ESP32 Endpoints
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | /api/esp32/display?room=X | X-API-Key | Polled every 2s — returns active QR + queue + command |
+| POST | /api/esp32/qr/verify | X-API-Key | Validate scanned QR |
+| POST | /api/esp32/heartbeat | X-API-Key | Update room_last_seen |
+| POST | /api/esp32/door-status | X-API-Key | Report unlock success/fail |
+
+**Polling response example:**
+```json
+{
+  "room": "CE-401",
+  "qrText": "https://app/?t=abc123",
+  "qrTtl": 47,
+  "queueCount": 3,
+  "lastApproved": "นายสมชาย ใจดี",
+  "command": "unlock",
+  "commandId": 12345,
+  "serverTime": "2026-05-27T14:30:00+07:00"
+}
+```
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-31"></a>
+### 71.31 CI/CD Pipeline + Branch Strategy
+
+#### 71.31.1 Branch Strategy (Trunk-Based + Release Branch)
+
+```
+main (production)  ──●──●──●──●──●──●──── deploy auto → Vercel prod
+                      │     │     │
+                      │     │     └─ hotfix/V07-rate-limit (cherry-pick)
+                      │     │
+feature/qr-rotation ──┴──●──┘
+                          │
+                          merge via PR + review
+```
+
+- **main:** auto-deploy to Vercel prod ทุก push
+- **feature/\*:** branch ทำงาน, PR ก่อน merge
+- **hotfix/\*:** branch แก้ด่วน, fast-track review
+
+#### 71.31.2 GitHub Actions Workflow
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: cd my-app && npm ci
+      - run: cd my-app && npm run lint
+      - run: cd my-app && npx tsc --noEmit
+      - run: cd my-app && npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET_TEST }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+      - uses: github/codeql-action/init@v3
+        with: { languages: 'javascript' }
+      - uses: github/codeql-action/analyze@v3
+
+  esp32-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v1
+      - run: arduino-cli core install esp32:esp32
+      - run: arduino-cli compile --fqbn esp32:esp32:esp32 esp32/esp32.ino
+```
+
+#### 71.31.3 Code Review Checklist
+
+- [ ] ไม่มี hardcoded secret (JWT_SECRET, API_KEY)
+- [ ] ทุก SQL ใช้ parameterized query (`$1, $2` ไม่ใช่ string concat)
+- [ ] Input validation ด้วย Zod ทุก API endpoint
+- [ ] Rate-limit ทุก endpoint ที่เปลี่ยน state
+- [ ] ไม่มี `console.log` ที่ leak PII
+- [ ] Discord webhook URL ไม่อยู่ในโค้ด (env only)
+- [ ] Migration script reversible (มี up + down)
+- [ ] Performance: ไม่มี N+1 query
+- [ ] Test cases ครอบคลุม happy + error path
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-32"></a>
+### 71.32 Incident Response Plan (NIST 800-61) + แบบฟอร์มแจ้ง สคส.
+
+#### 71.32.1 6 ขั้นตอน NIST IR Lifecycle
+
+```mermaid
+flowchart LR
+    PRE["1.Preparation<br/>Playbook + Contact"] --> DET["2.Detection<br/>Discord alert"]
+    DET --> ANA["3.Analysis<br/>severity classify"]
+    ANA --> CON["4.Containment<br/>kill switch"]
+    CON --> ERA["5.Eradication<br/>patch + rotate"]
+    ERA --> REC["6.Recovery<br/>verify + reopen"]
+    REC --> LES["7.Lessons<br/>postmortem"]
+    LES --> PRE
+```
+
+#### 71.32.2 Severity Classification
+
+| Level | Criteria | Response Time | Escalation |
+|---|---|---|---|
+| **P0 — Critical** | DB leak, all-rooms unlock, secret รั่ว | < 15 นาที | DPO + คณบดี + สคส. |
+| **P1 — High** | 1 ห้องล็อกผิด, admin acct compromise | < 1 ชม. | Team lead + DPO |
+| **P2 — Medium** | Rate-limit bypass, log injection | < 4 ชม. | Team lead |
+| **P3 — Low** | Slow query, UI bug | < 24 ชม. | Backlog |
+
+#### 71.32.3 Containment Playbook ตาม Scenario
+
+**Scenario A: JWT_SECRET รั่ว (P0)**
+1. ขั้นที่ 1 (T+0): Rotate `JWT_SECRET` ผ่าน Vercel env → redeploy (ทำให้ทุก session หมดอายุ)
+2. ขั้นที่ 2 (T+5): Force re-login admin ทุกคน, ตรวจ access_logs 24 ชม. ย้อนหลัง
+3. ขั้นที่ 3 (T+15): แจ้ง Discord channel + เปลี่ยนรหัสผ่าน admin ทุกคน
+4. ขั้นที่ 4 (T+30): ทำ root cause analysis (ทำไม secret leak)
+5. ขั้นที่ 5 (T+24h): แจ้ง สคส. ตามแบบฟอร์มด้านล่าง
+
+**Scenario B: PII Database Leak (P0 — ต้องแจ้ง 72 ชม.)**
+1. Containment: ยึด session admin ทันที, revoke Supabase service role key
+2. Forensics: copy access_logs ทั้งหมด, snapshot DB
+3. Notification:
+   - **เจ้าของข้อมูล (นักศึกษา)** ภายใน "เร็วที่สุดเท่าที่ทำได้" ตาม PDPA ม.37(4)
+   - **สคส. (PDPC)** ภายใน **72 ชั่วโมง** (กฎกระทรวง พ.ศ. 2565)
+   - **กมช.** (ถ้าเป็น CII) ภายใน 24 ชั่วโมง
+
+#### 71.32.4 แบบฟอร์มแจ้งเหตุละเมิดข้อมูลส่วนบุคคล (PDPC Form)
+
+ตามประกาศ สคส. ที่ 1/2565
+
+```
+[ ] แบบแจ้งเหตุการละเมิดข้อมูลส่วนบุคคล
+    ผู้ควบคุมข้อมูล: คณะวิศวกรรมศาสตร์ มทร.พระนคร
+    
+1. ลักษณะของการละเมิด: ......................
+2. ประเภทและจำนวนของข้อมูลส่วนบุคคลที่ถูกละเมิด: ......
+3. ประเภทและจำนวนของเจ้าของข้อมูลส่วนบุคคล: ........
+4. ผลกระทบที่อาจเกิด: ............
+5. มาตรการที่ดำเนินการแล้ว: ........
+6. มาตรการที่จะดำเนินการต่อ: .......
+7. ข้อมูลติดต่อ DPO: ........
+8. วันเวลาที่เกิดเหตุ / ตรวจพบ / รายงาน: .........
+```
+
+ส่งทาง: https://www.pdpc.or.th/breach-notification (อีเมล: pdpc@mdes.go.th)
+
+#### 71.32.5 Post-Incident Report Template
+
+```markdown
+# Incident Report — [YYYY-MM-DD]
+
+## Summary
+- Severity: P[0-3]
+- Duration: HH:MM
+- Affected: [users / records / rooms]
+
+## Timeline
+| Time | Event |
+|---|---|
+| 14:23 | Discord alert: 500 errors |
+| 14:25 | On-call ack |
+| 14:30 | Root cause identified |
+| 14:45 | Fix deployed |
+| 14:50 | Verified resolved |
+
+## Root Cause
+[5-Why analysis]
+
+## Resolution
+[What was done]
+
+## Lessons Learned
+[Action items + owner + due date]
+```
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-33"></a>
+### 71.33 Accessibility (a11y) — เกินกว่า WCAG Color
+
+#### 71.33.1 Screen Reader Support (NVDA / JAWS / VoiceOver)
+
+| Element | ต้องมี | ตัวอย่าง |
+|---|---|---|
+| Image | `alt` attribute (ภาษาไทย) | `alt="โลโก้คณะวิศวกรรมศาสตร์"` |
+| Icon button | `aria-label` | `<button aria-label="อนุมัตินักศึกษา">` |
+| Form input | `<label for="...">` + `aria-describedby` สำหรับ help text |
+| Loading state | `aria-live="polite"` + `aria-busy="true"` |
+| Error message | `role="alert"` + `aria-live="assertive"` |
+| Modal/Dialog | `role="dialog"` + `aria-modal="true"` + focus trap |
+| QR Code image | `alt="QR Code สำหรับลงทะเบียนเข้าห้อง XXX"` |
+
+#### 71.33.2 Keyboard Navigation
+
+ต้องเข้าถึงได้ทั้งหน้าโดยไม่ใช้เมาส์:
+
+| Key | Action |
+|---|---|
+| Tab | ไป element ถัดไป |
+| Shift+Tab | ย้อนกลับ |
+| Enter | activate button/link |
+| Space | toggle checkbox, submit form |
+| Esc | ปิด modal |
+| Arrow keys | navigate ใน list/grid (custom) |
+
+**Focus indicator:** Tailwind class `focus-visible:ring-2 focus-visible:ring-purple-500` ทุก interactive element
+
+#### 71.33.3 ARIA Patterns ที่ใช้ในระบบ
+
+```tsx
+// แท็บใน admin dashboard
+<div role="tablist" aria-label="แท็บหลักของแดชบอร์ด">
+  <button role="tab" aria-selected="true" aria-controls="panel-pending">
+    คิวรอตรวจสอบ
+  </button>
+</div>
+<div role="tabpanel" id="panel-pending" tabIndex={0}>
+  ...
+</div>
+
+// QR Token live update
+<div aria-live="polite" aria-atomic="true">
+  QR หมุนใหม่ใน {ttl} วินาที
+</div>
+
+// Error toast
+<div role="alert" aria-live="assertive">
+  เปิดประตูไม่สำเร็จ กรุณาลองใหม่
+</div>
+```
+
+#### 71.33.4 ภาษาไทย TTS Issues
+
+- `<html lang="th">` ✅ (มีอยู่แล้ว) — บอก screen reader ใช้ภาษาไทย
+- หลีกเลี่ยงตัวเลขอารบิกใน label สำคัญ → `<span aria-label="หนึ่ง">1</span>` ถ้าจำเป็น
+- รหัสนักศึกษา 13 หลัก → อ่านเป็นกลุ่ม `<span aria-label="หนึ่ง หนึ่ง หก สี่ ...">1164...</span>`
+
+#### 71.33.5 Physical Accessibility (ผู้พิการทางการเคลื่อนไหว)
+
+- ปุ่ม REX (Request to Exit) ติดสูง ≤ 120 cm จากพื้น (ตามมาตรฐาน Universal Design)
+- QR Code บนผนัง ติดในระดับ 90-150 cm (กว้างพอสำหรับ wheelchair user)
+- เผื่อ "Auto-open mode" สำหรับห้องที่มีนักศึกษาพิการประจำ (เปิดประตู 10 วินาที แทน 5)
+
+#### 71.33.6 Lighthouse Accessibility Score เป้าหมาย
+
+- ปัจจุบัน: 87/100
+- เป้าหมาย: ≥ 95/100
+- TODO: เพิ่ม skip-to-content link, color contrast บางจุดยังต่ำกว่า 4.5:1
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-34"></a>
+### 71.34 User Acceptance Test (UAT) + System Usability Scale (SUS)
+
+#### 71.34.1 UAT Test Scenarios (สำหรับผู้ใช้จริง)
+
+| # | Scenario | Pass Criteria | ผู้ทดสอบ |
+|---|---|---|---|
+| UAT-01 | นักศึกษาใหม่ลงทะเบียนครั้งแรก | กรอกฟอร์มเสร็จ < 90 วินาที | นศ. ปี 1 |
+| UAT-02 | เปิดประตูครั้งที่ 2 (Bypass) | เปิดได้ < 5 วินาที | นศ. ที่ approve แล้ว |
+| UAT-03 | สแกน QR ตอน QR เพิ่งหมุน | ระบบบอก "QR หมดอายุ" ชัดเจน | นศ. |
+| UAT-04 | Admin approve 10 คน | เสร็จ < 5 นาที | door_operator |
+| UAT-05 | Export PDF logs 1 เดือน | PDF ดาวน์โหลดได้, ฟอนต์ไทยถูกต้อง | owner |
+| UAT-06 | ระบบล่มชั่วคราว → กลับมา | ข้อมูลไม่หาย, ไม่ต้อง re-login | admin |
+| UAT-07 | ใช้ผ่านมือถือ Android | UI responsive ทุกหน้า | นศ. |
+| UAT-08 | ผู้ใช้พิการสายตา (NVDA) | navigate ครบหน้า | tester |
+
+#### 71.34.2 SUS Questionnaire (10 ข้อ — Brooke, 1996)
+
+ตอบ Likert 1-5 (1=ไม่เห็นด้วยอย่างยิ่ง, 5=เห็นด้วยอย่างยิ่ง)
+
+1. ฉันคิดว่าฉันอยากใช้ระบบนี้บ่อยๆ
+2. ฉันรู้สึกระบบนี้ซับซ้อนเกินจำเป็น *
+3. ฉันคิดว่าระบบนี้ใช้ง่าย
+4. ฉันคิดว่าต้องมีผู้เชี่ยวชาญคอยช่วยใช้ระบบ *
+5. ฉันพบว่าฟังก์ชันต่างๆ ของระบบเชื่อมโยงกันดี
+6. ฉันคิดว่ามีความไม่สอดคล้องในระบบมากเกินไป *
+7. ฉันคิดว่าคนส่วนใหญ่จะเรียนรู้ใช้ระบบนี้ได้รวดเร็ว
+8. ฉันพบว่าระบบนี้ใช้งานยุ่งยาก *
+9. ฉันรู้สึกมั่นใจในการใช้ระบบนี้
+10. ฉันต้องเรียนรู้หลายอย่างก่อนเริ่มใช้ระบบนี้ *
+
+\* ข้อ negative → invert score
+
+**สูตรคำนวณ SUS Score:**
+```
+สำหรับข้อบวก (1,3,5,7,9): คะแนน = (ตอบ - 1)
+สำหรับข้อลบ (2,4,6,8,10): คะแนน = (5 - ตอบ)
+SUS Score = (ผลรวม × 2.5) → 0-100
+```
+
+**เกณฑ์การแปลผล:**
+| Score | ระดับ | คำอธิบาย |
+|---|---|---|
+| > 85 | Excellent (A+) | ใช้งานยอดเยี่ยม |
+| 73-84 | Good (B) | ใช้งานดี |
+| 52-72 | Average (C) | พอใช้ |
+| < 52 | Poor (F) | ต้องปรับปรุง |
+
+**Industry average:** 68 — งานวิจัยของท่านควรตั้งเป้า ≥ 75
+
+#### 71.34.3 Sample Size & Statistics
+
+- **กลุ่มตัวอย่างขั้นต่ำ:** 30 คน (Nielsen Norman) สำหรับ statistical significance
+- **Test methodology:** Within-subjects design (ผู้ใช้คนเดียวกันทำทุก scenario)
+- **Stats:** Mean, SD, 95% CI; เปรียบเทียบกับระบบเก่า (key card) ด้วย paired t-test
+- **Qualitative:** เพิ่มคำถามปลายเปิด 3 ข้อ:
+  - "อะไรที่ชอบที่สุดในระบบนี้?"
+  - "อะไรที่ทำให้สับสน?"
+  - "ถ้าปรับได้ 1 อย่าง จะปรับอะไร?"
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-35"></a>
+### 71.35 Literature Review — เปรียบเทียบกับงานวิจัยอื่น
+
+#### 71.35.1 Related Works — ระบบควบคุมเข้าออกอัจฉริยะ
+
+| ปี | งาน | เทคโนโลยี | Authentication | จุดเด่น | จุดอ่อนเทียบกับเรา |
+|---|---|---|---|---|---|
+| 2018 | Patil et al. | RFID + Arduino | RFID card | ราคาถูก, เร็ว | บัตรหายต้องออกใหม่, ไม่มี audit |
+| 2019 | Kumar et al. | Face Recognition (OpenCV) | Face + PIN | สะดวก, ไม่ต้องพกบัตร | คอมแพง, มี false positive, PDPA risk สูง |
+| 2020 | Sharma et al. | Bluetooth BLE | Smartphone app | ปลดมือไม่ต้องสัมผัส | ใช้ได้เฉพาะคนมีแอป |
+| 2021 | Chen et al. | NFC + cloud | NFC tap | เร็ว, มี audit | iPhone ก่อน iOS 14 อ่าน NFC ไม่ได้ |
+| 2022 | Liu et al. | QR Code static + cloud | QR scan | universal device | QR ปลอม/แชร์ได้ |
+| 2023 | RMUTL Senior Project | RFID + Web | RFID + admin approve | มี dashboard | ไม่มี dynamic QR |
+| **2026** | **RMUTP-ACCS (เรา)** | **ESP32 + Next.js cloud + Dynamic QR** | **Dynamic QR (60s rotation) + admin approve** | **ไม่ต้องพกอุปกรณ์, มี anti-replay, PDPA-compliant** | **ต้องมี internet** |
+
+#### 71.35.2 ตารางเปรียบเทียบเชิงเทคนิค
+
+| Criteria | RFID | Face | BLE | NFC | Static QR | **Dynamic QR (เรา)** |
+|---|---|---|---|---|---|---|
+| ต้องพกอุปกรณ์ | บัตร | ❌ | มือถือ | มือถือ | ❌ | ❌ |
+| Anti-replay | ❌ | ✅ | ✅ | ⚠️ | ❌ | ✅ (60s TTL) |
+| ราคาฮาร์ดแวร์/ห้อง | ฿800 | ฿8,000 | ฿1,500 | ฿1,200 | ฿500 | ฿2,000 |
+| PDPA risk | ต่ำ | **สูงมาก** | กลาง | กลาง | ต่ำ | ต่ำ |
+| False positive | 0% | 2-5% | < 1% | < 0.1% | 0% | 0% |
+| Universal device | ❌ | ❌ | iOS+Android | บางรุ่น | ✅ | ✅ |
+| Offline operation | ✅ | ✅ | ✅ | ⚠️ | ✅ | ❌ (ต้อง internet) |
+| Auditability | กลาง | สูง | สูง | สูง | ต่ำ | **สูงมาก** |
+
+#### 71.35.3 จุดที่งานเราเป็น Novel Contribution
+
+1. **Dynamic QR Token Rotation:** หมุน 60 วินาที + atomic consume → ป้องกัน replay attack ได้ดีกว่า static QR (Liu 2022)
+2. **Push-via-Poll Architecture:** ใช้ DB queue + 2s polling แทน WebSocket → ไม่ต้องมี static IP บน ESP32 (ทำงานหลัง NAT ของมหาวิทยาลัย)
+3. **PDPA-by-Design:** เป็นงานวิจัยแรกในกลุ่มที่ออกแบบครบตามกฎหมายไทย (CCA + PDPA + กฎกระทรวง 47)
+4. **Cost Efficiency:** ฿2,000/ห้อง vs Face Recognition ฿8,000/ห้อง → ลดต้นทุน 75%
+
+#### 71.35.4 References (APA Format)
+
+```
+Brooke, J. (1996). SUS: A "quick and dirty" usability scale. Usability evaluation in industry, 189(194), 4-7.
+
+Chen, L., Wang, H., & Liu, X. (2021). NFC-based Smart Door Access System. IEEE IoT Journal, 8(5), 3421-3430.
+
+Kumar, A., et al. (2019). Face Recognition based Smart Door Lock. IJERT, 8(4), 234-241.
+
+Liu, M., et al. (2022). QR Code Authentication for Building Access. Sensors, 22(3), 1156.
+
+Patil, S., et al. (2018). RFID Based Door Lock. IRJET, 5(6), 2113-2118.
+
+ราชกิจจานุเบกษา. (2562). พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562. กรุงเทพฯ.
+
+ราชกิจจานุเบกษา. (2560). พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ (ฉบับที่ 2) พ.ศ. 2560.
+
+Sharma, R., et al. (2020). BLE Beacon-based Access Control. Procedia CS, 167, 1834-1843.
+```
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-36"></a>
+### 71.36 Hardware Reliability — MTBF, IP Rating, สภาพแวดล้อม
+
+#### 71.36.1 MTBF (Mean Time Between Failures) ของแต่ละ Component
+
+| Component | MTBF (ชม.) | อายุการใช้งาน (ปี) | จำนวน cycles | Notes |
+|---|---|---|---|---|
+| ESP32 (silicon) | 1,000,000+ | 100+ | N/A | Solid-state, ทนสภาพแวดล้อม |
+| ILI9341 TFT | 200,000 | 23 | N/A | LCD backlight degrade 50% ที่ 50,000 ชม. |
+| Relay SRD-05VDC | N/A | N/A | **100,000 cycles** ⚠️ | นี่คือคอขวด! |
+| Magnetic Lock | 1,000,000+ | 100+ | N/A | ไม่มีชิ้นเคลื่อนไหว |
+| Solenoid Lock | N/A | 5-10 | **500,000 cycles** | มีกลไกเคลื่อนไหว |
+| Power Supply 12V | 100,000 | 11 | N/A | electrolytic cap คือคอขวด |
+
+#### 71.36.2 Relay Lifetime Calculation
+
+สมมติ:
+- ห้อง CE-401 มีการเข้า-ออก 100 ครั้ง/วัน
+- ระบบทำงาน 250 วัน/ปี (วันเรียน)
+- → 25,000 cycles/ปี
+
+**Relay 100,000 cycles → อายุ 4 ปี** ⚠️
+
+**แนะนำ:** เปลี่ยน relay เป็น **Solid-State Relay (SSR)** สำหรับห้อง high-traffic
+- SSR Omron G3MB-202P: ~10,000,000,000 cycles (เกือบ unlimited)
+- ราคา ฿180 (vs SRD-05VDC ฿45) — ROI < 1 ปีหากต้องเปลี่ยน relay บ่อย
+
+#### 71.36.3 IP Rating (Ingress Protection)
+
+| Location | แนะนำ | เหตุผล |
+|---|---|---|
+| Indoor ห้องเรียนปกติ | IP20 (default) | ไม่มีน้ำ, ฝุ่นน้อย |
+| ทางเดินภายในตึก | IP54 | ฝุ่นมาก, อาจมีคนทำน้ำหก |
+| ระเบียง/Semi-outdoor | IP65 | กันฝน, ฝุ่น |
+| ห้องน้ำ/ครัว | IP67 | ทนน้ำท่วม |
+| ภายนอกตึก (สนาม) | IP67 + UV | ทนแดดและฝน |
+
+**ESP32 + TFT box สำหรับ outdoor:** ใช้ enclosure ABS IP65 + ซิลิโคนปิดรอยต่อ + cable gland
+
+#### 71.36.4 Operating Environment
+
+| Parameter | ESP32 Spec | TFT Spec | Operating Limit |
+|---|---|---|---|
+| Temperature | -40 to +85°C | -20 to +70°C | **-20 to +60°C** |
+| Humidity | 10-90% non-condensing | 10-90% NC | 10-85% |
+| Wi-Fi range (LOS) | 100m | - | ห้องเล็ก/กลาง |
+| Wi-Fi range (ผ่านกำแพง) | 10-30m | - | ต้องมี AP ใกล้ |
+| Power input | 5V ±5% | 3.3V ±10% | ใช้ regulator dedicated |
+
+#### 71.36.5 Preventive Maintenance Schedule
+
+| ความถี่ | งาน |
+|---|---|
+| รายวัน | ตรวจ Discord alerts |
+| รายสัปดาห์ | ตรวจ ESP32 heartbeat ทุกห้องใน dashboard |
+| รายเดือน | เช็คความสว่าง TFT backlight (degrade?) |
+| ราย 3 เดือน | ทำความสะอาด relay contact (ไอโซโพรพิล), เช็คน็อต mounting |
+| ราย 6 เดือน | ทดสอบ flyback diode (multimeter), เช็ค power supply ripple |
+| ราย 1 ปี | เปลี่ยน relay (ห้อง high-traffic), เช็ค magnetic lock pull force |
+| ราย 4 ปี | เปลี่ยน relay ทุกห้อง |
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-37"></a>
+### 71.37 Network Topology — Campus Deployment + Firewall Request
+
+#### 71.37.1 ภาพรวม Network Topology
+
+```mermaid
+flowchart TB
+    INET["🌐 Internet<br/>(Vercel + Supabase<br/>AWS Singapore)"]
+    FW["🔥 Campus Firewall<br/>(Fortigate)"]
+    CORE["🌐 Core Switch<br/>(Cisco Catalyst)"]
+    
+    subgraph VLAN10["VLAN 10 — Faculty Wi-Fi"]
+        AP1["AP ชั้น 4"]
+        AP2["AP ชั้น 5"]
+    end
+    
+    subgraph VLAN20["VLAN 20 — IoT (Isolated)"]
+        AP3["AP IoT ชั้น 4"]
+        E1["ESP32 CE-401"]
+        E2["ESP32 CE-402"]
+        E3["ESP32 CE-403"]
+    end
+    
+    subgraph VLAN30["VLAN 30 — Student"]
+        S1["📱 Student devices"]
+    end
+    
+    INET <--> FW
+    FW <--> CORE
+    CORE --> AP1 --> VLAN10
+    CORE --> AP2 --> VLAN10
+    CORE --> AP3 --> VLAN20
+    VLAN20 --> E1
+    VLAN20 --> E2
+    VLAN20 --> E3
+    CORE --> S1
+    
+    VLAN10 -.->|"deny by default"| VLAN20
+    VLAN30 -.->|"deny by default"| VLAN20
+```
+
+#### 71.37.2 VLAN Segmentation
+
+| VLAN | Purpose | IP Range | Access |
+|---|---|---|---|
+| 10 | Faculty/Staff Wi-Fi | 10.10.0.0/16 | Full internet, Admin dashboard |
+| 20 | **IoT (ESP32)** | 10.20.0.0/24 | Internet outbound only (Vercel + NTP) |
+| 30 | Student Wi-Fi | 10.30.0.0/16 | Full internet, student form only |
+| 99 | Management | 10.99.0.0/24 | SSH/admin to switches |
+
+**Critical:** VLAN 20 ต้อง **isolated** จาก VLAN 10/30 (deny by default) — ESP32 ห้ามคุยกับ device อื่นใน LAN
+
+#### 71.37.3 Firewall Rules ที่ต้องขอเปิดกับศูนย์คอมฯ
+
+```
+# OUTBOUND (จาก VLAN 20 ESP32)
+allow from 10.20.0.0/24 to vercel.com:443     (HTTPS API polling)
+allow from 10.20.0.0/24 to *.supabase.co:443  (DB direct fallback)
+allow from 10.20.0.0/24 to pool.ntp.org:123   (Time sync UDP)
+allow from 10.20.0.0/24 to 8.8.8.8:53         (DNS resolution)
+deny  from 10.20.0.0/24 to ANY                 (default deny)
+
+# INBOUND (จาก Vercel → ESP32) — สำหรับ LAN direct fallback
+allow from <vercel-egress-ip-range> to 10.20.0.0/24:80
+  (เผยแพร่ผ่าน NAT port forward — ทำได้แค่ห้องที่มี static port mapping)
+deny  from ANY to 10.20.0.0/24                 (default deny)
+
+# ADMIN ACCESS
+allow from 10.10.0.0/16 to *.vercel.app:443   (Faculty → dashboard)
+allow from 10.30.0.0/16 to *.vercel.app:443   (Student → form)
+```
+
+#### 71.37.4 Firewall Request Form (ตัวอย่างส่งศูนย์คอมฯ มทร.พระนคร)
+
+```
+เรียน ผู้อำนวยการศูนย์คอมพิวเตอร์
+
+ขอเรียนแจ้งความประสงค์ขอเปิด Firewall Rule สำหรับโครงการระบบควบคุม
+การเข้าออกห้องเรียน RMUTP-ACCS:
+
+1. วัตถุประสงค์: ให้ ESP32 จำนวน 50 อุปกรณ์ในห้องเรียนคณะวิศวกรรมศาสตร์
+   สามารถสื่อสารกับ Cloud Server (Vercel + Supabase) ได้
+   
+2. VLAN ที่ขอใช้: VLAN 20 (IoT)
+   IP Range: 10.20.0.0/24
+   
+3. Outbound Rules:
+   - Destination: *.vercel.app, *.supabase.co
+   - Protocol: HTTPS (TCP 443)
+   - Frequency: ทุก 2 วินาที (polling)
+   - Bandwidth: ~50 KB/min/device
+   
+4. Inbound Rules (Optional):
+   - ไม่จำเป็น (ESP32 ใช้ outbound polling เท่านั้น)
+   
+5. ระยะเวลา: 27 พ.ค. 2026 - ตลอดอายุการใช้งานโครงการ
+
+6. ผู้ติดต่อ: [ชื่อ-นามสกุล] โทร [...]
+```
+
+#### 71.37.5 Bandwidth Estimation
+
+- ESP32 1 ตัว: poll 2s = 30 req/min × ~1.5 KB/req = ~45 KB/min = **0.75 KB/s**
+- 50 ห้อง: 50 × 0.75 = **37.5 KB/s** = ~325 MB/day = ~10 GB/month
+
+ไม่กระทบ bandwidth ของมหาวิทยาลัยอย่างมีนัยสำคัญ (มหาวิทยาลัยปกติมี ≥ 1 Gbps uplink)
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-38"></a>
+### 71.38 คู่มือผู้ใช้แยกเล่ม (Student / Operator / Owner Quick Guides)
+
+เล่มนี้เป็นเอกสารวิศวกร — สำหรับผู้ใช้ปลายทาง ควรมีคู่มือสั้น 1-2 หน้า แยกตามบทบาท
+
+#### 71.38.1 คู่มือนักศึกษา (1 หน้า)
+
+```
+┌─────────────────────────────────────────────┐
+│ 🎓 คู่มือเข้าห้องเรียน RMUTP-ACCS           │
+├─────────────────────────────────────────────┤
+│                                             │
+│ 📱 ครั้งแรก:                                 │
+│  1. เปิดกล้องมือถือสแกน QR Code หน้าห้อง   │
+│  2. กรอกชื่อ-รหัส-คณะ-สาขา → ส่ง           │
+│  3. รออาจารย์ดูแลห้องอนุมัติ (~1-3 นาที)    │
+│  4. ประตูเปิดเอง → เข้าได้                  │
+│                                             │
+│ 🔁 ครั้งที่ 2 (ภายใน 5 นาที):                │
+│  - กดปุ่ม "เปิดประตูอีกครั้ง" บนหน้าเว็บ   │
+│                                             │
+│ ⏰ QR Code หมุนใหม่ทุก 60 วินาที             │
+│ ❌ ห้ามแชร์ QR / Bypass ให้คนอื่น           │
+│                                             │
+│ 🆘 ติดปัญหา: ไลน์ @rmutp-accs               │
+└─────────────────────────────────────────────┘
+```
+
+#### 71.38.2 คู่มืออาจารย์ดูแลห้อง (door_operator)
+
+**ขั้นตอนการอนุมัตินักศึกษา:**
+
+1. เข้า `https://project-sigma-ivory-21.vercel.app/admin/login`
+2. กรอก username/password ที่ได้รับ
+3. ดูแท็บ "คิวรอตรวจสอบ" — เห็นรายชื่อนักศึกษารอผ่าน
+4. กดปุ่ม ✅ **อนุมัติ** หรือ ❌ **ปฏิเสธ** ข้างชื่อ
+5. ระบบจะเปิดประตูอัตโนมัติเมื่ออนุมัติ
+
+**กรณีฉุกเฉิน — เปิดประตูทั้งห้อง:**
+- ไปที่ "ห้องเรียนและ ESP32" → กด **🚪 ปลดล็อกด่วน** (5 วินาที)
+- ใช้เฉพาะกรณีอพยพ/อาจารย์ลืมเข้า/นักศึกษาที่ผ่านแล้ว
+
+**ข้อจำกัด:** approve ได้เฉพาะห้องใน `allowed_rooms` ของคุณ
+
+#### 71.38.3 คู่มือ Owner Admin (ผู้ดูแลระบบใหญ่)
+
+**งานประจำ:**
+- ตรวจ Discord channel ทุกเช้า (7:00) — ดู alert ที่เกิดข้ามคืน
+- เช็ค heartbeat ทุกห้องในแท็บ "ห้องเรียนและ ESP32" (ห้องที่ขาด > 60 วินาที → 🔴)
+- รัน PDF report ทุกสิ้นเดือน → ส่งคณบดี
+
+**งานทุก 3 เดือน:**
+- ตรวจรายชื่อ admin ใน "ผู้ดูแลระบบ" → ลบคนที่ลาออก
+- เปลี่ยนรหัส admin ทุกคน
+- Review access_logs หา anomaly
+
+**งานทุก 1 ปี:**
+- Rotate `JWT_SECRET`, `ESP32_API_KEY`, `QR_SIGNING_KEY`
+- Review PDPA ROPA §71.27 → update ถ้ามีการเปลี่ยนแปลง
+- ส่งรายงาน DPIA ให้ DPO มหาวิทยาลัย
+
+#### 71.38.4 Video Tutorial (เสนอ)
+
+| Video | Duration | Audience |
+|---|---|---|
+| 1. ลงทะเบียนเข้าห้องครั้งแรก | 2 min | นักศึกษา |
+| 2. การใช้ Bypass | 30 sec | นักศึกษา |
+| 3. การอนุมัตินักศึกษา | 1 min | door_operator |
+| 4. การ Export PDF | 1.5 min | admin |
+| 5. การจัดการ admin users | 3 min | owner |
+| 6. การ Rollback ฉุกเฉิน | 2 min | owner |
+
+**Hosting:** YouTube unlisted + embed ในหน้า `/help` ของเว็บ
+
+#### 71.38.5 In-App Help Tooltips
+
+ทุก field/button ที่ซับซ้อน → เพิ่ม tooltip:
+```tsx
+<button title="ปลดล็อกประตูชั่วคราว 5 วินาที (จำกัด 3 ครั้ง/นาที)">
+  🚪 ปลดล็อกด่วน
+</button>
+```
+
+<p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
+
+---
+
+> **อัปเดตล่าสุด**: 2026-05-27 22:30:00 +07:00 — ย้าย §71.19-71.23 (PDPA, ISF, CCA, T&C, Privacy) ไปต่อท้าย §71.18 ให้เลขข้อเรียงถูกต้อง + เพิ่ม **§71.24-71.38 จำนวน 15 บทย่อยใหม่** ครอบคลุม: STRIDE/DREAD Threat Model, DFD ระดับ 0/1/2 สำหรับ PDPA DPIA, กฎหมายเพิ่มเติม (CCSA + ก.พ.อ. + กฎกระทรวง 47 + License audit), ROPA ตาม PDPA ม.39, Schematic+PCB+BOM, Relay Timing+Flyback diode physics, OpenAPI 3.0 spec, CI/CD pipeline + branch strategy, NIST 800-61 IRP + แบบฟอร์ม สคส. 72 ชม., Accessibility (Screen reader/Keyboard/ARIA/TTS/Physical), UAT + SUS questionnaire, Literature Review เปรียบเทียบงานวิจัยอื่น 6 ชิ้น, Hardware Reliability (MTBF/IP rating/Operating env/Maintenance schedule), Network Topology (VLAN + Firewall request form + Bandwidth estimation), คู่มือผู้ใช้แยกเล่ม (Student/Operator/Owner Quick Guides)
+
+> **อัปเดตก่อนหน้า**: 2026-05-27 21:44:42 +07:00 — เปลี่ยนชื่อโปรเจกต์และระบบทั้งหมดในเอกสารอ้างอิงเชิงวิชาการให้เป็น "Innovative system for managing access rights and controlling classroom access via wireless network", ปรับปรุงลิงก์เป็น Production URL (project-sigma-ivory-21.vercel.app), เพิ่มหัวข้อ §71 อธิบายสถาปัตยกรรมเชิงลึกสำหรับการทำเล่มวิทยานิพนธ์รวม 18 บทย่อยเชิงปฏิบัติสมบูรณ์แบบสูงสุดเพื่อรองรับ NotebookLM อย่างเต็มสตรีม ล่าสุดอัปเดตรายละเอียดเรื่องการแบ่งแยกสิทธิ์ของแอดมินรายห้อง (คอลัมน์ allowed_rooms), นโยบายยกระดับรหัสผ่านแอดมินใหม่ (ความยาวอย่างน้อย 12 ตัวอักษร) และปรับโครงสร้างระบบแจ้งเตือนแบบแบ่งแยกตามหมวดหมู่ประเภทเหตุการณ์ลงในเนื้อหาบทเรียนหลักทั้งหมดเรียบร้อย
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
