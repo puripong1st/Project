@@ -4,6 +4,7 @@ import { getPool, initDatabase } from "@/lib/db";
 import { getAdminFromCookie, canOperateRoom } from "@/lib/auth";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
+import { sweepExpiredPending } from "@/lib/auto-reject";
 
 let initialized = false;
 async function ensureInit() {
@@ -32,6 +33,8 @@ export async function POST(
     if (isNaN(studentId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const pool = getPool();
+
+    await sweepExpiredPending();
 
     const { rows } = await pool.query(
       `UPDATE students

@@ -7513,7 +7513,55 @@ SELECT version, COUNT(*) FROM consent_records GROUP BY version;
 
 ---
 
-> **อัปเดตล่าสุด**: 2026-05-27 23:50:00 +07:00 — เพิ่ม **§71.40 SmartAccess Rebrand + PDPA Implementation Deep Dive** แบ่ง 17 บทย่อยที่อธิบายทุกประเด็นของการ rebrand + PDPA P0+P1 implementation อย่างละเอียดสูงสุด: ที่มาของ rebrand จาก RMUTP ACCS → SmartAccess + ระบุคณะครุศาสตร์อุตสาหกรรมเป็น Data Controller, สถาปัตยกรรม Consent flow ผ่าน Mermaid sequence diagram, เจาะลึก `consent_records` ทุกคอลัมน์ + indexes + เหตุผลทางวิศวกรรม/กฎหมาย, lifecycle ของ POST/GET/DELETE `/api/consent`, อธิบาย CookieConsent.tsx v2.0 ทีละบล็อก (loadConsent, saveConsentServer keepalive, useCallback stable ref, event-driven architecture, modal a11y, toggle switch CSS, responsive breakpoints), เจาะลึก privacy/page.tsx 11 หัวข้อพร้อมกฎหมายอ้างอิงแต่ละข้อ, terms/page.tsx 12 clauses พร้อมฎีกาที่อ้างอิง (ฎีกา 6477/2562 clickwrap, ฎีกา 14430/2557 unfair contract terms), ตาราง Cookie/Storage 6 รายการพร้อมเหตุผลการจัดหมวด, SHA-256 IP hashing rationale + ทำไมไม่ใส่ salt, Withdrawal Flow เทียบกับ ม.19 วรรค 5, Cross-Border Transfer safeguards 3 country, Discord avatar URL trade-off, ESP32 subtitle font width calculation, SEO meta description SERP truncation analysis, Migration + Rollback plan, Verification Test Matrix + SQL queries สำหรับ post-deploy check, ความเสี่ยงคงเหลือ + accepted risks
+> **อัปเดตล่าสุด**: 2026-05-27 เวลาประมาณ 23:59 +07:00 — เพิ่มฟีเจอร์ **Pending Request Auto-Reject + Client-Side Countdown Timer**
+>
+> **บริบทและที่มาของการเปลี่ยนแปลง**: จากการใช้งานจริงพบว่ามีคำขอเข้าใช้ห้อง (`students.status = 'pending'`) ค้างอยู่ในคิวเป็นจำนวนมาก เนื่องจากแอดมินอาจไม่ได้อยู่หน้าจอแดชบอร์ดตลอดเวลา หรือบางช่วงไม่มีผู้ดูแลเวรประจำห้อง ส่งผลให้ (1) ผู้ใช้ฝั่งนักศึกษาเห็นสถานะ "รออนุมัติ" ค้างไว้แบบไม่มีกำหนด ไม่ทราบว่าควรรอหรือยื่นใหม่ (2) คิวคำขอที่ค้างนานสะสมจนรบกวนการกรองคำขอจริงที่เพิ่งยื่นเข้ามา (3) ผู้ใช้บางคนอาจเดินจากหน้าประตูไปแล้วโดยที่คำขอยังลอยค้างในระบบ การอัปเดตครั้งนี้จึงแบ่งเป็น 2 ส่วนหลัก: (ก) ระบบปฏิเสธอัตโนมัติฝั่งเซิร์ฟเวอร์ และ (ข) นาฬิกานับถอยหลังฝั่งผู้ใช้
+>
+> ### (ก) Server-Side Auto-Reject Sweep (5-Minute Timeout Enforcement)
+> - สร้างไฟล์ใหม่ [my-app/lib/auto-reject.ts](my-app/lib/auto-reject.ts) เป็น helper module เดียวที่ทำหน้าที่กวาดคำขอที่หมดอายุทั้งหมด ขนาดประมาณ 65 บรรทัด
+> - กำหนดค่าคงที่ `TIMEOUT_MINUTES = 5` และข้อความเหตุผลภาษาไทยมาตรฐาน `AUTO_REJECT_REASON = "ไม่ได้รับการอนุมัติภายในเวลาที่กำหนด (เกิน 5 นาที) — ปฏิเสธอัตโนมัติโดยระบบ"` เพื่อให้ผู้ใช้เข้าใจชัดเจนว่าเหตุใดจึงถูกปฏิเสธ ไม่เกิดความสับสนกับการปฏิเสธโดยแอดมินจริง
+> - ใช้คำสั่ง PostgreSQL CTE (Common Table Expression) เพียงคำสั่งเดียวเพื่อ atomic operation: `WITH expired AS (UPDATE students SET status='rejected', rejection_reason=..., approved_at=CURRENT_TIMESTAMP WHERE status='pending' AND registered_at < NOW() - INTERVAL '5 minutes' RETURNING ...), logged AS (INSERT INTO access_logs ... SELECT FROM expired) SELECT ... FROM expired` — ทั้งการอัปเดตสถานะนักศึกษาและการบันทึก access_logs เกิดในธุรกรรมเดียวกัน ไม่มีโอกาสค้างกลางทาง
+> - บันทึก `access_logs.performed_by = NULL` เพื่อแยกแยะอย่างชัดเจนว่าเป็นการปฏิเสธโดยระบบอัตโนมัติ ไม่ใช่แอดมินคนใดคนหนึ่ง พร้อมหมายเหตุภาษาไทย "เหตุผล: ... | โดย: ระบบอัตโนมัติ" ในคอลัมน์ notes
+> - ส่งแจ้งเตือน Discord ผ่าน `sendDiscordNotification("student_rejected", ...)` โดยระบุ `adminName: "ระบบอัตโนมัติ"` เพื่อให้ทีมงานในห้อง Discord ทราบว่าเกิดการปฏิเสธอัตโนมัติ (fire-and-forget ไม่บล็อก response)
+> - **กลไกป้องกันการเรียกถี่เกินไป (Throttle)**: ใช้ตัวแปร module-level `lastRun` (timestamp) และ `inFlight` (Promise reference) — ภายใน 10 วินาทีจะ sweep แค่ครั้งเดียว และหากกำลัง sweep อยู่ การเรียกซ้ำจะ await Promise เดิม ไม่เกิด race condition และไม่ยิง query ซ้ำซ้อนรบกวน Supabase pool
+> - **จุดที่เรียก sweep (Lazy Trigger Strategy)**: เพื่อหลีกเลี่ยงการตั้ง cron job บน Vercel (ซึ่งต้องใช้ Pro plan) จึงใช้แนวทาง lazy sweep — เรียก `sweepExpiredPending()` ในจุดที่ผู้ใช้งานจริงเรียกเข้ามาเองอยู่แล้ว ดังนี้:
+>   - [my-app/app/api/students/pending/route.ts](my-app/app/api/students/pending/route.ts) — ทุกครั้งที่แดชบอร์ดแอดมินดึงรายการคิวรออนุมัติ (admin polling ในแดชบอร์ดทุก 5 วินาที)
+>   - [my-app/app/api/students/[id]/route.ts](my-app/app/api/students/[id]/route.ts) — ทุกครั้งที่นักศึกษา poll สถานะของตนเอง (public polling ด้วย bypass_token ทุก 3 วินาที)
+>   - [my-app/app/api/students/[id]/approve/route.ts](my-app/app/api/students/[id]/approve/route.ts) — ป้องกัน race condition: หากแอดมินกดอนุมัติคำขอที่หมดเวลาพอดี ระบบจะ sweep ก่อน ทำให้ UPDATE WHERE status='pending' คืน 0 rows และแสดงข้อความ "นักศึกษานี้ไม่ได้อยู่ในสถานะรอการอนุมัติ"
+> - **เหตุผลที่ไม่ใช้ cron**: ระบบงานจริงมีคำขอเพียงไม่กี่รายการต่อชั่วโมง การมีผู้เรียก API ทั้งฝั่งแอดมินและฝั่งนักศึกษา poll อยู่แล้ว ทำให้ lazy sweep ครอบคลุมเพียงพอ ลด complexity และค่าใช้จ่ายของระบบ (Vercel Hobby tier ไม่รองรับ cron)
+>
+> ### (ข) Client-Side Countdown Timer ใน [my-app/app/page.tsx](my-app/app/page.tsx)
+> - เพิ่ม state ใหม่ในหน้าลงทะเบียนนักศึกษา 2 ตัว: `registeredAt: string | null` (เก็บ ISO timestamp ที่ได้จาก server) และ `remainingSeconds: number` (วินาทีที่เหลือ ค่าเริ่มต้น 300)
+> - กำหนดค่าคงที่ `PENDING_TIMEOUT_SECONDS = 300` ให้ตรงกับฝั่ง server (5 นาที × 60 วินาที) เพื่อความสม่ำเสมอ
+> - **Source of Truth คือ server timestamp**: ไม่ใช้นาฬิกาเครื่องของผู้ใช้คำนวณเวลาเริ่มต้น เพื่อกันกรณีที่นาฬิกาเครื่องผู้ใช้เพี้ยน — แทนที่จะใช้ `new Date()` ตอนกด submit ระบบจะดึง `student.registered_at` จาก polling endpoint ทุก 3 วินาทีและใช้ค่านั้นเป็นจุดเริ่ม สอดคล้องกับเวลาที่ server ใช้ตรวจสอบ timeout
+> - **Ticker effect**: useEffect ตัวใหม่ที่รันเมื่อ `success && currentStatus === "pending" && registeredAt` ตั้ง `setInterval` ทุก 1 วินาทีคำนวณ `remaining = max(0, ceil(300 - elapsed))` แล้วอัปเดต state — มี `return () => clearInterval(id)` เพื่อ cleanup ป้องกัน memory leak เมื่อเปลี่ยนสถานะหรือเริ่มคำขอใหม่
+> - **Reset เมื่อเริ่มคำขอใหม่**: ใน useEffect การ poll สถานะ หาก `!success` จะ reset `registeredAt = null` และ `remainingSeconds = PENDING_TIMEOUT_SECONDS` กลับสู่ค่าเริ่มต้นทันที
+> - **UI Element**: แสดงป้ายนับถอยหลังใต้การ์ดสถานะเฉพาะเมื่อ `currentStatus === "pending"` รูปแบบ `MM:SS` (zero-padded ทั้ง 2 หลัก) ใช้ CSS `fontVariantNumeric: "tabular-nums"` เพื่อให้ตัวเลขไม่กระโดดตามความกว้างของแต่ละตัวอักษร
+> - **สีเตือนภัยแบบไดนามิก**: เมื่อ `remainingSeconds <= 60` ป้ายเปลี่ยนจากโทนม่วงแบรนด์ (`var(--smartaccess-purple)`) ไปเป็นโทนแดง (`#EF4444` ขอบ + `#FEF2F2` พื้น + `#DC2626` ตัวอักษร) ช่วยเตือนผู้ใช้ว่าใกล้หมดเวลาแล้ว
+> - เพิ่มข้อความใต้ตัวเลขนับถอยหลัง: "หากไม่มีแอดมินกดอนุมัติภายในเวลานี้ คำขอจะถูกปฏิเสธอัตโนมัติ" เพื่อตั้งความคาดหวังของผู้ใช้ให้ตรงกับพฤติกรรมจริงของระบบ
+>
+> ### Flow การทำงานเมื่อหมดเวลา (End-to-End Timeline)
+> 1. **T+0**: นักศึกษากด submit คำขอ → `students.status = 'pending'`, `registered_at = NOW()`
+> 2. **T+0 ถึง T+5:00**: หน้าเว็บนักศึกษา poll สถานะทุก 3 วินาที → ดึง `registered_at` มาเริ่มนับถอยหลัง ตัวเลขเดินจาก 05:00 → 00:00
+> 3. **T+4:00**: ป้ายนับถอยหลังเปลี่ยนเป็นสีแดง (เหลือ ≤ 60 วินาที) เตือนผู้ใช้
+> 4. **T+5:00 หรือไม่กี่วินาทีถัดมา**: เมื่อมีการ poll ครั้งถัดไป (ไม่ว่าจะจากแอดมินดูคิวหรือนักศึกษา poll สถานะตนเอง) — `sweepExpiredPending()` ถูก trigger
+> 5. CTE update คำขอเป็น `rejected` พร้อมเหตุผลและบันทึก access_logs → Discord webhook ยิงข้อความแจ้งเตือน
+> 6. **T+5:03 (ครั้ง poll ถัดไป)**: นักศึกษาเห็น `status: "rejected"` พร้อม `rejection_reason` → UI สลับการ์ดเป็นโทนแดงพร้อมแสดงสาเหตุการปฏิเสธ "ไม่ได้รับการอนุมัติภายในเวลาที่กำหนด (เกิน 5 นาที) — ปฏิเสธอัตโนมัติโดยระบบ"
+>
+> ### ผลกระทบและข้อพิจารณา
+> - **ไม่กระทบฟีเจอร์เดิม**: คำขอที่ถูกอนุมัติภายใน 5 นาทียังคงทำงานเดิมทุกประการ; ฟิลด์ `bypass_token` 5 นาที after-approval ยังคงเดิม (เป็นคนละ timer คนละจุดประสงค์)
+> - **กฎหมาย/การตรวจสอบ**: access_logs ยังเก็บ audit trail ครบถ้วนแม้เป็นการปฏิเสธโดยระบบ ตอบโจทย์ พ.ร.บ. คอมพิวเตอร์ ม.26 (เก็บข้อมูลจราจร ≥ 90 วัน) เหมือนเดิม สามารถ query หาคำขอที่ถูกปฏิเสธอัตโนมัติด้วย `SELECT * FROM access_logs WHERE action='rejected' AND performed_by IS NULL`
+> - **ข้อจำกัด**: หากไม่มี traffic เข้า endpoint ใดเลยเกิน timeout (เช่นช่วงปิดเทอม) คำขอจะค้างจนกว่าจะมีคนเรียก endpoint ครั้งถัดไป — รับได้เพราะตอนไม่มี traffic ก็ไม่มีนักศึกษารอใช้ห้องอยู่จริง
+> - **Throttle 10 วินาที**: หากแอดมิน 100 คน refresh แดชบอร์ดพร้อมกัน จะไม่ทำให้เกิด UPDATE storm บน students table — มี `inFlight` Promise singleton คุมอยู่
+>
+> ### ไฟล์ที่เปลี่ยนแปลงในรอบนี้ (สรุป)
+> - ✨ **ใหม่**: [my-app/lib/auto-reject.ts](my-app/lib/auto-reject.ts) — helper module สำหรับ sweep
+> - 🔧 **แก้ไข**: [my-app/app/api/students/pending/route.ts](my-app/app/api/students/pending/route.ts) — import + เรียก sweep ก่อน query รายการคิว
+> - 🔧 **แก้ไข**: [my-app/app/api/students/[id]/route.ts](my-app/app/api/students/[id]/route.ts) — import + เรียก sweep ก่อน query รายละเอียดนักศึกษา
+> - 🔧 **แก้ไข**: [my-app/app/api/students/[id]/approve/route.ts](my-app/app/api/students/[id]/approve/route.ts) — import + เรียก sweep ก่อน UPDATE อนุมัติ (กัน race condition)
+> - 🔧 **แก้ไข**: [my-app/app/page.tsx](my-app/app/page.tsx) — เพิ่ม state `registeredAt`/`remainingSeconds`, ticker useEffect, countdown badge UI พร้อม dynamic warning color เมื่อเหลือ ≤ 60 วินาที
+
+> **อัปเดตก่อนหน้า**: 2026-05-27 23:50:00 +07:00 — เพิ่ม **§71.40 SmartAccess Rebrand + PDPA Implementation Deep Dive** แบ่ง 17 บทย่อยที่อธิบายทุกประเด็นของการ rebrand + PDPA P0+P1 implementation อย่างละเอียดสูงสุด: ที่มาของ rebrand จาก RMUTP ACCS → SmartAccess + ระบุคณะครุศาสตร์อุตสาหกรรมเป็น Data Controller, สถาปัตยกรรม Consent flow ผ่าน Mermaid sequence diagram, เจาะลึก `consent_records` ทุกคอลัมน์ + indexes + เหตุผลทางวิศวกรรม/กฎหมาย, lifecycle ของ POST/GET/DELETE `/api/consent`, อธิบาย CookieConsent.tsx v2.0 ทีละบล็อก (loadConsent, saveConsentServer keepalive, useCallback stable ref, event-driven architecture, modal a11y, toggle switch CSS, responsive breakpoints), เจาะลึก privacy/page.tsx 11 หัวข้อพร้อมกฎหมายอ้างอิงแต่ละข้อ, terms/page.tsx 12 clauses พร้อมฎีกาที่อ้างอิง (ฎีกา 6477/2562 clickwrap, ฎีกา 14430/2557 unfair contract terms), ตาราง Cookie/Storage 6 รายการพร้อมเหตุผลการจัดหมวด, SHA-256 IP hashing rationale + ทำไมไม่ใส่ salt, Withdrawal Flow เทียบกับ ม.19 วรรค 5, Cross-Border Transfer safeguards 3 country, Discord avatar URL trade-off, ESP32 subtitle font width calculation, SEO meta description SERP truncation analysis, Migration + Rollback plan, Verification Test Matrix + SQL queries สำหรับ post-deploy check, ความเสี่ยงคงเหลือ + accepted risks
 > 
 > **ผลที่ได้ในการ commit รอบนี้:**
 > - แก้ text bug "SmartAccessและทีมผู้พัฒนา" → "คณะครุศาสตร์อุตสาหกรรม มทร.พระนคร และทีมผู้พัฒนาระบบ SmartAccess"

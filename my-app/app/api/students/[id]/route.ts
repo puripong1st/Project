@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, StudentRow } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
+import { sweepExpiredPending } from "@/lib/auto-reject";
 
 let initialized = false;
 async function ensureInit() {
@@ -25,6 +26,8 @@ export async function GET(
     if (isNaN(numId)) {
       return NextResponse.json({ error: "ID นักศึกษาต้องเป็นตัวเลข" }, { status: 400 });
     }
+
+    await sweepExpiredPending();
 
     const pool = getPool();
     const { rows } = await pool.query(

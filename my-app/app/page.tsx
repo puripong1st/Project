@@ -536,6 +536,10 @@ function RegistrationPageInner() {
   // Polling Status States for Real-Time feedback
   const [currentStatus, setCurrentStatus] = useState<"pending" | "approved" | "rejected">("pending");
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [registeredAt, setRegisteredAt] = useState<string | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(300);
+
+  const PENDING_TIMEOUT_SECONDS = 300;
 
   // Clock
   useEffect(() => {
@@ -677,6 +681,8 @@ function RegistrationPageInner() {
       setTimeout(() => {
         setCurrentStatus("pending");
         setRejectionReason(null);
+        setRegisteredAt(null);
+        setRemainingSeconds(PENDING_TIMEOUT_SECONDS);
       }, 0);
       return;
     }
@@ -690,6 +696,9 @@ function RegistrationPageInner() {
           if (data.student) {
             setCurrentStatus(data.student.status);
             setRejectionReason(data.student.rejection_reason);
+            if (data.student.registered_at) {
+              setRegisteredAt(data.student.registered_at);
+            }
           }
         }
       } catch (err) {
@@ -703,6 +712,20 @@ function RegistrationPageInner() {
 
     return () => clearInterval(intervalId);
   }, [success]);
+
+  // Countdown ticker for pending request expiry (5 minutes from registered_at)
+  useEffect(() => {
+    if (!success || currentStatus !== "pending" || !registeredAt) return;
+    const startMs = new Date(registeredAt).getTime();
+    const tick = () => {
+      const elapsed = (Date.now() - startMs) / 1000;
+      const remaining = Math.max(0, Math.ceil(PENDING_TIMEOUT_SECONDS - elapsed));
+      setRemainingSeconds(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [success, currentStatus, registeredAt]);
 
   // Save session when admin approves registration
   useEffect(() => {
@@ -1167,9 +1190,34 @@ function RegistrationPageInner() {
           {/* Guide messages below card */}
           <div style={{ minHeight: 45, marginBottom: 24 }}>
             {currentStatus === "pending" && (
-              <p style={{ color: "var(--smartaccess-purple-dark)", fontSize: 13.5, fontWeight: 700, animation: "blink 1.5s ease-in-out infinite" }}>
-                กำลังตรวจสอบข้อมูลและสิทธิ์เข้าห้องแบบ Real-Time...
-              </p>
+              <>
+                <p style={{ color: "var(--smartaccess-purple-dark)", fontSize: 13.5, fontWeight: 700, animation: "blink 1.5s ease-in-out infinite", marginBottom: 10 }}>
+                  กำลังตรวจสอบข้อมูลและสิทธิ์เข้าห้องแบบ Real-Time...
+                </p>
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: remainingSeconds <= 60 ? "#FEF2F2" : "rgba(124,58,237,0.08)",
+                  border: `1px solid ${remainingSeconds <= 60 ? "#EF4444" : "var(--smartaccess-purple)"}`,
+                  borderRadius: 12,
+                  padding: "8px 16px",
+                  color: remainingSeconds <= 60 ? "#DC2626" : "var(--smartaccess-purple-dark)",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  fontVariantNumeric: "tabular-nums",
+                }}>
+                  <ClockIcon />
+                  <span>หมดเวลาใน</span>
+                  <span style={{ fontSize: 16 }}>
+                    {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
+                    {String(remainingSeconds % 60).padStart(2, "0")}
+                  </span>
+                </div>
+                <p style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 8 }}>
+                  หากไม่มีแอดมินกดอนุมัติภายในเวลานี้ คำขอจะถูกปฏิเสธอัตโนมัติ
+                </p>
+              </>
             )}
             {currentStatus === "approved" && (
               <p style={{ color: "#059669", fontSize: 13.5, fontWeight: 700 }}>

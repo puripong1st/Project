@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { getPool, initDatabase } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
+import { sweepExpiredPending } from "@/lib/auto-reject";
 
 let initialized = false;
 async function ensureInit() {
@@ -19,6 +20,8 @@ export async function GET() {
     if (admin.role !== "owner" && admin.role !== "door_operator") {
       return NextResponse.json({ error: "Permission denied" }, { status: 403 });
     }
+
+    await sweepExpiredPending();
 
     const pool = getPool();
     let query = `SELECT id, first_name, last_name, student_id, year, faculty, branch, status, registered_at, ip_address, requested_room
