@@ -115,7 +115,9 @@ function PendingCountdown({ registeredAt }: { registeredAt: string }) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      <span aria-hidden="true">⏳</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M6 2h12M6 22h12M6 2v4a6 6 0 0 0 12 0V2M18 22v-4a6 6 0 0 0-12 0v4" />
+      </svg>
       {expired ? (
         <span>หมดเวลาแล้ว</span>
       ) : (

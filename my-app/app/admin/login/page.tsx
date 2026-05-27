@@ -2,6 +2,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { IconAlert } from "../../components/Icons";
 //ฟิล์มเอง
 // ─── Minimalist Vector SVGs ───
 const KeyholeShieldIcon = () => (
@@ -133,7 +134,7 @@ function AdminLoginPageInner() {
           <form onSubmit={handleLogin}>
             {isIdle && (
               <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "12px 16px", color: "#D97706", fontSize: 13.5, fontWeight: 600, marginBottom: 20, display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span style={{ color: "#F59E0B", display: "inline-flex" }}><IconAlert size={16} /></span>
                 <span>Session หมดอายุเนื่องจากไม่มีกิจกรรม</span>
               </div>
             )}

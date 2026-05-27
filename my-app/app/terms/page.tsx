@@ -2,6 +2,7 @@
 // Terms & Conditions v2.0 — แก้ไขให้สอดคล้องกับ ป.พ.พ. + พ.ร.บ.ข้อสัญญาไม่เป็นธรรม 2540 + PDPA
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { IconAlert } from "../components/Icons";
 
 const TERMS_VERSION = "2.0";
 const EFFECTIVE_DATE = "27 พฤษภาคม 2569";
@@ -220,8 +221,9 @@ export default function TermsPage() {
               <li>สถาบันไม่รับผิดชอบต่อความเสียหายทางอ้อม (Indirect/Consequential Damages) ที่เกิดจากระบบขัดข้อง ยกเว้นกรณีที่สถาบันมีเจตนาหรือประมาทเลินเล่ออย่างร้ายแรง</li>
               <li>ในกรณีระบบล่ม สถาบันจะพยายามให้บริการเปิดประตูแบบ Manual โดยเจ้าหน้าที่ทดแทน</li>
             </ul>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.65)", marginTop: "8px" }}>
-              ⚠️ การจำกัดความรับผิดข้างต้นไม่ขัดต่อ พ.ร.บ. ว่าด้วยข้อสัญญาที่ไม่เป็นธรรม พ.ศ. 2540 และไม่ครอบคลุมกรณีที่กฎหมายไม่อนุญาตให้จำกัดความรับผิด
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.65)", marginTop: "8px", display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{ color: "#F59E0B", flexShrink: 0, marginTop: 2 }}><IconAlert size={14} /></span>
+              <span>การจำกัดความรับผิดข้างต้นไม่ขัดต่อ พ.ร.บ. ว่าด้วยข้อสัญญาที่ไม่เป็นธรรม พ.ศ. 2540 และไม่ครอบคลุมกรณีที่กฎหมายไม่อนุญาตให้จำกัดความรับผิด</span>
             </p>
           </div>
 

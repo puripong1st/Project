@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { IconCog, IconLock, IconBolt, IconChart, IconMegaphone } from "./Icons";
 
 const CONSENT_VERSION = "2.0";
 const STORAGE_KEY = "smartaccess_cookie_consent_v2";
@@ -433,7 +434,7 @@ export default function CookieConsent() {
             </div>
 
             <div className="smartaccess-cookie-text-container">
-              <h4 className="smartaccess-cookie-title">นโยบายความเป็นส่วนตัวและคุกกี้ 🍪</h4>
+              <h4 className="smartaccess-cookie-title">นโยบายความเป็นส่วนตัวและคุกกี้</h4>
               <p className="smartaccess-cookie-desc">
                 ระบบ SmartAccess ใช้คุกกี้/Web Storage เพื่อระบุตัวตน จดจำการตั้งค่า และจัดเก็บประวัติ Log การเข้าออกตาม พ.ร.บ. คอมพิวเตอร์ฯ 2560 และ PDPA 2562 ท่านสามารถเลือกประเภทคุกกี้ที่ยินยอมและถอนความยินยอมได้ทุกเมื่อ ดูรายละเอียดที่{" "}
                 <Link href={`/privacy${queryString}`} className="smartaccess-cookie-link">นโยบายความเป็นส่วนตัว</Link> และ{" "}
@@ -447,8 +448,10 @@ export default function CookieConsent() {
               onClick={() => setIsModalOpen(true)}
               className="btn-cookie-settings"
               aria-label="ตั้งค่าคุกกี้"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
             >
-              ⚙️ ตั้งค่า
+              <IconCog size={14} />
+              <span>ตั้งค่า</span>
             </button>
             <button onClick={handleDeclineAll} className="btn-cookie-decline">
               ปฏิเสธทั้งหมด
@@ -471,14 +474,20 @@ export default function CookieConsent() {
           }}
         >
           <div className="smartaccess-modal">
-            <h2 id="consent-modal-title">⚙️ ตั้งค่าความยินยอมคุกกี้</h2>
+            <h2 id="consent-modal-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <IconCog size={22} />
+              <span>ตั้งค่าความยินยอมคุกกี้</span>
+            </h2>
             <p className="modal-subtitle">
               เวอร์ชัน {CONSENT_VERSION} · เลือกประเภทคุกกี้ที่ท่านยินยอมให้ระบบใช้งาน
             </p>
 
             <div className="consent-category">
               <div className="consent-category-info">
-                <p className="consent-category-name">🔒 จำเป็น (Necessary)</p>
+                <p className="consent-category-name" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <IconLock size={16} />
+                  <span>จำเป็น (Necessary)</span>
+                </p>
                 <p className="consent-category-desc">
                   คุกกี้ที่จำเป็นต่อการทำงานพื้นฐานของระบบ เช่น JWT session ของแอดมิน, การยืนยัน QR Token, การบันทึก Log ตาม พ.ร.บ.คอมฯ มาตรา 26 — ไม่สามารถปิดได้
                 </p>
@@ -488,7 +497,10 @@ export default function CookieConsent() {
 
             <div className="consent-category">
               <div className="consent-category-info">
-                <p className="consent-category-name">⚡ ฟังก์ชันการใช้งาน (Functional)</p>
+                <p className="consent-category-name" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <IconBolt size={16} />
+                  <span>ฟังก์ชันการใช้งาน (Functional)</span>
+                </p>
                 <p className="consent-category-desc">
                   คุกกี้/localStorage สำหรับจดจำการตั้งค่าผู้ใช้ เช่น Auto-fill ฟอร์มลงทะเบียน (smartaccess_form_draft), การจดจำห้องที่เคยเข้า, การจดจำความยินยอมนี้
                 </p>
@@ -508,7 +520,10 @@ export default function CookieConsent() {
 
             <div className="consent-category">
               <div className="consent-category-info">
-                <p className="consent-category-name">📊 วิเคราะห์ (Analytics)</p>
+                <p className="consent-category-name" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <IconChart size={16} />
+                  <span>วิเคราะห์ (Analytics)</span>
+                </p>
                 <p className="consent-category-desc">
                   คุกกี้สำหรับเก็บสถิติการใช้งานระบบเพื่อปรับปรุงประสิทธิภาพ (เช่น Vercel Analytics) — ระบบจะไม่ระบุตัวตนของผู้ใช้ในข้อมูลนี้
                 </p>
@@ -528,7 +543,10 @@ export default function CookieConsent() {
 
             <div className="consent-category">
               <div className="consent-category-info">
-                <p className="consent-category-name">📢 การตลาด (Marketing)</p>
+                <p className="consent-category-name" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <IconMegaphone size={16} />
+                  <span>การตลาด (Marketing)</span>
+                </p>
                 <p className="consent-category-desc">
                   ปัจจุบันระบบไม่ใช้คุกกี้ประเภทการตลาด เปิดไว้เผื่ออนาคต (เช่น ส่งประกาศกิจกรรมคณะ)
                 </p>

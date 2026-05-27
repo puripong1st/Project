@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SmartAccess_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
+import { IconDoor, IconAlert, IconHourglass } from "./components/Icons";
 
 interface OfflineEntry {
   id: string;
@@ -954,7 +955,7 @@ function RegistrationPageInner() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>ห้องปฏิบัติการ</span>
-              <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>🚪 {room}</span>
+              <span style={{ color: "var(--text-primary)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}><IconDoor size={15} /> {room}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>สถานะ Bypass</span>
@@ -1052,9 +1053,13 @@ function RegistrationPageInner() {
             marginBottom: 32,
             fontSize: 13,
             color: "#FCA5A5",
-            lineHeight: 1.6
+            lineHeight: 1.6,
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-start"
           }}>
-            ⚠️ หากท่านปฏิเสธที่จะยอมรับนโยบายความเป็นส่วนตัวและข้อตกลงนี้ ระบบจะไม่สามารถอนุญาตให้ท่านลงทะเบียนเพื่อส่งคำขอเปิดประตูผ่านเครือข่ายได้
+            <span style={{ color: "#F59E0B", flexShrink: 0, marginTop: 2 }}><IconAlert size={16} /></span>
+            <span>หากท่านปฏิเสธที่จะยอมรับนโยบายความเป็นส่วนตัวและข้อตกลงนี้ ระบบจะไม่สามารถอนุญาตให้ท่านลงทะเบียนเพื่อส่งคำขอเปิดประตูผ่านเครือข่ายได้</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1187,9 +1192,13 @@ function RegistrationPageInner() {
               marginBottom: 16,
               color: "var(--text-secondary)",
               fontSize: 13,
-              fontWeight: 700
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8
             }}>
-              🚪 ห้องปฏิบัติการ: {room}
+              <IconDoor size={14} />
+              <span>ห้องปฏิบัติการ: {room}</span>
             </div>
           )}
 
@@ -1353,7 +1362,8 @@ function RegistrationPageInner() {
               boxShadow: "0 4px 12px rgba(124,58,237,0.08)"
             }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--smartaccess-purple)", display: "inline-block" }} className="animate-pulse" />
-              <span>🚪 ห้องเรียนเป้าหมาย: {room}</span>
+              <IconDoor size={14} />
+              <span>ห้องเรียนเป้าหมาย: {room}</span>
             </div>
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 12 }}>
@@ -1376,7 +1386,8 @@ function RegistrationPageInner() {
                 fontWeight: 800,
                 boxShadow: timeLeft <= 15 ? "0 0 10px rgba(239,68,68,0.2)" : "none"
               }} className={timeLeft <= 15 ? "animate-pulse" : ""}>
-                <span>⏳ ลิงก์หมดอายุใน: {timeLeft} วินาที</span>
+                <IconHourglass size={13} />
+                <span>ลิงก์หมดอายุใน: {timeLeft} วินาที</span>
               </div>
             )}
           </div>
@@ -1636,7 +1647,7 @@ function RegistrationPageInner() {
                   boxShadow: "0 4px 12px rgba(239, 68, 68, 0.08)"
                 }}
               >
-                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span style={{ color: "#F59E0B", display: "inline-flex" }}><IconAlert size={18} /></span>
                 <span>ไม่สามารถส่งข้อมูลได้ กรุณากดยอมรับนโยบายความเป็นส่วนตัวและคุกกี้ที่แถบด้านล่างสุดก่อนส่งข้อมูล</span>
               </div>
             )}

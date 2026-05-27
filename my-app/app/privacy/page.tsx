@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { openConsentSettings } from "../components/CookieConsent";
+import { IconAlert, IconLightbulb, IconCog } from "../components/Icons";
 
 const POLICY_VERSION = "2.0";
 const EFFECTIVE_DATE = "27 พฤษภาคม 2569";
@@ -226,8 +227,9 @@ export default function PrivacyPage() {
                 </tr>
               </tbody>
             </table>
-            <p style={{ marginTop: "10px", fontSize: "13px", color: "rgba(255,255,255,0.65)" }}>
-              ⚠️ ระบบไม่จัดเก็บข้อมูลอ่อนไหว (Sensitive Data) ตาม PDPA ม.26 เช่น เชื้อชาติ ศาสนา ข้อมูลสุขภาพ ข้อมูลชีวภาพ (Biometric) หรือประวัติอาชญากรรม
+            <p style={{ marginTop: "10px", fontSize: "13px", color: "rgba(255,255,255,0.65)", display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{ color: "#F59E0B", flexShrink: 0, marginTop: 2 }}><IconAlert size={14} /></span>
+              <span>ระบบไม่จัดเก็บข้อมูลอ่อนไหว (Sensitive Data) ตาม PDPA ม.26 เช่น เชื้อชาติ ศาสนา ข้อมูลสุขภาพ ข้อมูลชีวภาพ (Biometric) หรือประวัติอาชญากรรม</span>
             </p>
           </div>
 
@@ -401,9 +403,13 @@ export default function PrivacyPage() {
                   cursor: "pointer",
                   fontFamily: "'Noto Sans Thai', sans-serif",
                   boxShadow: "0 4px 15px rgba(124, 58, 237, 0.3)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
-                ⚙️ จัดการความยินยอมคุกกี้ของฉัน
+                <IconCog size={16} />
+                <span>จัดการความยินยอมคุกกี้ของฉัน</span>
               </button>
             </div>
           </div>
@@ -465,8 +471,9 @@ export default function PrivacyPage() {
                 </tr>
               </tbody>
             </table>
-            <p style={{ marginTop: "12px", fontSize: "13px", color: "rgba(255,255,255,0.65)" }}>
-              💡 การใช้สิทธิข้างต้นไม่มีค่าใช้จ่าย เว้นแต่กรณีการขอสำเนาเอกสารพิมพ์ออก
+            <p style={{ marginTop: "12px", fontSize: "13px", color: "rgba(255,255,255,0.65)", display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{ color: "#A78BFA", flexShrink: 0, marginTop: 2 }}><IconLightbulb size={14} /></span>
+              <span>การใช้สิทธิข้างต้นไม่มีค่าใช้จ่าย เว้นแต่กรณีการขอสำเนาเอกสารพิมพ์ออก</span>
             </p>
           </div>
 
