@@ -3,17 +3,24 @@ import path from "path";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+const supabaseHost = process.env.POSTGRES_HOST
+  ? `https://${process.env.POSTGRES_HOST}`
+  : "https://*.supabase.co";
+
 const cspDirectives = [
   "default-src 'self'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // 'strict-dynamic' allows scripts loaded by already-trusted scripts (needed by Next.js).
+  // 'unsafe-inline' is kept as a fallback for browsers that do not support strict-dynamic.
+  // 'unsafe-eval' has been removed.
+  "script-src 'self' 'unsafe-inline' 'strict-dynamic'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob:",
-  "connect-src 'self'",
+  `connect-src 'self' ${supabaseHost} https://*.supabase.co`,
   "manifest-src 'self'",
   "media-src 'self'",
   "worker-src 'self' blob:",
@@ -34,7 +41,7 @@ const securityHeaders = [
     value: "camera=(), microphone=(), geolocation=()",
   },
   {
-    key: "Content-Security-Policy-Report-Only",
+    key: "Content-Security-Policy",
     value: cspDirectives.join("; "),
   },
   ...(isProduction
