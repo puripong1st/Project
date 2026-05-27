@@ -146,6 +146,12 @@ export async function GET() {
     const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL || "";
     const discordConfigured = isDiscordWebhookConfigured || !!discordWebhookUrl;
 
+    // 5. Strip sensitive fields based on role — only "owner" sees activeToken
+    const isOwner = admin.role === "owner";
+    const sanitizedDevices = isOwner
+      ? devicesList
+      : devicesList.map(({ activeToken: _token, ...rest }) => ({ ...rest, activeToken: "" }));
+
     return NextResponse.json(
       {
         serviceState: getDependencyState([mysqlOnline, devicesList.some((device) => device.online)]),
@@ -153,16 +159,14 @@ export async function GET() {
         mode: mysqlOnline ? "online" : "local-fallback",
         mysql: {
           online: mysqlOnline,
-          host: process.env.POSTGRES_HOST || "localhost",
-          database: process.env.POSTGRES_DATABASE || "postgres",
           error: mysqlError,
         },
-        esp32: devicesList.length > 0 ? {
-          online: devicesList[0].online,
-          doorStatus: devicesList[0].doorStatus,
-          ip: devicesList[0].ip,
-          mock: devicesList[0].mock,
-          room: devicesList[0].room,
+        esp32: sanitizedDevices.length > 0 ? {
+          online: sanitizedDevices[0].online,
+          doorStatus: sanitizedDevices[0].doorStatus,
+          ip: sanitizedDevices[0].ip,
+          mock: sanitizedDevices[0].mock,
+          room: sanitizedDevices[0].room,
         } : {
           online: false,
           doorStatus: "closed",
@@ -170,7 +174,7 @@ export async function GET() {
           mock: false,
           room: "ไม่มีห้อง",
         },
-        esp32Devices: devicesList,
+        esp32Devices: sanitizedDevices,
         discord: {
           configured: discordConfigured,
         },
@@ -189,7 +193,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error("[System Status GET Error]:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

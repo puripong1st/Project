@@ -1,9 +1,15 @@
 // app/api/esp32/status/route.ts — ESP32 connection status & mode info
 import { NextRequest, NextResponse } from "next/server";
 import { getESP32Status, getESP32Url } from "@/lib/esp32";
+import { getAdminFromCookie } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const admin = await getAdminFromCookie();
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const room = searchParams.get("room") || "default";
 
