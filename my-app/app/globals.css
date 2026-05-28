@@ -68,6 +68,8 @@ html, body {
   color: var(--text-primary);
   font-family: 'Noto Sans Thai', 'Inter', sans-serif;
   overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
 }
 
 body {
@@ -77,8 +79,8 @@ body {
 
 /* ── Custom Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-primary);
@@ -86,7 +88,7 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--smartaccess-purple-light);
   border-radius: 99px;
-  border: 2px solid var(--bg-primary);
+  border: 1px solid var(--bg-primary);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--smartaccess-purple);
@@ -341,6 +343,10 @@ body {
   overflow-x: auto;
   border-radius: 16px;
   border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .smartaccess-table {
@@ -348,24 +354,33 @@ body {
   border-collapse: collapse;
   font-size: 13.5px;
   background: var(--bg-secondary);
+  min-width: 650px; /* Enforces scroll behavior, preventing squished columns on small devices */
+}
+
+@media (max-width: 768px) {
+  .smartaccess-table {
+    min-width: 580px;
+  }
 }
 
 .smartaccess-table th {
   background: var(--smartaccess-purple-pale);
   color: var(--smartaccess-purple-dark);
   font-weight: 700;
-  padding: 16px 20px;
+  padding: 12px 14px;
   text-align: left;
-  font-size: 12.5px;
+  font-size: 12px;
   letter-spacing: 0.5px;
   border-bottom: 2px solid var(--border);
+  white-space: nowrap;
 }
 
 .smartaccess-table td {
-  padding: 14px 20px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .smartaccess-table tr:last-child td {

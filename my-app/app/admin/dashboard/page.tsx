@@ -3542,7 +3542,7 @@ void handleLocalWebServerRequest() {
       )}
 
       {/* Responsive Dashboard Shell */}
-      <div style={{ display: "flex", minHeight: "100vh", flexDirection: "row" }}>
+      <div style={{ display: "flex", minHeight: "100vh", flexDirection: "row", maxWidth: "100vw", overflowX: "hidden" }}>
 
         {/* Sidebar Navigation */}
         <aside className={`sidebar-responsive ${mobileMenuOpen ? 'open' : ''}`}>
