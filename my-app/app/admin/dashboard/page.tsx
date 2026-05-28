@@ -941,9 +941,11 @@ ${wokwiDefine}
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
 #include <FS.h>
 #include <HTTPClient.h>
+#ifndef WOKWI_SIM
 #include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
 #include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
 #include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
+#endif
 #include <SPI.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
@@ -957,8 +959,10 @@ ${wokwiDefine}
 const char* CURRENT_VERSION = "1.0.0";
 const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/firmware-ota";
 
+#ifndef WOKWI_SIM
 WebServer localServer(80); // พอร์ตเว็บเซิร์ฟเวอร์สำหรับคิวและ ElegantOTA
 bool localServerStarted = false;
+#endif
 
 
 // ─── Compile-time production safety guard ───────────────────────────────────
@@ -1256,6 +1260,7 @@ void saveOfflineLog(String student_id);
 void syncStudentCache();
 void syncOfflineLogs();
 
+#ifndef WOKWI_SIM
 void onOTAStart() {
   Serial.println("[Local OTA] เริ่มต้นกระบวนการแฟลชเฟิร์มแวร์ผ่าน LAN");
   tft.fillScreen(ILI9341_BLACK);
@@ -1327,18 +1332,21 @@ void performHTTPSOTA() {
     delay(5000);
   }
 }
+#endif // !WOKWI_SIM
 
 void startLocalServer() {
+#ifndef WOKWI_SIM
   if (!localServerStarted) {
     // กำหนด ElegantOTA Web Endpoint & Callbacks
     ElegantOTA.begin(&localServer);
     ElegantOTA.onStart(onOTAStart);
     ElegantOTA.onEnd(onOTAEnd);
-    
+
     localServer.begin();
     localServerStarted = true;
     DBG("Local web server started on port 80 with ElegantOTA.");
   }
+#endif
 }
 
 String base64Decode(String input) {
@@ -1561,6 +1569,7 @@ void triggerDoorOpenOffline(String grant) {
   last_active_token = "FORCE_REDRAW";
 }
 
+#ifndef WOKWI_SIM
 void handleLocalValidation() {
   WiFiClient client = localServer.available();
   if (!client) return;
@@ -1677,6 +1686,7 @@ void handleLocalValidation() {
   delay(1);
   client.stop();
 }
+#endif // !WOKWI_SIM
 
 
 void syncStudentCache() {
@@ -1839,7 +1849,9 @@ void setup() {
   tone(BUZZER_PIN, 1600, 250);
 
   // สตาร์ตเซิร์ฟเวอร์เว็บท้องถิ่นเพื่อการซิงค์แบบเรียลไทม์ (Real-Time Push)
+#ifndef WOKWI_SIM
   startLocalServer();
+#endif
 
   // วาดแผงหน้าจอหลักเริ่มต้น
   drawMainScreen(0, "", "12:00:00", "");
@@ -1847,10 +1859,14 @@ void setup() {
 
 void loop() {
   // Always run local web server to handle real-time push commands immediately
+#ifndef WOKWI_SIM
   handleLocalValidation();
+#endif
   
   // จัดการ OTA เว็บโฮสต์เครือข่ายภายใน LAN
+#ifndef WOKWI_SIM
   ElegantOTA.loop();
+#endif
 
   if (is_offline_mode) {
     // Status indicators
@@ -1977,7 +1993,9 @@ void loop() {
           if (update_available) {
             Serial.println("[OTA] ตรวจพบซอฟต์แวร์รุ่นใหม่บนระบบคลาวด์! เริ่มอัปเดตทันที...");
             http.end();
+#ifndef WOKWI_SIM
             performHTTPSOTA();
+#endif
             return;
           }
 
