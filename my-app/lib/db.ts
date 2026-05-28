@@ -274,6 +274,19 @@ export async function initDatabase(): Promise<void> {
       )
     `);
 
+    // Cloud OTA Firmware Management Table
+    await initPool.query(`
+      CREATE TABLE IF NOT EXISTS firmware_releases (
+        id SERIAL PRIMARY KEY,
+        version VARCHAR(32) UNIQUE NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INT NOT NULL,
+        checksum_md5 VARCHAR(32) NOT NULL,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        uploaded_by UUID
+      )
+    `);
+
     await initPool.query(`
       DO $$
       BEGIN

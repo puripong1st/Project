@@ -173,7 +173,20 @@ export async function GET(req: NextRequest) {
 
     // ตรวจสอบข้อมูลอัปเกรดซอฟต์แวร์เฟิร์มแวร์เพื่อสั่งการอัปเดตแบบไร้สายผ่าน HTTPS (Cloud-Driven OTA)
     const clientVer = req.headers.get("x-esp32-version") || "1.0.0";
-    const serverVer = "1.0.1"; // รุ่นล่าสุดที่คอมไพล์สำเร็จบน Next.js Server
+    
+    // ดึงรุ่นซอฟต์แวร์ล่าสุดจาก Supabase
+    let serverVer = "1.0.1";
+    try {
+      const { rows: fwRows } = await pool.query(
+        "SELECT version FROM firmware_releases ORDER BY uploaded_at DESC LIMIT 1"
+      );
+      if (fwRows && fwRows.length > 0) {
+        serverVer = fwRows[0].version;
+      }
+    } catch (fwDbErr) {
+      console.error("[Display API] Failed to fetch latest firmware version:", fwDbErr);
+    }
+
     const updateAvailable = clientVer !== serverVer;
 
     return NextResponse.json(

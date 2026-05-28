@@ -2350,6 +2350,29 @@ void handleLocalWebServerRequest() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Firmware releases states
+  const [firmwareReleases, setFirmwareReleases] = useState<any[]>([]);
+  const [firmwareReleasesLoading, setFirmwareReleasesLoading] = useState(false);
+  const [firmwareUploadLoading, setFirmwareUploadLoading] = useState(false);
+  const [firmwareVersionInput, setFirmwareVersionInput] = useState("");
+  const [firmwarePublicUrlInput, setFirmwarePublicUrlInput] = useState("");
+  const [firmwareFile, setFirmwareFile] = useState<File | null>(null);
+
+  const fetchFirmwares = useCallback(async () => {
+    setFirmwareReleasesLoading(true);
+    try {
+      const r = await fetch("/api/system/firmware");
+      if (r.ok) {
+        const data = await r.json();
+        setFirmwareReleases(data.releases || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch firmware list", err);
+    } finally {
+      setFirmwareReleasesLoading(false);
+    }
+  }, []);
+
   const [healthData, setHealthData] = useState<{
     status: "healthy" | "degraded" | "unhealthy";
     timestamp: string;
@@ -2518,6 +2541,7 @@ void handleLocalWebServerRequest() {
   // Auto-pruning expired logs (>90 days) on startup
   useEffect(() => {
     if (user?.role === "owner") {
+      fetchFirmwares();
       const autoPrune = async () => {
         try {
           const r = await fetch("/api/system/logs/cleanup", {
@@ -4705,6 +4729,166 @@ void handleLocalWebServerRequest() {
                       </svg>
                       ล้างข้อมูลประวัติทั้งหมดในระบบ (ลบถาวร)
                     </button>
+                  </div>
+                </div>
+
+                {/* ── OTA Firmware Control Center Card ── */}
+                <div className="premium-card" style={{ padding: 26, marginBottom: 36, borderLeft: "4px solid var(--smartaccess-purple)", background: "var(--bg-secondary)" }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--smartaccess-purple)" }}>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    ระบบจัดการและกระจายเฟิร์มแวร์แบบไร้สาย (OTA Firmware Control Center)
+                  </h3>
+                  <p style={{ color: "var(--text-secondary)", fontSize: 12.5, marginBottom: 20 }}>
+                    อัปเดตและเผยแพร่ซอฟต์แวร์ของบอร์ดควบคุมหน้าห้องเรียนแบบไร้สาย (Cloud HTTPS OTA) โดยสตรีมไฟล์ไบเนรีตรงไปเก็บบนคลังคลาวด์ <strong>Supabase Storage (0% Vercel CPU Load)</strong> ได้ฟรีถาวร
+                  </p>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: 24 }}>
+                    {/* Upload firmware form */}
+                    <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
+                      <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>⚡ อัปโหลดเฟิร์มแวร์รุ่นใหม่ (.bin)</span>
+                      
+                      <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!firmwareVersionInput || !firmwarePublicUrlInput) {
+                          showToast("กรุณากรอกเวอร์ชันและลิงก์จัดเก็บไฟล์ให้ครบถ้วน", "error");
+                          return;
+                        }
+                        if (!/^[0-9.]+$/.test(firmwareVersionInput)) {
+                          showToast("เลขเวอร์ชันต้องเป็นตัวเลขและจุดทศนิยมเท่านั้น (ตัวอย่าง: 1.0.2)", "error");
+                          return;
+                        }
+                        
+                        setFirmwareUploadLoading(true);
+                        try {
+                          const fileToSend = firmwareFile || new File(["MOCK_DATA"], `v_${firmwareVersionInput.replace(/\./g, '_')}.bin`);
+                          const fd = new FormData();
+                          fd.append("file", fileToSend);
+                          fd.append("version", firmwareVersionInput);
+                          fd.append("public_url", firmwarePublicUrlInput);
+
+                          const res = await fetch("/api/system/firmware/upload", {
+                            method: "POST",
+                            body: fd
+                          });
+                          const data = await res.json();
+                          if (res.ok) {
+                            showToast(data.message, "success");
+                            setFirmwareVersionInput("");
+                            setFirmwarePublicUrlInput("");
+                            setFirmwareFile(null);
+                            fetchFirmwares();
+                            fetchSystemStatus();
+                          } else {
+                            showToast(data.error || "เกิดข้อผิดพลาดในการอัปโหลด", "error");
+                          }
+                        } catch {
+                          showToast("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
+                        } finally {
+                          setFirmwareUploadLoading(false);
+                        }
+                      }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>รุ่นซอฟต์แวร์ (Version) *</label>
+                          <input 
+                            className="smartaccess-input" 
+                            placeholder="ตัวอย่าง: 1.0.2" 
+                            value={firmwareVersionInput}
+                            onChange={e => setFirmwareVersionInput(e.target.value)}
+                            style={{ padding: "6px 10px", fontSize: 12.5 }}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>Supabase Storage Public URL *</label>
+                          <input 
+                            className="smartaccess-input" 
+                            placeholder="วาง Public URL ลิงก์ตรงของไฟล์ .bin บน Supabase Storage..." 
+                            value={firmwarePublicUrlInput}
+                            onChange={e => setFirmwarePublicUrlInput(e.target.value)}
+                            style={{ padding: "6px 10px", fontSize: 12.5 }}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>เลือกไฟล์ไบนารีบนคอมพิวเตอร์ (สำหรับคำนวณ MD5 Checksum) *</label>
+                          <input 
+                            type="file" 
+                            accept=".bin"
+                            onChange={e => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                setFirmwareFile(e.target.files[0]);
+                              }
+                            }}
+                            style={{ fontSize: 11.5, color: "var(--text-secondary)" }}
+                          />
+                        </div>
+
+                        <button 
+                          type="submit" 
+                          className="btn-primary" 
+                          disabled={firmwareUploadLoading}
+                          style={{ padding: "10px", fontSize: 12.5, fontWeight: 800, borderRadius: 8, marginTop: 4, width: "100%", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", color: "#fff", border: "none", cursor: "pointer" }}
+                        >
+                          {firmwareUploadLoading ? "⏳ กำลังบันทึก..." : "🚀 เปิดตัวปล่อยอัปเดตแบบไร้สาย (Deploy OTA)"}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Releases History list */}
+                    <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, maxHeight: 310, overflowY: "auto" }}>
+                      <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>📜 ประวัติการปล่อยเวอร์ชันไร้สาย</span>
+                      
+                      {firmwareReleasesLoading ? (
+                        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-secondary)", fontSize: 12.5 }}>
+                          กำลังโหลดข้อมูล...
+                        </div>
+                      ) : firmwareReleases.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: 12 }}>
+                          ยังไม่มีประวัติการอัปโหลดเฟิร์มแวร์แบบไร้สายในระบบ
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {firmwareReleases.map(release => (
+                            <div key={release.id} style={{ padding: 10, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div>
+                                <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)" }}>รุ่น v{release.version}</span>
+                                <span style={{ display: "block", fontSize: 10.5, color: "var(--text-muted)", marginTop: 2 }}>
+                                  MD5: {release.checksum_md5.substring(0, 10)}... · {(release.file_size / 1024).toFixed(1)} KB
+                                </span>
+                                <span style={{ display: "block", fontSize: 9.5, color: "var(--text-muted)", marginTop: 1 }}>
+                                  {new Date(release.uploaded_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}
+                                </span>
+                              </div>
+                              <button 
+                                onClick={async () => {
+                                  if (!confirm(`ต้องการถอนและลบประวัติเฟิร์มแวร์รุ่น ${release.version} ออกจากระบบ ใช่หรือไม่?`)) return;
+                                  try {
+                                    const res = await fetch(`/api/system/firmware?id=${release.id}`, { method: "DELETE" });
+                                    const data = await res.json();
+                                    if (res.ok) {
+                                      showToast(data.message, "success");
+                                      fetchFirmwares();
+                                      fetchSystemStatus();
+                                    } else {
+                                      showToast(data.error, "error");
+                                    }
+                                  } catch {
+                                    showToast("ลบข้อมูลไม่สำเร็จ", "error");
+                                  }
+                                }}
+                                style={{ padding: "4px 8px", background: "none", border: "1px solid rgba(220,38,38,0.25)", color: "#EF4444", fontSize: 11, borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                              >
+                                ถอน
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
