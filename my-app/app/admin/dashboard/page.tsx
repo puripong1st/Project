@@ -1945,6 +1945,7 @@ void loop() {
       http.setTimeout(5000);
       http.addHeader("Content-Type", "application/json");
       http.addHeader("x-api-key", api_key);
+      http.addHeader("x-esp32-version", CURRENT_VERSION);
 
       // HMAC-SHA256 timestamp authentication (V11 fix)
       time_t nowTs = time(nullptr);
@@ -1971,6 +1972,15 @@ void loop() {
         DeserializationError error = deserializeJson(doc, payload);
 
         if (!error) {
+          // ตรวจสอบสัญญาณอัปเกรดซอฟต์แวร์เฟิร์มแวร์แบบไร้สาย (HTTPS Cloud OTA Update)
+          bool update_available = doc["update_available"] | false;
+          if (update_available) {
+            Serial.println("[OTA] ตรวจพบซอฟต์แวร์รุ่นใหม่บนระบบคลาวด์! เริ่มอัปเดตทันที...");
+            http.end();
+            performHTTPSOTA();
+            return;
+          }
+
           const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
           int pending_count = doc["pending_count"];
           const char *server_time_text = doc["server_time_text"];

@@ -7887,13 +7887,12 @@ void handleLocalOTALoop() {
 
 ---
 
-> **อัปเดตล่าสุด**: 2026-05-28 เวลาประมาณ 16:05:00 +07:00 — **การติดตั้งแดชบอร์ดระดับพรีเมียม (Premium Admin Dashboard Upgrades)**
-> 
-> ### (ก) รายละเอียดคุณสมบัติและผลงานอัปเกรดในโค้ดจริง (Premium UI/UX Implementation)
-> - ดำเนินการยกระดับหน้าจอแดชบอร์ดผู้ดูแลระบบ [my-app/app/admin/dashboard/page.tsx](file:///c:/Users/aunkh/OneDrive/Desktop/Project/my-app/app/admin/dashboard/page.tsx) ครบถ้วน:
->   - **Bulk Action Operations**: เพิ่มแผงควบคุมอนุมัติและปฏิเสธแบบกลุ่ม (Bulk Panel) ที่คำนวณ Multi-select State แบบเรียลไทม์ และปุ่มอนุมัติ/ปฏิเสธแบบกลุ่ม ทำงานผ่าน Parallel Async Promises (`Promise.all`) รวดเร็วและลดการกดคลิกทีละคน
->   - **Active Telemetry Heartbeat Indicator**: อัปเกรดป้ายสถานะของแต่ละห้องปฏิบัติการให้ตรวจเช็คค่า `room_last_seen_${room}` สัญญาณโทรมาตรเครือข่ายบอร์ดแบบ Dynamic โดยแบ่งเป็น 🟢 ONLINE ( fresh polling < 12 วินาที), 🟡 SLOW / LATENCY (degraded < 120 วินาที) และ 🔴 OFFLINE (ขาดการเชื่อมต่อนานกว่า 120 วินาที)
->   - **Zero-Dependency SVG Charts Analytics**: ออกแบบและประมวลผลกราฟสถิติโดยเขียนด้วย SVG Dynamic Vector Graphic ดิบทั้งหมดโดยไม่มีไลบรารีภายนอกรบกวน ประกอบด้วยกราฟแท่ง Peak Access Hours, กราฟพาย Request Handling Success อัตราการเข้าใช้สำเร็จ และสัดส่วนนักศึกษาแยกตามภาควิชา (Department Ratio)
+> **อัปเดตล่าสุด**: 2026-05-28 เวลาประมาณ 16:15:00 +07:00 — **การปรับปรุงความสมบูรณ์ในการอัปเกรดระบบแบบไร้สาย (Full Production HTTPS OTA Update Implementation)**
+> - ยกระดับระบบจัดการซอฟต์แวร์ฝังตัวแบบไร้สายอย่างสมบูรณ์แบบปราศจากบั๊ก:
+>   - **API Polling & OTA Trigger Sync**: พัฒนา Next.js API `/api/esp32/display` ให้ตรวจจับและคืนค่าธงการอัปเกรดแบบ Dynamic (`update_available`, `firmware_version`) โดยเปรียบเทียบเลขรุ่นซอฟต์แวร์ของบอร์ดควบคุมหน้าห้องแบบเรียลไทม์ผ่าน HTTP Polling
+>   - **Failsafe HTTPS OTA Flashing**: อัปเกรดไฟล์บอร์ดจริงและระบบจำลอง Arduino C++ (.ino) ให้ตอบสนองต่อธงอัปเกรดแบบอัตโนมัติ โดยทำการดาวน์โหลดไฟล์ไบนารี `.bin` แฟลชผ่านไลบรารี `<HTTPUpdate.h>` ผนวกกับระบบป้องกันบอร์ดเสียหาย (Anti-Brick Dual-Partition Rollback) และการทดสอบสิทธิ์อย่างปลอดภัย (Bearer Token Auth)
+>   - **ElegantOTA Integration**: ติดตั้งไลบรารี ElegantOTA บนเซิร์ฟเวอร์บอร์ดจำลองและบอร์ดจริง เพื่อเอื้ออำนวยการอัปเกรดระยะใกล้ผ่านเครือข่ายภายใน (Local LAN OTA) ปลุกความสามารถบำรุงรักษาระบบได้อย่างราบรื่น 100%
+>   - **UI Mobile Layout Lock**: ปลดล็อกบั๊กเลื่อนซ้ายขวาบนหน้าจอสมาร์ทโฟนฝั่ง Dashboard แอดมิน โดยทำการแก้ไข CSS Layout ให้มีขนาดครอบคลุมสัดส่วน 100% และปรับโครงสร้างตารางข้อมูลในระบบให้มีความลื่นไหลเป็นอิสระแบบ Momentum Scroll
 > 
 > ---
 

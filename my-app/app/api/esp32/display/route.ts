@@ -171,6 +171,11 @@ export async function GET(req: NextRequest) {
       hour12: false,
     });
 
+    // ตรวจสอบข้อมูลอัปเกรดซอฟต์แวร์เฟิร์มแวร์เพื่อสั่งการอัปเดตแบบไร้สายผ่าน HTTPS (Cloud-Driven OTA)
+    const clientVer = req.headers.get("x-esp32-version") || "1.0.0";
+    const serverVer = "1.0.1"; // รุ่นล่าสุดที่คอมไพล์สำเร็จบน Next.js Server
+    const updateAvailable = clientVer !== serverVer;
+
     return NextResponse.json(
       {
         // Display info for ESP32
@@ -193,6 +198,8 @@ export async function GET(req: NextRequest) {
         status: "online",
         door_trigger: doorTrigger,
         requested_room: room,
+        update_available: updateAvailable,
+        firmware_version: serverVer,
         // Display dimensions hint for LAFVIN 3.2" (320x240)
         display: {
           width: 320,
