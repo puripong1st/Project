@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
         FROM access_logs
         WHERE action IN ('door_opened', 'approved')
           AND timestamp >= NOW() - INTERVAL '30 days'
+          AND room_code NOT IN ('default', 'system') AND room_code IS NOT NULL
         GROUP BY day_of_week, hour
         ORDER BY day_of_week, hour
       `);
@@ -74,6 +75,8 @@ export async function GET(req: NextRequest) {
         FROM access_logs al
         LEFT JOIN students s ON al.student_id = s.id
         WHERE al.timestamp >= NOW() - INTERVAL '30 days'
+          AND COALESCE(s.requested_room, al.room_code) NOT IN ('default', 'system', 'unknown')
+          AND COALESCE(s.requested_room, al.room_code) IS NOT NULL
         GROUP BY 1
         ORDER BY door_opens DESC
         LIMIT 20
@@ -91,6 +94,7 @@ export async function GET(req: NextRequest) {
           COUNT(*) FILTER (WHERE action = 'door_opened') AS door_opens
         FROM access_logs
         WHERE timestamp >= NOW() - INTERVAL '14 days'
+          AND room_code NOT IN ('default', 'system') AND room_code IS NOT NULL
         GROUP BY date
         ORDER BY date ASC
       `);
