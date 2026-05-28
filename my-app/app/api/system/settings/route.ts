@@ -139,12 +139,14 @@ export async function POST(req: NextRequest) {
 
         // Whitelist check
         const isWhitelisted = ALLOWED_SETTING_KEYS.includes(key);
-        const isDynamicRoomKey = key.startsWith("room_ip_") || 
-                                 key.startsWith("room_webhook_register_") || 
-                                 key.startsWith("room_webhook_approve_") || 
+        const isDynamicRoomKey = key.startsWith("room_ip_") ||
+                                 key.startsWith("room_webhook_register_") ||
+                                 key.startsWith("room_webhook_approve_") ||
                                  key.startsWith("room_webhook_logs_");
+        // per-room config keys: rcfg_{ROOM}_{setting}
+        const isRcfgKey = /^rcfg_[a-zA-Z0-9_-]+_[a-zA-Z0-9_]+$/.test(key);
 
-        if (!isWhitelisted && !isDynamicRoomKey) {
+        if (!isWhitelisted && !isDynamicRoomKey && !isRcfgKey) {
           return NextResponse.json(
             { error: `Invalid setting key: ${key}` },
             { status: 400 }

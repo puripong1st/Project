@@ -1,18 +1,34 @@
 // app/api/system/schedule/route.ts — Room schedule CRUD (owner only)
 import { NextRequest, NextResponse } from "next/server";
-import { initDatabase, getPool } from "@/lib/db";
+import { getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 
-let initialized = false;
-async function ensureInit() {
-  if (!initialized) {
-    await initDatabase();
-    initialized = true;
-  }
+let tableEnsured = false;
+async function ensureTable() {
+  if (tableEnsured) return;
+  const pool = getPool();
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS room_schedules (
+      id SERIAL PRIMARY KEY,
+      room_code VARCHAR(50) NOT NULL,
+      day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+      open_time TIME NOT NULL,
+      close_time TIME NOT NULL,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_by INT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (room_code, day_of_week)
+    )
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_schedule_room
+      ON room_schedules (room_code, day_of_week, is_active)
+  `);
+  tableEnsured = true;
 }
 
 export async function GET(req: NextRequest) {
-  await ensureInit();
+  await ensureTable();
   const admin = await getAdminFromCookie();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -28,7 +44,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  await ensureInit();
+  await ensureTable();
   const admin = await getAdminFromCookie();
   if (!admin || admin.role !== "owner")
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -59,7 +75,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  await ensureInit();
+  await ensureTable();
   const admin = await getAdminFromCookie();
   if (!admin || admin.role !== "owner")
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

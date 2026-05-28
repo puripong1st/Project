@@ -672,16 +672,19 @@ function AdminDashboardInner() {
   } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
+  const analyticsLoadingRef = useRef(false);
   const fetchAnalytics = useCallback(async () => {
-    if (analyticsLoading) return;
+    if (analyticsLoadingRef.current) return;
+    analyticsLoadingRef.current = true;
     setAnalyticsLoading(true);
     try {
       const r = await fetch("/api/system/analytics");
       if (r.ok) setAnalyticsData(await r.json());
     } finally {
+      analyticsLoadingRef.current = false;
       setAnalyticsLoading(false);
     }
-  }, [analyticsLoading]);
+  }, []);
 
   // Bulk Approve handler
   async function handleBulkApprove() {
@@ -6530,346 +6533,66 @@ void handleLocalWebServerRequest() {
 
             {/* ── System & Discord Settings Tab (Owner Only) ────────────── */}
             {tab === "settings" && isOwner && (
-              <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-                <div className="dashboard-section-card" style={{ padding: 22 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16 }}>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>System Settings</div>
-                      <h2 style={{ fontSize: 22, lineHeight: 1.2, fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>ตั้งค่าระบบแบบแยกหมวด</h2>
-                      <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, margin: "8px 0 0" }}>
-                        หน้านี้เก็บเฉพาะสิทธิ์อัตโนมัติและ Discord Webhook ส่วนกลาง ส่วนการเพิ่มห้องและบอร์ด ESP32 แยกไปที่แท็บห้องเรียน & ESP32 แล้ว
-                      </p>
-                    </div>
-                    <button onClick={saveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
-                      {settingsLoading ? "กำลังบันทึก..." : "บันทึกทั้งหมด"}
-                    </button>
-                  </div>
+              <div className="animate-fade-in" style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
 
-                  <div className="settings-map">
-                    {[
-                      { index: "01", title: "สิทธิ์อัตโนมัติ", detail: "เวลาเปิดบริการ วันทำการ Auto approve และ Auto-fill" },
-                      { index: "02", title: "Discord ส่วนกลาง", detail: "ค่าเริ่มต้นสำหรับ register, approve และ logs" },
-                      { index: "03", title: "ความปลอดภัยหน้าจอ", detail: "รูปแบบการแสดงรหัสนักศึกษาบน ESP32" },
-                      { index: "04", title: "บันทึกถาวร", detail: "ตรวจทานแล้วกดบันทึกเพื่อใช้ค่ากับระบบจริง" },
-                    ].map(item => (
-                      <div className="settings-map-item" key={item.index}>
-                        <span className="settings-map-index">{item.index}</span>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>{item.title}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--text-secondary)", lineHeight: 1.45 }}>{item.detail}</div>
-                        </div>
-                      </div>
-                    ))}
+                {/* Header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Webhook Settings</div>
+                    <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>Discord Webhooks</h2>
+                    <p style={{ fontSize: 12.5, color: "var(--text-secondary)", margin: "6px 0 0", lineHeight: 1.5 }}>
+                      ค่าตั้งต้นสำหรับทุกห้อง — ห้องที่ไม่ได้ตั้ง Webhook เฉพาะจะใช้ค่านี้
+                    </p>
                   </div>
+                  <button
+                    onClick={saveSettings}
+                    disabled={settingsLoading}
+                    className="btn-primary"
+                    style={{ borderRadius: 10, padding: "11px 22px", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    {settingsLoading ? (
+                      <><span className="animate-spin" style={{ display: "inline-block", width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} /> กำลังบันทึก...</>
+                    ) : (
+                      <><SaveIcon /> บันทึก</>
+                    )}
+                  </button>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24, alignItems: "start" }}>
-
-                  {/* Discord Webhooks (ส่วนกลาง) — การตั้งค่าห้องย้ายไปแท็บ ห้องเรียน & ESP32 แล้ว */}
-                  <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
-                      <FileTextIcon /> Discord Webhooks (ส่วนกลาง)
-                    </h3>
-
-                    <div style={{ padding: 12, background: "rgba(139,92,246,0.04)", border: "1px dashed rgba(139,92,246,0.2)", borderRadius: 10 }}>
-                      <p style={{ fontSize: 11.5, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
-                        Webhook ด้านล่างนี้เป็น <strong>ค่าตั้งต้นสำหรับทุกห้อง</strong> — หากห้องไหนไม่ได้ตั้ง Webhook เฉพาะ ระบบจะใช้ค่าเริ่มต้นนี้ส่งข้อมูลความปลอดภัย
-                      </p>
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          คำขอลงทะเบียนเข้าใช้ห้องใหม่
-                        </label>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            className="smartaccess-input"
-                            type="url"
-                            placeholder="https://discord.com/api/webhooks/..."
-                            value={settings.discord_webhook_register}
-                            onChange={e => setSettings(s => ({ ...s, discord_webhook_register: e.target.value }))}
-                            style={{ flex: 1, fontSize: 12.5 }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleTestWebhook(settings.discord_webhook_register, "register")}
-                            className="btn-ghost"
-                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
-                          >
-                            🧪 ทดสอบส่ง
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ
-                        </label>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            className="smartaccess-input"
-                            type="url"
-                            placeholder="กรอก URL แจ้งเตือนการเปิดประตู"
-                            value={settings.discord_webhook_approve}
-                            onChange={e => setSettings(s => ({ ...s, discord_webhook_approve: e.target.value }))}
-                            style={{ flex: 1, fontSize: 12.5 }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleTestWebhook(settings.discord_webhook_approve, "approve")}
-                            className="btn-ghost"
-                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
-                          >
-                            🧪 ทดสอบส่ง
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          บันทึก Log จราจร/ความปลอดภัยอย่างละเอียด
-                        </label>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            className="smartaccess-input"
-                            type="url"
-                            placeholder="กรอก URL เก็บ Log ความปลอดภัย"
-                            value={settings.discord_webhook_logs}
-                            onChange={e => setSettings(s => ({ ...s, discord_webhook_logs: e.target.value }))}
-                            style={{ flex: 1, fontSize: 12.5 }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleTestWebhook(settings.discord_webhook_logs, "logs")}
-                            className="btn-ghost"
-                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
-                          >
-                            🧪 ทดสอบส่ง
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          แจ้งเตือน Admin เข้า/ออกระบบ (Audit Log)
-                          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "1px 8px", borderRadius: 8 }}>Security</span>
-                        </label>
-                        <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "0 0 6px" }}>
-                          รับแจ้งเตือนทุกครั้งที่แอดมินเข้า/ออกระบบ พร้อม IP, อุปกรณ์, ตำแหน่ง และการล็อกอินล้มเหลว
-                        </p>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            className="smartaccess-input"
-                            type="url"
-                            placeholder="กรอก URL สำหรับ Admin Audit Log"
-                            value={settings.discord_webhook_admin_audit || ""}
-                            onChange={e => setSettings(s => ({ ...s, discord_webhook_admin_audit: e.target.value }))}
-                            style={{ flex: 1, fontSize: 12.5 }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleTestWebhook(settings.discord_webhook_admin_audit || "", "admin_audit")}
-                            className="btn-ghost"
-                            style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
-                          >
-                            🧪 ทดสอบส่ง
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-
-                {/* ═══ SECTION 3: Redesigned Multi-Room Manager with Inline Editing ═══ */}
-                <div className="premium-card" style={{ display: "none", padding: 0, overflow: "hidden" }}>
-                  <div style={{
-                    padding: "20px 26px",
-                    background: "linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(59,130,246,0.04) 100%)",
-                    borderBottom: "1px solid var(--border)",
-                    display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ display: "inline-flex", color: "var(--smartaccess-purple)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" /></svg></span>
-                      <div>
-                        <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", margin: 0 }}>
-                          จัดการห้องเรียน & บอร์ด ESP32
-                        </h3>
-                        <p style={{ fontSize: 11.5, color: "var(--text-secondary)", margin: "2px 0 0" }}>
-                          เพิ่ม แก้ไขรหัสห้อง หรือ IP บอร์ดแต่ละห้องเรียนได้โดยตรง และกดปุ่มบันทึกระบบด้านล่างสุด
-                        </p>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: 11.5, padding: "4px 12px", borderRadius: 20, background: "rgba(16,185,129,0.1)", color: "#059669", fontWeight: 700 }}>
-                      {roomsList.length} ห้องเรียนลงทะเบียน
-                    </span>
-                  </div>
-
-                  <div style={{ padding: "20px 26px" }}>
-                    {/* Rooms List */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
-                      {roomsList.length === 0 ? (
-                        <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)", fontSize: 13, border: "2px dashed var(--border)", borderRadius: 14 }}>
-                          <span style={{ display: "flex", justifyContent: "center", color: "var(--smartaccess-purple)", marginBottom: 8 }}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" /></svg></span>
-                          ยังไม่มีห้องเรียนลงทะเบียนใช้งานในระบบ — กรุณาพิมพ์เพิ่มห้องเรียนใหม่ในกล่องด้านล่าง
-                        </div>
-                      ) : (
-                        roomsList.map((r, idx) => {
-                          const testRes = testResults[r.room];
-                          return (
-                            <div key={`room-${idx}`} style={{
-                              padding: "20px 24px", background: "rgba(255, 255, 255, 0.02)",
-                              border: "1px solid var(--border)", borderRadius: 16,
-                              display: "flex", flexDirection: "column", gap: 16,
-                              position: "relative", transition: "all 0.2s ease-in-out"
-                            }}>
-                              {/* Top row with room label and action buttons */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                  <span style={{
-                                    width: 38, height: 38, borderRadius: 12,
-                                    background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
-                                    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 15, fontWeight: 800, flexShrink: 0,
-                                    boxShadow: "0 4px 10px rgba(124,58,237,0.15)"
-                                  }}>
-                                    {idx + 1}
-                                  </span>
-                                  <div>
-                                    <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
-                                      🚪 ห้องปฏิบัติการ: {r.room}
-                                      {testRes && (
-                                        <span style={{
-                                          fontSize: 10.5, padding: "2px 8px", borderRadius: 6, fontWeight: 800,
-                                          background: testRes.online ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
-                                          color: testRes.online ? "#059669" : "#DC2626",
-                                          border: testRes.online ? "1.5px solid rgba(16,185,129,0.2)" : "1.5px solid rgba(220,38,38,0.2)"
-                                        }}>
-                                          {testRes.online ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#10B981" }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981", display: "inline-block" }}></span> ออนไลน์</span> : <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#EF4444" }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444", display: "inline-block" }}></span> ออฟไลน์</span>}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                                      <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>ที่อยู่บอร์ด IoT:</span>
-                                      <code style={{ fontSize: 12, fontFamily: "monospace", color: "#10B981", fontWeight: 700 }}>{r.ip}</code>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                  <button type="button" onClick={() => handleTestConnection(r.room)} disabled={testingRoom === r.room}
-                                    className="btn-ghost" style={{ padding: "8px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 6, alignItems: "center", fontWeight: 700 }}>
-                                    {testingRoom === r.room ? (
-                                      <span className="animate-spin" style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "var(--smartaccess-purple)", borderRadius: "50%" }} />
-                                    ) : (
-                                      <span>📡 ทดสอบดึงคำสั่ง</span>
-                                    )}
-                                  </button>
-                                  <button type="button" onClick={() => handleOpenRoomDetails(r.room, r.ip)}
-                                    className="btn-ghost" style={{ padding: "8px 14px", borderRadius: 10, fontSize: 12, color: "var(--smartaccess-purple)", display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}
-                                    title="ตั้งค่า API Webhooks & Arduino">
-                                    ⚙️ ตั้งค่าและโค้ดบอร์ด
-                                  </button>
-                                  <button type="button" onClick={() => handleRemoveRoom(r.room)}
-                                    className="btn-ghost" style={{ padding: "8px 10px", borderRadius: 10, color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)", background: "rgba(220,38,38,0.02)" }}>
-                                    <TrashIcon />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Responsive Editing Grid */}
-                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, alignItems: "end", marginTop: 4, paddingTop: 14, borderTop: "1px dashed var(--border)" }}>
-                                <div style={{ textAlign: "left" }}>
-                                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-                                    ✏️ แก้ไขชื่อ/รหัสห้อง
-                                  </label>
-                                  <input
-                                    className="smartaccess-input"
-                                    value={r.room}
-                                    onChange={e => {
-                                      const newVal = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
-                                      setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, room: newVal } : rm));
-                                    }}
-                                    style={{ padding: "9px 12px", fontSize: 13, fontFamily: "monospace", width: "100%" }}
-                                  />
-                                </div>
-                                <div style={{ textAlign: "left" }}>
-                                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-                                    📡 แก้ไข IP Address / โดเมนบอร์ด
-                                  </label>
-                                  <input
-                                    className="smartaccess-input"
-                                    value={r.ip}
-                                    onChange={e => {
-                                      setRoomsList(prev => prev.map((rm, i) => i === idx ? { ...rm, ip: e.target.value } : rm));
-                                    }}
-                                    placeholder="เช่น 192.168.1.100 หรือโดเมน Vercel"
-                                    style={{ padding: "9px 12px", fontSize: 13, fontFamily: "monospace", width: "100%" }}
-                                  />
-                                </div>
-                                <button type="button"
-                                  onClick={() => showToast(` ปรับปรุงข้อมูลห้อง ${r.room} เรียบร้อยแล้ว! อย่าลืมกด "บันทึกการตั้งค่าทั้งหมด" ด้านล่างสุด`, "success")}
-                                  className="btn-ghost"
-                                  style={{ padding: "10px 16px", borderRadius: 10, fontSize: 12, fontWeight: 800, color: "#059669", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.03)", width: "100%", display: "flex", justifyContent: "center" }}>
-                                  ✓ ยืนยันชั่วคราว
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    {/* Add Room Subcard */}
-                    <div style={{ padding: 20, background: "rgba(124,58,237,0.02)", border: "1px dashed var(--smartaccess-purple-light)", borderRadius: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 6 }}>
-                         ลงทะเบียนห้องเรียน / บอร์ดควบคุมใหม่
-                      </span>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end" }}>
-                        <div style={{ textAlign: "left" }}>
-                          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-                            รหัสห้องเรียน (อังกฤษ-ตัวเลข)
-                          </label>
-                          <input className="smartaccess-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)}
-                            style={{ padding: "10px 14px", fontSize: 13, width: "100%" }} />
-                        </div>
-                        <div style={{ textAlign: "left" }}>
-                          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-                            IP Address / โดเมนบอร์ด (ใส่ IP สมมติเพื่อเทสได้)
-                          </label>
-                          <input className="smartaccess-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)}
-                            style={{ padding: "10px 14px", fontSize: 13, width: "100%" }} />
-                        </div>
-                        <button type="button" onClick={() => handleAddRoom()} className="btn-secondary"
-                          style={{ padding: "10px 20px", fontSize: 13, fontWeight: 800, borderRadius: 10, borderColor: "var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)", whiteSpace: "nowrap", width: "100%", justifyContent: "center", display: "flex" }}>
-                          ➕ เพิ่มห้องลงรายการ
+                {/* Webhook fields */}
+                <div className="premium-card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
+                  {[
+                    { label: "คำขอลงทะเบียนเข้าห้องใหม่", key: "discord_webhook_register" as const, type: "register" as const, placeholder: "https://discord.com/api/webhooks/..." },
+                    { label: "อนุมัติสิทธิ์ / เปิดประตูสำเร็จ", key: "discord_webhook_approve" as const, type: "approve" as const, placeholder: "https://discord.com/api/webhooks/..." },
+                    { label: "Log จราจร / ความปลอดภัย", key: "discord_webhook_logs" as const, type: "logs" as const, placeholder: "https://discord.com/api/webhooks/..." },
+                    { label: "Admin เข้า/ออกระบบ (Audit)", key: "discord_webhook_admin_audit" as const, type: "admin_audit" as const, placeholder: "https://discord.com/api/webhooks/...", badge: "Security" },
+                  ].map(({ label, key, type, placeholder, badge }) => (
+                    <div key={key}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 7 }}>
+                        {label}
+                        {badge && (
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: "#f59e0b", background: "rgba(245,158,11,0.12)", padding: "1px 7px", borderRadius: 6 }}>{badge}</span>
+                        )}
+                      </label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          className="smartaccess-input"
+                          type="url"
+                          placeholder={placeholder}
+                          value={settings[key] || ""}
+                          onChange={e => setSettings(s => ({ ...s, [key]: e.target.value }))}
+                          style={{ flex: 1, fontSize: 12.5 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleTestWebhook(settings[key] || "", type)}
+                          className="btn-ghost"
+                          style={{ padding: "10px 14px", fontSize: 12, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                        >
+                          🧪 ทดสอบ
                         </button>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* ═══ SECTION 4: Centralized Save Settings Button ═══ */}
-                <div className="premium-card" style={{ padding: 18, background: "linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(219,39,119,0.03) 100%)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>ยืนยันการบันทึกการตั้งค่าระบบทั้งหมด</span>
-                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>กดปุ่มเพื่อบันทึกตารางเวลาบริการ, วันเปิดบริการ, Auto-fill และ Discord Webhooks ส่วนกลาง</span>
-                  </div>
-                  <button onClick={saveSettings} disabled={settingsLoading}
-                    className="btn-primary hover-card"
-                    style={{ padding: "12px 28px", borderRadius: 12, fontSize: 13.5, display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
-                    {settingsLoading ? (
-                      <>
-                        <span className="animate-spin" style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%" }} />
-                        <span>กำลังบันทึกตั้งค่า...</span>
-                      </>
-                    ) : (
-                      <>
-                        <SaveIcon />
-                        <span>บันทึกการตั้งค่าระบบทั้งหมด</span>
-                      </>
-                    )}
-                  </button>
+                  ))}
                 </div>
 
               </div>
