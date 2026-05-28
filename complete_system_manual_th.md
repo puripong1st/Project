@@ -8239,3 +8239,40 @@ if (format === "dataurl") {
 | lib/db.ts | แก้ไข (KV invalidation) |
 
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+
+---
+
+<a id="sec-71-43"></a>
+## 71.43 การลบฟีเจอร์ Room Schedules ออกจากระบบ
+
+> **อัปเดต**: 2026-05-28 — ตัดสินใจลบออกเพราะซ้ำซ้อนกับ per-room settings และไม่ได้ถูกใช้งานจริงใน business logic
+
+### เหตุผลที่ลบ
+
+ฟีเจอร์ Room Schedules ถูกสร้างขึ้นโดยมีองค์ประกอบครบ (ตาราง DB + API + UI Tab) แต่ไม่มี business logic ใดในระบบที่ query ตาราง `room_schedules` มาใช้งานจริง การเปิด/ปิดประตูและการอนุมัติอัตโนมัติทั้งหมดใช้ per-room settings (`rcfg_*`) ใน `system_settings` แทน ทำให้ Room Schedules เป็น dead code ที่ทำให้ UI ซับซ้อนและเกิด API error (500) บน production โดยไม่จำเป็น
+
+### สิ่งที่ถูกลบออก
+
+| รายการ | สถานะ |
+|--------|--------|
+| Tab "ตารางเวลาเปิด-ปิดห้อง" ใน sidebar | ลบแล้ว |
+| Schedule tab content (form + table UI) | ลบแล้ว |
+| State variables (schedules, scheduleRoom, scheduleDay ฯลฯ) | ลบแล้ว |
+| fetchSchedules / saveSchedule / deleteSchedule functions | ลบแล้ว |
+| `app/api/system/schedule/route.ts` | ลบแล้ว |
+| useEffect ที่ fetch schedules เมื่อเปิด tab | ลบแล้ว |
+
+### สิ่งที่ยังคงอยู่
+
+ตาราง `room_schedules` ใน Supabase DB ยังคงอยู่ (ไม่ได้ DROP) เพราะไม่มีผลเสียและอาจใช้งานในอนาคตหากต้องการเชื่อม logic จริง
+
+### การตั้งเวลาเปิด-ปิดห้องที่ใช้งานจริง
+
+ใช้ per-room settings ในแต่ละ room card ภายใต้ Tab "ห้องเรียน & ESP32":
+- `rcfg_{ROOM}_auto_approve_enabled` — เปิด/ปิดอนุมัติอัตโนมัติ
+- `rcfg_{ROOM}_auto_approve_start_time` — เวลาเริ่มอนุมัติ
+- `rcfg_{ROOM}_auto_approve_end_time` — เวลาสิ้นสุดอนุมัติ
+- `rcfg_{ROOM}_auto_approve_days` — วันที่อนุมัติ (0=อา, 1=จ, ... 6=ส)
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>

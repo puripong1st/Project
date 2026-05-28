@@ -533,7 +533,7 @@ export default function AdminDashboard() {
 
 function AdminDashboardInner() {
   const router = useRouter();
-  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot" | "schedule">("pending");
+  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot">("pending");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [pending, setPending] = useState<Student[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -2603,39 +2603,6 @@ void handleLocalWebServerRequest() {
   const [firmwareLogs, setFirmwareLogs] = useState<any[]>([]);
   const [firmwareLogsLoading, setFirmwareLogsLoading] = useState(false);
 
-  // ─── Room Schedule state ───────────────────────────────────────────────
-  interface RoomSchedule { id: number; room_code: string; day_of_week: number; open_time: string; close_time: string; is_active: boolean; }
-  const [schedules, setSchedules] = useState<RoomSchedule[]>([]);
-  const [scheduleRoom, setScheduleRoom] = useState("");
-  const [scheduleDay, setScheduleDay] = useState(0);
-  const [scheduleOpen, setScheduleOpen] = useState("08:00");
-  const [scheduleClose, setScheduleClose] = useState("17:00");
-  const [scheduleActive, setScheduleActive] = useState(true);
-  const [scheduleSaving, setScheduleSaving] = useState(false);
-  const DAY_NAMES = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัส","ศุกร์","เสาร์"];
-
-  const fetchSchedules = useCallback(async () => {
-    const r = await fetch("/api/system/schedule");
-    const d = await r.json();
-    setSchedules(d.schedules || []);
-  }, []);
-
-  const saveSchedule = async () => {
-    if (!scheduleRoom) return;
-    setScheduleSaving(true);
-    await fetch("/api/system/schedule", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ room_code: scheduleRoom, day_of_week: scheduleDay, open_time: scheduleOpen, close_time: scheduleClose, is_active: scheduleActive }),
-    });
-    await fetchSchedules();
-    setScheduleSaving(false);
-  };
-
-  const deleteSchedule = async (id: number) => {
-    await fetch(`/api/system/schedule?id=${id}`, { method: "DELETE" });
-    setSchedules(prev => prev.filter(s => s.id !== id));
-  };
 
   const fetchFirmwares = useCallback(async () => {
     setFirmwareReleasesLoading(true);
@@ -2893,13 +2860,10 @@ void handleLocalWebServerRequest() {
         fetchSettings();
       }, 0);
     }
-    if (tab === "schedule" && user?.role === "owner") {
-      fetchSchedules();
-    }
     if (tab === "rooms") {
       fetchAnalytics();
     }
-  }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings, fetchSchedules, fetchAnalytics]);
+  }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings, fetchAnalytics]);
 
   useEffect(() => {
     if (tab === "all") {
@@ -3945,7 +3909,6 @@ void handleLocalWebServerRequest() {
               ] : []),
               ...(isOwner ? [
                 { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
-                { id: "schedule", icon: <ClockIcon />, label: "ตารางเวลาเปิด-ปิดห้อง", badge: 0 },
                 { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
               { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
@@ -4053,12 +4016,6 @@ void handleLocalWebServerRequest() {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <KeyIcon />
                       <span>จัดการสิทธิ์ผู้ดูแลระบบ</span>
-                    </span>
-                  )}
-                  {tab === "schedule" && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <ClockIcon />
-                      <span>ตารางเวลาเปิด-ปิดห้อง</span>
                     </span>
                   )}
                   {tab === "settings" && (
@@ -6434,98 +6391,6 @@ void handleLocalWebServerRequest() {
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Room Schedule Tab (Owner Only) ────────────── */}
-            {tab === "schedule" && isOwner && (
-              <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
-                <div className="dashboard-section-card" style={{ padding: 24 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>Room Schedules</div>
-                  <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px" }}>ตารางเวลาเปิด-ปิดห้องเรียน</h2>
-                  <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>กำหนดเวลาทำการรายวันสำหรับแต่ละห้อง (ข้อมูลเพื่อการอ้างอิง — ยังไม่บังคับล็อกประตูอัตโนมัติ)</p>
-
-                  {/* Add / Edit form */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
-                    <div>
-                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>ห้อง</label>
-                      <input
-                        value={scheduleRoom}
-                        onChange={e => setScheduleRoom(e.target.value)}
-                        placeholder="เช่น lab1"
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>วัน</label>
-                      <select
-                        value={scheduleDay}
-                        onChange={e => setScheduleDay(parseInt(e.target.value))}
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }}
-                      >
-                        {DAY_NAMES.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>เปิด</label>
-                      <input type="time" value={scheduleOpen} onChange={e => setScheduleOpen(e.target.value)}
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>ปิด</label>
-                      <input type="time" value={scheduleClose} onChange={e => setScheduleClose(e.target.value)}
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }} />
-                    </div>
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-primary)", cursor: "pointer" }}>
-                        <input type="checkbox" checked={scheduleActive} onChange={e => setScheduleActive(e.target.checked)} style={{ width: 16, height: 16 }} />
-                        เปิดใช้งาน
-                      </label>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "flex-end" }}>
-                      <button
-                        onClick={saveSchedule}
-                        disabled={scheduleSaving || !scheduleRoom}
-                        style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "var(--smartaccess-purple)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: scheduleSaving || !scheduleRoom ? 0.6 : 1 }}
-                      >
-                        {scheduleSaving ? "กำลังบันทึก..." : "บันทึก"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Schedule table */}
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                      <thead>
-                        <tr style={{ background: "var(--bg-secondary)" }}>
-                          {["ห้อง","วัน","เปิด","ปิด","สถานะ",""].map(h => (
-                            <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-secondary)", borderBottom: "1px solid var(--border)" }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schedules.length === 0 ? (
-                          <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}>ยังไม่มีตารางเวลา</td></tr>
-                        ) : schedules.map(s => (
-                          <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                            <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text-primary)" }}>{s.room_code}</td>
-                            <td style={{ padding: "10px 12px", color: "var(--text-primary)" }}>{DAY_NAMES[s.day_of_week]}</td>
-                            <td style={{ padding: "10px 12px", color: "var(--text-primary)" }}>{s.open_time}</td>
-                            <td style={{ padding: "10px 12px", color: "var(--text-primary)" }}>{s.close_time}</td>
-                            <td style={{ padding: "10px 12px" }}>
-                              <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: s.is_active ? "rgba(16,185,129,0.15)" : "rgba(100,116,139,0.15)", color: s.is_active ? "#10b981" : "#64748b" }}>
-                                {s.is_active ? "เปิดใช้งาน" : "ปิด"}
-                              </span>
-                            </td>
-                            <td style={{ padding: "10px 12px" }}>
-                              <button onClick={() => deleteSchedule(s.id)} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer" }}>ลบ</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
                 </div>
               </div>
