@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     const rawLimit = parseInt(searchParams.get("limit") || "100");
     const limit = isNaN(rawLimit) ? 100 : Math.min(Math.max(rawLimit, 1), 500);
     const room = searchParams.get("room") || "";
+    const actionFilter = searchParams.get("action") || "";
 
     const isLogViewer = admin.role === "log_viewer";
     let allowedRooms: string[] = [];
@@ -57,10 +58,18 @@ export async function GET(req: NextRequest) {
       params.push(allowedRooms);
     }
     
+    if (actionFilter === "firmware") {
+      conditions.push(`al.action LIKE $${paramIndex++}`);
+      params.push("firmware_%");
+    } else if (actionFilter && actionFilter !== "all") {
+      conditions.push(`al.action = $${paramIndex++}`);
+      params.push(actionFilter);
+    }
+
     if (conditions.length > 0) {
       query += ` WHERE ` + conditions.join(" AND ");
     }
-    
+
     query += ` ORDER BY al.timestamp DESC LIMIT $${paramIndex++}`;
     params.push(limit);
 

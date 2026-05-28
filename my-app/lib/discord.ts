@@ -12,7 +12,9 @@ export type DiscordEventType =
   | "esp32_offline"
   | "admin_login"
   | "admin_logout"
-  | "admin_login_failed";
+  | "admin_login_failed"
+  | "firmware_deployed"
+  | "firmware_ota_triggered";
 
 interface DiscordEmbed {
   title: string;
@@ -68,6 +70,10 @@ export async function sendDiscordNotification(
     room?: string;
     ip?: string;
     userAgent?: string;
+    firmwareVersion?: string;
+    firmwareChecksum?: string;
+    firmwareSize?: number;
+    previousVersion?: string;
   }
 ): Promise<boolean> {
   // Load dynamic webhook URLs from database
@@ -99,7 +105,9 @@ export async function sendDiscordNotification(
         eventType === "esp32_offline" ||
         eventType === "admin_login" ||
         eventType === "admin_logout" ||
-        eventType === "admin_login_failed"
+        eventType === "admin_login_failed" ||
+        eventType === "firmware_deployed" ||
+        eventType === "firmware_ota_triggered"
       ) {
         targetWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || settings.discord_webhook_admin_audit || "";
       }
@@ -122,7 +130,9 @@ export async function sendDiscordNotification(
       } else if (
         eventType === "admin_login" ||
         eventType === "admin_logout" ||
-        eventType === "admin_login_failed"
+        eventType === "admin_login_failed" ||
+        eventType === "firmware_deployed" ||
+        eventType === "firmware_ota_triggered"
       ) {
         targetWebhookUrl = settings.discord_webhook_admin_audit || settings.discord_webhook_logs || "";
       }
@@ -340,6 +350,41 @@ export async function sendDiscordNotification(
       };
       break;
     }
+
+    case "firmware_deployed":
+      embed = {
+        title: "🚀 ปล่อยเฟิร์มแวร์ใหม่แล้ว (OTA Deployed)",
+        description: `แอดมินเปิดตัวเฟิร์มแวร์รุ่นใหม่สำหรับบอร์ด ESP32 ทุกตัว บอร์ดจะได้รับการอัปเดตโดยอัตโนมัติในรอบ Polling ถัดไป`,
+        color: COLORS.purple,
+        fields: [
+          { name: "📦 เวอร์ชันใหม่", value: `\`v${data.firmwareVersion || "-"}\``, inline: true },
+          { name: "👨‍💼 อัปโหลดโดย", value: data.adminName || "-", inline: true },
+          { name: "🔐 MD5 Checksum", value: `\`${data.firmwareChecksum || "-"}\``, inline: false },
+          { name: "📏 ขนาดไฟล์", value: data.firmwareSize ? `${(data.firmwareSize / 1024).toFixed(1)} KB` : "-", inline: true },
+          { name: "⏰ เวลาปล่อยอัปเดต", value: now, inline: true },
+        ],
+        footer: { text: "SmartAccess OTA Firmware Control Center" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "firmware_ota_triggered":
+      embed = {
+        title: "⬇️ ESP32 กำลังดาวน์โหลดเฟิร์มแวร์ใหม่",
+        description: `บอร์ด ESP32 ตรวจพบเวอร์ชันใหม่และเริ่มดาวน์โหลดอัตโนมัติผ่าน Cloud HTTPS OTA`,
+        color: COLORS.info,
+        fields: [
+          { name: "🔄 เวอร์ชันเก่า", value: `\`v${data.previousVersion || "?"}\``, inline: true },
+          { name: "📦 เวอร์ชันใหม่", value: `\`v${data.firmwareVersion || "-"}\``, inline: true },
+          { name: "🚪 ห้องปฏิบัติการ", value: data.room || "-", inline: true },
+          { name: "🌐 IP บอร์ด", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "🔐 MD5 Checksum", value: `\`${data.firmwareChecksum || "-"}\``, inline: false },
+          { name: "⏰ เวลาเริ่มดาวน์โหลด", value: now, inline: false },
+        ],
+        footer: { text: "SmartAccess OTA Firmware Control Center" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
   }
 
   // แทรกแท็กระบุห้องเรียนลงใน Embed ก่อนทำการส่ง เพื่อความชัดเจนและเรียบร้อยใน Discord

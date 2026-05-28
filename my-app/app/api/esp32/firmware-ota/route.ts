@@ -3,21 +3,24 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { getPool } from '@/lib/db';
+import { sendDiscordNotification } from '@/lib/discord';
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const room = searchParams.get('room') || 'unknown';
-    
+
     // 1. ดึงเวอร์ชันและตรวจสอบคีย์การเข้าถึงผ่าน Header
     const clientVersion = req.headers.get('x-esp32-version') || '1.0.0';
     const authHeader = req.headers.get('authorization') || '';
-    
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                     req.headers.get('x-real-ip') || 'unknown';
+
     const EXPECTED_API_KEY = process.env.ESP32_API_KEY || 'SUPER_SECURE_ESP32_ACCESS_TOKEN';
     if (!authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== EXPECTED_API_KEY) {
-      return new NextResponse(JSON.stringify({ error: 'Unauthorized Access Prohibited' }), { 
-        status: 401, 
-        headers: { 'Content-Type': 'application/json' } 
+      return new NextResponse(JSON.stringify({ error: 'Unauthorized Access Prohibited' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -47,10 +50,32 @@ export async function GET(req: Request) {
       return new Response(null, { status: 304 });
     }
 
-    console.log(`[OTA Dispatcher] Room: ${room} | Version: ${clientVersion} -> ${latestVersion} | Hash: ${fileHash}`);
+    console.log(`[OTA Dispatcher] Room: ${room} | IP: ${clientIp} | Version: ${clientVersion} -> ${latestVersion} | Hash: ${fileHash}`);
 
-    // 4. แผนความปลอดภัย & จัดเก็บ: หากมีลิงก์อัปโหลดจริงให้ Redirect ไปยัง Supabase Storage เพื่อเซฟ Bandwidth ของ Vercel
-    // กรณีที่ไม่ได้อัปโหลดผ่าน Supabase Storage (เช่น คืนค่าไฟล์ mock เพื่อ Local Dev/Testing)
+    // 4. บันทึก Log และแจ้งเตือน Discord เมื่อบอร์ดเริ่มดาวน์โหลดเฟิร์มแวร์ใหม่
+    try {
+      const pool = getPool();
+      await pool.query(
+        "INSERT INTO access_logs (action, notes, room_code, ip_address, method) VALUES ('firmware_ota_triggered', $1, $2, $3, 'HTTPS_OTA')",
+        [
+          `ESP32 ห้อง ${room} (IP: ${clientIp}) ดาวน์โหลดเฟิร์มแวร์ v${clientVersion} → v${latestVersion} (MD5: ${fileHash})`,
+          room || 'system',
+          clientIp
+        ]
+      );
+
+      sendDiscordNotification("firmware_ota_triggered", {
+        room,
+        ip: clientIp,
+        firmwareVersion: latestVersion,
+        previousVersion: clientVersion,
+        firmwareChecksum: fileHash,
+      }).catch(err => console.error("[OTA Discord] trigger notify failed:", err));
+    } catch (logErr) {
+      console.error('[OTA Log Error]:', logErr);
+    }
+
+    // 5. แผนความปลอดภัย & จัดเก็บ: หากมีลิงก์อัปโหลดจริงให้ Redirect ไปยัง Supabase Storage
     if (!hasRelease) {
       const filePath = path.join(process.cwd(), 'public', 'firmware', `v_${latestVersion.replace(/\./g, '_')}.bin`);
       if (!fs.existsSync(filePath)) {
@@ -75,12 +100,11 @@ export async function GET(req: Request) {
       });
     }
 
-    // 5. ส่ง Redirect (302 Found) ไปยัง Supabase Storage เพื่อประหยัด CPU execution
-    // บอร์ด ESP32 ESPhttpUpdate รองรับ 302 redirection อัตโนมัติอยู่แล้ว
+    // 6. ส่ง Redirect (302 Found) ไปยัง Supabase Storage
     return new NextResponse(null, {
       status: 302,
       headers: {
-        'Location': dbReleasePath, // Supabase Storage Public File URL
+        'Location': dbReleasePath,
         'x-MD5-Checksum': fileHash,
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
       }
@@ -88,9 +112,9 @@ export async function GET(req: Request) {
 
   } catch (err: any) {
     console.error('[OTA API Error]:', err);
-    return new NextResponse(JSON.stringify({ error: 'Internal Server Error', detail: err.message }), { 
-      status: 500, 
-      headers: { 'Content-Type': 'application/json' } 
+    return new NextResponse(JSON.stringify({ error: 'Internal Server Error', detail: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }

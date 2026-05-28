@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
+import { sendDiscordNotification } from "@/lib/discord";
 import crypto from "crypto";
 
 // POST /api/system/firmware/upload — อัปโหลดข้อมูลเฟิร์มแวร์ C++ ไบเนรีล่าสุด
@@ -51,22 +52,35 @@ export async function POST(req: NextRequest) {
     // 6. เพิ่มข้อมูลลง Supabase PostgreSQL Table firmware_releases
     const pool = getPool();
     await pool.query(
-      `INSERT INTO firmware_releases (version, file_path, file_size, checksum_md5, uploaded_by) 
-       VALUES ($1, $2, $3, $4, $5) 
-       ON CONFLICT (version) 
+      `INSERT INTO firmware_releases (version, file_path, file_size, checksum_md5, uploaded_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (version)
        DO UPDATE SET file_path = EXCLUDED.file_path, file_size = EXCLUDED.file_size, checksum_md5 = EXCLUDED.checksum_md5, uploaded_at = CURRENT_TIMESTAMP`,
       [cleanVersion, publicUrl.trim(), file.size, fileHash, admin.id]
     );
 
-    // บันทึก Log การดำเนินงานแอดมินสูงสุดตามกฎหมาย พ.ร.บ.คอมพิวเตอร์
+    // 7. บันทึก Log การดำเนินงานในระบบ (ใช้ action firmware_deployed แทน approved)
     await pool.query(
-      "INSERT INTO access_logs (action, performed_by, notes, room_code) VALUES ('approved', $1, $2, 'system')",
-      [admin.id, `อัปโหลดและเปิดการปล่อยเฟิร์มแวร์ไร้สายรุ่น ${cleanVersion} เช็คซัม ${fileHash} โดยแอดมิน: ${admin.full_name}`]
+      "INSERT INTO access_logs (action, performed_by, notes, room_code) VALUES ('firmware_deployed', $1, $2, 'system')",
+      [admin.id, `ปล่อยเฟิร์มแวร์ OTA รุ่น v${cleanVersion} (MD5: ${fileHash}, ขนาด: ${(file.size / 1024).toFixed(1)} KB) โดยแอดมิน: ${admin.full_name}`]
     );
+
+    // 8. ส่งแจ้งเตือน Discord
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                req.headers.get("x-real-ip") || "ไม่ทราบ";
+    sendDiscordNotification("firmware_deployed", {
+      adminName: admin.full_name,
+      adminUsername: admin.username,
+      adminRole: admin.role,
+      firmwareVersion: cleanVersion,
+      firmwareChecksum: fileHash,
+      firmwareSize: file.size,
+      ip,
+    }).catch(err => console.error("[OTA Discord] notify failed:", err));
 
     return NextResponse.json({
       success: true,
-      message: `อัปโหลดและเปิดระบบกระจายเฟิร์มแวร์ไร้สายรุ่น ${cleanVersion} สำเร็จ! เช็คซัม MD5 ยืนยันความปลอดภัย: ${fileHash}`,
+      message: `อัปโหลดและเปิดระบบกระจายเฟิร์มแวร์ไร้สายรุ่น v${cleanVersion} สำเร็จ! MD5: ${fileHash}`,
     });
 
   } catch (error: any) {

@@ -287,8 +287,25 @@ export async function initDatabase(): Promise<void> {
         file_size INT NOT NULL,
         checksum_md5 VARCHAR(32) NOT NULL,
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        uploaded_by UUID
+        uploaded_by INT REFERENCES admin_users(id) ON DELETE SET NULL
       )
+    `);
+
+    // Migration: fix uploaded_by column type UUID -> INT if needed
+    await initPool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'firmware_releases'
+            AND column_name = 'uploaded_by'
+            AND data_type = 'uuid'
+        ) THEN
+          ALTER TABLE firmware_releases DROP COLUMN uploaded_by;
+          ALTER TABLE firmware_releases ADD COLUMN uploaded_by INT REFERENCES admin_users(id) ON DELETE SET NULL;
+        END IF;
+      END
+      $$;
     `);
 
     await initPool.query(`

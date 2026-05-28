@@ -2422,6 +2422,8 @@ void handleLocalWebServerRequest() {
   const [firmwareVersionInput, setFirmwareVersionInput] = useState("");
   const [firmwarePublicUrlInput, setFirmwarePublicUrlInput] = useState("");
   const [firmwareFile, setFirmwareFile] = useState<File | null>(null);
+  const [firmwareLogs, setFirmwareLogs] = useState<any[]>([]);
+  const [firmwareLogsLoading, setFirmwareLogsLoading] = useState(false);
 
   const fetchFirmwares = useCallback(async () => {
     setFirmwareReleasesLoading(true);
@@ -2435,6 +2437,21 @@ void handleLocalWebServerRequest() {
       console.error("Failed to fetch firmware list", err);
     } finally {
       setFirmwareReleasesLoading(false);
+    }
+  }, []);
+
+  const fetchFirmwareLogs = useCallback(async () => {
+    setFirmwareLogsLoading(true);
+    try {
+      const r = await fetch("/api/logs?action=firmware&limit=50");
+      if (r.ok) {
+        const data = await r.json();
+        setFirmwareLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch firmware logs", err);
+    } finally {
+      setFirmwareLogsLoading(false);
     }
   }, []);
 
@@ -2611,6 +2628,7 @@ void handleLocalWebServerRequest() {
   useEffect(() => {
     if (user?.role === "owner") {
       fetchFirmwares();
+      fetchFirmwareLogs();
       const autoPrune = async () => {
         try {
           const r = await fetch("/api/system/logs/cleanup", {
@@ -5674,6 +5692,50 @@ void handleLocalWebServerRequest() {
                     อัปเดตและเผยแพร่ซอฟต์แวร์ของบอร์ดควบคุมหน้าห้องเรียนแบบไร้สาย (Cloud HTTPS OTA) โดยสตรีมไฟล์ไบเนรีตรงไปเก็บบนคลังคลาวด์ <strong>Supabase Storage (0% Vercel CPU Load)</strong> ได้ฟรีถาว
                   </p>
 
+                  {/* OTA Activity Logs */}
+                  <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, marginBottom: 20 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>📋 บันทึกกิจกรรม OTA แบบละเอียด</span>
+                      <button
+                        onClick={fetchFirmwareLogs}
+                        style={{ padding: "4px 10px", background: "none", border: "1px solid var(--border-medium)", color: "var(--smartaccess-purple)", fontSize: 11, borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        🔄 รีเฟรช
+                      </button>
+                    </div>
+                    {firmwareLogsLoading ? (
+                      <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-secondary)", fontSize: 12.5 }}>กำลังโหลด...</div>
+                    ) : firmwareLogs.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)", fontSize: 12 }}>ยังไม่มีบันทึกกิจกรรม OTA ในระบบ</div>
+                    ) : (
+                      <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                        {firmwareLogs.map((log: any) => {
+                          const isOtaTrigger = log.action === "firmware_ota_triggered";
+                          const isDelete = (log.notes || "").includes("ลบเฟิร์มแวร์");
+                          const icon = isOtaTrigger ? "⬇️" : isDelete ? "🗑️" : "🚀";
+                          const color = isOtaTrigger ? "#3B82F6" : isDelete ? "#EF4444" : "#7C3AED";
+                          return (
+                            <div key={log.id} style={{ padding: "8px 12px", background: "var(--bg-secondary)", border: "1px solid var(--border)", borderLeft: `3px solid ${color}`, borderRadius: 6 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 600 }}>
+                                  {icon} {log.notes || log.action}
+                                </span>
+                                <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                                  {new Date(log.timestamp).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </div>
+                              {log.ip_address && (
+                                <span style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2, display: "block" }}>
+                                  IP: {log.ip_address} · ห้อง: {log.room_code || "-"}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: 24 }}>
                     {/* Upload firmware form */}
                     <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
@@ -5709,6 +5771,7 @@ void handleLocalWebServerRequest() {
                             setFirmwarePublicUrlInput("");
                             setFirmwareFile(null);
                             fetchFirmwares();
+                            fetchFirmwareLogs();
                             fetchSystemStatus();
                           } else {
                             showToast(data.error || "เกิดข้อผิดพลาดในการอัปโหลด", "error");
@@ -5802,6 +5865,7 @@ void handleLocalWebServerRequest() {
                                     if (res.ok) {
                                       showToast(data.message, "success");
                                       fetchFirmwares();
+                                      fetchFirmwareLogs();
                                       fetchSystemStatus();
                                     } else {
                                       showToast(data.error, "error");

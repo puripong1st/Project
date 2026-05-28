@@ -149,7 +149,8 @@
 
 ### 4.8 หน้าจอประวัติขอใช้สิทธิ์ (Access Logs)
 - ดึง `GET /api/logs?limit=...`
-- กรองตาม action: `registered | approved | rejected | door_opened | door_failed`
+- กรองตาม action: `registered | approved | rejected | door_opened | door_failed | firmware_deployed | firmware_ota_triggered`
+- กรอง OTA เฉพาะ: `GET /api/logs?action=firmware&limit=50`
 - **กฎ พ.ร.บ. คอมฯ มาตรา 26**: log ที่มีอายุ **< 90 วัน** ห้ามลบเด็ดขาด ถ้าจะเคลียร์ต้องยืนยันรหัสผ่าน owner อีกครั้ง
 
 ### 4.9 หน้าจอกำหนดเงื่อนไขการทำงานของระบบ (Settings)
@@ -161,6 +162,88 @@
 - กดปุ่ม → `GET /api/export/pdf?from=...&to=...`
 - ฝั่งเซิร์ฟเวอร์ใช้ **pdfkit** สร้าง PDF แนวนอน (landscape) บนเซิร์ฟเวอร์ → stream กลับเป็นไฟล์
 - รายงานมี: สรุปจำนวนเข้าใช้/วัน, top user, ความผิดปกติ
+
+### 4.11 ระบบจัดการเฟิร์มแวร์แบบไร้สาย (OTA Firmware Control Center)
+
+> **เฉพาะ role `owner` เท่านั้น** — อยู่ในแท็บ ESP32 Settings ของ Dashboard
+
+#### ภาพรวม
+ระบบอัปเดตเฟิร์มแวร์ ESP32 ผ่าน Cloud HTTPS โดยไม่ต้องต่อสาย USB โดยมีขั้นตอนดังนี้:
+
+```
+แอดมินอัปโหลด .bin → Supabase Storage → บันทึก URL ลง firmware_releases
+                                                     ↓
+ESP32 poll /api/esp32/firmware-ota ทุก ~3 วินาที → เปรียบเทียบ version
+                                                     ↓ (version ต่างกัน)
+302 Redirect → Supabase Storage URL → ESP32 ดาวน์โหลดและแฟลชตัวเอง
+```
+
+#### วิธีใช้งาน (ขั้นตอน)
+1. อัปโหลดไฟล์ `.bin` ที่ Compile แล้วขึ้น **Supabase Storage** bucket ด้วยตนเอง
+2. Copy **Public URL** ของไฟล์จาก Supabase Storage
+3. ในหน้า Dashboard → แท็บ ESP32 → ส่วน "OTA Firmware Control Center":
+   - กรอก **Version** (เช่น `1.2.0`)
+   - วาง **Supabase Storage Public URL**
+   - เลือก **ไฟล์ .bin** บนเครื่อง (เพื่อคำนวณ MD5 Checksum เท่านั้น ไม่ได้อัปโหลดขึ้นเซิร์ฟเวอร์)
+   - กด **"🚀 เปิดตัวปล่อยอัปเดตแบบไร้สาย (Deploy OTA)"**
+4. ระบบบันทึก URL + version + MD5 ลง `firmware_releases` table
+5. ในรอบ poll ถัดไป ESP32 จะตรวจพบ version ใหม่ → ดาวน์โหลด + แฟลชอัตโนมัติ
+
+#### API Endpoints ที่เกี่ยวข้อง
+| Endpoint | Method | หน้าที่ |
+|----------|--------|---------|
+| `POST /api/system/firmware/upload` | POST | อัปโหลด metadata + คำนวณ MD5 (owner only) |
+| `GET /api/system/firmware` | GET | ดึงรายการ firmware releases ทั้งหมด |
+| `DELETE /api/system/firmware?id=N` | DELETE | ลบประวัติ firmware release (owner only) |
+| `GET /api/esp32/firmware-ota` | GET | ESP32 poll endpoint — ตรวจ version + redirect |
+
+#### ESP32 Firmware Header ที่ต้องส่ง
+```
+GET /api/esp32/firmware-ota?room=LAB01
+Authorization: Bearer <ESP32_API_KEY>
+x-esp32-version: 1.0.0
+```
+- `304 Not Modified` → version เดิม ไม่ต้องอัปเดต
+- `302 Redirect → Supabase URL` → มี version ใหม่ ให้ดาวน์โหลด
+
+#### การแจ้งเตือน Discord (Webhook)
+ระบบส่งการแจ้งเตือน Discord อัตโนมัติใน 2 เหตุการณ์:
+
+| เหตุการณ์ | Discord Event | รายละเอียด |
+|-----------|--------------|------------|
+| แอดมิน Deploy OTA | `firmware_deployed` 🚀 | Version ใหม่, MD5, ขนาดไฟล์, ชื่อแอดมิน |
+| ESP32 เริ่มดาวน์โหลด | `firmware_ota_triggered` ⬇️ | Version เก่า→ใหม่, ห้อง, IP บอร์ด, MD5 |
+
+Webhook จะถูกส่งไปที่ channel เดียวกับ `discord_webhook_logs` หรือ `discord_webhook_admin_audit`
+
+#### บันทึกกิจกรรม OTA (Web Logs)
+กิจกรรม OTA ทุกครั้งจะถูกบันทึกใน `access_logs` table ด้วย action types เฉพาะ:
+
+| action | ความหมาย |
+|--------|---------|
+| `firmware_deployed` | แอดมิน Deploy firmware ใหม่ |
+| `firmware_ota_triggered` | ESP32 เริ่มดาวน์โหลด firmware |
+
+แสดงผลในหน้า Dashboard ที่ส่วน **"📋 บันทึกกิจกรรม OTA แบบละเอียด"** พร้อมแสดง IP ของบอร์ด, ห้อง, timestamp แบบเรียลไทม์
+
+#### โครงสร้างฐานข้อมูล (`firmware_releases`)
+```sql
+CREATE TABLE firmware_releases (
+  id          SERIAL PRIMARY KEY,
+  version     VARCHAR(32) UNIQUE NOT NULL,   -- เช่น "1.2.0"
+  file_path   TEXT NOT NULL,                  -- Supabase Storage Public URL
+  file_size   INT NOT NULL,                   -- bytes
+  checksum_md5 VARCHAR(32) NOT NULL,          -- MD5 hash ยืนยันความสมบูรณ์
+  uploaded_at TIMESTAMP DEFAULT NOW(),
+  uploaded_by INT REFERENCES admin_users(id)  -- ผู้อัปโหลด
+);
+```
+
+#### ข้อควรระวัง
+- **อย่า Deploy firmware ที่ยังไม่ได้ test** — ESP32 ทุกตัวในระบบจะอัปเดตพร้อมกัน
+- **MD5 Checksum**: ESP32 ตรวจสอบ checksum หลังดาวน์โหลด — ถ้าไม่ตรงจะ rollback อัตโนมัติ
+- **Supabase Storage ฟรี**: อย่าเก็บไฟล์ .bin เกิน 1 GB (quota ฟรีของ Supabase)
+- **ลบ release เก่า**: ใช้ปุ่ม "ถอน" ใน Dashboard แต่ต้องลบไฟล์จาก Supabase Storage ด้วยมือเพื่อคืน quota
 
 ---
 
