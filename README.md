@@ -1,47 +1,71 @@
-# 🚪 Innovative system for managing access rights and controlling classroom access via wireless network
-### ระบบควบคุมการเข้าออกห้อง คณะครุศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network
+# 🚪 SmartAccess Access Control System
 
-ระบบควบคุมการเปิด-ปิดประตูห้องผ่านคิวอาร์โค้ดแบบ Full-Stack เชื่อมต่อกับฮาร์ดแวร์บอร์ดสมองกลฝังตัว ESP32 และฐานข้อมูล postgreSQL พร้อมฟังก์ชันควบคุมความปลอดภัยและความถูกต้องตามกฎหมายจราจรทางคอมพิวเตอร์อย่างเป็นทางการ
+### *Innovative system for managing access rights and controlling classroom access via wireless network*
+> **ระบบควบคุมการเข้าออกห้องปฏิบัติการเรียนการสอนอัจฉริยะแบบ Full-Stack IoT & Dashboard ประสิทธิภาพสูง**  
+> พัฒนาขึ้นโดยสอดคล้องตามมาตรฐาน **พ.ร.บ. คอมพิวเตอร์ มาตรา 26 (จัดเก็บ Log ≥ 90 วัน)** และหลักการ **PDPA** ของประเทศไทยอย่างเป็นทางการ
 
 ---
 
-## 🏛️ จุดเด่นและฟังก์ชันเด่นของระบบ (Key Features)
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15+-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-Ready-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase PostgreSQL" />
+  <img src="https://img.shields.io/badge/ESP32-Hardware-E7352C?style=for-the-badge&logo=espressif&logoColor=white" alt="ESP32 IoT" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind v4" />
+</p>
 
-### 1. หน้าลงทะเบียนผู้ใช้งานแบบรองรับทุกอุปกรณ์ (Mobile-Responsive Form)
-* ฟอร์มกรอกประวัติเข้าใช้งานสำหรับนักศึกษา/ผู้มารับบริการ: ชื่อ, รหัสนักศึกษา, สาขาวิชา, คณะ และชั้นปี
-* ออกแบบหน้าเว็บสไตล์มินิมอล (Minimalist) คุมโทนแบรนด์องค์กรด้วยคู่สีม่วงประจำมหาวิทยาลัย (#7C3AED) และสีชมพูประจำคณะครุศาสตร์ (#DB2777)
-* คอนเทนเนอร์และปุ่มแบบไล่ระดับเฉดสี (Smooth Gradients) มีความลื่นไหลด้วย Micro-animations ตอบสนองอย่างรวดเร็ว
+---
 
-### 2. แดชบอร์ดตรวจสอบสถานะระบบระดับองค์กร (Enterprise Status Grid)
-แผงรายงานความพร้อมใช้งานของระบบแบบ Real-time ณ ส่วนหัวสุดของหน้าแอดมิน เพื่อความโปร่งใสและตรวจสอบได้ทันที:
-* **postgreSQL Database**: บอกชื่อโฮสต์ ฐานข้อมูล และสถานะการออนไลน์
-* **ESP32 Controller**: บอกสถานะการออนไลน์ของบอร์ดจริง, IP บอร์ด, โหมดทดสอบ (Mock/Real), และสถิติกลอนแม่เหล็กประตู (🔒 ปิด / 🔓 เปิด)
-* **Discord Alerts**: บอกสถานะความถูกต้องของการผูกระบบบอทพิกัดแจ้งเตือนภัยคุกคาม
-* **Active Operator**: แสดงข้อมูลแอดมินที่กำลังปฏิบัติงานปัจจุบันและระดับสิทธิ์ดำเนินการ
+## 🏛️ สถาปัตยกรรมและฟีเจอร์เด่นระบบ (Core Architecture & Features)
 
-### 3. ระบบล้างประวัติถูกต้องตาม พ.ร.บ. คอมพิวเตอร์ (Secure Log Compliance)
-จัดการข้อมูลบันทึกจราจรเข้าออกอาคารให้ถูกต้องและสอดคล้องกับ **พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ พ.ศ. 2550 มาตรา 26** (ต้องจัดเก็บบันทึกประวัติไม่น้อยกว่า 90 วัน)
-* **การลบประวัติหมดอายุ (&gt;90 วัน)**: สามารถคลิกล้างข้อมูลได้ทันทีเพื่อประหยัดพื้นที่ และมีระบบตรวจจับล้างอัตโนมัติ (Auto Pruning) เมื่อแอดมินสูงสุดเปิดบอร์ด
-* **การลบประวัติที่ยังไม่หมดอายุ (&lt;90 วัน)**: ระบบจะป้องกันอย่างแน่นหนาเพื่อไม่ให้เกิดการลบร่องรอยความปลอดภัยทางคดี โดยบังคับกรอก **รหัสผ่านยืนยันสิทธิ์บัญชีสูงสุด (Owner Password)** ผ่านการเข้ารหัส `bcryptjs`
-* **ประวัติการบำรุงรักษา (Audit Trail)**: บันทึกประวัติการสั่งลบข้อมูลความปลอดภัยไว้ในระบบเสมอ เพื่อยืนยันว่าใครทำธุรกรรม เวลาใด และเหตุผลใด
+### 🎨 1. Minimalist Glassmorphism UI (ระบบสีประจำคณะ)
+* ออกแบบหน้าลงทะเบียนด้วยคู่สี **Harmony Palette Design System**: **สีม่วง RMUTP (#7C3AED)** และ **สีชมพูคณะครุศาสตร์อุตสาหกรรม (#DB2777)**
+* คอนเทนเนอร์สีกระจกโปร่งแสงหรูหรา (Glassmorphism Effects), ไอคอนเรืองแสง และปุ่มกดมีอนิเมชันตอบสนองลื่นไหลแบบสมบูรณ์ 100% บนทุกขนาดหน้าจอ (Mobile responsive locks)
 
-### 4. ระบบรายงานเอกสาร PDF ทางการ (Server-Side PDF Exporter)
-* ตัวประมวลผลจัดเก็บรายงาน PDF สไตล์แนวนอน (Landscape) เพื่อความกว้างขวาง สวยงาม แสดงตารางข้อมูลครบถ้วน
-* สามารถเลือกกรองประวัติการเข้าตามช่วงปฏิทินปฐมฤกษ์ และคัดเลือกสถานะเฉพาะ เช่น เฉพาะอนุมัติ, ปฏิเสธ หรือรอดำเนินการได้ในคลิกเดียว
+### 📊 2. แดชบอร์ดตรวจสอบสถานะเรียลไทม์ (Enterprise Status Grid)
+* **Supabase PostgreSQL Table Status**: แสดงสถานะการเชื่อมต่อ และการทำงานของฐานข้อมูล Supabase
+* **ESP32 Controller Status**: ตรวจสอบบอร์ดฮาร์ดแวร์หน้าห้องเรียนแบบเรียลไทม์ ทราบเลขไอพี โหมดการทำงาน (จำลอง/จริง) และสถานะกลอนล็อกแม่เหล็กไฟฟ้ารีเลย์ (🔒 Lock / 🔓 Open)
+* **Discord Notification Broker**: ยืนยันความพร้อมของบอทส่งข้อความแจ้งเตือนสถานะความปลอดภัย
 
-### 5. การทำงานร่วมกับ Discord Webhook
-* แจ้งเตือนสถานะความปลอดภัยแบบ Real-time ไปยังห้องเซิร์ฟเวอร์ Discord ของทีมงานทันทีเมื่อมีผู้สมัครเข้าห้อง, ได้รับอนุมัติ, ปฏิเสธ หรือกรณีเกิดสัญญาณขัดข้องทางเทคนิค (ESP32 ออฟไลน์)
+### ⚖️ 3. ระบบจัดการประวัติสอดคล้องกับ พ.ร.บ. คอมพิวเตอร์ & PDPA
+* จัดเก็บบันทึกประวัติจราจรทางคอมพิวเตอร์เข้าออกประตูห้องเรียนอย่างเคร่งครัดตาม **พ.ร.บ. คอมพิวเตอร์ ม.26 (ไม่น้อยกว่า 90 วัน)**
+* **ระบบความปลอดภัยสองชั้น (Double Failsafe Settings)**: ลบ Log หมดอายุ (>90 วัน) ได้ฟรีในคลิกเดียว ส่วนประวัติที่ยังไม่หมดอายุ (<90 วัน) ระบบจะบังคับให้แอดมินระดับสูงสุดกรอกรหัสยืนยันตัวตน (`bcryptjs`) ป้องกันแฮกเกอร์ทำลายร่องรอย
+* **Consent Manager UI (PDPA)**: หน้าต่างขอความยินยอม Cookies แบบคัดสรรประเภทการเก็บข้อมูล มีหน้า Privacy Policy และข้อสัญญาการใช้งาน (Terms of Services) ครบถ้วนตามกฎหมาย PDPA ของไทย
+
+### 🚀 4. ระบบอัปเดตเฟิร์มแวร์ไร้สายแบบประหยัดพลังงานคลาวด์ (Cloud HTTPS OTA Center)
+* **Vercel Ephemeral Failsafe**: ออกแบบระบบจัดเก็บไฟล์ `.bin` บนคลาวด์ **Supabase Storage (โควตาฟรี 1GB)** เพื่อเลี่ยงข้อจำกัดไฟล์สูญหายของระบบตู้คอนเทนเนอร์ Vercel Free Plan
+* **HTTP 302 Direct CDN Redirection**: ตัว API Next.js ทำหน้าที่ตรวจจับสิทธิ์ความปลอดภัยแล้วส่ง Redirect ให้บอร์ด ESP32 วิ่งไปโหลดไฟล์ตรงผ่าน Supabase Storage CDN ช่วยประหยัดซีพียูของเซิร์ฟเวอร์ Next.js เหลือ 0%
+* **Local LAN ElegantOTA**: บอร์ด ESP32 รองรับการปล่อยอัปโหลดผ่านเครือข่ายวงแลนเดียวกันได้ที่พอร์ต `http://<IP_ADDRESS>/update` โดยมีระบบรหัสผ่านแอดมินสูงสุดควบคุม
+
+### 📄 5. รายงาน PDF ระดับอุตสาหกรรม (Landscape Server-Side PDF)
+* ประมวลผลเอกสาร PDF บนเซิร์ฟเวอร์ด้วย `pdfkit` ออกแบบตารางในแนวแนวนอน (Landscape) เพื่อความชัดเจน อ่านง่าย เป็นทางการ
+* มีปุ่มเปิดห้องแบบเร่งด่วน (Emergency Unlock) และปิดกั้นประตูล็อกอัตโนมัติ 5 วินาที พร้อมอนิเมชันเกจลดเวลาบนหน้าจอ TFT สลักคมชัดสวยงาม
 
 ---
 
 ## 💻 เทคโนโลยีที่เลือกใช้ (Technology Stack)
 
-* **Frontend / API Backend**: Next.js 15+ (App Router), React 19, TypeScript
-* **Styling & Theme**: Vanilla CSS + Tailwind CSS v4 (Harmony Palette Design System)
-* **Database Driver**: postgreSQL (`pg` Connection Pool with automatic migrations)
-* **Server-Side PDF Library**: `pdfkit`
-* **Cryptography**: `bcryptjs` & `jsonwebtoken` (JWT) for secure session manager
-* **Hardware System**: ESP32 Microcontroller, Electromagnetic Solenoid Lock, Relay, Active Buzzer
+```
+┌────────────────────────────────────────────────────────┐
+│             💻 NEXT.JS 15+ & REACT 19 WEB APP          │
+├────────────────────────────────────────────────────────┤
+│ Styling: Vanilla CSS + Tailwind CSS v4 Harmony Palette │
+│ Databases: Supabase PostgreSQL & Connection Pool (6543)│
+│ Storage: Supabase Object Storage (1GB Free bucket)     │
+│ Auth: JWT Sessions + bcryptjs secure hashing           │
+│ Reporting: Server-side landscape pdfkit generator     │
+└───────────────────────────┬────────────────────────────┘
+                            │ (HTTPS Client Polling / WebServer Push)
+┌───────────────────────────▼────────────────────────────┐
+│                    📡 ESP32 Microcontroller            │
+├────────────────────────────────────────────────────────┤
+│ Output Pinouts: GPIO 12 Relay · GPIO 27 Active Buzzer  │
+│ Indicators: GPIO 14 WiFi LED · GPIO 26 Reject LED      │
+│ Display Panel: ILI9341 SPI TFT LCD (3.2 inch)          │
+│ Local Features: LAN Webserver ElegantOTA Update        │
+└────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -50,92 +74,85 @@
 ```
 my-app/
 ├── app/
-│   ├── globals.css           # โครงสร้างดีไซน์และโทนสีของทั้งระบบ
-│   ├── page.tsx              # หน้าจอลงทะเบียนขอเข้าใช้งานของนักศึกษา
+│   ├── globals.css           # โครงสร้างดีไซน์และโทนสีของทั้งระบบ (Harmony Palette)
+│   ├── page.tsx              # หน้าจอลงทะเบียนขอเข้าใช้งานของนักศึกษา + Countdown Timer
 │   ├── admin/
 │   │   ├── login/page.tsx    # หน้าลงชื่อเข้าใช้งานของแอดมิน
-│   │   └── dashboard/page.tsx# หน้าบอร์ดควบคุมความปลอดภัยหลัก (Protected Area)
+│   │   └── dashboard/page.tsx# หน้าบอร์ดควบคุมความปลอดภัยและ OTA Firmware Upload Center
 │   └── api/
 │       ├── system/
-│       │   ├── status/route.ts   # ดึงสถานะ live ตู้ postgreSQL, ESP32, Discord
-│       │   └── logs/cleanup/route# ระบบทำความสะอาดลบประวัติความปลอดภัย
-│       ├── students/route.ts     # ดึงรายชื่อ/ลงทะเบียนข้อมูลนักศึกษา
+│       │   ├── status/route.ts   # ดึงสถานะ live ตู้ Supabase, ESP32, Discord
+│       │   ├── settings/route.ts # ดึงและบันทึกค่าระบบความปลอดภัย / Webhooks แยกห้อง
+│       │   ├── logs/cleanup/route# ระบบทำความสะอาดลบประวัติความปลอดภัยตามกฎหมาย
+│       │   └── firmware/upload/ro# ระบบอัปโหลดและออกคีย์ไฟล์เฟิร์มแวร์ .bin ไร้สาย
+│       ├── esp32/
+│       │   ├── display/route.ts  # จ่ายข้อมูลหน้าจอ TFT + สั่งการ OTA อัปเกรด
+│       │   └── firmware-ota/route# จัดการส่งบอร์ดอัปเดตแบบ 302 Supabase Redirect
 │       └── export/pdf/route.ts   # เขียนประวัติ PDF ส่งออกแนวนอน
 ├── esp32/
-│   └── esp32.ino                 # ซอร์สโค้ดอัปโหลดชิปของ ESP32 จริง
+│   └── esp32.ino                 # ซอร์สโค้ดอัปโหลดชิปของ ESP32 จริงและ Wokwi Simulator
 ├── lib/
-│   ├── db.ts                 # ตัวเชื่อมต่อ postgreSQL และ Migration ตาราง
-│   ├── esp32.ts              # ตัวจัดการ HTTP Call สั่งปลดล็อกไปฮาร์ดแวร์
-│   └── discord.ts            # ตัวยิง Webhook แจ้งเตือนบอทห้องแชท
-└── .env.local                # ไฟล์เก็บค่า Config และความลับระบบ
+│   ├── db.ts                 # ตัวเชื่อมต่อ Supabase PostgreSQL และสร้างตารางอัตโนมัติ
+│   ├── esp32.ts              # ตัวจัดการ HTTP Call สั่งปลดล็อกไปฮาร์ดแวร์จริง
+│   └── discord.ts            # ตัวยิง Webhook แจ้งเตือนบอทห้องแชทแยกตามห้องเรียน
+└── .env.local                # ไฟล์เก็บค่า Config และความลับระบบคลาวด์
 ```
 
 ---
 
-## 🚀 ขั้นตอนการติดตั้งและรันระบบคอมพิวเตอร์ (Getting Started)
+## 🚀 ขั้นตอนการติดตั้งและรันเซิร์ฟเวอร์ (Getting Started)
 
-### 1. โคลนโปรเจกต์และติดตั้ง Packages
+### 1. ติดตั้งไลบรารี
 ```bash
-# โคลนโปรเจกต์ลงคอมพิวเตอร์ของคุณ
-git clone https://github.com/your-username/smartaccess-door-access.git
-cd smartaccess-door-access/my-app
-
-# ติดตั้งไลบรารีที่จำเป็นทั้งหมด
+cd my-app
 npm install
 ```
 
-### 2. เตรียมฐานข้อมูล postgreSQL
-1. เปิดการทำงานของเซิร์ฟเวอร์ postgreSQL (เช่น ผ่าน Supabase หรือ local postgreSQL)
-2. สร้างหรือใช้ฐานข้อมูลชื่อ `smartaccess_access`
-3. ระบบจะทำการตรวจสอบและสร้างตารางต่างๆ (ตาราง `admin_users`, `students`, `access_logs`) พร้อมป้อนสิทธิ์บัญชีเริ่มต้นให้อัตโนมัติเมื่อสตาร์ทเซิร์ฟเวอร์ในครั้งแรก
-
-### 3. ตั้งค่าไฟล์สภาพแวดล้อม `.env.local`
-ทำการแก้ไขหรือสร้างไฟล์ `.env.local` ไว้ที่โฟลเดอร์ `my-app/` โดยระบุค่าดังนี้:
+### 2. ตั้งค่าไฟล์สภาพแวดล้อม `.env.local`
+สร้างไฟล์ `.env.local` ไว้ที่โฟลเดอร์ `my-app/` และกำหนดค่าดังนี้:
 ```env
-# ฐานข้อมูล postgreSQL
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=ชื่อผู้ใช้ (เช่น postgres)
-POSTGRES_PASSWORD=รหัสผ่านฐานข้อมูล
-POSTGRES_DATABASE=smartaccess_access
+# ฐานข้อมูล Supabase PostgreSQL (ใช้พอร์ต PgBouncer 6543)
+DATABASE_URL="postgres://postgres.xxxx:password@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
-# การเข้ารหัสความปลอดภัย JWT
-JWT_SECRET=รหัสลับสุ่มยาวๆความปลอดภัยของคุณ
+# ความปลอดภัยเซสชัน JWT
+JWT_SECRET="สุ่มข้อความยาวๆความปลอดภัยของคุณ"
 
-# ตัวกำหนดค่า ESP32
-ESP32_IP=192.168.1.100       # ระบุ IP ของบอร์ด ESP32 จริงเมื่อต่อไวไฟ
-ESP32_PORT=80
-ESP32_MOCK_MODE=false        # เปลี่ยนเป็น true หากต้องการทดลองในโหมดจำลอง (ไม่ใช้บอร์ดจริง)
+# ตัวกำหนดค่าฮาร์ดแวร์บอร์ด
+ESP32_IP="192.168.1.100"
+ESP32_PORT="80"
+ESP32_MOCK_MODE="false"
 
-# ช่องส่งข้อมูลบอทนิรภัย
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+# ลิงก์แจ้งเตือนบอท Discord หลัก
+DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 ```
 
-### 4. รันระบบเซิร์ฟเวอร์
+### 3. รันระบบเซิร์ฟเวอร์สำหรับการพัฒนา
 ```bash
 npm run dev
 ```
-เปิดเว็บเบราว์เซอร์ไปที่:
 * หน้าจอลงทะเบียนของนักศึกษา: [http://localhost:3000](http://localhost:3000)
-* หน้าบอร์ดผู้ดูแลระบบแอดมิน: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
-  - **บัญชีเริ่มต้น**: Username: `admin` | Password: `admin123` *(กรุณาเปลี่ยนรหัสผ่านทันทีหลังเข้าสู่ระบบเพื่อความปลอดภัย)*
+* แดชบอร์ดแอดมิน: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
+  - **บัญชีเริ่มต้น**: Username: `admin` | Password: `admin123` *(ระบบจะบังคับให้เปลี่ยนเพื่อความปลอดภัยสูงสุดในการรันโปรดักชัน)*
 
 ---
 
-## 📡 แผนผังการต่ออุปกรณ์ฮาร์ดแวร์บอร์ด ESP32
+## 📡 การต่ออุปกรณ์ฮาร์ดแวร์บอร์ด ESP32 (ILI9341 SPI)
+ซอร์สโค้ดของบอร์ด ESP32 อยู่ภายใต้ [**`esp32/esp32.ino`**](file:///c:/Users/aunkh/OneDrive/Desktop/Project/esp32/esp32.ino)
 
-ซอร์สโค้ดของบอร์ด ESP32 อยู่ภายใต้ [**`esp32/esp32.ino`**](file:///c:/Users/aunkh/OneDrive/Desktop/Project/esp32/esp32.ino) 
-
-### การระบุพอร์ตอุปกรณ์บนบอร์ด (Pinout Config):
-* **GPIO 12 (RELAY_PIN)**: ต่อเข้ากับฝั่งทริกเกอร์ของโมดูล Relay 5V เพื่อสลับสถานะจ่ายกระแสไฟเข้ากลอนเหล็กแม่เหล็กไฟฟ้าประตู
-* **GPIO 27 (BUZZER_PIN)**: ต่อเข้ากับบัซเซอร์เสียงแจ้งเตือนแบบ Active (ส่งเสียงตามเหตุการณ์ต่างๆ)
-* **GPIO 14 (LED_WIFI)**: สัญญาณไฟ LED แสดงสถานะการเชื่อมต่อ Wi-Fi (กระพริบเมื่อค้นหาสัญญาณ / ติดค้างเมื่อพร้อมให้บริการ)
-* **GPIO 26 (LED_REJECT)**: สัญญาณไฟ LED แสดงสถานะสิทธิ์ถูกปฏิเสธ (สว่างวาบเมื่อสแกนไม่ผ่านสิทธิ์)
-
----
-
-## ⚖️ ข้อกฎหมายและการรับประกันความปลอดภัยของข้อมูล
-ระบบควบคุมการเข้าออกห้อง SmartAccess คณะครุศาสตร์ ได้รับการออกแบบให้สอดคล้องกับระเบียบราชการทางคอมพิวเตอร์และ PDPA ทุกประการ ข้อมูลประวัติผู้ขอรับบริการและเจ้าหน้าที่ผู้ประเมินสถานะจะได้รับการป้องกันภายใต้มาตรฐานสากลและระบบบันทึกประวัติการบำรุงรักษาอย่างมีธรรมาภิบาล
+### รายละเอียดพอร์ตการต่อขา:
+* **TFT LCD 3.2" (ILI9341)**: CS ➔ 15, RST ➔ 4, DC ➔ 2, MOSI ➔ 23, MISO ➔ 19, SCK ➔ 18
+* **Relay Output (คุมกลอนแม่เหล็ก 280kg)**: GPIO 12
+* **Active Buzzer (เสียงดนตรีบูตและปลดล็อก)**: GPIO 27
+* **WiFi Status LED**: GPIO 14 (กะพริบเมื่อค้นหาสัญญาณ / ติดค้างเมื่อเชื่อมสำเร็จ)
+* **Reject Status LED**: GPIO 26 (สว่างวาบสีแดงสลับสิทธิ์ถูกปฏิเสธ)
 
 ---
-*จัดทำและพัฒนาขึ้นเพื่อสนับสนุนงานเทคโนโลยีและนวัตกรรม คณะครุศาสตร์ Innovative system for managing access rights and controlling classroom access via wireless network*
+
+## ⚖️ มาตรฐานความสอดคล้องทางกฎหมาย (Legal Compliance & Ethics)
+ระบบนี้ทำงานโดยเคารพสิทธิ์และรักษาความเป็นส่วนตัวของผู้ใช้งานอย่างเป็นรูปธรรม:
+* **พ.ร.บ. คอมพิวเตอร์ พ.ศ. 2550 มาตรา 26**: จัดเก็บบันทึกประวัติข้อมูลการจราจรเข้าอาคารอย่างสมบูรณ์แบบไม่น้อยกว่า 90 วัน มีระบบป้องภัยทำลายหลักฐานด้วยรหัสผ่านแอดมินสูงสุด
+* **PDPA (พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562)**: คุมนโยบายการจัดเก็บสิทธิ์ความเห็นชอบผู้ใช้งานแบบคัดแยกหมวดหมู่ (Granular Consent Management) และมีฟังก์ชันเพิกถอนสิทธิ์/ขอลบข้อมูลตามมาตรา 22-26 อย่างถูกต้องตามกฎหมายของไทย
+
+---
+*นวัตกรรมระบบควบคุมการเข้าออกห้องปฏิบัติการอัจฉริยะ คณะครุศาสตร์อุตสาหกรรม มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร*
+*(SmartAccess Faculty of Technical Education, RMUTP)*
