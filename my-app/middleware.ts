@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-// middleware.ts — Route protection in Next.js 16
+// middleware.ts — Route protection in Next.js 16 แง
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "./lib/auth";
