@@ -59,6 +59,38 @@ async function migrate() {
       ALTER TABLE dynamic_qr_tokens ADD COLUMN IF NOT EXISTS room_code VARCHAR(50) NOT NULL DEFAULT 'default';
     `);
 
+    // 4. Create firmware_releases table if not exists
+    console.log("Creating firmware_releases table if not exists...");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS firmware_releases (
+        id SERIAL PRIMARY KEY,
+        version VARCHAR(32) UNIQUE NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INT NOT NULL,
+        checksum_md5 VARCHAR(32) NOT NULL,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        uploaded_by UUID
+      )
+    `);
+
+    // 5. Create consent_records table if not exists
+    console.log("Creating consent_records table if not exists...");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS consent_records (
+        id BIGSERIAL PRIMARY KEY,
+        consent_uuid VARCHAR(64) UNIQUE NOT NULL,
+        ip_hash CHAR(64) NOT NULL,
+        user_agent TEXT,
+        version VARCHAR(10) NOT NULL,
+        necessary BOOLEAN NOT NULL DEFAULT TRUE,
+        functional BOOLEAN NOT NULL DEFAULT FALSE,
+        analytics BOOLEAN NOT NULL DEFAULT FALSE,
+        marketing BOOLEAN NOT NULL DEFAULT FALSE,
+        action VARCHAR(20) NOT NULL CHECK (action IN ('granted', 'withdrawn', 'updated', 'declined')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log("Checking tables structure...");
     const { rows: columns } = await pool.query(`
       SELECT table_name, column_name, data_type 
