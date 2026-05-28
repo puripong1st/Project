@@ -27,6 +27,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ...status, url });
   } catch (error) {
     console.error("[ESP32/Status] error:", error);
-    return NextResponse.json({ online: false, mode: "physical", error: "Status check failed" }, { status: 500 });
+    return NextResponse.json({ online: false, mode: "physical", error: "Status check failed" }, { status: 200 });
   }
 }

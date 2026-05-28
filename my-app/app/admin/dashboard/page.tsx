@@ -2284,7 +2284,7 @@ void handleLocalWebServerRequest() {
     }
   };
 
-  const handleAddRoom = (e?: React.FormEvent | React.MouseEvent) => {
+  const handleAddRoom = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
     const code = newRoomCode.trim().toUpperCase();
     const ip = newRoomIp.trim();
@@ -2301,15 +2301,80 @@ void handleLocalWebServerRequest() {
       showToast("รหัสห้องเรียนนี้มีอยู่แล้ว", "error");
       return;
     }
-    setRoomsList(prev => [...prev, { room: code, ip }]);
+    const updatedRooms = [...roomsList, { room: code, ip }];
+    setRoomsList(updatedRooms);
     setNewRoomCode("");
     setNewRoomIp("");
-    showToast(` เพิ่มห้อง ${code} ลงในรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
+
+    setSettingsLoading(true);
+    const custom_settings: Record<string, string> = {};
+    custom_settings["configured_rooms"] = updatedRooms.map(r => r.room).join(",");
+    updatedRooms.forEach(r => {
+      custom_settings[`room_ip_${r.room}`] = r.ip;
+    });
+
+    try {
+      const r = await fetch("/api/system/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...settings,
+          auto_approve_enabled: settings.auto_approve_enabled ? "1" : "0",
+          auto_fill_enabled: settings.auto_fill_enabled ? "1" : "0",
+          custom_settings
+        }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        showToast(`เพิ่มห้อง ${code} ลงในระบบและบันทึกข้อมูลเรียบร้อยแล้ว`, "success");
+        fetchSettings();
+        fetchSystemStatus();
+      } else {
+        showToast(data.error || "ไม่สามารถบันทึกห้องเรียนใหม่ได้", "error");
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
+    } finally {
+      setSettingsLoading(false);
+    }
   };
 
-  const handleRemoveRoom = (roomCode: string) => {
-    setRoomsList(prev => prev.filter(r => r.room !== roomCode));
-    showToast(` ลบห้อง ${roomCode} ออกจากรายการชั่วคราวแล้ว อย่าลืมกด "บันทึกการตั้งค่า" ด้านล่าง!`, "success");
+  const handleRemoveRoom = async (roomCode: string) => {
+    if (!confirm(`ต้องการลบห้อง ${roomCode} และข้อมูลบอร์ดควบคุมทั้งหมดออกจากระบบ ใช่หรือไม่?`)) return;
+    const updatedRooms = roomsList.filter(r => r.room !== roomCode);
+    setRoomsList(updatedRooms);
+
+    setSettingsLoading(true);
+    const custom_settings: Record<string, string> = {};
+    custom_settings["configured_rooms"] = updatedRooms.map(r => r.room).join(",");
+    updatedRooms.forEach(r => {
+      custom_settings[`room_ip_${r.room}`] = r.ip;
+    });
+
+    try {
+      const r = await fetch("/api/system/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...settings,
+          auto_approve_enabled: settings.auto_approve_enabled ? "1" : "0",
+          auto_fill_enabled: settings.auto_fill_enabled ? "1" : "0",
+          custom_settings
+        }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        showToast(`ลบห้อง ${roomCode} และอัปเดตระบบเรียบร้อยแล้ว`, "success");
+        fetchSettings();
+        fetchSystemStatus();
+      } else {
+        showToast(data.error || "ไม่สามารถบันทึกการลบห้องเรียนได้", "error");
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
+    } finally {
+      setSettingsLoading(false);
+    }
   };
 
   // Unified Filters (Tab 2: ทำเนียบ & ประวัติเข้าออก)
