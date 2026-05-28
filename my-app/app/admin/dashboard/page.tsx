@@ -6350,9 +6350,10 @@ void handleLocalWebServerRequest() {
                       justifyContent: "center",
                       color: "#fff",
                       fontSize: 26,
-                      boxShadow: "0 6px 16px rgba(124,58,237,0.25)"
+                      boxShadow: "0 6px 16px rgba(124,58,237,0.25)",
+                      flexShrink: 0 // ป้องกันไม่ให้ไอคอนกล่องถูกบีบอัดขนาดบนหน้าจอขนาดกลาง/เล็ก
                     }}>
-                      
+                      📚
                     </div>
                     <div>
                       <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--smartaccess-purple-dark)", margin: 0 }}>
