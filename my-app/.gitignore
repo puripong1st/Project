@@ -45,3 +45,6 @@ esp32/build/
 
 #crt
 .crt
+
+#obsidian
+/.obsidian/

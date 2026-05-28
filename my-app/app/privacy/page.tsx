@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // PDPA-compliant Privacy Policy v2.0
 // ครอบคลุม PDPA ม.23 ครบ 7 รายการ + สิทธิเจ้าของข้อมูล 8 ข้อ (ม.19, 30-36, 73)
 import { useState, useEffect } from "react";
@@ -24,27 +24,38 @@ const subHeading: React.CSSProperties = {
   marginBottom: "6px",
 };
 
+const tableWrapStyle: React.CSSProperties = {
+  width: "100%",
+  overflowX: "auto",
+  WebkitOverflowScrolling: "touch",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.1)",
+  marginTop: "8px",
+};
+
 const tableStyle: React.CSSProperties = {
   width: "100%",
   borderCollapse: "collapse",
   fontSize: "13.5px",
-  marginTop: "8px",
+  minWidth: "480px",
 };
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",
-  padding: "8px 10px",
-  background: "rgba(124, 58, 237, 0.18)",
-  border: "1px solid rgba(255,255,255,0.1)",
+  padding: "10px 12px",
+  background: "rgba(124, 58, 237, 0.22)",
+  borderBottom: "1px solid rgba(255,255,255,0.12)",
   fontWeight: 700,
   color: "#FFFFFF",
+  whiteSpace: "nowrap",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "8px 10px",
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "rgba(255, 255, 255, 0.8)",
+  padding: "10px 12px",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  color: "rgba(255, 255, 255, 0.82)",
   verticalAlign: "top",
+  lineHeight: "1.6",
 };
 
 export default function PrivacyPage() {
@@ -169,7 +180,7 @@ export default function PrivacyPage() {
           {/* 0. Data Controller */}
           <div>
             <h3 style={sectionHeading}>0. ผู้ควบคุมข้อมูลส่วนบุคคล (Data Controller)</h3>
-            <table style={tableStyle}>
+            <div style={tableWrapStyle}><table style={tableStyle}>
               <tbody>
                 <tr><td style={tdStyle}><strong>ชื่อ</strong></td><td style={tdStyle}>คณะครุศาสตร์อุตสาหกรรม มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร</td></tr>
                 <tr><td style={tdStyle}><strong>ที่อยู่</strong></td><td style={tdStyle}>1381 ถนนประชาราษฎร์ 1 แขวงวงศ์สว่าง เขตบางซื่อ กรุงเทพมหานคร 10800</td></tr>
@@ -177,7 +188,7 @@ export default function PrivacyPage() {
                 <tr><td style={tdStyle}><strong>อีเมลทั่วไป</strong></td><td style={tdStyle}>info@rmutp.ac.th</td></tr>
                 <tr><td style={tdStyle}><strong>เจ้าหน้าที่คุ้มครองข้อมูล (DPO)</strong></td><td style={tdStyle}>dpo@rmutp.ac.th · 02-836-3000 ต่อ DPO</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </div>
 
           {/* 1. Lawful Basis */}
@@ -196,7 +207,7 @@ export default function PrivacyPage() {
           {/* 2. Types of Data */}
           <div>
             <h3 style={sectionHeading}>2. ประเภทข้อมูลส่วนบุคคลที่จัดเก็บ</h3>
-            <table style={tableStyle}>
+            <div style={tableWrapStyle}><table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>หมวด</th>
@@ -226,7 +237,7 @@ export default function PrivacyPage() {
                   <td style={tdStyle}>หลักฐานการให้/ถอน consent ตาม PDPA ม.19</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
             <p style={{ marginTop: "10px", fontSize: "13px", color: "rgba(255,255,255,0.65)", display: "flex", gap: 8, alignItems: "flex-start" }}>
               <span style={{ color: "#F59E0B", flexShrink: 0, marginTop: 2 }}><IconAlert size={14} /></span>
               <span>ระบบไม่จัดเก็บข้อมูลอ่อนไหว (Sensitive Data) ตาม PDPA ม.26 เช่น เชื้อชาติ ศาสนา ข้อมูลสุขภาพ ข้อมูลชีวภาพ (Biometric) หรือประวัติอาชญากรรม</span>
@@ -250,7 +261,7 @@ export default function PrivacyPage() {
           {/* 4. Recipients */}
           <div>
             <h3 style={sectionHeading}>4. ผู้รับข้อมูลและผู้ประมวลผลข้อมูล (Recipients & Sub-Processors)</h3>
-            <table style={tableStyle}>
+            <div style={tableWrapStyle}><table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>ผู้รับข้อมูล</th>
@@ -285,7 +296,7 @@ export default function PrivacyPage() {
                   <td style={tdStyle}>เฉพาะข้อความแจ้งเตือนเหตุการณ์ (ชื่อ-รหัส masked, ห้อง, เวลา)</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
           </div>
 
           {/* 5. Cross-Border Transfer */}
@@ -304,7 +315,7 @@ export default function PrivacyPage() {
           {/* 6. Retention */}
           <div>
             <h3 style={sectionHeading}>6. ระยะเวลาเก็บข้อมูล (Data Retention)</h3>
-            <table style={tableStyle}>
+            <div style={tableWrapStyle}><table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>ประเภทข้อมูล</th>
@@ -339,7 +350,7 @@ export default function PrivacyPage() {
                   <td style={tdStyle}>ป้องกันการโจมตี brute-force</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
             <p style={{ marginTop: "10px" }}>
               เมื่อพ้นกำหนดข้างต้น ระบบจะทำลายข้อมูลโดยอัตโนมัติ (Data Pruning Cron Job)
             </p>
@@ -348,7 +359,7 @@ export default function PrivacyPage() {
           {/* 7. Cookies & Storage */}
           <div>
             <h3 style={sectionHeading}>7. คุกกี้และ Web Storage ที่ระบบใช้</h3>
-            <table style={tableStyle}>
+            <div style={tableWrapStyle}><table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>ชื่อ</th>
@@ -388,7 +399,7 @@ export default function PrivacyPage() {
                   <td style={tdStyle}>30 วัน</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
             <div style={{ marginTop: "12px" }}>
               <button
                 onClick={openConsentSettings}
@@ -420,7 +431,7 @@ export default function PrivacyPage() {
             <p>
               ท่านมีสิทธิตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 ทั้ง 8 ข้อดังต่อไปนี้:
             </p>
-            <table style={tableStyle}>
+            <div style={tableWrapStyle}><table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>มาตรา</th>
@@ -470,7 +481,7 @@ export default function PrivacyPage() {
                   <td style={tdStyle}>หากท่านเห็นว่าระบบไม่ปฏิบัติตามกฎหมาย: <a href="https://www.pdpc.or.th" target="_blank" rel="noopener noreferrer" style={{ color: "#F472B6" }}>pdpc.or.th</a> หรือ pdpc@mdes.go.th</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
             <p style={{ marginTop: "12px", fontSize: "13px", color: "rgba(255,255,255,0.65)", display: "flex", gap: 8, alignItems: "flex-start" }}>
               <span style={{ color: "#A78BFA", flexShrink: 0, marginTop: 2 }}><IconLightbulb size={14} /></span>
               <span>การใช้สิทธิข้างต้นไม่มีค่าใช้จ่าย เว้นแต่กรณีการขอสำเนาเอกสารพิมพ์ออก</span>
@@ -494,7 +505,7 @@ export default function PrivacyPage() {
           {/* 10. Change Log */}
           <div>
             <h3 style={sectionHeading}>10. การเปลี่ยนแปลงนโยบาย (Change Log)</h3>
-            <table style={tableStyle}>
+            <div style={tableWrapStyle}><table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>เวอร์ชัน</th>
@@ -514,7 +525,7 @@ export default function PrivacyPage() {
                   <td style={tdStyle}>เผยแพร่นโยบายฉบับแรก</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
             <p style={{ marginTop: "10px" }}>
               ระบบจะแจ้งการเปลี่ยนแปลงนโยบายที่สาระสำคัญผ่านอีเมล (หากมี) และประกาศบนเว็บล่วงหน้าไม่น้อยกว่า 30 วัน
             </p>
