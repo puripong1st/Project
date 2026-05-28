@@ -549,12 +549,20 @@ body {
 
 @media (min-width: 768px) {
   .sidebar-responsive {
-    position: sticky !important;
+    position: fixed !important;
     top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 260px !important;
     height: 100vh !important;
     overflow-y: auto !important;
     transform: none !important;
     z-index: 100 !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .main-content-responsive {
+    margin-left: 260px !important;
   }
 }
 

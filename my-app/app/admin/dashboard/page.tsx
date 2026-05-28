@@ -3695,7 +3695,7 @@ void handleLocalWebServerRequest() {
         )}
 
         {/* Main Content Area */}
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <main className="main-content-responsive" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
           {/* Header Mobile and Topbar */}
           <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
@@ -5574,6 +5574,23 @@ void handleLocalWebServerRequest() {
                       );
                     })
                   )}
+                </section>
+                
+                <section className="room-form-band" style={{ marginTop: 24 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 900, color: "var(--text-primary)", margin: "0 0 14px" }}>เพิ่มห้อง / บอร์ดใหม่</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, alignItems: "end" }}>
+                    <div>
+                      <label className="field-label">รหัสห้อง</label>
+                      <input className="smartaccess-input" placeholder="เช่น CE-403" value={newRoomCode} onChange={e => setNewRoomCode(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">IP Address / Domain</label>
+                      <input className="smartaccess-input" placeholder="เช่น 192.168.1.102" value={newRoomIp} onChange={e => setNewRoomIp(e.target.value)} />
+                    </div>
+                    <button type="button" onClick={() => handleAddRoom()} className="btn-primary" style={{ borderRadius: 8, minHeight: 46 }}>
+                      เพิ่มห้องลงรายการ
+                    </button>
+                  </div>
                 </section>
 
                 {/* ── OTA Firmware Control Center Card ── */}
