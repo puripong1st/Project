@@ -17,6 +17,16 @@
 9. [Vercel ทำหน้าที่อะไรกับ my-app](#9-vercel-ทำหน้าที่อะไรกับ-my-app)
 10. [อัลกอริทึม + Flowchart](#10-อัลกอริทึม--flowchart)
 11. [เหตุผลที่บางระบบเร็ว / บางระบบช้า](#11-เหตุผลที่บางระบบเร็วบางระบบช้า)
+12. [การอัปเดตระบบ (2026-05-28)](#12-การอัปเดตระบบ-2026-05-28)
+    - [12.1 ESP32 Adaptive Polling + ETag Cache](#121-esp32-adaptive-polling--etag-cache-ประสิทธิภาพ-polling-ดีขึ้น-310)
+    - [12.2 Server-Sent Events (SSE) — Dashboard Real-time](#122-server-sent-events-sse--dashboard-อัปเดตแบบ-real-time)
+    - [12.3 OTA Firmware Progress Bar บน TFT](#123-ota-firmware-progress-bar-บน-tft-ใน-arduino-template)
+    - [12.4 ตารางเวลาเปิด-ปิดห้อง (Room Schedules)](#124-ตารางเวลาเปิด-ปิดห้อง-room-schedules)
+    - [12.5 ตั้งค่าการอนุมัติแยกต่อห้อง (Per-Room Settings)](#125-ตั้งค่าการอนุมัติแยกต่อห้อง-per-room-settings)
+    - [12.6 Performance Indexes และ ตาราง DB ใหม่](#126-performance-indexes-และ-ตาราง-db-ใหม่)
+    - [12.7 OTA Firmware — Discord Notification + Web Logs](#127-ota-firmware--discord-notification--web-logs)
+    - [12.8 อัปเดต Flow/Section ที่มีอยู่](#128-อัปเดต-section-ที่มีอยู่)
+    - [12.9 สรุปไฟล์ที่เปลี่ยนแปลง](#129-สรุปไฟล์ที่เปลี่ยนแปลงทั้งหมด-2026-05-28)
 
 ---
 
@@ -553,4 +563,392 @@ SUPABASE_SERVICE_ROLE_KEY=<server key>
 
 ---
 
-> เอกสารนี้สรุปจากโค้ดจริงในโปรเจกต์ ณ วันที่ 2026-05-27 — หากแก้สคีมา DB หรือเปลี่ยน flow ของ ESP32 ให้ปรับเอกสารนี้ตามด้วย
+## 12. การอัปเดตระบบ (2026-05-28)
+
+หัวข้อนี้บันทึกการเปลี่ยนแปลงและฟีเจอร์ใหม่ทั้งหมดที่เพิ่มเข้ามาตั้งแต่ version 2026-05-27
+
+---
+
+### 12.1 ESP32 Adaptive Polling + ETag Cache (ประสิทธิภาพ Polling ดีขึ้น 3–10×)
+
+#### ปัญหาเดิม
+ESP32 ส่ง `GET /api/esp32/display` ทุก 3 วินาทีโดยไม่คำนึงว่าข้อมูลเปลี่ยนหรือเปล่า ทำให้:
+- ยิง request จำนวนมากโดยไม่จำเป็น (มักไม่มีการเปลี่ยนแปลง > 95% ของเวลา)
+- เปลือง bandwidth และ Supabase connection pool
+
+#### การแก้ไข — 2 ชั้น
+
+**ชั้นที่ 1: ETag บนฝั่ง Server (`/api/esp32/display`)**
+
+Server คำนวณ ETag จาก state สำคัญ แล้วส่งกลับใน header:
+```
+SHA1(pendingCount | lastStudentId | activeToken | updateAvailable | firmwareVer)
+→ ตัดเหลือ 16 ตัวอักษร → ใส่ใน ETag: "abc123def456"
+```
+
+- ถ้า Client ส่ง `If-None-Match: "<etag>"` และ state ไม่เปลี่ยน → ตอบกลับ **304 Not Modified** (body ว่าง, ไม่ต้อง parse JSON)
+- **ข้อยกเว้น**: ถ้า `door_trigger = "open"` → **ไม่ส่ง 304 เด็ดขาด** เพราะคำสั่งต้องถูก consume เสมอ
+
+**ชั้นที่ 2: Adaptive Polling บนฝั่ง ESP32 (ในโค้ด Arduino Template)**
+
+ระบบปรับความถี่ Polling อัตโนมัติตาม activity level:
+
+```
+ค่า Constant:
+  POLL_FAST   = 500ms    ← เมื่อมีเหตุการณ์สำคัญ (ประตูเปิด)
+  POLL_NORMAL = 2000ms   ← ปกติ (มีการเปลี่ยนแปลงข้อมูล)
+  POLL_SLOW   = 5000ms   ← ไม่มีอะไรเปลี่ยน 5 รอบติดต่อกัน
+
+Logic:
+  if door_trigger == "open"     → idleCycles=0, POLL_FAST
+  elif ข้อมูลเปลี่ยน           → idleCycles=0, POLL_NORMAL
+  else (304 หรือ data เหมือนเดิม):
+    idleCycles++
+    if idleCycles >= 5          → POLL_SLOW
+```
+
+**ผลลัพธ์จริง**:
+| สถานการณ์ | เดิม (3s fixed) | ใหม่ |
+|-----------|-----------------|------|
+| มีการ unlock ต่อเนื่อง | 3s | 500ms (6× เร็วขึ้น) |
+| ห้องปกติ ไม่มีอะไร | 3s | 5s (ลด load 40%) |
+| มีนักศึกษา submit | 3s | 2s (ตอบสนองดีขึ้น) |
+| Server ส่ง 304 | parse JSON | ไม่ parse (ประหยัด CPU) |
+
+#### ไฟล์ที่เกี่ยวข้อง
+| ไฟล์ | สิ่งที่เปลี่ยน |
+|------|---------------|
+| `app/api/esp32/display/route.ts` | เพิ่ม ETag computation + 304 response |
+| `app/admin/dashboard/page.tsx` (Arduino template) | เพิ่ม `POLL_FAST/NORMAL/SLOW`, `idleCycles`, `lastEtag`, `If-None-Match` header, 304 handler, adaptive logic |
+
+---
+
+### 12.2 Server-Sent Events (SSE) — Dashboard อัปเดตแบบ Real-time
+
+#### ปัญหาเดิม
+Dashboard โหลดข้อมูล pending students และ access logs ด้วย `setInterval` ทุก 10 วินาที ทำให้:
+- แอดมินต้องรอนานถึง 10 วินาทีกว่าจะเห็นนักศึกษาใหม่ที่ขอเข้า
+- ยิง HTTP request ซ้ำซากแม้ไม่มีข้อมูลใหม่
+
+#### การแก้ไข — SSE Endpoint
+
+**endpoint ใหม่**: `GET /api/sse`
+
+```
+Client (Browser) ──────── GET /api/sse ──────────▶ Server
+                ◀─── event: snapshot {pending, logs} ──── (เชื่อมต่อแล้ว ส่ง data ทันที)
+                ◀─── event: update {pending, logs} ──────  (ทุก 3s ถ้า data เปลี่ยน)
+                ◀─── event: heartbeat {ts} ────────────── (ทุก 3s ถ้า data ไม่เปลี่ยน)
+```
+
+**Change Detection Logic**:
+```
+hash = "${pending.length}:${logs[0]?.id ?? ''}"
+if hash != lastHash → ส่ง "update" event
+else                → ส่ง "heartbeat" (รักษา connection)
+```
+
+**Fallback**: ถ้า SSE ตัดการเชื่อมต่อ (network error / Vercel timeout) → Browser ใช้ native reconnect อัตโนมัติ และถ้า error ต่อเนื่อง → กลับไปใช้ `setInterval` 10s แทน
+
+#### วิธีใช้งานฝั่ง Dashboard
+```tsx
+const es = new EventSource("/api/sse");
+es.addEventListener("snapshot", e => applyData(JSON.parse(e.data)));
+es.addEventListener("update",   e => applyData(JSON.parse(e.data)));
+```
+
+#### ผลลัพธ์
+| | เดิม | ใหม่ |
+|--|------|------|
+| ความหน่วงเห็นนักศึกษาใหม่ | สูงสุด 10 วินาที | ≤ 3 วินาที |
+| Request ต่อนาที (ไม่มีการเปลี่ยน) | 6 requests | 0 requests (heartbeat เท่านั้น) |
+| ความซับซ้อน | `setInterval` | `EventSource` + auto-reconnect |
+
+#### ไฟล์ที่เกี่ยวข้อง
+| ไฟล์ | สิ่งที่เปลี่ยน |
+|------|---------------|
+| `app/api/sse/route.ts` | **ไฟล์ใหม่** — SSE endpoint |
+| `app/admin/dashboard/page.tsx` | แทน 2 `setInterval` ด้วย `EventSource` เดียว |
+
+---
+
+### 12.3 OTA Firmware Progress Bar บน TFT (ใน Arduino Template)
+
+เมื่อ ESP32 ได้รับสัญญาณ `update_available: true` จาก server และเริ่มดาวน์โหลด firmware ใหม่ผ่าน HTTPS OTA จะแสดง progress bar แบบ real-time บนหน้าจอ TFT:
+
+```
+┌────────────────────────────────┐
+│  ⬇ OTA UPDATE IN PROGRESS      │
+│  Downloading firmware...       │
+│  ┌──────────────────────────┐  │
+│  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░│  │  ← Progress Bar (สีม่วง SmartAccess)
+│  └──────────────────────────┘  │
+│  62% (124 / 200 KB)            │
+└────────────────────────────────┘
+```
+
+**การทำงาน**: ใช้ `httpUpdate.onProgress(onOTAProgress)` callback จาก ESP32 `HTTPUpdate` library
+
+```cpp
+void onOTAProgress(int current, int total) {
+  int pct = (current * 100) / total;
+  int barW = (pct * 280) / 100;
+  // วาด Progress Bar ขนาด 280×16px
+  tft.fillRect(21, 131, barW, 14, tft.color565(124, 58, 237)); // สีม่วง
+  // แสดง XX% (XX / XX KB)
+}
+```
+
+**หมายเหตุ**: Progress bar นี้ทำงานเฉพาะโค้ดบอร์ดจริง (`#ifndef WOKWI_SIM`) เนื่องจาก `HTTPUpdate` library ไม่มีใน Wokwi Simulator
+
+---
+
+### 12.4 ตารางเวลาเปิด-ปิดห้อง (Room Schedules)
+
+#### ภาพรวม
+ระบบใหม่สำหรับบันทึกเวลาทำการของแต่ละห้อง แยกรายวันในสัปดาห์ เพื่อใช้เป็นข้อมูลอ้างอิงของผู้ดูแลและอนาคตสามารถนำไปใช้ล็อคประตูอัตโนมัติ
+
+#### ตารางฐานข้อมูลใหม่: `room_schedules`
+```sql
+CREATE TABLE room_schedules (
+  id           SERIAL PRIMARY KEY,
+  room_code    VARCHAR(50) NOT NULL,
+  day_of_week  SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+                         -- 0=อาทิตย์, 1=จันทร์, ..., 6=เสาร์
+  open_time    TIME NOT NULL,
+  close_time   TIME NOT NULL,
+  is_active    BOOLEAN DEFAULT TRUE,
+  created_by   INT REFERENCES admin_users(id) ON DELETE SET NULL,
+  updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (room_code, day_of_week)  -- 1 ห้อง : 1 วัน → 1 record
+);
+```
+
+#### API Endpoints
+| Method | Endpoint | สิทธิ์ | คำอธิบาย |
+|--------|----------|--------|---------|
+| `GET` | `/api/system/schedule?room=CE-401` | admin ทุก role | ดึงตารางเวลา (กรองตามห้องได้) |
+| `POST` | `/api/system/schedule` | owner เท่านั้น | เพิ่ม/แก้ไขตาราง (Upsert ตาม room+day) |
+| `DELETE` | `/api/system/schedule?id=5` | owner เท่านั้น | ลบแถวตาม id |
+
+**ตัวอย่าง POST body**:
+```json
+{
+  "room_code": "CE-401",
+  "day_of_week": 1,
+  "open_time": "08:00",
+  "close_time": "17:00",
+  "is_active": true
+}
+```
+
+#### UI: แท็บ "ตารางเวลาเปิด-ปิดห้อง" (Sidebar)
+แท็บใหม่สำหรับ Owner เท่านั้น อยู่ระหว่าง "ผู้ดูแลระบบ" และ "ตั้งค่าระบบ"
+
+**ฟังก์ชันใน UI**:
+- ฟอร์มกรอกห้อง / วัน / เวลาเปิด / เวลาปิด / สถานะ → กด "บันทึก" (Upsert อัตโนมัติ)
+- ตารางแสดงทุก schedule พร้อมปุ่มลบรายการ
+- Index สำหรับ query เร็ว: `idx_schedule_room ON room_schedules(room_code, day_of_week, is_active)`
+
+---
+
+### 12.5 ตั้งค่าการอนุมัติแยกต่อห้อง (Per-Room Settings)
+
+#### ปัญหาเดิม
+การตั้งค่าต่อไปนี้เป็น **global ทั้งระบบ**:
+- เปิด/ปิดการอนุมัติอัตโนมัติ
+- เวลาเริ่ม-ปิดบริการ
+- วันเปิดให้บริการ
+- Auto-fill mode
+- การแสดงรหัสนักศึกษาบนจอ ESP32
+
+ทำให้ทุกห้องใช้การตั้งค่าเดียวกัน ไม่สามารถแยกได้ว่าห้อง CE-401 เปิดบ่าย และ CE-402 เปิดเช้า
+
+#### การแก้ไข — Per-Room Config
+
+**โครงสร้างข้อมูล**: บันทึกใน `system_settings` ด้วย key ที่มี prefix `rcfg_{room}_`:
+
+| Setting Key | ตัวอย่าง | ความหมาย |
+|-------------|---------|---------|
+| `rcfg_CE-401_auto_approve_enabled` | `"1"` | เปิดอนุมัติอัตโนมัติสำหรับห้อง CE-401 |
+| `rcfg_CE-401_auto_approve_start_time` | `"08:00"` | เวลาเริ่มบริการ |
+| `rcfg_CE-401_auto_approve_end_time` | `"17:00"` | เวลาปิดบริการ |
+| `rcfg_CE-401_auto_approve_days` | `"1,2,3,4,5"` | วัน จ-ศ |
+| `rcfg_CE-401_auto_fill_enabled` | `"1"` | เปิด Auto-fill |
+| `rcfg_CE-401_auto_fill_mode` | `"auto"` | Pop-up อัตโนมัติ |
+| `rcfg_CE-401_student_id_display_mode` | `"masked"` | ซ่อนบางส่วนบน ESP32 |
+
+**Fallback Logic**: ถ้าห้องยังไม่ได้ตั้งค่า → ใช้ค่า global (`auto_approve_enabled`, `student_id_display_mode`, ฯลฯ) แทน
+
+#### UI ที่เปลี่ยน
+
+**แท็บ ห้องเรียน & ESP32** — แต่ละ Room Card มีปุ่ม "⚙️ ตั้งค่าการอนุมัติ & หน้าจอ ESP32":
+
+```
+┌─ Room Card: CE-401 ──────────────────────────────────────────┐
+│  IP: 192.168.1.100                               [ONLINE] ✓  │
+│  [เทส Polling] [ปลดล็อกด่วน] [ตั้งค่า API] [🗑️]             │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ ⚙️ ตั้งค่าการอนุมัติ & หน้าจอ ESP32              [▼]   │ │  ← กดขยาย
+│  └─────────────────────────────────────────────────────────┘ │
+│  (เมื่อกด ▼ จะขยายแสดง Panel ด้านล่าง)                       │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ เข้าห้องอัตโนมัติ                         [Toggle] 🟣   │ │
+│  │ Auto-fill                                 [Toggle] 🟣   │ │
+│  │   ○ Auto Pop-up  ● Manual Confirmation                  │ │
+│  │ ความปลอดภัยหน้าจอ ESP32: [Full ID ▼]                   │ │
+│  │ เวลาบริการ: [08:00] ถึง [17:00]                        │ │
+│  │ วัน: [จ.] [อ.] [พ.] [พฤ.] [ศ.] ส. อา.                │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
+
+การบันทึก: กดปุ่ม "บันทึกห้องทั้งหมด" ด้านบนของแท็บ rooms จะบันทึกทุก room config พร้อมกัน
+
+**แท็บตั้งค่าระบบ** — เหลือเฉพาะ **Discord Webhooks ส่วนกลาง** เท่านั้น ส่วน Automated Control ย้ายไปอยู่ใน room card แล้ว
+
+#### Backend ที่ปรับ
+
+**`/api/esp32/display`** — อ่าน `student_id_display_mode` แบบ per-room ก่อน:
+```sql
+SELECT setting_value FROM system_settings
+WHERE setting_key = 'rcfg_{room}_student_id_display_mode'
+   OR setting_key = 'student_id_display_mode'
+ORDER BY (setting_key = 'rcfg_{room}_student_id_display_mode') DESC
+LIMIT 1
+```
+
+**`/api/students` (POST register)** — อ่าน auto_approve settings แบบ per-room:
+```typescript
+const autoApproveEnabled =
+  (settings[`rcfg_${room}_auto_approve_enabled`] ?? settings.auto_approve_enabled) === "1";
+```
+
+**`/api/students/check-match` (POST)** — รับ `room` จาก body และอ่าน auto_fill per-room:
+```typescript
+const autoFillEnabled =
+  (settings[`rcfg_${room}_auto_fill_enabled`] ?? settings.auto_fill_enabled) === "1";
+```
+
+---
+
+### 12.6 Performance Indexes และ ตาราง DB ใหม่
+
+#### Indexes ใหม่ใน PostgreSQL
+
+| Index | ตาราง | คอลัมน์ | ประโยชน์ |
+|-------|-------|---------|---------|
+| `idx_logs_action` | `access_logs` | `action` | กรอง `WHERE action = 'firmware_ota_triggered'` เร็วขึ้น |
+| `idx_logs_timestamp_desc` | `access_logs` | `timestamp DESC` | ORDER BY timestamp DESC (เปิด Logs หน้าแรก) |
+| `idx_students_status` | `students` | `status` | `WHERE status = 'pending'` |
+| `idx_students_room_status` | `students` | `(requested_room, status)` | กรองตามห้อง + status พร้อมกัน |
+| `idx_firmware_uploaded_at` | `firmware_releases` | `uploaded_at DESC` | ดึง firmware ล่าสุดเร็วขึ้น |
+| `idx_schedule_room` | `room_schedules` | `(room_code, day_of_week, is_active)` | Query ตารางเวลา |
+
+> **หมายเหตุ**: Indexes ทั้งหมดนี้ถูกสร้างอัตโนมัติโดย `lib/db.ts` ในตอน startup — ไม่ต้องรัน migration ด้วยตนเอง
+
+#### `uploaded_by` column fix (firmware_releases)
+
+พบปัญหา: คอลัมน์ `firmware_releases.uploaded_by` ถูกสร้างเป็น type `UUID` ผิด ควรเป็น `INT` (foreign key ไป `admin_users.id`)
+
+`lib/db.ts` มี **auto-migration** ที่ตรวจและแก้ให้อัตโนมัติ:
+```sql
+-- ตรวจว่า uploaded_by เป็น UUID หรือไม่
+SELECT data_type FROM information_schema.columns
+WHERE table_name = 'firmware_releases' AND column_name = 'uploaded_by'
+
+-- ถ้าเป็น UUID → drop column แล้วสร้างใหม่เป็น INT
+ALTER TABLE firmware_releases DROP COLUMN uploaded_by;
+ALTER TABLE firmware_releases ADD COLUMN uploaded_by INT REFERENCES admin_users(id) ON DELETE SET NULL;
+```
+
+---
+
+### 12.7 OTA Firmware — Discord Notification + Web Logs
+
+#### Discord Notifications ที่เพิ่ม
+
+| Event Type | Trigger | ข้อมูลที่ส่ง | Webhook Channel |
+|-----------|---------|-------------|----------------|
+| `firmware_deployed` | Admin อัปโหลด firmware ใหม่ | เวอร์ชัน, ชื่อแอดมิน, MD5, ขนาดไฟล์ | `discord_webhook_logs` / `discord_webhook_admin_audit` |
+| `firmware_ota_triggered` | ESP32 ดาวน์โหลด firmware จริง | เวอร์ชันเก่า→ใหม่, ห้อง, IP บอร์ด, MD5 | `discord_webhook_logs` / `discord_webhook_admin_audit` |
+
+**ตัวอย่าง Discord Embed (firmware_ota_triggered)**:
+```
+🔄 ESP32 OTA Update Triggered
+━━━━━━━━━━━━━━━━━━━━━━━
+ห้อง: CE-401
+เวอร์ชัน: 1.0.0 → 1.0.1
+IP บอร์ด: 192.168.1.100
+MD5: abc123def456...
+เวลา: 28/05/2026 14:32:11
+```
+
+#### Web Logs Filter
+`GET /api/logs?action=firmware` จะแสดงเฉพาะ log ที่ `action LIKE 'firmware_%'` (ทั้ง `firmware_deployed` และ `firmware_ota_triggered`)
+
+UI ใน Dashboard แสดงสี:
+- 🚀 สีเขียว = `firmware_deployed` (อัปโหลดสำเร็จ)
+- ⬇️ สีฟ้า = `firmware_ota_triggered` (ESP32 ดาวน์โหลด)
+- 🗑️ สีแดง = `firmware_deleted`
+
+---
+
+### 12.8 อัปเดต Section ที่มีอยู่
+
+#### 10.3 Flow ESP32 Poll Loop (ปรับปรุง)
+```
+loop():
+  if (now - lastPollTime >= currentPollDelay):  // Adaptive: 500/2000/5000ms
+    http.addHeader("If-None-Match", lastEtag)   // ส่ง ETag ถ้ามี
+    httpCode = GET /api/esp32/display
+
+    if httpCode == 304:                          // ข้อมูลไม่เปลี่ยน
+      idleCycles++
+      if idleCycles >= 5: currentPollDelay = POLL_SLOW (5s)
+      return  // ไม่ parse JSON เลย
+
+    if httpCode == 200:
+      lastEtag = response.header("ETag")        // เก็บ ETag ไว้
+      if door_trigger == "open":
+        idleCycles=0, currentPollDelay = POLL_FAST (500ms)
+        ... unlock sequence ...
+      elif data_changed:
+        idleCycles=0, currentPollDelay = POLL_NORMAL (2s)
+        drawMainScreen(...)
+      else:
+        idleCycles++
+        if idleCycles >= 5: currentPollDelay = POLL_SLOW (5s)
+        updateClockOnly()
+```
+
+#### 11. เหตุผลที่บางระบบเร็ว/บางระบบช้า (ปรับปรุง)
+
+เพิ่มรายการใหม่ใน "ส่วนที่เร็ว":
+| ส่วน | เหตุผล |
+|------|--------|
+| **ESP32 Poll (ห้องเงียบ)** | ETag 304 → ไม่ parse JSON → ลด CPU + bandwidth ได้ 40–60% |
+| **Dashboard update** | SSE push ≤ 3s แทน polling 10s → ลด request 80% |
+| **Query logs/firmware** | Index `idx_logs_action`, `idx_logs_timestamp_desc` → ลดเวลา scan ทั้งตาราง |
+
+---
+
+### 12.9 สรุปไฟล์ที่เปลี่ยนแปลงทั้งหมด (2026-05-28)
+
+| ไฟล์ | ประเภทการเปลี่ยน | สรุปสั้น |
+|------|----------------|---------|
+| `app/api/esp32/display/route.ts` | ✏️ แก้ไข | เพิ่ม ETag + 304, per-room `student_id_display_mode` |
+| `app/api/sse/route.ts` | 🆕 ใหม่ | SSE endpoint push pending+logs ทุก 3s |
+| `app/api/system/schedule/route.ts` | 🆕 ใหม่ | CRUD ตารางเวลาห้อง (GET/POST/DELETE) |
+| `app/api/system/firmware/upload/route.ts` | ✏️ แก้ไข | Discord notify เมื่ออัปโหลด firmware |
+| `app/api/esp32/firmware-ota/route.ts` | ✏️ แก้ไข | log + Discord notify เมื่อ ESP32 ดาวน์โหลด OTA |
+| `app/api/logs/route.ts` | ✏️ แก้ไข | เพิ่ม `?action=firmware` filter |
+| `app/api/students/route.ts` | ✏️ แก้ไข | อ่าน auto_approve settings แบบ per-room |
+| `app/api/students/check-match/route.ts` | ✏️ แก้ไข | อ่าน auto_fill แบบ per-room |
+| `lib/db.ts` | ✏️ แก้ไข | indexes ใหม่ 6 รายการ, ตาราง `room_schedules`, auto-migrate `uploaded_by` |
+| `lib/discord.ts` | ✏️ แก้ไข | เพิ่ม `firmware_deployed`, `firmware_ota_triggered` event types |
+| `app/admin/dashboard/page.tsx` | ✏️ แก้ไข | SSE, per-room settings panel, OTA logs UI, Arduino template (adaptive polling, ETag, OTA progress bar) |
+
+---
+
+> เอกสารนี้สรุปจากโค้ดจริงในโปรเจกต์ ณ วันที่ 2026-05-28 — หากแก้สคีมา DB หรือเปลี่ยน flow ของ ESP32 ให้ปรับเอกสารนี้ตามด้วย

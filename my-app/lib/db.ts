@@ -515,6 +515,8 @@ export interface AccessLogRow {
 
 export function clearSystemSettingsCache(): void {
   globalForDb.settingsCache = undefined;
+  // Also invalidate Vercel KV cache so Edge Runtime picks up changes
+  import("@/lib/kv-cache").then(m => m.invalidateSettingsCache()).catch(() => {});
 }
 
 export async function getSystemSettings(options: { force?: boolean } = {}): Promise<Record<string, string>> {

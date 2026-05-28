@@ -1,7 +1,7 @@
 // app/api/esp32/qr/route.ts — Return QR code PNG for ESP32 display
 // Uses database-backed dynamic one-time tokens (no legacy HMAC rotation)
 import { NextRequest, NextResponse } from "next/server";
-import { generateQRCodeBuffer, getOrCreateActiveQRToken } from "@/lib/qr";
+import { generateQRCodeBuffer, generateQRCodeDataURL, getOrCreateActiveQRToken } from "@/lib/qr";
 import { getAdminFromCookie } from "@/lib/auth";
 import { verifyEsp32Security } from "@/lib/api-security";
 
@@ -69,6 +69,16 @@ export async function GET(req: NextRequest) {
     // Build the QR target URL
     const baseUrl = getNetworkUrl(req);
     const target = `${baseUrl}/?scan=${token}&room=${room}`;
+
+    const format = searchParams.get("format");
+
+    if (format === "dataurl") {
+      const dataUrl = await generateQRCodeDataURL(target, 280);
+      return NextResponse.json(
+        { dataUrl, room, token },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
 
     const buffer = await generateQRCodeBuffer(target);
 

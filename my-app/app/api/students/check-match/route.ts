@@ -12,15 +12,19 @@ export async function POST(req: NextRequest) {
         { status: 429, headers: { "Retry-After": "60" } }
       );
     }
+    const body = await req.json();
+    const { first_name, last_name, student_id, offline_grant, room } = body;
+
     const settings = await getSystemSettings();
-    const autoFillEnabled = settings.auto_fill_enabled === "1";
+    const roomKey = typeof room === "string" ? room.trim() : "";
+    const autoFillEnabled =
+      (settings[`rcfg_${roomKey}_auto_fill_enabled`] ?? settings.auto_fill_enabled) === "1";
+    const autoFillMode =
+      settings[`rcfg_${roomKey}_auto_fill_mode`] || settings.auto_fill_mode || "auto";
 
     if (!autoFillEnabled) {
       return NextResponse.json({ found: false, disabled: true });
     }
-
-    const body = await req.json();
-    const { first_name, last_name, student_id, offline_grant } = body;
 
     // V06 fix: require a valid offline_grant to prevent unauthenticated PII enumeration
     if (!offline_grant || typeof offline_grant !== "string" || offline_grant.trim().length < 10) {
@@ -53,7 +57,7 @@ export async function POST(req: NextRequest) {
         year: match.year,
         faculty: match.faculty,
         branch: match.branch,
-        mode: settings.auto_fill_mode || "auto",
+        mode: autoFillMode,
       });
     }
 

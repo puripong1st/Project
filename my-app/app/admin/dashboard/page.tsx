@@ -617,6 +617,14 @@ function AdminDashboardInner() {
   // Multi-Room dynamic states
   const [roomsList, setRoomsList] = useState<{ room: string; ip: string }[]>([]);
   const [newRoomCode, setNewRoomCode] = useState("");
+
+  // Per-room settings (auto_approve, auto_fill, student_id_display_mode)
+  interface RoomConfig { auto_approve_enabled: boolean; auto_approve_start_time: string; auto_approve_end_time: string; auto_approve_days: string; auto_fill_enabled: boolean; auto_fill_mode: string; student_id_display_mode: string; }
+  const defaultRoomConfig = (): RoomConfig => ({ auto_approve_enabled: false, auto_approve_start_time: "09:00", auto_approve_end_time: "16:00", auto_approve_days: "1,2,3,4,5", auto_fill_enabled: true, auto_fill_mode: "auto", student_id_display_mode: "full" });
+  const [roomConfigs, setRoomConfigs] = useState<Record<string, RoomConfig>>({});
+  const [expandedRoomSettings, setExpandedRoomSettings] = useState<Set<string>>(new Set());
+  const toggleRoomSettings = (room: string) => setExpandedRoomSettings(prev => { const n = new Set(prev); n.has(room) ? n.delete(room) : n.add(room); return n; });
+  const setRoomConfig = (room: string, patch: Partial<RoomConfig>) => setRoomConfigs(prev => ({ ...prev, [room]: { ...(prev[room] ?? defaultRoomConfig()), ...patch } }));
   const [newRoomIp, setNewRoomIp] = useState("");
   const [testingRoom, setTestingRoom] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { online: boolean; ip: string; mode: string }>>({});
@@ -627,6 +635,53 @@ function AdminDashboardInner() {
   const [selectedPendingIds, setSelectedPendingIds] = useState<number[]>([]);
   // Bulk operations loading indicator
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  // ─── Mobile Swipe-to-Action state ────────────────────────────────────────
+  const touchStartX = useRef<Record<number, number>>({});
+  const [swipeOffset, setSwipeOffset] = useState<Record<number, number>>({}); // px
+  const [swipeAction, setSwipeAction] = useState<Record<number, "approve" | "reject" | null>>({});
+
+  const handleTouchStart = (id: number, e: React.TouchEvent) => {
+    touchStartX.current[id] = e.touches[0].clientX;
+  };
+  const handleTouchMove = (id: number, e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - (touchStartX.current[id] || 0);
+    const clamped = Math.max(-80, Math.min(80, dx));
+    setSwipeOffset(prev => ({ ...prev, [id]: clamped }));
+    setSwipeAction(prev => ({ ...prev, [id]: clamped > 40 ? "approve" : clamped < -40 ? "reject" : null }));
+  };
+  const handleTouchEnd = (id: number, name: string) => {
+    const action = swipeAction[id];
+    setSwipeOffset(prev => ({ ...prev, [id]: 0 }));
+    setSwipeAction(prev => ({ ...prev, [id]: null }));
+    if (action === "approve") {
+      if (navigator.vibrate) navigator.vibrate(50);
+      handleApprove(id);
+    } else if (action === "reject") {
+      if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+      setRejectModal({ id, name });
+    }
+  };
+
+  // ─── Analytics state ──────────────────────────────────────────────────────
+  const [analyticsData, setAnalyticsData] = useState<{
+    heatmap?: { day_of_week: number; hour: number; count: number }[];
+    admin_stats?: { full_name: string; role: string; approved_count: number; rejected_count: number; door_opened_count?: number; approval_rate_pct: number | null }[];
+    room_utilization?: { room: string; door_opens: number; approvals: number; active_days: number }[];
+    kpi?: { reg_7d: number; approved_7d: number; opens_7d: number; rejected_7d: number; reg_24h: number; opens_24h: number };
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  const fetchAnalytics = useCallback(async () => {
+    if (analyticsLoading) return;
+    setAnalyticsLoading(true);
+    try {
+      const r = await fetch("/api/system/analytics");
+      if (r.ok) setAnalyticsData(await r.json());
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsLoading]);
 
   // Bulk Approve handler
   async function handleBulkApprove() {
@@ -733,6 +788,21 @@ function AdminDashboardInner() {
             ip: data.settings[`room_ip_${rm}`] || "192.168.1.100"
           }));
           setRoomsList(rooms);
+
+          // Load per-room configs
+          const configs: Record<string, RoomConfig> = {};
+          rooms.forEach(({ room: rm }: { room: string }) => {
+            configs[rm] = {
+              auto_approve_enabled: data.settings[`rcfg_${rm}_auto_approve_enabled`] === "1",
+              auto_approve_start_time: data.settings[`rcfg_${rm}_auto_approve_start_time`] || "09:00",
+              auto_approve_end_time: data.settings[`rcfg_${rm}_auto_approve_end_time`] || "16:00",
+              auto_approve_days: data.settings[`rcfg_${rm}_auto_approve_days`] || "1,2,3,4,5",
+              auto_fill_enabled: data.settings[`rcfg_${rm}_auto_fill_enabled`] !== "0",
+              auto_fill_mode: data.settings[`rcfg_${rm}_auto_fill_mode`] || "auto",
+              student_id_display_mode: data.settings[`rcfg_${rm}_student_id_display_mode`] || "full",
+            };
+          });
+          setRoomConfigs(configs);
         }
       }
     } catch (err) {
@@ -1249,6 +1319,13 @@ void drawRejectedScreen() {
   tft.setCursor(55, 180);
   tft.print("PLEASE CONTACT CLASSROOM INSTRUCTOR");
 }
+
+// ─── Persistent TLS Connection (HTTP Keep-alive) ─────────────────────────────
+// ประกาศนอก loop() เพื่อให้ reuse TLS session ข้ามรอบ poll → ลด TLS handshake
+#ifndef WOKWI_SIM
+WiFiClientSecure persistentTlsClient;
+bool tlsClientInitialized = false;
+#endif
 
 // ─── Offline Mode Configurations & Helper Functions (Prompt 18) ─────────────
 bool is_offline_mode = false;
@@ -1978,24 +2055,21 @@ void loop() {
 
       HTTPClient http;
       if (String(server_url).startsWith("https://")) {
-        static WiFiClientSecure secureClient;
-        WiFiClientSecure *client = &secureClient;
-        if (client) {
 #ifdef WOKWI_SIM
-          client->setInsecure(); // Wokwi สภาพแวดล้อมจำลอง — ไม่รองรับ TLS cert จริง
+        // Wokwi: ใช้ local secureClient ธรรมดา (ไม่มี persistent session ใน simulator)
+        static WiFiClientSecure simClient;
+        simClient.setInsecure();
+        http.begin(simClient, server_url);
 #else
-          client->setCACert(root_ca_cert); // Production: ตรวจสอบ Root CA เสมอ
-#endif
-          http.begin(*client, server_url);
-        } else {
-          Serial.println("[ERROR] Connection failed");
-          DBG("Unable to create WiFiClientSecure");
-          api_fail_count++;
-          if (api_fail_count >= 5) {
-            is_offline_mode = true;
-          }
-          return;
+        // Physical: ใช้ persistentTlsClient (reuse TLS session — ลด handshake 200-400ms ต่อรอบ)
+        if (!tlsClientInitialized) {
+          persistentTlsClient.setCACert(root_ca_cert);
+          tlsClientInitialized = true;
         }
+        // setReuse: บอก HTTPClient ไม่ปิด connection หลัง request
+        http.setReuse(true);
+        http.begin(persistentTlsClient, server_url);
+#endif
       } else {
         http.begin(server_url);
       }
@@ -2300,6 +2374,14 @@ void handleLocalWebServerRequest() {
     custom_settings["configured_rooms"] = roomsList.map(r => r.room).join(",");
     roomsList.forEach(r => {
       custom_settings[`room_ip_${r.room}`] = r.ip;
+      const cfg = roomConfigs[r.room] ?? defaultRoomConfig();
+      custom_settings[`rcfg_${r.room}_auto_approve_enabled`] = cfg.auto_approve_enabled ? "1" : "0";
+      custom_settings[`rcfg_${r.room}_auto_approve_start_time`] = cfg.auto_approve_start_time;
+      custom_settings[`rcfg_${r.room}_auto_approve_end_time`] = cfg.auto_approve_end_time;
+      custom_settings[`rcfg_${r.room}_auto_approve_days`] = cfg.auto_approve_days;
+      custom_settings[`rcfg_${r.room}_auto_fill_enabled`] = cfg.auto_fill_enabled ? "1" : "0";
+      custom_settings[`rcfg_${r.room}_auto_fill_mode`] = cfg.auto_fill_mode;
+      custom_settings[`rcfg_${r.room}_student_id_display_mode`] = cfg.student_id_display_mode;
     });
 
     try {
@@ -2811,7 +2893,10 @@ void handleLocalWebServerRequest() {
     if (tab === "schedule" && user?.role === "owner") {
       fetchSchedules();
     }
-  }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings, fetchSchedules]);
+    if (tab === "rooms") {
+      fetchAnalytics();
+    }
+  }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings, fetchSchedules, fetchAnalytics]);
 
   useEffect(() => {
     if (tab === "all") {
@@ -4314,7 +4399,35 @@ void handleLocalWebServerRequest() {
                             </div>
                           </div>
 
-                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                          {/* Mobile swipe hint (shows only on touch devices first time) */}
+                          <div className="mobile-swipe-hint" style={{ fontSize: 10.5, color: "var(--text-secondary)", marginBottom: 6, display: "flex", alignItems: "center", gap: 4, opacity: 0.6 }}>
+                            <span style={{ display: "none" }} className="swipe-hint-text">← ปัดซ้าย=ปฏิเสธ | ปัดขวา=อนุมัติ →</span>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex", gap: 10, flexWrap: "wrap",
+                              transform: `translateX(${swipeOffset[s.id] || 0}px)`,
+                              transition: (swipeOffset[s.id] || 0) === 0 ? "transform 0.3s cubic-bezier(0.4,0,0.2,1)" : "none",
+                              position: "relative",
+                            }}
+                            onTouchStart={(e) => handleTouchStart(s.id, e)}
+                            onTouchMove={(e) => handleTouchMove(s.id, e)}
+                            onTouchEnd={() => handleTouchEnd(s.id, `${s.first_name} ${s.last_name}`)}
+                          >
+                            {/* Swipe action indicator */}
+                            {swipeAction[s.id] && (
+                              <div style={{
+                                position: "absolute", inset: 0, borderRadius: 10,
+                                background: swipeAction[s.id] === "approve" ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)",
+                                border: `2px solid ${swipeAction[s.id] === "approve" ? "#10B981" : "#EF4444"}`,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: 20, fontWeight: 900, zIndex: 1,
+                                color: swipeAction[s.id] === "approve" ? "#10B981" : "#EF4444",
+                              }}>
+                                {swipeAction[s.id] === "approve" ? "✓ อนุมัติ" : "✗ ปฏิเสธ"}
+                              </div>
+                            )}
                             <button
                               className="btn-primary"
                               style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}
@@ -5729,6 +5842,191 @@ void handleLocalWebServerRequest() {
 
                     </div>
                   </div>
+
+                  {/* ─── Analytics from API ─── */}
+                  {analyticsData && (
+                    <div style={{ marginTop: 20 }}>
+
+                      {/* KPI Cards */}
+                      {analyticsData.kpi && (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
+                          {[
+                            { label: "ลงทะเบียน (7 วัน)", value: analyticsData.kpi.reg_7d, color: "#7C3AED", icon: "📝" },
+                            { label: "อนุมัติ (7 วัน)", value: analyticsData.kpi.approved_7d, color: "#10B981", icon: "✅" },
+                            { label: "เปิดประตู (7 วัน)", value: analyticsData.kpi.opens_7d, color: "#3B82F6", icon: "🚪" },
+                            { label: "ปฏิเสธ (7 วัน)", value: analyticsData.kpi.rejected_7d, color: "#EF4444", icon: "❌" },
+                            { label: "ลงทะเบียน (24 ชม.)", value: analyticsData.kpi.reg_24h, color: "#F59E0B", icon: "🕐" },
+                            { label: "เปิดประตู (24 ชม.)", value: analyticsData.kpi.opens_24h, color: "#06B6D4", icon: "⚡" },
+                          ].map(({ label, value, color, icon }) => (
+                            <div key={label} style={{ padding: "14px 16px", background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12, textAlign: "center" }}>
+                              <div style={{ fontSize: 22, marginBottom: 4 }}>{icon}</div>
+                              <div style={{ fontSize: 26, fontWeight: 900, color }}>{value ?? 0}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.3 }}>{label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+
+                        {/* Peak Hours Heatmap */}
+                        {analyticsData.heatmap && analyticsData.heatmap.length > 0 && (
+                          <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12, gridColumn: "1 / -1" }}>
+                            <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 14 }}>
+                              🔥 Heatmap ชั่วโมงพีค (30 วัน) — แต่ละแถว = วันในสัปดาห์, แต่ละคอลัมน์ = ชั่วโมง 0–23
+                            </h4>
+                            {(() => {
+                              const days = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+                              const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+                              analyticsData.heatmap!.forEach(r => { grid[r.day_of_week][r.hour] = Number(r.count); });
+                              const maxVal = Math.max(...analyticsData.heatmap!.map(r => Number(r.count)), 1);
+                              return (
+                                <div style={{ overflowX: "auto" }}>
+                                  <div style={{ minWidth: 560 }}>
+                                    {/* Hour header */}
+                                    <div style={{ display: "flex", gap: 2, marginBottom: 2, paddingLeft: 38 }}>
+                                      {Array.from({ length: 24 }, (_, h) => (
+                                        <div key={h} style={{ flex: 1, fontSize: 9, color: "var(--text-secondary)", textAlign: "center", fontWeight: 700 }}>{h}</div>
+                                      ))}
+                                    </div>
+                                    {/* Day rows */}
+                                    {days.map((day, di) => (
+                                      <div key={di} style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 2 }}>
+                                        <div style={{ width: 34, fontSize: 10, fontWeight: 800, color: "var(--text-secondary)", flexShrink: 0 }}>{day}</div>
+                                        {grid[di].map((val, hi) => {
+                                          const intensity = val / maxVal;
+                                          const alpha = intensity > 0 ? 0.1 + intensity * 0.85 : 0;
+                                          return (
+                                            <div
+                                              key={hi}
+                                              title={`${day} ${hi}:00 — ${val} ครั้ง`}
+                                              style={{
+                                                flex: 1,
+                                                height: 16,
+                                                borderRadius: 3,
+                                                background: alpha > 0 ? `rgba(124,58,237,${alpha})` : "var(--bg-secondary)",
+                                                border: "1px solid var(--border)",
+                                              }}
+                                            />
+                                          );
+                                        })}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 10, color: "var(--text-secondary)" }}>
+                                    <span>น้อย</span>
+                                    {[0.1, 0.3, 0.55, 0.75, 0.95].map(a => (
+                                      <div key={a} style={{ width: 14, height: 14, borderRadius: 3, background: `rgba(124,58,237,${a})` }} />
+                                    ))}
+                                    <span>มาก</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Admin Approval Stats */}
+                        {analyticsData.admin_stats && analyticsData.admin_stats.length > 0 && (
+                          <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12 }}>
+                            <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
+                              👤 สถิติการอนุมัติของแอดมิน (30 วัน)
+                            </h4>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                              {analyticsData.admin_stats.map(a => (
+                                <div key={a.full_name} style={{ padding: "10px 12px", background: "var(--bg-secondary)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>{a.full_name}</span>
+                                    <span style={{
+                                      fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 99,
+                                      background: a.approval_rate_pct != null && Number(a.approval_rate_pct) >= 80 ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)",
+                                      color: a.approval_rate_pct != null && Number(a.approval_rate_pct) >= 80 ? "#10B981" : "#F59E0B",
+                                    }}>
+                                      {a.approval_rate_pct != null ? `${a.approval_rate_pct}%` : "N/A"}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: "flex", gap: 10, fontSize: 11 }}>
+                                    <span style={{ color: "#10B981", fontWeight: 700 }}>✅ {a.approved_count}</span>
+                                    <span style={{ color: "#EF4444", fontWeight: 700 }}>❌ {a.rejected_count}</span>
+                                    <span style={{ color: "#3B82F6", fontWeight: 700 }}>🚪 {a.door_opened_count ?? 0}</span>
+                                  </div>
+                                  <div style={{ marginTop: 6, height: 5, background: "var(--border)", borderRadius: 99, overflow: "hidden" }}>
+                                    <div style={{
+                                      height: "100%",
+                                      width: `${a.approval_rate_pct ?? 0}%`,
+                                      background: "linear-gradient(90deg, #7C3AED, #10B981)",
+                                      borderRadius: 99,
+                                    }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Room Utilization */}
+                        {analyticsData.room_utilization && analyticsData.room_utilization.length > 0 && (
+                          <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12 }}>
+                            <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
+                              🏫 การใช้งานของแต่ละห้อง (30 วัน)
+                            </h4>
+                            {(() => {
+                              const maxOpens = Math.max(...analyticsData.room_utilization!.map(r => Number(r.door_opens)), 1);
+                              return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                  {analyticsData.room_utilization!.map(r => (
+                                    <div key={r.room}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>
+                                        <span>ห้อง {r.room}</span>
+                                        <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
+                                          🚪 {r.door_opens} | ✅ {r.approvals} | 📅 {r.active_days} วัน
+                                        </span>
+                                      </div>
+                                      <div style={{ height: 8, background: "var(--bg-secondary)", borderRadius: 99, overflow: "hidden", border: "1px solid var(--border)" }}>
+                                        <div style={{
+                                          height: "100%",
+                                          width: `${Math.round((Number(r.door_opens) / maxOpens) * 100)}%`,
+                                          background: "linear-gradient(90deg, #7C3AED, #DB2777)",
+                                          borderRadius: 99,
+                                        }} />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                        <button
+                          type="button"
+                          onClick={fetchAnalytics}
+                          disabled={analyticsLoading}
+                          className="btn-secondary"
+                          style={{ borderRadius: 8, padding: "8px 16px", fontSize: 12 }}
+                        >
+                          {analyticsLoading ? "กำลังโหลด..." : "รีเฟรช Analytics"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!analyticsData && !analyticsLoading && (
+                    <div style={{ marginTop: 16, textAlign: "center" }}>
+                      <button type="button" onClick={fetchAnalytics} className="btn-secondary" style={{ borderRadius: 8, padding: "10px 20px", fontSize: 13 }}>
+                        📊 โหลด Analytics Dashboard
+                      </button>
+                    </div>
+                  )}
+                  {analyticsLoading && (
+                    <div style={{ marginTop: 16, textAlign: "center", color: "var(--text-secondary)", fontSize: 13 }}>
+                      ⏳ กำลังโหลดข้อมูล Analytics...
+                    </div>
+                  )}
+
                 </section>
 
                 <section className="room-card-grid">
@@ -5805,6 +6103,107 @@ void handleLocalWebServerRequest() {
                             <button type="button" onClick={() => handleRemoveRoom(roomItem.room)} className="btn-ghost" title="ลบห้อง" style={{ borderRadius: 8, padding: "10px 12px", color: "#DC2626", borderColor: "rgba(220,38,38,0.2)" }}>
                               <TrashIcon />
                             </button>
+                          </div>
+
+                          {/* ── Per-Room Settings Panel ─────────────────────────── */}
+                          <div style={{ marginTop: 12 }}>
+                            <button
+                              type="button"
+                              onClick={() => toggleRoomSettings(roomItem.room)}
+                              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border)", background: expandedRoomSettings.has(roomItem.room) ? "var(--smartaccess-purple-pale)" : "transparent", color: expandedRoomSettings.has(roomItem.room) ? "var(--smartaccess-purple)" : "var(--text-secondary)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                            >
+                              <span>⚙️ ตั้งค่าการอนุมัติ & หน้าจอ ESP32</span>
+                              <span style={{ fontSize: 10 }}>{expandedRoomSettings.has(roomItem.room) ? "▲" : "▼"}</span>
+                            </button>
+
+                            {expandedRoomSettings.has(roomItem.room) && (() => {
+                              const cfg = roomConfigs[roomItem.room] ?? defaultRoomConfig();
+                              const Toggle = ({ on, onToggle }: { on: boolean; onToggle: () => void }) => (
+                                <button type="button" onClick={onToggle} style={{ width: 44, height: 24, borderRadius: 13, background: on ? "linear-gradient(135deg,var(--smartaccess-purple),var(--edu-pink))" : "rgba(255,255,255,0.08)", border: "1px solid var(--border)", position: "relative", cursor: "pointer", padding: 0, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                                  <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#FFF", position: "absolute", left: on ? 22 : 3, transition: "left 0.2s cubic-bezier(0.4,0,0.2,1)", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                                </button>
+                              );
+                              const activeDays = cfg.auto_approve_days ? cfg.auto_approve_days.split(",").map(Number).filter(n => !isNaN(n)) : [];
+                              const dayDefs = [{ val:1,label:"จ.",color:"#EAB308" },{ val:2,label:"อ.",color:"#EC4899" },{ val:3,label:"พ.",color:"#10B981" },{ val:4,label:"พฤ.",color:"#F97316" },{ val:5,label:"ศ.",color:"#3B82F6" },{ val:6,label:"ส.",color:"#8B5CF6" },{ val:0,label:"อา.",color:"#EF4444" }];
+                              return (
+                                <div className="animate-fade-in" style={{ marginTop: 8, padding: 16, background: "rgba(124,58,237,0.03)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", flexDirection: "column", gap: 14 }}>
+
+                                  {/* Auto Approve toggle */}
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                                    <div>
+                                      <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text-primary)" }}>เข้าห้องอัตโนมัติไม่ต้องรออนุมัติ</div>
+                                      <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>นักศึกษาใหม่ยื่นในเวลาบริการ อนุมัติผ่านเข้าห้องทันที</div>
+                                    </div>
+                                    <Toggle on={cfg.auto_approve_enabled} onToggle={() => setRoomConfig(roomItem.room, { auto_approve_enabled: !cfg.auto_approve_enabled })} />
+                                  </div>
+
+                                  {/* Auto Fill toggle */}
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, background: "rgba(0,0,0,0.12)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                                      <div>
+                                        <div style={{ fontWeight: 800, fontSize: 13, color: "var(--text-primary)" }}>ช่วยกรอกข้อมูลอัตโนมัติ (Auto-fill)</div>
+                                        <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>ดึงชั้นปี คณะ สาขาจากนักศึกษาเดิมกรอกให้อัตโนมัติ</div>
+                                      </div>
+                                      <Toggle on={cfg.auto_fill_enabled} onToggle={() => setRoomConfig(roomItem.room, { auto_fill_enabled: !cfg.auto_fill_enabled })} />
+                                    </div>
+                                    {cfg.auto_fill_enabled && (
+                                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                        {[{ val: "auto", label: "เด้งขึ้นมาให้เองอัตโนมัติ (Auto Pop-up)" }, { val: "manual", label: "แสดงปุ่มให้กดเลือกเอง (Manual Confirmation)" }].map(o => (
+                                          <label key={o.val} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
+                                            <input type="radio" name={`auto_fill_mode_${roomItem.room}`} value={o.val} checked={cfg.auto_fill_mode === o.val} onChange={() => setRoomConfig(roomItem.room, { auto_fill_mode: o.val })} style={{ accentColor: "var(--smartaccess-purple)" }} />
+                                            {o.label}
+                                          </label>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Student ID display mode */}
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 5 }}>
+                                      🔒 ความปลอดภัยหน้าจอ ESP32 (รหัสนักศึกษาล่าสุด)
+                                    </label>
+                                    <select value={cfg.student_id_display_mode} onChange={e => setRoomConfig(roomItem.room, { student_id_display_mode: e.target.value })} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 12.5, outline: "none" }}>
+                                      <option value="full">โชว์รหัสแบบเต็ม (Full ID)</option>
+                                      <option value="masked">เซ็นเซอร์บางส่วน (Masked ID)</option>
+                                      <option value="hidden">ปิดการแสดงผล (Hidden)</option>
+                                    </select>
+                                  </div>
+
+                                  {/* Service hours */}
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                                    <div>
+                                      <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>เวลาเริ่มบริการ</label>
+                                      <input type="time" value={cfg.auto_approve_start_time} onChange={e => setRoomConfig(roomItem.room, { auto_approve_start_time: e.target.value })} style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }} />
+                                    </div>
+                                    <div>
+                                      <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>เวลาปิดบริการ</label>
+                                      <input type="time" value={cfg.auto_approve_end_time} onChange={e => setRoomConfig(roomItem.room, { auto_approve_end_time: e.target.value })} style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }} />
+                                    </div>
+                                  </div>
+
+                                  {/* Service days */}
+                                  <div>
+                                    <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8 }}>วันเปิดให้บริการอัตโนมัติ</label>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                                      {dayDefs.map(day => {
+                                        const isOn = activeDays.includes(day.val);
+                                        return (
+                                          <button type="button" key={day.val} onClick={() => {
+                                            const updated = isOn ? activeDays.filter(d => d !== day.val) : [...activeDays, day.val];
+                                            updated.sort((a, b) => a - b);
+                                            setRoomConfig(roomItem.room, { auto_approve_days: updated.join(",") });
+                                          }} style={{ padding: "5px 9px", borderRadius: 14, border: isOn ? `1.5px solid ${day.color}` : "1.5px solid var(--border)", background: isOn ? `${day.color}15` : "transparent", color: isOn ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 11.5, fontWeight: isOn ? 700 : 500, cursor: "pointer" }}>
+                                            {day.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                </div>
+                              );
+                            })()}
                           </div>
                         </article>
                       );
@@ -6164,234 +6563,9 @@ void handleLocalWebServerRequest() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24, alignItems: "start" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24, alignItems: "start" }}>
 
-                  {/* Card 1: Automated Approvals & Auto-fill */}
-                  <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
-                      <SettingsIcon /> อนุมัติ & กรอกฟอร์มอัตโนมัติ (Automated Control)
-                    </h3>
-
-                    <div style={{ padding: 16, background: "rgba(255, 255, 255, 0.02)", borderRadius: 12, border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <span style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)" }}>เปิดระบบเข้าห้องอัตโนมัติไม่ต้องรออนุมัติ</span>
-                        <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, lineHeight: "1.4" }}>
-                          นักศึกษาใหม่ยื่นขอในเวลาบริการ จะได้รับอนุมัติผ่านเข้าห้องอัตโนมัติทันที
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSettings(s => ({ ...s, auto_approve_enabled: !s.auto_approve_enabled }))}
-                        style={{
-                          width: 48,
-                          height: 26,
-                          borderRadius: 15,
-                          background: settings.auto_approve_enabled ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
-                          border: "1px solid var(--border)",
-                          position: "relative",
-                          cursor: "pointer",
-                          padding: 0,
-                          transition: "all 0.2s ease-in-out",
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center"
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: "50%",
-                            background: "#FFF",
-                            position: "absolute",
-                            left: settings.auto_approve_enabled ? 24 : 3,
-                            transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
-                          }}
-                        />
-                      </button>
-                    </div>
-
-                    <div style={{ padding: 16, background: "rgba(255, 255, 255, 0.02)", borderRadius: 12, border: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <span style={{ fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)" }}>เปิดระบบช่วยกรอกข้อมูลอัตโนมัติ (Auto-fill)</span>
-                          <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, lineHeight: "1.4" }}>
-                            ดึงชั้นปี คณะ และสาขาของนักศึกษาเดิมมากรอกให้อัตโนมัติ
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setSettings(s => ({ ...s, auto_fill_enabled: !s.auto_fill_enabled }))}
-                          style={{
-                            width: 48,
-                            height: 26,
-                            borderRadius: 15,
-                            background: settings.auto_fill_enabled ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "rgba(255,255,255,0.08)",
-                            border: "1px solid var(--border)",
-                            position: "relative",
-                            cursor: "pointer",
-                            padding: 0,
-                            transition: "all 0.2s ease-in-out",
-                            flexShrink: 0,
-                            display: "flex",
-                            alignItems: "center"
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 20,
-                              height: 20,
-                              borderRadius: "50%",
-                              background: "#FFF",
-                              position: "absolute",
-                              left: settings.auto_fill_enabled ? 24 : 3,
-                              transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                              boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
-                            }}
-                          />
-                        </button>
-                      </div>
-
-                      {settings.auto_fill_enabled && (
-                        <div style={{ padding: 12, background: "rgba(0,0,0,0.15)", borderRadius: 8, border: "1px dashed var(--border)", display: "flex", flexDirection: "column", gap: 8 }} className="animate-fade-in">
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>รูปแบบการดึงข้อมูล:</span>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
-                              <input
-                                type="radio"
-                                name="auto_fill_mode"
-                                value="auto"
-                                checked={settings.auto_fill_mode === "auto"}
-                                onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
-                                style={{ accentColor: "var(--smartaccess-purple)", cursor: "pointer" }}
-                              />
-                              <span>เด้งขึ้นมาให้เองอัตโนมัติ (Auto Pop-up)</span>
-                            </label>
-                            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
-                              <input
-                                type="radio"
-                                name="auto_fill_mode"
-                                value="manual"
-                                checked={settings.auto_fill_mode === "manual"}
-                                onChange={e => setSettings(s => ({ ...s, auto_fill_mode: e.target.value }))}
-                                style={{ accentColor: "var(--smartaccess-purple)", cursor: "pointer" }}
-                              />
-                              <span>แสดงปุ่มให้กดเลือกเอง (Manual Confirmation)</span>
-                            </label>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 16, marginTop: 8, marginBottom: 16 }}>
-                      <label htmlFor="student_id_display_mode" style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                        ความปลอดภัยหน้าจอหลัก ESP32 (รหัสนักศึกษาอนุมัติล่าสุด)
-                      </label>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <select
-                          id="student_id_display_mode"
-                          className="smartaccess-input"
-                          value={settings.student_id_display_mode}
-                          onChange={e => setSettings(s => ({ ...s, student_id_display_mode: e.target.value }))}
-                          style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", width: "100%", outline: "none", fontSize: 12.5 }}
-                        >
-                          <option value="full">โชว์รหัสนักศึกษาแบบเต็ม (Full ID - เช่น 036650504008-4)</option>
-                          <option value="masked">โชว์รหัสนักศึกษาแบบเซ็นเซอร์ (Masked ID - เช่น 03665050******)</option>
-                          <option value="hidden">ปิดการแสดงรหัสนักศึกษาไปเลย (Hidden / Redacted)</option>
-                        </select>
-                        <p style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4, margin: "2px 0 0 2px" }}>
-                          * การตั้งค่านี้จะควบคุมการแสดงผลฟิลด์ ID ของนักศึกษาที่ได้รับสิทธิ์คนล่าสุดในหน้าจอกล่อง LATEST APPROVED ของบอร์ด ESP32 เพื่อความเป็นส่วนตัวและความมั่นคงปลอดภัย
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          เวลาเริ่มบริการ (ชั่วโมง:นาที)
-                        </label>
-                        <input
-                          className="smartaccess-input"
-                          type="text"
-                          placeholder="เช่น 09:00"
-                          value={settings.auto_approve_start_time}
-                          onChange={e => setSettings(s => ({ ...s, auto_approve_start_time: e.target.value }))}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                          เวลาปิดบริการ (ชั่วโมง:นาที)
-                        </label>
-                        <input
-                          className="smartaccess-input"
-                          type="text"
-                          placeholder="เช่น 16:00"
-                          value={settings.auto_approve_end_time}
-                          onChange={e => setSettings(s => ({ ...s, auto_approve_end_time: e.target.value }))}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
-                        วันเปิดให้บริการอัตโนมัติ
-                      </label>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {[
-                          { val: 1, label: "จ.", color: "#EAB308" },
-                          { val: 2, label: "อ.", color: "#EC4899" },
-                          { val: 3, label: "พ.", color: "#10B981" },
-                          { val: 4, label: "พฤ.", color: "#F97316" },
-                          { val: 5, label: "ศ.", color: "#3B82F6" },
-                          { val: 6, label: "ส.", color: "#8B5CF6" },
-                          { val: 0, label: "อา.", color: "#EF4444" },
-                        ].map(day => {
-                          const activeDaysList = settings.auto_approve_days ? settings.auto_approve_days.split(",").map(Number).filter(n => !isNaN(n)) : [];
-                          const isActive = activeDaysList.includes(day.val);
-
-                          const handleDayToggle = () => {
-                            let updated: number[];
-                            if (isActive) {
-                              updated = activeDaysList.filter(d => d !== day.val);
-                            } else {
-                              updated = [...activeDaysList, day.val];
-                            }
-                            updated.sort((a, b) => a - b);
-                            setSettings(s => ({ ...s, auto_approve_days: updated.join(",") }));
-                          };
-
-                          return (
-                            <button
-                              type="button"
-                              key={day.val}
-                              onClick={handleDayToggle}
-                              style={{
-                                padding: "6px 10px",
-                                borderRadius: "16px",
-                                border: isActive ? `1.5px solid ${day.color}` : "1.5px solid var(--border)",
-                                background: isActive ? `${day.color}15` : "transparent",
-                                color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                                fontSize: "11.5px",
-                                fontWeight: isActive ? 700 : 500,
-                                cursor: "pointer",
-                                transition: "all 0.2s ease-in-out",
-                              }}
-                            >
-                              {day.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </form>
-
-                  {/* Card 2: Discord Webhooks (ส่วนกลาง) */}
+                  {/* Discord Webhooks (ส่วนกลาง) — การตั้งค่าห้องย้ายไปแท็บ ห้องเรียน & ESP32 แล้ว */}
                   <form onSubmit={saveSettings} className="premium-card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 20 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--smartaccess-purple-dark)", display: "flex", alignItems: "center", gap: 8, borderBottom: "1.5px solid var(--border)", paddingBottom: 12, marginBottom: 4 }}>
                       <FileTextIcon /> Discord Webhooks (ส่วนกลาง)

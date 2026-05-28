@@ -205,12 +205,18 @@ export async function POST(req: NextRequest) {
     );
     const existingStudents = existing as StudentRow[];
 
-    // ─── Auto-Approve Verification ───
+    // ─── Auto-Approve Verification (per-room settings, fallback to global) ───
     const settings = await getSystemSettings();
-    const autoApproveEnabled = settings.auto_approve_enabled === "1";
-    const autoApproveStartTime = settings.auto_approve_start_time || "09:00";
-    const autoApproveEndTime = settings.auto_approve_end_time || "16:00";
-    const autoApproveDays = (settings.auto_approve_days || "1,2,3,4,5").split(",").map(Number);
+    const roomKey = sanitizedRequestedRoom;
+    const autoApproveEnabled =
+      (settings[`rcfg_${roomKey}_auto_approve_enabled`] ?? settings.auto_approve_enabled) === "1";
+    const autoApproveStartTime =
+      settings[`rcfg_${roomKey}_auto_approve_start_time`] || settings.auto_approve_start_time || "09:00";
+    const autoApproveEndTime =
+      settings[`rcfg_${roomKey}_auto_approve_end_time`] || settings.auto_approve_end_time || "16:00";
+    const autoApproveDays = (
+      settings[`rcfg_${roomKey}_auto_approve_days`] || settings.auto_approve_days || "1,2,3,4,5"
+    ).split(",").map(Number);
 
     // Get current time in Bangkok (ICT, UTC+7) timezone
     const now = new Date();
