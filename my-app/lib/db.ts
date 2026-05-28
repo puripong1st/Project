@@ -50,32 +50,36 @@ export function getPool(): Pool {
       console.warn('[DEV] No SUPABASE_CA_CERT — using default SSL');
     }
 
-    if (!process.env.POSTGRES_URL && process.env.NODE_ENV === 'production') {
+    const connectionString = readEnv("POSTGRES_URL") || readEnv("DATABASE_URL");
+
+    if (!connectionString && process.env.NODE_ENV === 'production') {
       throw new Error(
-        "Critical Security Error: POSTGRES_URL is not configured in the production environment. " +
+        "Critical Security Error: POSTGRES_URL or DATABASE_URL is not configured in the production environment. " +
         "Database password exposure risks require environment variable configuration."
       );
     }
 
-    const connectionString = readEnv("POSTGRES_URL");
     const connectionConfig = connectionString ? parse(connectionString) : ({} as ReturnType<typeof parse>);
 
-    const host = connectionConfig.host || readEnv("POSTGRES_HOST");
-    const database = connectionConfig.database || readEnv("POSTGRES_DATABASE") || "postgres";
-    const user = connectionConfig.user || readEnv("POSTGRES_USER");
-    const password = connectionConfig.password || readEnv("POSTGRES_PASSWORD");
-    const portValue = connectionConfig.port || readEnv("POSTGRES_PORT");
+    const host = connectionConfig.host || readEnv("POSTGRES_HOST") || readEnv("DATABASE_HOST");
+    const database = connectionConfig.database || readEnv("POSTGRES_DATABASE") || readEnv("DATABASE_DATABASE") || "postgres";
+    const user = connectionConfig.user || readEnv("POSTGRES_USER") || readEnv("DATABASE_USER");
+    const password = connectionConfig.password || readEnv("POSTGRES_PASSWORD") || readEnv("DATABASE_PASSWORD");
+    const portValue = connectionConfig.port || readEnv("POSTGRES_PORT") || readEnv("DATABASE_PORT");
 
     if (!host || !user || !password) {
       throw new Error(
         "Database configuration error: PostgreSQL environment variables are missing. " +
-        "Set POSTGRES_URL, or set POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DATABASE in Vercel Project Settings > Environment Variables."
+        "Set POSTGRES_URL or DATABASE_URL, or set connection credentials (HOST, USER, PASSWORD) in Vercel Project Settings > Environment Variables."
       );
     }
 
-    const sslConfig = {
-      ca: readCaCert() || process.env.SUPABASE_CA_CERT,
-      rejectUnauthorized: true  // Always verify certificate
+    const caCert = readCaCert();
+    const sslConfig = caCert ? {
+      ca: caCert,
+      rejectUnauthorized: true
+    } : {
+      rejectUnauthorized: false // Fallback to allow connection if CA cert is not provided
     };
 
     const config: PoolConfig = {
