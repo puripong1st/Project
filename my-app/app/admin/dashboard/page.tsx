@@ -622,6 +622,89 @@ function AdminDashboardInner() {
   const [testResults, setTestResults] = useState<Record<string, { online: boolean; ip: string; mode: string }>>({});
   const [firmwareMode, setFirmwareMode] = useState<"wokwi" | "physical">("physical");
 
+  // Premium Dashboard Features (2026-05)
+  // Multi-select state for bulk student requests in the pending queue
+  const [selectedPendingIds, setSelectedPendingIds] = useState<number[]>([]);
+  // Bulk operations loading indicator
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Bulk Approve handler
+  async function handleBulkApprove() {
+    if (selectedPendingIds.length === 0) return;
+    if (!confirm(`ต้องการอนุมัติคำขอที่เลือกทั้งหมดจำนวน ${selectedPendingIds.length} รายการ และสั่งเปิดประตู ใช่หรือไม่?`)) return;
+    setBulkLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+    try {
+      await Promise.all(
+        selectedPendingIds.map(async (id) => {
+          try {
+            const r = await fetch(`/api/students/${id}/approve`, { method: "POST" });
+            if (r.ok) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          } catch {
+            failCount++;
+          }
+        })
+      );
+      showToast(`⚡ อนุมัติแบบกลุ่มสำเร็จ: อนุมัติสำเร็จ ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว ${failCount} รายการ` : ""}`, successCount > 0 ? "success" : "error");
+      setSelectedPendingIds([]);
+      fetchPending();
+      if (tab === "all") {
+        fetchAll();
+        fetchLogs();
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดเครือข่ายในการดำเนินการแบบกลุ่ม", "error");
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  // Bulk Reject handler
+  async function handleBulkReject() {
+    if (selectedPendingIds.length === 0) return;
+    const reason = prompt("กรุณาระบุเหตุผลการปฏิเสธคำขอทั้งหมดที่เลือก:", "ไม่ได้รับสิทธิ์เข้าใช้ระบบแบบกลุ่มโดยแอดมิน");
+    if (reason === null) return; // cancelled
+    setBulkLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+    try {
+      await Promise.all(
+        selectedPendingIds.map(async (id) => {
+          try {
+            const r = await fetch(`/api/students/${id}/reject`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reason }),
+            });
+            if (r.ok) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          } catch {
+            failCount++;
+          }
+        })
+      );
+      showToast(`❌ ปฏิเสธแบบกลุ่มสำเร็จ: ดำเนินการสำเร็จ ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว ${failCount} รายการ` : ""}`, "error");
+      setSelectedPendingIds([]);
+      fetchPending();
+      if (tab === "all") {
+        fetchAll();
+        fetchLogs();
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดเครือข่ายในการดำเนินการแบบกลุ่ม", "error");
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   const fetchSettings = useCallback(async () => {
     try {
       const r = await fetch("/api/system/settings");
@@ -858,6 +941,9 @@ ${wokwiDefine}
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
 #include <FS.h>
 #include <HTTPClient.h>
+#include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
+#include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
+#include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
 #include <SPI.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
@@ -866,6 +952,14 @@ ${wokwiDefine}
 #include <time.h> // สำหรับ NTP time sync (ใช้ใน HMAC timestamp)
 
 #include "config.h"
+
+// เวอร์ชันซอฟต์แวร์ปัจจุบันของบอร์ด
+const char* CURRENT_VERSION = "1.0.0";
+const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/firmware-ota";
+
+WebServer localServer(80); // พอร์ตเว็บเซิร์ฟเวอร์สำหรับคิวและ ElegantOTA
+bool localServerStarted = false;
+
 
 // ─── Compile-time production safety guard ───────────────────────────────────
 // Prevents accidentally shipping a Wokwi simulation build to a real device.
@@ -1155,9 +1249,6 @@ const char* cache_students_file = "/student_cache.json";
 const char* cache_logs_file = "/offline_logs.json";
 const char* cache_key_file = "/qr_key.bin";
 
-WiFiServer localServer(80);
-bool localServerStarted = false;
-
 // Forward declarations
 bool validateOfflineQR(String grant);
 void triggerDoorOpenOffline(String grant);
@@ -1165,11 +1256,88 @@ void saveOfflineLog(String student_id);
 void syncStudentCache();
 void syncOfflineLogs();
 
+void onOTAStart() {
+  Serial.println("[Local OTA] เริ่มต้นกระบวนการแฟลชเฟิร์มแวร์ผ่าน LAN");
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(2);
+  tft.setCursor(10, 40);
+  tft.println("LOCAL OTA ACTIVE");
+  tft.setTextSize(1);
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.println("Flashing firmware via Local Network...");
+}
+
+void onOTAEnd(bool success) {
+  tft.fillScreen(ILI9341_BLACK);
+  if (success) {
+    tft.setTextColor(ILI9341_GREEN);
+    tft.setTextSize(2);
+    tft.setCursor(10, 40);
+    tft.println("OTA SUCCESSFUL");
+    tft.setTextSize(1);
+    tft.setCursor(10, 80);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.println("Rebooting device now...");
+    delay(2000);
+  } else {
+    tft.setTextColor(ILI9341_RED);
+    tft.setTextSize(2);
+    tft.setCursor(10, 40);
+    tft.println("OTA FAILED");
+    tft.setTextSize(1);
+    tft.setCursor(10, 80);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.println("Please check network and retry.");
+    delay(5000);
+  }
+}
+
+void performHTTPSOTA() {
+  WiFiClientSecure secureClient;
+  #ifdef WOKWI_SIM
+  secureClient.setInsecure();
+  #else
+  // ในเวอร์ชันใช้งานจริงควรโหลด Root Certificate ของ Vercel เข้ามาตรวจสอบความปลอดภัย HTTPS
+  secureClient.setInsecure(); 
+  #endif
+  
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(2);
+  tft.setCursor(10, 30);
+  tft.println("SMARTACCESS OTA");
+  tft.drawFastHLine(10, 60, 300, ILI9341_PURPLE);
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.println("Downloading firmware...");
+
+  httpUpdate.rebootOnUpdate(true);
+  httpUpdate.addHeader("x-esp32-version", CURRENT_VERSION);
+  httpUpdate.addHeader("Authorization", "Bearer SUPER_SECURE_ESP32_ACCESS_TOKEN");
+
+  t_httpUpdate_return ret = httpUpdate.update(secureClient, FIRMWARE_URL);
+  if (ret == HTTP_UPDATE_FAILED) {
+    tft.fillScreen(ILI9341_BLACK);
+    tft.setTextColor(ILI9341_RED);
+    tft.setTextSize(2);
+    tft.setCursor(10, 40);
+    tft.println("OTA UPDATE FAILED");
+    delay(5000);
+  }
+}
+
 void startLocalServer() {
   if (!localServerStarted) {
+    // กำหนด ElegantOTA Web Endpoint & Callbacks
+    ElegantOTA.begin(&localServer);
+    ElegantOTA.onStart(onOTAStart);
+    ElegantOTA.onEnd(onOTAEnd);
+    
     localServer.begin();
     localServerStarted = true;
-    DBG("Local web server started on port 80 for offline validation.");
+    DBG("Local web server started on port 80 with ElegantOTA.");
   }
 }
 
@@ -1680,6 +1848,9 @@ void setup() {
 void loop() {
   // Always run local web server to handle real-time push commands immediately
   handleLocalValidation();
+  
+  // จัดการ OTA เว็บโฮสต์เครือข่ายภายใน LAN
+  ElegantOTA.loop();
 
   if (is_offline_mode) {
     // Status indicators
@@ -3748,11 +3919,90 @@ void handleLocalWebServerRequest() {
                   </div>
                 ) : (
                   <div style={{ display: "grid", gap: 16 }}>
+                    {/* Bulk Actions Panel (2026-05) */}
+                    <div
+                      className="premium-card animate-fade-in"
+                      style={{
+                        padding: "14px 20px",
+                        background: "rgba(124, 58, 237, 0.03)",
+                        border: "1.5px dashed var(--smartaccess-purple-light)",
+                        borderRadius: 14,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 16,
+                        boxShadow: "var(--shadow-sm)"
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--smartaccess-purple)" }}
+                            checked={selectedPendingIds.length === filteredPending.length && filteredPending.length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPendingIds(filteredPending.map(s => s.id));
+                              } else {
+                                setSelectedPendingIds([]);
+                              }
+                            }}
+                          />
+                          <span>เลือกทั้งหมด ({selectedPendingIds.length} / {filteredPending.length} คำขอ)</span>
+                        </label>
+                      </div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          onClick={handleBulkApprove}
+                          disabled={selectedPendingIds.length === 0 || bulkLoading}
+                          className="btn-primary"
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            opacity: selectedPendingIds.length === 0 ? 0.6 : 1,
+                            cursor: selectedPendingIds.length === 0 ? "not-allowed" : "pointer"
+                          }}
+                        >
+                          ⚡ อนุมัติกลุ่ม ({selectedPendingIds.length})
+                        </button>
+                        <button
+                          onClick={handleBulkReject}
+                          disabled={selectedPendingIds.length === 0 || bulkLoading}
+                          className="btn-danger"
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            opacity: selectedPendingIds.length === 0 ? 0.6 : 1,
+                            cursor: selectedPendingIds.length === 0 ? "not-allowed" : "pointer"
+                          }}
+                        >
+                          ✕ ปฏิเสธกลุ่ม ({selectedPendingIds.length})
+                        </button>
+                      </div>
+                    </div>
+
                     {filteredPending.map(s => (
                       <div key={s.id} className="premium-card hover-card" style={{ padding: 22 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                           <div style={{ flex: 1, minWidth: 260 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                              <input
+                                type="checkbox"
+                                style={{ width: 18, height: 18, cursor: "pointer", accentColor: "var(--smartaccess-purple)", marginRight: 6 }}
+                                checked={selectedPendingIds.includes(s.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedPendingIds(prev => [...prev, s.id]);
+                                  } else {
+                                    setSelectedPendingIds(prev => prev.filter(id => id !== s.id));
+                                  }
+                                }}
+                              />
                               <div style={{ width: 44, height: 44, borderRadius: "12px", background: "var(--smartaccess-purple-pale)", border: "1.5px solid var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16 }}>
                                 {s.first_name[0]}
                               </div>
@@ -3879,11 +4129,39 @@ void handleLocalWebServerRequest() {
                     roomsList.map((roomItem) => {
                       // Find live status from systemStatus API response
                       const liveDev = systemStatus?.esp32Devices?.find(d => d.room === roomItem.room);
-                      const isOnline = liveDev ? liveDev.online : false;
+                      const isOnlineDirect = liveDev ? liveDev.online : false;
                       const doorOpen = liveDev ? liveDev.doorStatus === "open" : false;
                       const isMock = liveDev ? liveDev.mock : false;
                       const activeIp = liveDev ? liveDev.ip : roomItem.ip;
                       const isRecentlyUnlocked = recentlyUnlockedRooms[roomItem.room] === true;
+
+                      // ─── Active IoT Telemetry Heartbeat Diagnostics (2026-05) ───
+                      const lastSeenStr = rawSettings[`room_last_seen_${roomItem.room}`];
+                      let connectionStatus: "online" | "degraded" | "offline" = "offline";
+                      let lastSeenLabel = "ไม่พบการเชื่อมต่อ";
+
+                      if (lastSeenStr) {
+                        const lastSeenTime = new Date(lastSeenStr).getTime();
+                        const diffSeconds = (Date.now() - lastSeenTime) / 1000;
+                        if (diffSeconds <= 12) {
+                          connectionStatus = "online";
+                        } else if (diffSeconds <= 120) {
+                          connectionStatus = "degraded";
+                        } else {
+                          connectionStatus = "offline";
+                        }
+
+                        if (diffSeconds < 60) {
+                          lastSeenLabel = `Fresh: ${Math.ceil(diffSeconds)} วินาทีก่อน`;
+                        } else {
+                          lastSeenLabel = `${Math.floor(diffSeconds / 60)} นาทีที่แล้ว`;
+                        }
+                      } else if (isOnlineDirect) {
+                        connectionStatus = "online";
+                        lastSeenLabel = "ออนไลน์";
+                      }
+
+                      const isOnline = connectionStatus === "online" || connectionStatus === "degraded";
 
                       return (
                         <div
@@ -3899,9 +4177,11 @@ void handleLocalWebServerRequest() {
                               : "var(--bg-secondary)",
                             border: isRecentlyUnlocked 
                               ? "2px solid #10B981" 
-                              : isOnline 
+                              : connectionStatus === "online" 
                                 ? "1.5px solid rgba(16, 185, 129, 0.25)" 
-                                : "1px solid var(--border)",
+                                : connectionStatus === "degraded"
+                                  ? "1.5px solid rgba(245, 158, 11, 0.25)"
+                                  : "1px solid var(--border)",
                             boxShadow: isRecentlyUnlocked 
                               ? "0 8px 30px rgba(16, 185, 129, 0.15)" 
                               : isOnline 
@@ -3932,10 +4212,50 @@ void handleLocalWebServerRequest() {
                               </div>
                             </div>
 
-                            {/* Live Badge status */}
-                            <span className={`badge ${isOnline ? 'badge-approved' : 'badge-rejected'}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                              <span className={isOnline ? 'animate-pulse-ring' : ''} style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#059669" : "#DC2626", display: "inline-block" }} />
-                              {isOnline ? "CONNECTED" : "OFFLINE"}
+                            {/* Active Diagnostics Telemetry badge */}
+                            <span 
+                              className={`badge`} 
+                              style={{ 
+                                display: "inline-flex", 
+                                alignItems: "center", 
+                                gap: 4,
+                                padding: "4px 8px",
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 800,
+                                background: connectionStatus === "online" 
+                                  ? "rgba(16, 185, 129, 0.08)" 
+                                  : connectionStatus === "degraded"
+                                    ? "rgba(245, 158, 11, 0.08)"
+                                    : "rgba(220, 68, 68, 0.08)",
+                                color: connectionStatus === "online"
+                                  ? "#059669"
+                                  : connectionStatus === "degraded"
+                                    ? "#D97706"
+                                    : "#DC2626",
+                                border: connectionStatus === "online"
+                                  ? "1px solid rgba(16, 185, 129, 0.2)"
+                                  : connectionStatus === "degraded"
+                                    ? "1px solid rgba(245, 158, 11, 0.2)"
+                                    : "1px solid rgba(220, 68, 68, 0.2)"
+                              }}
+                              title={`สัญญาณบอร์ดล่าสุด: ${lastSeenLabel}`}
+                            >
+                              <span 
+                                className={connectionStatus === "online" ? 'animate-pulse-ring' : ''} 
+                                style={{ 
+                                  width: 6, 
+                                  height: 6, 
+                                  borderRadius: "50%", 
+                                  background: connectionStatus === "online" 
+                                    ? "#059669" 
+                                    : connectionStatus === "degraded"
+                                      ? "#D97706"
+                                      : "#DC2626", 
+                                  display: "inline-block" 
+                                }} 
+                              />
+                              {connectionStatus === "online" ? "🟢 ONLINE" : connectionStatus === "degraded" ? "🟡 SLOW (LATENCY)" : "🔴 OFFLINE"}
                             </span>
                           </div>
 
@@ -4989,19 +5309,153 @@ void handleLocalWebServerRequest() {
                     </div>
                   </div>
 
-                  <div className="room-overview-grid">
-                    {[
-                      { label: "ห้องทั้งหมด", value: roomsList.length, hint: "รายการที่บันทึกในระบบ", color: "var(--smartaccess-purple-dark)" },
-                      { label: "ออนไลน์", value: systemStatus?.esp32Devices?.filter(d => d.online).length || 0, hint: "บอร์ดที่ตอบกลับล่าสุด", color: "#059669" },
-                      { label: "ออฟไลน์", value: Math.max(roomsList.length - (systemStatus?.esp32Devices?.filter(d => d.online).length || 0), 0), hint: "ควรตรวจ IP หรือไฟเลี้ยง", color: "#DC2626" },
-                      { label: "ทดสอบล่าสุด", value: Object.keys(testResults).length, hint: "จำนวนห้องที่กดเทสในรอบนี้", color: "#D97706" },
-                    ].map(item => (
-                      <div className="room-stat-card" key={item.label}>
-                        <div style={{ fontSize: 24, fontWeight: 900, color: item.color, lineHeight: 1 }}>{item.value}</div>
-                        <div style={{ fontSize: 12.5, color: "var(--text-primary)", fontWeight: 800, marginTop: 7 }}>{item.label}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 3 }}>{item.hint}</div>
+                  {/* Dynamic SVG Analytics Dashboard - Zero Dependency (2026-05) */}
+                  <div 
+                    className="premium-card animate-fade-in" 
+                    style={{ 
+                      padding: 24, 
+                      marginTop: 20, 
+                      background: "var(--bg-secondary)", 
+                      border: "1.5px solid var(--smartaccess-purple-pale)", 
+                      borderRadius: 16,
+                      boxShadow: "var(--shadow-md)"
+                    }}
+                  >
+                    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 14, marginBottom: 20 }}>
+                      <h3 style={{ fontSize: 16.5, fontWeight: 900, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                        📊 รายงานสถิติและบทวิเคราะห์เชิงลึก (Zero-Dependency SVG Analytics Dashboard)
+                      </h3>
+                      <p style={{ color: "var(--text-secondary)", fontSize: 12.5, margin: "6px 0 0", lineHeight: 1.4 }}>
+                        ข้อมูลวิเคราะห์อัตราการเข้าเรียนสูงสุดแยกตามช่วงเวลา คณะวิชา และอัตราความสำเร็จของคำขอประมวลผลแบบ Real-time จากประวัติ logs
+                      </p>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
+                      
+                      {/* Chart 1: Hour Distribution */}
+                      <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12 }}>
+                        <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
+                          ⏰ ช่วงชั่วโมงที่มีการเข้าออกสูงสุด (Peak Access Hours)
+                        </h4>
+                        <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: 130, gap: 8, paddingTop: 10, paddingBottom: 5 }}>
+                          {(() => {
+                            // Compute hours from logs
+                            const hoursCount = Array(9).fill(0); // 08:00 to 16:00
+                            logs.forEach(l => {
+                              if (!l.timestamp) return;
+                              const hr = new Date(l.timestamp).getHours();
+                              if (hr >= 8 && hr <= 16) {
+                                hoursCount[hr - 8]++;
+                              }
+                            });
+                            const maxVal = Math.max(...hoursCount, 1);
+                            return hoursCount.map((cnt, i) => {
+                              const pct = (cnt / maxVal) * 90; // max height 90%
+                              const hrLabel = `${String(i + 8).padStart(2, "0")}`;
+                              return (
+                                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, height: "100%", justifyContent: "flex-end" }}>
+                                  <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--text-secondary)", marginBottom: 4 }}>{cnt}</span>
+                                  <div 
+                                    style={{ 
+                                      width: "100%", 
+                                      height: `${Math.max(pct, 5)}%`, 
+                                      background: "linear-gradient(to top, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
+                                      borderRadius: "4px 4px 0 0",
+                                      transition: "height 0.3s ease",
+                                      minHeight: cnt > 0 ? 6 : 2
+                                    }} 
+                                    title={`ช่วงเวลา ${hrLabel}:00 น. | ทั้งหมด ${cnt} ครั้ง`}
+                                  />
+                                  <span style={{ fontSize: 9.5, color: "var(--text-secondary)", marginTop: 6, fontWeight: 700 }}>{hrLabel}</span>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
                       </div>
-                    ))}
+
+                      {/* Chart 2: Success/Failure Ratio */}
+                      <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12, display: "flex", flexDirection: "column" }}>
+                        <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
+                          🎯 อัตราการตรวจสอบสำเร็จ (Request Handling Success)
+                        </h4>
+                        <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "space-around", gap: 16, height: 130 }}>
+                          {(() => {
+                            const approved = allStudents.filter(s => s.status === "approved").length;
+                            const rejected = allStudents.filter(s => s.status === "rejected").length;
+                            const pending = allStudents.filter(s => s.status === "pending").length;
+                            const total = approved + rejected + pending || 1;
+
+                            const pctApp = Math.round((approved / total) * 100);
+                            const pctRej = Math.round((rejected / total) * 100);
+                            const pctPen = Math.round((pending / total) * 100);
+
+                            return (
+                              <>
+                                <div style={{ position: "relative", width: 90, height: 90 }}>
+                                  {/* Simple dynamic SVG Pie chart */}
+                                  <svg width="90" height="90" viewBox="0 0 32 32" style={{ transform: "rotate(-90deg)", borderRadius: "50%" }}>
+                                    <circle r="16" cx="16" cy="16" fill="transparent" stroke="#EF4444" strokeWidth="32" />
+                                    <circle r="16" cx="16" cy="16" fill="transparent" stroke="#10B981" strokeWidth="32" 
+                                      strokeDasharray={`${pctApp} 100`} />
+                                  </svg>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11.5 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
+                                    <span style={{ fontWeight: 800, color: "var(--text-primary)" }}>อนุมัติ ({pctApp}%)</span>
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444", display: "inline-block" }} />
+                                    <span style={{ fontWeight: 800, color: "var(--text-primary)" }}>ปฏิเสธ ({pctRej}%)</span>
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", display: "inline-block" }} />
+                                    <span style={{ fontWeight: 800, color: "var(--text-primary)" }}>รอคิว ({pctPen}%)</span>
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Chart 3: Department Ratios */}
+                      <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12 }}>
+                        <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
+                          🎓 สัดส่วนการเข้าใช้งานจำแนกตามภาควิชา (Department Ratios)
+                        </h4>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, height: 130, justifyContent: "center" }}>
+                          {(() => {
+                            // Compute department counts
+                            const deptCounts: Record<string, number> = {};
+                            allStudents.forEach(s => {
+                              const d = s.branch || "อื่นๆ";
+                              deptCounts[d] = (deptCounts[d] || 0) + 1;
+                            });
+                            const sorted = Object.entries(deptCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+                            const total = allStudents.length || 1;
+
+                            return sorted.map(([dept, count], idx) => {
+                              const pct = Math.round((count / total) * 100);
+                              const colors = ["var(--smartaccess-purple)", "var(--edu-pink)", "#3B82F6"];
+                              return (
+                                <div key={dept} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, fontWeight: 800, color: "var(--text-primary)" }}>
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{dept}</span>
+                                    <span>{count} คน ({pct}%)</span>
+                                  </div>
+                                  <div style={{ width: "100%", height: 7, background: "rgba(255,255,255,0.05)", borderRadius: 4, overflow: "hidden" }}>
+                                    <div style={{ width: `${pct}%`, height: "100%", background: colors[idx % colors.length], borderRadius: 4 }} />
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
                 </section>
 

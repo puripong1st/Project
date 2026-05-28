@@ -22,6 +22,9 @@
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
 #include <FS.h>
 #include <HTTPClient.h>
+#include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
+#include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
+#include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
 #include <SPI.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
@@ -30,6 +33,11 @@
 #include <time.h> // สำหรับ NTP time sync (ใช้ใน HMAC timestamp)
 
 #include "config.h"
+
+// เวอร์ชันซอฟต์แวร์ปัจจุบันของบอร์ด
+const char* CURRENT_VERSION = "1.0.0";
+const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/firmware-ota";
+
 
 // ─── Compile-time production safety guard ───────────────────────────────────
 // Prevents accidentally shipping a Wokwi simulation build to a real device.
@@ -319,7 +327,7 @@ const char *cache_students_file = "/student_cache.json";
 const char *cache_logs_file = "/offline_logs.json";
 const char *cache_key_file = "/qr_key.bin";
 
-WiFiServer localServer(80);
+WebServer localServer(80);
 bool localServerStarted = false;
 
 // Forward declarations
@@ -329,11 +337,88 @@ void saveOfflineLog(String student_id);
 void syncStudentCache();
 void syncOfflineLogs();
 
+void onOTAStart() {
+  Serial.println("[Local OTA] เริ่มต้นกระบวนการแฟลชเฟิร์มแวร์ผ่าน LAN");
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(2);
+  tft.setCursor(10, 40);
+  tft.println("LOCAL OTA ACTIVE");
+  tft.setTextSize(1);
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.println("Flashing firmware via Local Network...");
+}
+
+void onOTAEnd(bool success) {
+  tft.fillScreen(ILI9341_BLACK);
+  if (success) {
+    tft.setTextColor(ILI9341_GREEN);
+    tft.setTextSize(2);
+    tft.setCursor(10, 40);
+    tft.println("OTA SUCCESSFUL");
+    tft.setTextSize(1);
+    tft.setCursor(10, 80);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.println("Rebooting device now...");
+    delay(2000);
+  } else {
+    tft.setTextColor(ILI9341_RED);
+    tft.setTextSize(2);
+    tft.setCursor(10, 40);
+    tft.println("OTA FAILED");
+    tft.setTextSize(1);
+    tft.setCursor(10, 80);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.println("Please check network and retry.");
+    delay(5000);
+  }
+}
+
+void performHTTPSOTA() {
+  WiFiClientSecure secureClient;
+  #ifdef WOKWI_SIM
+  secureClient.setInsecure();
+  #else
+  // ในเวอร์ชันใช้งานจริงควรโหลด Root Certificate ของ Vercel เข้ามาตรวจสอบความปลอดภัย HTTPS
+  secureClient.setInsecure(); 
+  #endif
+  
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(2);
+  tft.setCursor(10, 30);
+  tft.println("SMARTACCESS OTA");
+  tft.drawFastHLine(10, 60, 300, ILI9341_PURPLE);
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.println("Downloading firmware...");
+
+  httpUpdate.rebootOnUpdate(true);
+  httpUpdate.addHeader("x-esp32-version", CURRENT_VERSION);
+  httpUpdate.addHeader("Authorization", "Bearer SUPER_SECURE_ESP32_ACCESS_TOKEN");
+
+  t_httpUpdate_return ret = httpUpdate.update(secureClient, FIRMWARE_URL);
+  if (ret == HTTP_UPDATE_FAILED) {
+    tft.fillScreen(ILI9341_BLACK);
+    tft.setTextColor(ILI9341_RED);
+    tft.setTextSize(2);
+    tft.setCursor(10, 40);
+    tft.println("OTA UPDATE FAILED");
+    delay(5000);
+  }
+}
+
 void startLocalServer() {
   if (!localServerStarted) {
+    // กำหนด ElegantOTA Web Endpoint & Callbacks
+    ElegantOTA.begin(&localServer);
+    ElegantOTA.onStart(onOTAStart);
+    ElegantOTA.onEnd(onOTAEnd);
+    
     localServer.begin();
     localServerStarted = true;
-    DBG("Local web server started on port 80 for offline validation.");
+    DBG("Local web server started on port 80 with ElegantOTA.");
   }
 }
 
@@ -862,6 +947,9 @@ void setup() {
 void loop() {
   // Always run local web server to handle real-time push commands immediately
   handleLocalValidation();
+
+  // จัดการ OTA เว็บโฮสต์เครือข่ายภายใน LAN
+  ElegantOTA.loop();
 
   if (is_offline_mode) {
     // Status indicators
