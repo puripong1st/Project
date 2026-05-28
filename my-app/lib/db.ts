@@ -337,8 +337,47 @@ export async function initDatabase(): Promise<void> {
           IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_token_lookup') THEN
               CREATE INDEX idx_token_lookup ON dynamic_qr_tokens (token);
           END IF;
+          -- Performance indexes added 2026-05-28
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_logs_action') THEN
+              CREATE INDEX idx_logs_action ON access_logs (action);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_logs_timestamp_desc') THEN
+              CREATE INDEX idx_logs_timestamp_desc ON access_logs (timestamp DESC);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_students_status') THEN
+              CREATE INDEX idx_students_status ON students (status);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_students_room_status') THEN
+              CREATE INDEX idx_students_room_status ON students (requested_room, status);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_firmware_uploaded_at') THEN
+              CREATE INDEX idx_firmware_uploaded_at ON firmware_releases (uploaded_at DESC);
+          END IF;
       END
       $$;
+    `);
+
+    // Room Schedules table
+    await initPool.query(`
+      CREATE TABLE IF NOT EXISTS room_schedules (
+        id SERIAL PRIMARY KEY,
+        room_code VARCHAR(50) NOT NULL,
+        day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+        open_time TIME NOT NULL,
+        close_time TIME NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INT REFERENCES admin_users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (room_code, day_of_week)
+      )
+    `);
+    await initPool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_schedule_room') THEN
+          CREATE INDEX idx_schedule_room ON room_schedules (room_code, day_of_week, is_active);
+        END IF;
+      END $$;
     `);
 
     // Seed default settings if not exists

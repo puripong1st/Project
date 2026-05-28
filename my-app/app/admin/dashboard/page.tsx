@@ -533,7 +533,7 @@ export default function AdminDashboard() {
 
 function AdminDashboardInner() {
   const router = useRouter();
-  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot">("pending");
+  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot" | "schedule">("pending");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [pending, setPending] = useState<Student[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -985,12 +985,22 @@ bool localServerStarted = false;
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
-const int polling_delay = 2000; // ความเร็วในการดึงคำสั่ง (2 วินาที)
+// ─── Adaptive Polling ────────────────────────────────────────────────────────
+// เร่งความเร็ว polling เมื่อตรวจพบกิจกรรม ชะลอลงเมื่อ idle ประหยัด API call
+const unsigned long POLL_FAST   = 500;   // ms — มีคำสั่งรอ / เพิ่งปลดล็อก
+const unsigned long POLL_NORMAL = 2000;  // ms — ทำงานปกติ
+const unsigned long POLL_SLOW   = 5000;  // ms — idle ต่อเนื่อง 5 รอบ
+unsigned long currentPollDelay  = POLL_NORMAL;
+int idleCycles = 0; // นับรอบที่ไม่มีกิจกรรม
+String lastEtag = ""; // ETag จาก server สำหรับ 304 check
 
-// ตัวแปรเก็บสเตตัสเดิมเพื่อลดการวาดหน้าจอซ้ำซ้อน (ลดการกะพริบ)
+// ─── TFT Dirty-region tracking ───────────────────────────────────────────────
+// เก็บค่าเดิม — วาดเฉพาะส่วนที่เปลี่ยน ไม่ fillScreen ทั้งหน้าทุกรอบ
 int last_queue_count = -1;
 String last_approved_name = "";
 String last_active_token = "";
+String last_server_time = "";
+String last_status_text = "";
 String ip_address_str = "0.0.0.0";
 
 // ฟังก์ชันสำหรับสร้างและวาดภาพ QR Code แท้ๆ ที่สแกนได้ด้วยโทรศัพท์มือถือ 100%!
@@ -1299,28 +1309,55 @@ void onOTAEnd(bool success) {
   }
 }
 
+// ─── OTA Progress Bar บน TFT ─────────────────────────────────────────────────
+void onOTAProgress(int current, int total) {
+  if (total <= 0) return;
+  int pct = (current * 100) / total;
+  int barW = (pct * 280) / 100;
+  // Progress bar background
+  tft.drawRect(20, 130, 280, 16, ILI9341_WHITE);
+  tft.fillRect(21, 131, barW, 14, tft.color565(124, 58, 237));
+  // เคลียร์ + วาดตัวเลข %
+  tft.fillRect(20, 155, 160, 16, ILI9341_BLACK);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.setCursor(20, 155);
+  tft.print(pct);
+  tft.print("% (");
+  tft.print(current / 1024);
+  tft.print(" / ");
+  tft.print(total / 1024);
+  tft.println(" KB)");
+}
+
 void performHTTPSOTA() {
   WiFiClientSecure secureClient;
-  #ifdef WOKWI_SIM
   secureClient.setInsecure();
-  #else
-  // ในเวอร์ชันใช้งานจริงควรโหลด Root Certificate ของ Vercel เข้ามาตรวจสอบความปลอดภัย HTTPS
-  secureClient.setInsecure(); 
-  #endif
-  
+
   tft.fillScreen(ILI9341_BLACK);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(2);
   tft.setCursor(10, 30);
   tft.println("SMARTACCESS OTA");
-  tft.drawFastHLine(10, 60, 300, ILI9341_PURPLE);
+  tft.drawFastHLine(10, 60, 300, tft.color565(124, 58, 237));
   tft.setCursor(10, 80);
   tft.setTextColor(ILI9341_WHITE);
-  tft.println("Downloading firmware...");
+  tft.setTextSize(1);
+  tft.println("Connecting to update server...");
+  tft.setCursor(10, 100);
+  tft.println("Please wait, do not power off.");
 
   httpUpdate.rebootOnUpdate(true);
   httpUpdate.addHeader("x-esp32-version", CURRENT_VERSION);
   httpUpdate.addHeader("Authorization", "Bearer SUPER_SECURE_ESP32_ACCESS_TOKEN");
+  // แนบ callback แสดง progress bar
+  httpUpdate.onProgress(onOTAProgress);
+
+  tft.fillRect(10, 80, 300, 20, ILI9341_BLACK);
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.println("Downloading firmware...");
 
   t_httpUpdate_return ret = httpUpdate.update(secureClient, FIRMWARE_URL);
   if (ret == HTTP_UPDATE_FAILED) {
@@ -1328,7 +1365,12 @@ void performHTTPSOTA() {
     tft.setTextColor(ILI9341_RED);
     tft.setTextSize(2);
     tft.setCursor(10, 40);
-    tft.println("OTA UPDATE FAILED");
+    tft.println("OTA FAILED");
+    tft.setTextSize(1);
+    tft.setCursor(10, 80);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.print("Error: ");
+    tft.println(httpUpdate.getLastErrorString());
     delay(5000);
   }
 }
@@ -1919,7 +1961,7 @@ void loop() {
   if (WiFi.status() == WL_CONNECTED && !is_offline_mode) {
     digitalWrite(LED_WIFI, HIGH);
 
-    if (millis() - lastPollTime >= polling_delay) {
+    if (millis() - lastPollTime >= currentPollDelay) {
       lastPollTime = millis();
 
       // ดึงเวลาปัจจุบันจำลอง
@@ -1970,9 +2012,28 @@ void loop() {
       String signature = generateHMACHex(hmacPayload, String(api_key));
       http.addHeader("x-timestamp", timestampStr);
       http.addHeader("x-hmac-signature", signature);
+      if (lastEtag.length() > 0) {
+        http.addHeader("If-None-Match", lastEtag);
+      }
 
       int httpCode = http.GET();
+
+      // ─── 304 Not Modified: state ไม่เปลี่ยน ไม่ต้อง parse JSON ───
+      if (httpCode == 304) {
+        idleCycles++;
+        if (idleCycles >= 5) {
+          currentPollDelay = POLL_SLOW;
+        }
+        http.end();
+        return;
+      }
+
       if (httpCode == 200) {
+        // Extract ETag for next request
+        String newEtag = http.header("ETag");
+        if (newEtag.length() > 0) {
+          lastEtag = newEtag;
+        }
         api_fail_count = 0;
         is_offline_mode = false;
         if (millis() - last_student_sync > SYNC_STUDENTS_INTERVAL) {
@@ -2036,6 +2097,20 @@ void loop() {
           }
 
           DBGF("Door command: %s | Queue: %d\\n", door_trigger ? door_trigger : "NULL", pending_count);
+
+          // ─── Adaptive Polling: ปรับความเร็วตาม activity ───
+          if (String(door_trigger) == "open") {
+            idleCycles = 0;
+            currentPollDelay = POLL_FAST;
+          } else if (pending_count != last_queue_count ||
+                     studentId != last_approved_name ||
+                     (active_token && String(active_token) != last_active_token)) {
+            idleCycles = 0;
+            currentPollDelay = POLL_NORMAL;
+          } else {
+            idleCycles++;
+            if (idleCycles >= 5) currentPollDelay = POLL_SLOW;
+          }
 
           // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
           if (String(door_trigger) == "open") {
@@ -2443,6 +2518,40 @@ void handleLocalWebServerRequest() {
   const [firmwareLogs, setFirmwareLogs] = useState<any[]>([]);
   const [firmwareLogsLoading, setFirmwareLogsLoading] = useState(false);
 
+  // ─── Room Schedule state ───────────────────────────────────────────────
+  interface RoomSchedule { id: number; room_code: string; day_of_week: number; open_time: string; close_time: string; is_active: boolean; }
+  const [schedules, setSchedules] = useState<RoomSchedule[]>([]);
+  const [scheduleRoom, setScheduleRoom] = useState("");
+  const [scheduleDay, setScheduleDay] = useState(0);
+  const [scheduleOpen, setScheduleOpen] = useState("08:00");
+  const [scheduleClose, setScheduleClose] = useState("17:00");
+  const [scheduleActive, setScheduleActive] = useState(true);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const DAY_NAMES = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัส","ศุกร์","เสาร์"];
+
+  const fetchSchedules = useCallback(async () => {
+    const r = await fetch("/api/system/schedule");
+    const d = await r.json();
+    setSchedules(d.schedules || []);
+  }, []);
+
+  const saveSchedule = async () => {
+    if (!scheduleRoom) return;
+    setScheduleSaving(true);
+    await fetch("/api/system/schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room_code: scheduleRoom, day_of_week: scheduleDay, open_time: scheduleOpen, close_time: scheduleClose, is_active: scheduleActive }),
+    });
+    await fetchSchedules();
+    setScheduleSaving(false);
+  };
+
+  const deleteSchedule = async (id: number) => {
+    await fetch(`/api/system/schedule?id=${id}`, { method: "DELETE" });
+    setSchedules(prev => prev.filter(s => s.id !== id));
+  };
+
   const fetchFirmwares = useCallback(async () => {
     setFirmwareReleasesLoading(true);
     try {
@@ -2592,24 +2701,36 @@ void handleLocalWebServerRequest() {
     }
   }, [user, fetchAdmins]);
 
+  // ─── SSE real-time subscription (replaces 10s interval polling) ───
   useEffect(() => {
     if (!user) return;
-    setTimeout(() => {
-      fetchPending();
-    }, 0);
-    const interval = setInterval(fetchPending, 10000);
-    return () => clearInterval(interval);
-  }, [fetchPending, user]);
 
-  // Polling logs to keep daily stats updated
-  useEffect(() => {
-    if (!user) return;
-    setTimeout(() => {
-      fetchLogs();
-    }, 0);
-    const interval = setInterval(fetchLogs, 10000);
-    return () => clearInterval(interval);
-  }, [fetchLogs, user]);
+    // Fallback initial load while SSE connects
+    fetchPending();
+    fetchLogs();
+
+    const es = new EventSource("/api/sse");
+
+    const applySnapshot = (data: { pending: Student[]; logs: AccessLog[] }) => {
+      if (Array.isArray(data.pending)) setPending(data.pending);
+      if (Array.isArray(data.logs)) setLogs(data.logs);
+    };
+
+    es.addEventListener("snapshot", (e: MessageEvent) => {
+      try { applySnapshot(JSON.parse(e.data)); } catch { /* ignore */ }
+    });
+    es.addEventListener("update", (e: MessageEvent) => {
+      try { applySnapshot(JSON.parse(e.data)); } catch { /* ignore */ }
+    });
+    es.onerror = () => {
+      // SSE reconnects automatically; fall back to manual poll on persistent error
+      es.close();
+      const iv = setInterval(() => { fetchPending(); fetchLogs(); }, 10000);
+      return () => clearInterval(iv);
+    };
+
+    return () => es.close();
+  }, [user, fetchPending, fetchLogs]);
 
   // Polling System Status
   useEffect(() => {
@@ -2687,7 +2808,10 @@ void handleLocalWebServerRequest() {
         fetchSettings();
       }, 0);
     }
-  }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings]);
+    if (tab === "schedule" && user?.role === "owner") {
+      fetchSchedules();
+    }
+  }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings, fetchSchedules]);
 
   useEffect(() => {
     if (tab === "all") {
@@ -3733,6 +3857,7 @@ void handleLocalWebServerRequest() {
               ] : []),
               ...(isOwner ? [
                 { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
+                { id: "schedule", icon: <ClockIcon />, label: "ตารางเวลาเปิด-ปิดห้อง", badge: 0 },
                 { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
               { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
@@ -3840,6 +3965,12 @@ void handleLocalWebServerRequest() {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <KeyIcon />
                       <span>จัดการสิทธิ์ผู้ดูแลระบบ</span>
+                    </span>
+                  )}
+                  {tab === "schedule" && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <ClockIcon />
+                      <span>ตารางเวลาเปิด-ปิดห้อง</span>
                     </span>
                   )}
                   {tab === "settings" && (
@@ -5901,6 +6032,98 @@ void handleLocalWebServerRequest() {
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Room Schedule Tab (Owner Only) ────────────── */}
+            {tab === "schedule" && isOwner && (
+              <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
+                <div className="dashboard-section-card" style={{ padding: 24 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>Room Schedules</div>
+                  <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px" }}>ตารางเวลาเปิด-ปิดห้องเรียน</h2>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 20px" }}>กำหนดเวลาทำการรายวันสำหรับแต่ละห้อง (ข้อมูลเพื่อการอ้างอิง — ยังไม่บังคับล็อกประตูอัตโนมัติ)</p>
+
+                  {/* Add / Edit form */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>ห้อง</label>
+                      <input
+                        value={scheduleRoom}
+                        onChange={e => setScheduleRoom(e.target.value)}
+                        placeholder="เช่น lab1"
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>วัน</label>
+                      <select
+                        value={scheduleDay}
+                        onChange={e => setScheduleDay(parseInt(e.target.value))}
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }}
+                      >
+                        {DAY_NAMES.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>เปิด</label>
+                      <input type="time" value={scheduleOpen} onChange={e => setScheduleOpen(e.target.value)}
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>ปิด</label>
+                      <input type="time" value={scheduleClose} onChange={e => setScheduleClose(e.target.value)}
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 13 }} />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-primary)", cursor: "pointer" }}>
+                        <input type="checkbox" checked={scheduleActive} onChange={e => setScheduleActive(e.target.checked)} style={{ width: 16, height: 16 }} />
+                        เปิดใช้งาน
+                      </label>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end" }}>
+                      <button
+                        onClick={saveSchedule}
+                        disabled={scheduleSaving || !scheduleRoom}
+                        style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "var(--smartaccess-purple)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: scheduleSaving || !scheduleRoom ? 0.6 : 1 }}
+                      >
+                        {scheduleSaving ? "กำลังบันทึก..." : "บันทึก"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Schedule table */}
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: "var(--bg-secondary)" }}>
+                          {["ห้อง","วัน","เปิด","ปิด","สถานะ",""].map(h => (
+                            <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-secondary)", borderBottom: "1px solid var(--border)" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schedules.length === 0 ? (
+                          <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}>ยังไม่มีตารางเวลา</td></tr>
+                        ) : schedules.map(s => (
+                          <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text-primary)" }}>{s.room_code}</td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-primary)" }}>{DAY_NAMES[s.day_of_week]}</td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-primary)" }}>{s.open_time}</td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-primary)" }}>{s.close_time}</td>
+                            <td style={{ padding: "10px 12px" }}>
+                              <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: s.is_active ? "rgba(16,185,129,0.15)" : "rgba(100,116,139,0.15)", color: s.is_active ? "#10b981" : "#64748b" }}>
+                                {s.is_active ? "เปิดใช้งาน" : "ปิด"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 12px" }}>
+                              <button onClick={() => deleteSchedule(s.id)} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer" }}>ลบ</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>

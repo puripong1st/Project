@@ -1,11 +1,12 @@
 // app/api/esp32/display/route.ts — JSON display state for ESP32 polling
-// OPTIMIZED: All independent DB queries run in parallel with Promise.all
+// OPTIMIZED: All independent DB queries run in parallel with Promise.all + ETag 304 support
 import { NextRequest, NextResponse } from "next/server";
 import { initDatabase, getPool } from "@/lib/db";
 import { getOrCreateActiveQRToken } from "@/lib/qr";
 import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { verifyEsp32Security } from "@/lib/api-security";
+import crypto from "crypto";
 
 // Restrict CORS to the configured app origin only — never open wildcard in production
 const ALLOWED_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || "https://project-sigma-ivory-21.vercel.app").replace(/\/$/, "");
@@ -189,52 +190,49 @@ export async function GET(req: NextRequest) {
 
     const updateAvailable = clientVer !== serverVer;
 
-    return NextResponse.json(
-      {
-        // Display info for ESP32
-        title: "SmartAccess Door Access",
-        subtitle: "คณะครุศาสตร์อุตสาหกรรม มทร.พระนคร",
-        ...(isAuthenticatedDevice && { active_token: activeTokenVal }),
-        qr_url: `${appUrl}/api/esp32/qr?room=${room}`,
-        register_url: `${appUrl}/?room=${room}`,
-        pending_count: pendingCount,
-        last_approved: lastStudent
-          ? {
-              name: lastStudent.name,
-              student_id: displayStudentId,
-              time: lastStudent.approved_at,
-            }
-          : null,
-        server_time: serverTimeIso,
-        server_time_text: serverTimeText,
-        timezone: "Asia/Bangkok",
-        status: "online",
-        door_trigger: doorTrigger,
-        requested_room: room,
-        update_available: updateAvailable,
-        firmware_version: serverVer,
-        // Display dimensions hint for LAFVIN 3.2" (320x240)
-        display: {
-          width: 320,
-          height: 240,
-          orientation: "landscape",
-          color_theme: {
-            bg: "#000000",
-            primary: "#4CAF50",
-            secondary: "#FFD700",
-            text: "#FFFFFF",
-            error: "#F44336",
-          },
-        },
+    const payload = {
+      title: "SmartAccess Door Access",
+      subtitle: "คณะครุศาสตร์อุตสาหกรรม มทร.พระนคร",
+      ...(isAuthenticatedDevice && { active_token: activeTokenVal }),
+      qr_url: `${appUrl}/api/esp32/qr?room=${room}`,
+      register_url: `${appUrl}/?room=${room}`,
+      pending_count: pendingCount,
+      last_approved: lastStudent
+        ? { name: lastStudent.name, student_id: displayStudentId, time: lastStudent.approved_at }
+        : null,
+      server_time: serverTimeIso,
+      server_time_text: serverTimeText,
+      timezone: "Asia/Bangkok",
+      status: "online",
+      door_trigger: doorTrigger,
+      requested_room: room,
+      update_available: updateAvailable,
+      firmware_version: serverVer,
+      display: {
+        width: 320, height: 240, orientation: "landscape",
+        color_theme: { bg: "#000000", primary: "#4CAF50", secondary: "#FFD700", text: "#FFFFFF", error: "#F44336" },
       },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-          "Content-Type": "application/json",
-          ...CORS_HEADERS,
-        },
+    };
+
+    // ─── ETag: ส่ง 304 Not Modified เมื่อ state ไม่เปลี่ยน ───
+    // ไม่ใช้ ETag เมื่อมี door command เพราะ command ต้องถูก consume เสมอ
+    if (doorTrigger === "idle") {
+      const etagSrc = `${pendingCount}|${lastStudent?.student_id || ""}|${activeToken || ""}|${updateAvailable}|${serverVer}`;
+      const etag = `"${crypto.createHash("sha1").update(etagSrc).digest("hex").slice(0, 16)}"`;
+      if (req.headers.get("if-none-match") === etag) {
+        return new NextResponse(null, {
+          status: 304,
+          headers: { ETag: etag, "Cache-Control": "no-store", ...CORS_HEADERS },
+        });
       }
-    );
+      return NextResponse.json(payload, {
+        headers: { "Cache-Control": "no-store", ETag: etag, ...CORS_HEADERS },
+      });
+    }
+
+    return NextResponse.json(payload, {
+      headers: { "Cache-Control": "no-store", ...CORS_HEADERS },
+    });
   } catch (error) {
     console.error("[ESP32/Display] error:", error);
     return NextResponse.json(
