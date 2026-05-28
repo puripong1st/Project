@@ -68,8 +68,6 @@ export async function GET(req: NextRequest) {
     const mem = process.memoryUsage();
     const rssMb = Math.round(mem.rss / 1024 / 1024);
     const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024);
-    const uptimeSeconds = Math.floor(process.uptime());
-
     // Determine overall status
     let status: "healthy" | "degraded" | "unhealthy";
     if (dbStatus === "up" && rateLimiterStatus === "up") {
@@ -80,16 +78,18 @@ export async function GET(req: NextRequest) {
       status = "degraded";
     }
 
+    const now = new Date();
+
     return NextResponse.json(
       {
         status,
-        timestamp: new Date().toISOString(),
+        timestamp: now.toISOString(),
+        server_time: now.toLocaleString("th-TH", { timeZone: "Asia/Bangkok" }),
         components: {
           database: { status: dbStatus, latency_ms: dbLatencyMs },
           rate_limiter: { status: rateLimiterStatus },
           memory: { rss_mb: rssMb, heap_used_mb: heapUsedMb },
         },
-        uptime_seconds: uptimeSeconds,
         last_qr_scan: lastQrScan,
       },
       {

@@ -2642,7 +2642,7 @@ void handleLocalWebServerRequest() {
       rate_limiter: { status: "up" | "down" };
       memory: { rss_mb: number; heap_used_mb: number };
     };
-    uptime_seconds: number;
+    server_time: string;
     last_qr_scan: string | null;
   } | null>(null);
 
@@ -4933,13 +4933,13 @@ void handleLocalWebServerRequest() {
                         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>RSS · Heap {healthData.components.memory.heap_used_mb} MB</div>
                       </div>
 
-                      {/* Uptime */}
+                      {/* Server Time */}
                       <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase" }}>Uptime</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
-                          {Math.floor(healthData.uptime_seconds / 3600)}h {Math.floor((healthData.uptime_seconds % 3600) / 60)}m
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase" }}>เวลาเซิร์ฟเวอร์</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>
+                          {healthData.server_time}
                         </div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{healthData.uptime_seconds.toLocaleString()} วินาที</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Asia/Bangkok</div>
                       </div>
 
                       {/* Last QR Scan */}
