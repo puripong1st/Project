@@ -2558,37 +2558,41 @@ void handleLocalWebServerRequest() {
   }, [user, fetchAdmins]);
 
   useEffect(() => {
+    if (!user) return;
     setTimeout(() => {
       fetchPending();
     }, 0);
     const interval = setInterval(fetchPending, 10000);
     return () => clearInterval(interval);
-  }, [fetchPending]);
+  }, [fetchPending, user]);
 
   // Polling logs to keep daily stats updated
   useEffect(() => {
+    if (!user) return;
     setTimeout(() => {
       fetchLogs();
     }, 0);
     const interval = setInterval(fetchLogs, 10000);
     return () => clearInterval(interval);
-  }, [fetchLogs]);
+  }, [fetchLogs, user]);
 
   // Polling System Status
   useEffect(() => {
+    if (!user) return;
     setTimeout(() => {
       fetchSystemStatus();
     }, 0);
     const interval = setInterval(fetchSystemStatus, 15000);
     return () => clearInterval(interval);
-  }, [fetchSystemStatus]);
+  }, [fetchSystemStatus, user]);
 
   // Polling System Health (every 30s)
   useEffect(() => {
+    if (!user) return;
     fetchHealthData();
     const interval = setInterval(fetchHealthData, 30000);
     return () => clearInterval(interval);
-  }, [fetchHealthData]);
+  }, [fetchHealthData, user]);
 
   useEffect(() => {
     if (settingsLoaded || roomsList.length > 0 || !systemStatus?.esp32Devices?.length) return;
