@@ -2631,7 +2631,7 @@ void handleLocalWebServerRequest() {
   }, [user, fetchSystemStatus, fetchAll, fetchLogs]);
 
   useEffect(() => {
-    if (tab === "all" && (user?.role === "owner" || user?.role === "log_viewer")) {
+    if ((tab === "all" || tab === "rooms" || tab === "pending") && (user?.role === "owner" || user?.role === "log_viewer")) {
       setTimeout(() => {
         fetchAll();
         fetchLogs();
