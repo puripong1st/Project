@@ -321,7 +321,8 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     handleLogout,
     mobileMenuOpen,
     setMobileMenuOpen,
-    showToast
+    showToast,
+    setEditingAdmin
   } = useDashboard();
 
   const [showWarning, setShowWarning] = useState(false);
@@ -339,15 +340,18 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
 
   const { resetTimer } = useIdleTimer(handleTimeout, handleWarning);
 
-  // Sync tab with pathname on load / path change
+  // Sync tab with pathname on load / path change and reset modal states
   useEffect(() => {
     if (pathname) {
       const endPath = pathname.split("/").pop();
       if (endPath && ["pending", "all", "admins", "settings", "rooms", "guide", "iot"].includes(endPath)) {
         setTab(endPath as any);
       }
+      // Reset open modal states when changing route/tab
+      setEditingAdmin(null);
+      setActiveRoomDetails(null);
     }
-  }, [pathname, setTab]);
+  }, [pathname, setTab, setEditingAdmin, setActiveRoomDetails]);
 
   const isOwner = user?.role === "owner";
 

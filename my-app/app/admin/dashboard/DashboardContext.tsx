@@ -128,6 +128,7 @@ interface DashboardContextType {
   setActiveRoomDetails: React.Dispatch<React.SetStateAction<{ room: string; ip: string } | null>>;
   roomDetailsTab: "api" | "webhook" | "arduino";
   setRoomDetailsTab: React.Dispatch<React.SetStateAction<"api" | "webhook" | "arduino">>;
+  playSoftChime: () => void;
   roomWebhookRegisterInput: string;
   setRoomWebhookRegisterInput: React.Dispatch<React.SetStateAction<string>>;
   roomWebhookApproveInput: string;
@@ -1495,6 +1496,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       rawSettings, setRawSettings,
       activeRoomDetails, setActiveRoomDetails,
       roomDetailsTab, setRoomDetailsTab,
+      playSoftChime,
       roomWebhookRegisterInput, setRoomWebhookRegisterInput,
       roomWebhookApproveInput, setRoomWebhookApproveInput,
       roomWebhookLogsInput, setRoomWebhookLogsInput,

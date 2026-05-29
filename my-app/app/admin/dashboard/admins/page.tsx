@@ -331,7 +331,7 @@ export default function AdminsPage() {
               </div>
 
               {editAdminForm.role !== "owner" && (
-                <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: "1px dashed var(--border)", background: "rgba(255,255,255,0.01)" }}>
+                <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: "1.5px dashed var(--smartaccess-purple-light)", background: "rgba(124,58,237,0.02)" }}>
                   <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
                     ห้องเรียนที่อนุญาตให้เข้าถึง / จัดการได้ *
                   </label>
@@ -380,7 +380,7 @@ export default function AdminsPage() {
                   type="button"
                   onClick={() => setEditingAdmin(null)}
                   className="btn-secondary"
-                  style={{ flex: 1, justifyContent: "center", borderRadius: 12, padding: "12px" }}
+                  style={{ flex: 1, justifyContent: "center", borderRadius: 12, padding: "12px", border: "1.5px solid var(--smartaccess-purple-light)", background: "var(--bg-secondary)" }}
                 >
                   ยกเลิก
                 </button>

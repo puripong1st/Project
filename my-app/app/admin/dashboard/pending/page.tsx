@@ -30,13 +30,92 @@ export default function PendingPage() {
     handleTouchEnd,
     setRejectModal,
     loadingId,
-    handleApprove
+    handleApprove,
+    pending,
+    audioEnabled,
+    setAudioEnabled,
+    playSoftChime
   } = useDashboard();
 
   return (
     <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
+      
+      {/* 🚪 Beautiful Classroom Filter Tabs & Audio Controls */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+        {/* Classroom Selector */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", background: "rgba(124, 58, 237, 0.04)", padding: 6, borderRadius: 14, border: "1px solid rgba(124, 58, 237, 0.08)" }}>
+          <button
+            onClick={() => setPendingRoomFilter("all")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 10,
+              border: "none",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              background: pendingRoomFilter === "all" ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+              color: pendingRoomFilter === "all" ? "#ffffff" : "var(--text-secondary)",
+              boxShadow: pendingRoomFilter === "all" ? "0 4px 12px rgba(124, 58, 237, 0.2)" : "none",
+              transition: "all 0.2s ease"
+            }}
+          >
+            🚪 ทุกห้องเรียน ({pending.length})
+          </button>
+          {roomsList.map(r => {
+            const count = pending.filter(s => s.requested_room === r.room).length;
+            return (
+              <button
+                key={r.room}
+                onClick={() => setPendingRoomFilter(r.room)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  background: pendingRoomFilter === r.room ? "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)" : "transparent",
+                  color: pendingRoomFilter === r.room ? "#ffffff" : "var(--text-secondary)",
+                  boxShadow: pendingRoomFilter === r.room ? "0 4px 12px rgba(124, 58, 237, 0.2)" : "none",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                ห้อง {r.room} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Audio Controls */}
+        <button
+          onClick={() => {
+            setAudioEnabled(!audioEnabled);
+            if (!audioEnabled) {
+              playSoftChime(); // Play test sound on enable so user knows it works!
+            }
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 16px",
+            borderRadius: 12,
+            border: "1px solid " + (audioEnabled ? "rgba(16, 185, 129, 0.2)" : "var(--border)"),
+            background: audioEnabled ? "rgba(16, 185, 129, 0.05)" : "var(--bg-secondary)",
+            color: audioEnabled ? "#10B981" : "var(--text-secondary)",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: "var(--shadow-sm)"
+          }}
+        >
+          <span>{audioEnabled ? "🔊 เสียงเตือนคิว: เปิด" : "🔇 เสียงเตือนคิว: ปิด"}</span>
+        </button>
+      </div>
+
       <div className="premium-card" style={{ padding: 24 }}>
-        <div style={{ display: "flex", justifyContent: "between", alignItems: "center", flexWrap: "wrap", gap: 14, borderBottom: "1px solid var(--border)", paddingBottom: 18, marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14, borderBottom: "1px solid var(--border)", paddingBottom: 18, marginBottom: 18 }}>
           <div>
             <h3 style={{ fontSize: 16.5, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>
               📥 รายการลงทะเบียนรอยืนยันสิทธิ์ ({filteredPending.length} คำขอ)
@@ -67,22 +146,6 @@ export default function PendingPage() {
               </button>
             </div>
           )}
-
-          {/* Filters */}
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: selectedPendingIds.length === 0 ? "auto" : "none" }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-secondary)" }}>กรองตามห้อง:</span>
-            <select
-              className="smartaccess-input"
-              value={pendingRoomFilter}
-              onChange={e => setPendingRoomFilter(e.target.value)}
-              style={{ padding: "6px 12px", fontSize: 12, width: 120, height: 32 }}
-            >
-              <option value="all">ทุกห้องเรียน</option>
-              {roomsList.map(r => (
-                <option key={r.room} value={r.room}>{r.room}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {filteredPending.length === 0 ? (
