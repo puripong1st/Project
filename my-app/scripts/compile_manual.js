@@ -25,7 +25,6 @@ function escapeHtml(text) {
 // Intercept code blocks for Mermaid rendering and Prism syntax highlighting
 const renderer = {
   code(codeBlock) {
-    // In newer versions of marked, codeBlock is an object containing text and lang
     const codeText = typeof codeBlock === 'string' ? codeBlock : codeBlock.text;
     const lang = typeof codeBlock === 'object' ? (codeBlock.lang || '') : '';
     
@@ -40,7 +39,8 @@ const renderer = {
 marked.use({ renderer });
 
 const mdPath = path.join(__dirname, '..', '..', 'complete_system_manual_th.md');
-const htmlOutputPath = path.join(__dirname, '..', '..', 'complete_system_manual_th.html');
+const htmlOutputPathRoot = path.join(__dirname, '..', '..', 'complete_system_manual_th.html');
+const htmlOutputPathPublic = path.join(__dirname, '..', 'public', 'complete_system_manual_th.html');
 
 console.log(`Reading manual markdown from: ${mdPath}`);
 let markdown = fs.readFileSync(mdPath, 'utf8');
@@ -401,6 +401,7 @@ const htmlTemplate = `<!DOCTYPE html>
       justify-content: center;
       box-shadow: var(--shadow);
       overflow-x: auto;
+      position: relative; /* Added for absolute positioning of download button */
     }
 
     /* Alert Boxes (Callouts) */
@@ -677,6 +678,107 @@ const htmlTemplate = `<!DOCTYPE html>
       securityLevel: 'loose',
       flowchart: { useWidth: true, htmlLabels: true }
     });
+
+    // Automatically inject "Download PNG" buttons after Mermaid renders diagrams
+    window.addEventListener("load", function() {
+      setTimeout(function() {
+        const mermaidDivs = document.querySelectorAll(".mermaid");
+        mermaidDivs.forEach((div, index) => {
+          const svg = div.querySelector("svg");
+          if (!svg) return;
+
+          div.style.position = "relative";
+          div.style.paddingTop = "54px"; // Spacing for absolute button
+
+          // Create Download Button
+          const btn = document.createElement("button");
+          btn.innerHTML = "📥 เซฟภาพ PNG";
+          btn.style.position = "absolute";
+          btn.style.top = "12px";
+          btn.style.right = "12px";
+          btn.style.background = "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)";
+          btn.style.color = "white";
+          btn.style.border = "none";
+          btn.style.padding = "7px 14px";
+          btn.style.borderRadius = "8px";
+          btn.style.fontSize = "12px";
+          btn.style.fontWeight = "700";
+          btn.style.cursor = "pointer";
+          btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.2)";
+          btn.style.fontFamily = "'Sarabun', sans-serif";
+          btn.style.transition = "all 0.2s";
+          btn.style.zIndex = "10";
+
+          btn.onmouseover = () => {
+            btn.style.transform = "translateY(-1px)";
+            btn.style.boxShadow = "0 6px 14px rgba(124,58,237,0.3)";
+          };
+          btn.onmouseout = () => {
+            btn.style.transform = "translateY(0)";
+            btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.2)";
+          };
+
+          btn.addEventListener("click", function() {
+            saveSvgAsPng(svg, "smartaccess_diagram_" + (index + 1) + ".png");
+          });
+
+          div.appendChild(btn);
+        });
+      }, 1500);
+    });
+
+    // Convert SVG to high-quality PNG and trigger download
+    function saveSvgAsPng(svgElement, fileName) {
+      try {
+        const svgString = new XMLSerializer().serializeToString(svgElement);
+        let correctedSvgString = svgString;
+        if (!svgString.match(/^<svg[^>]+xmlns="http:\\/\\/www\\.w3\\.org\\/2000\\/svg"/)) {
+          correctedSvgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+        
+        const svgBlob = new Blob([correctedSvgString], { type: 'image/svg+xml;charset=utf-8' });
+        const URL = window.URL || window.webkitURL || window;
+        const blobURL = URL.createObjectURL(svgBlob);
+        
+        const image = new Image();
+        image.onload = () => {
+          // 2x Scaling for HD quality
+          const scale = 2;
+          const rect = svgElement.getBoundingClientRect();
+          const width = (rect.width || 800) * scale;
+          const height = (rect.height || 600) * scale;
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          
+          // White background
+          context.fillStyle = '#FFFFFF';
+          context.fillRect(0, 0, width, height);
+          
+          context.drawImage(image, 0, 0, width, height);
+          
+          const pngURL = canvas.toDataURL('image/png');
+          const downloadLink = document.createElement('a');
+          downloadLink.href = pngURL;
+          downloadLink.download = fileName;
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          
+          URL.revokeObjectURL(blobURL);
+        };
+        image.onerror = (err) => {
+          console.error("Failed to load SVG into image", err);
+          alert("ไม่สามารถแปลงรูปภาพได้ กรุณาลองเซฟผ่านเบราว์เซอร์โดยตรง");
+        };
+        image.src = blobURL;
+      } catch (e) {
+        console.error("Error converting SVG to PNG", e);
+        alert("เกิดข้อผิดพลาดในการแปลงรูปภาพ: " + e.message);
+      }
+    }
   </script>
 
   <script>
@@ -686,7 +788,6 @@ const htmlTemplate = `<!DOCTYPE html>
       const tocMenu = document.getElementById("tocMenu");
       
       headers.forEach((h, index) => {
-        // Set id if missing
         if (!h.id) {
           h.id = "sec-auto-" + index;
         }
@@ -696,7 +797,6 @@ const htmlTemplate = `<!DOCTYPE html>
         a.href = "#" + h.id;
         a.title = h.textContent;
         a.textContent = h.textContent;
-        // Close sidebar on click on mobile
         a.addEventListener("click", () => {
           if (window.innerWidth <= 1024) {
             toggleSidebar();
@@ -763,6 +863,10 @@ const htmlTemplate = `<!DOCTYPE html>
 </body>
 </html>`;
 
-console.log(`Writing fully pre-rendered static HTML to: ${htmlOutputPath}`);
-fs.writeFileSync(htmlOutputPath, htmlTemplate, 'utf8');
-console.log("Success! Compiled complete_system_manual_th.html with full Mobile/iPad support and Mermaid renderer is ready!");
+console.log(`Writing fully pre-rendered static HTML to root: ${htmlOutputPathRoot}`);
+fs.writeFileSync(htmlOutputPathRoot, htmlTemplate, 'utf8');
+
+console.log(`Writing fully pre-rendered static HTML to public: ${htmlOutputPathPublic}`);
+fs.writeFileSync(htmlOutputPathPublic, htmlTemplate, 'utf8');
+
+console.log("Success! Compiled complete_system_manual_th.html in both locations with full Mobile/iPad support, Mermaid renderer, and PNG download triggers is ready!");
