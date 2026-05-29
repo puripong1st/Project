@@ -716,6 +716,31 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(t);
   }, []);
 
+  // Global 401 Interceptor to automatically redirect to login if session has expired or is unauthorized
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      try {
+        const response = await originalFetch(...args);
+        if (response.status === 401) {
+          const urlStr = typeof args[0] === "string" ? args[0] : (args[0] instanceof URL ? args[0].toString() : "");
+          if (urlStr && !urlStr.includes("/api/auth/login")) {
+            console.warn("Unauthorized API request detected (401). Redirecting to login...");
+            setUser(null);
+            router.push("/admin/login?reason=idle");
+          }
+        }
+        return response;
+      } catch (error) {
+        throw error;
+      }
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [router]);
+
   // Auth me check
   useEffect(() => {
     fetch("/api/auth/me")
