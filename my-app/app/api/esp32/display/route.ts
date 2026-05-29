@@ -5,7 +5,7 @@ export const preferredRegion = "sin1"; // Singapore — ใกล้ประเ
 
 import { NextRequest, NextResponse } from "next/server";
 import { hmacSHA256, sha1Hex, secureEqual } from "@/lib/edge-crypto";
-import { sbGetSettings, sbUpdate, sbUpsert } from "@/lib/supabase-edge";
+import { sbUpsert } from "@/lib/supabase-edge";
 import { cacheGet, cacheSet } from "@/lib/kv-cache";
 
 const ALLOWED_ORIGIN = (
@@ -158,12 +158,21 @@ export async function GET(req: NextRequest) {
     let doorTrigger = "idle";
     if (doorCmd === "unlock") {
       doorTrigger = "open";
-      // Consume command (fire-and-forget)
-      sbUpdate("system_settings", { setting_key: doorCmdKey }, {
-        setting_value: "consumed",
-        updated_at: new Date().toISOString(),
-      });
-      // Also invalidate cache so next poll sees consumed state
+      // Consume command — ต้อง await จริง ไม่งั้นใน Edge runtime ฟังก์ชันจะถูก
+      // terminate ก่อน PATCH จะถึง Supabase ทำให้ค่ายังเป็น "unlock" → บอร์ดเปิดวนไม่จบ
+      try {
+        await sbFetch(`system_settings?setting_key=eq.${encodeURIComponent(doorCmdKey)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            setting_value: "consumed",
+            updated_at: new Date().toISOString(),
+          }),
+        });
+      } catch (e) {
+        console.error("[ESP32/Display] consume door cmd failed:", e);
+      }
+      // Invalidate cache so next poll sees consumed state immediately
       await cacheSet(cacheKey, { ...allSettings, [doorCmdKey]: "consumed" }, SETTINGS_TTL);
     }
 

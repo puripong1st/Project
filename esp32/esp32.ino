@@ -81,6 +81,9 @@ String last_active_token = "";
 String last_server_time = "";
 String last_status_text = "";
 String ip_address_str = "0.0.0.0";
+// Edge-trigger กันเปิดประตูซ้ำ: เปิดเฉพาะตอนคำสั่งเปลี่ยนจาก idle→open เท่านั้น
+// ป้องกันบอร์ดวนหน้า ACCESS GRANTED ไม่จบ หากเซิร์ฟเวอร์ส่ง "open" ค้างมาหลายรอบ
+String last_door_trigger = "idle";
 
 // ฟังก์ชันสำหรับสร้างและวาดภาพ QR Code แท้ๆ ที่สแกนได้ด้วยโทรศัพท์มือถือ 100%!
 void drawQRCode(String qrText, int startX, int startY, int boxSize) {
@@ -1153,7 +1156,11 @@ void loop() {
             if (idleCycles >= 5) currentPollDelay = POLL_SLOW;
           }
 
-          if (String(door_trigger) == "open") {
+          bool isOpenCmd = (door_trigger && String(door_trigger) == "open");
+
+          // เปิดประตูเฉพาะตอน "ขอบขาขึ้น" (idle→open) เท่านั้น — ถ้าเซิร์ฟเวอร์ยังส่ง
+          // "open" ค้างมา (ยังไม่ถูก consume) บอร์ดจะไม่เปิดซ้ำและกลับไปหน้า QR ตามปกติ
+          if (isOpenCmd && last_door_trigger != "open") {
             Serial.println("[INFO] Door unlocked");
             DBG("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
 
@@ -1200,6 +1207,9 @@ void loop() {
             tft.setCursor(265, 6);
             tft.print(time_str);
           }
+
+          // จดจำสถานะคำสั่งล่าสุดไว้ตรวจขอบขาขึ้นรอบถัดไป
+          last_door_trigger = isOpenCmd ? "open" : "idle";
         }
       } else {
         Serial.println("[ERROR] Connection failed");
