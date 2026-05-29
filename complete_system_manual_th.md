@@ -8381,6 +8381,12 @@ if (format === "dataurl") {
 - `productionBrowserSourceMaps: false`
 - `compiler.removeConsole` — ตัด `console.*` (ยกเว้น error/warn) ออกจาก bundle production
 
+**6. `/api/esp32/display` — route ที่ ESP32 poll หนักสุด (`app/api/esp32/display/route.ts`)**
+> route นี้ถูก optimize มาดีอยู่แล้ว (Edge runtime, KV cache settings 15s, ETag/304, parallel query) เพิ่มเติม 2 จุดที่ยังกิน Supabase:
+- **Cache firmware version (TTL 60s)** — เวอร์ชันแทบไม่เปลี่ยน เดิม query ทุก poll → ตอนนี้ query เฉพาะตอน cache miss (4 → 3 query/poll ส่วนใหญ่); ล้าง cache อัตโนมัติเมื่ออัปโหลด firmware ใหม่ (`firmware/upload` เรียก `cacheDel("firmware:latest_version")`) → OTA ยังตรวจพบรุ่นใหม่ทันที
+- **Throttle heartbeat write** — `room_last_seen_{room}` เดิมเขียน DB ทุก poll (~30 write/นาที/บอร์ด) → จำกัดเป็นสูงสุดครั้งละ 30s/ห้อง ผ่าน KV marker (การเช็ค online ใช้ความละเอียดระดับนาทีอยู่แล้ว ไม่กระทบ)
+- **หมายเหตุ**: การ throttle/cache ทั้งหมดได้ผลดีสุดเมื่อตั้ง Vercel KV จริง (ข้าม instance); หากไม่ตั้ง จะ fallback เป็น in-memory ต่อ instance ซึ่งยังช่วยลดภาระภายใน warm instance ได้
+
 ### คำแนะนำ Production (ตั้งค่าครั้งเดียว)
 
 - ตั้ง env **`SKIP_DB_INIT=true`** ใน Vercel หลัง migrate ตารางครั้งแรกเสร็จ → ข้าม ~25 DDL ทุก cold start (เห็น log `[DB] Fast Path: Skipping schema table checks`)

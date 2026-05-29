@@ -5,6 +5,7 @@ import { getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { sendDiscordNotification } from "@/lib/discord";
+import { cacheDel } from "@/lib/kv-cache";
 import crypto from "crypto";
 
 // POST /api/system/firmware/upload — อัปโหลดข้อมูลเฟิร์มแวร์ C++ ไบเนรีล่าสุด
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest) {
        DO UPDATE SET file_path = EXCLUDED.file_path, file_size = EXCLUDED.file_size, checksum_md5 = EXCLUDED.checksum_md5, uploaded_at = CURRENT_TIMESTAMP`,
       [cleanVersion, publicUrl.trim(), file.size, fileHash, admin.id]
     );
+
+    // ล้าง cache เวอร์ชัน firmware เพื่อให้ ESP32 ตรวจพบ OTA รุ่นใหม่ทันที
+    await cacheDel("firmware:latest_version");
 
     // 7. บันทึก Log การดำเนินงานในระบบ (ใช้ action firmware_deployed แทน approved)
     await pool.query(

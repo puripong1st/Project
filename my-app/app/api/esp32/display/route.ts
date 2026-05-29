@@ -126,6 +126,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // ─── Firmware version (cached) — แทบไม่เปลี่ยน จึง cache 60s ลด query ─────
+    // ลด query บน route ที่ ESP32 poll ถี่สุดลงจาก 4 → 3 ต่อ poll (ส่วนใหญ่)
+    const FIRMWARE_TTL = 60;
+    const fwCacheKey = "firmware:latest_version";
+    let serverVer = await cacheGet<string>(fwCacheKey);
+
     // ─── [Parallel DB queries via Supabase REST] ──────────────────────────
     const [pendingRes, lastApprovedRes, tokenRes, firmwareRes] = await Promise.all([
       // 1. Count pending students for this room
@@ -140,8 +146,10 @@ export async function GET(req: NextRequest) {
       sbFetch(
         `dynamic_qr_tokens?is_consumed=eq.false&room_code=eq.${encodeURIComponent(room)}&select=token&order=created_at.desc&limit=1`
       ),
-      // 4. Latest firmware version
-      sbFetch("firmware_releases?select=version&order=uploaded_at.desc&limit=1"),
+      // 4. Latest firmware version — เฉพาะตอน cache miss
+      serverVer
+        ? Promise.resolve(null)
+        : sbFetch("firmware_releases?select=version&order=uploaded_at.desc&limit=1"),
     ]);
 
     // ─── Door command check ───────────────────────────────────────────────
@@ -215,15 +223,25 @@ export async function GET(req: NextRequest) {
 
     // ─── Firmware OTA check ───────────────────────────────────────────────
     const clientVer = req.headers.get("x-esp32-version") || "1.0.0";
-    const fwRows: { version: string }[] = firmwareRes.ok ? await firmwareRes.json() : [];
-    const serverVer = fwRows[0]?.version || "1.0.0";
+    if (!serverVer) {
+      const fwRows: { version: string }[] = firmwareRes && firmwareRes.ok ? await firmwareRes.json() : [];
+      serverVer = fwRows[0]?.version || "1.0.0";
+      await cacheSet(fwCacheKey, serverVer, FIRMWARE_TTL);
+    }
     const updateAvailable = clientVer !== serverVer;
 
-    // ─── Heartbeat (fire-and-forget) ──────────────────────────────────────
-    sbUpsert("system_settings", {
-      setting_key: `room_last_seen_${room}`,
-      setting_value: new Date().toISOString(),
-    }, "setting_key");
+    // ─── Heartbeat (fire-and-forget, throttled) ───────────────────────────
+    // ESP32 poll ทุก ~2s แต่การเช็ค online ใช้ความละเอียดระดับนาที จึงเขียน
+    // DB ได้สูงสุดครั้งละ 30s/ห้อง (ใช้ KV marker) — ลด write หนัก ๆ บน Supabase
+    const hbKey = `hb:${room}`;
+    const hbRecent = await cacheGet<number>(hbKey);
+    if (!hbRecent) {
+      await cacheSet(hbKey, Date.now(), 30);
+      sbUpsert("system_settings", {
+        setting_key: `room_last_seen_${room}`,
+        setting_value: new Date().toISOString(),
+      }, "setting_key");
+    }
 
     // ─── Server time (Bangkok UTC+7) ──────────────────────────────────────
     const now = new Date();
