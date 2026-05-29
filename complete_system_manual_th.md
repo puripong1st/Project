@@ -185,8 +185,8 @@ flowchart TD
     Admin["Admin Dashboard"] -->|"อนุมัติ / ปฏิเสธ / เปิดประตู"| NextServer
     NextServer -->|"อ่าน/เขียนข้อมูล"| DB[("PostgreSQL")]
     NextServer -->|"ส่งแจ้งเตือน"| Discord["Discord Webhook"]
-    ESP32["ESP32 ห้อง CE-401/CE-402"] -->|"GET /api/esp32/display ทุก 2 วินาที"| NextServer
-    NextServer -->|"JSON: QR, pending_count, door_trigger"| ESP32
+    ESP32["ESP32 ห้อง CE-401/CE-402"] -->|"GET /api/esp32/display<br/>ทุก 2 วินาที"| NextServer
+    NextServer -->|"JSON: QR, pending_count,<br/>door_trigger"| ESP32
     ESP32 -->|"ควบคุม GPIO 12"| Relay["Relay Module"]
     Relay --> Lock["กลอนแม่เหล็ก / ชุดจำลองประตู"]
 ```

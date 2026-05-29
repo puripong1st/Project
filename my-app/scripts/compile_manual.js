@@ -12,31 +12,13 @@ try {
 
 const { marked } = require('marked');
 
-// Custom HTML escaper
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-// Intercept code blocks for Mermaid rendering and Prism syntax highlighting
-const renderer = {
-  code(codeBlock) {
-    const codeText = typeof codeBlock === 'string' ? codeBlock : codeBlock.text;
-    const lang = typeof codeBlock === 'object' ? (codeBlock.lang || '') : '';
-    
-    if (lang === 'mermaid') {
-      return `<div class="mermaid">${codeText}</div>`;
-    }
-    
-    return `<pre><code class="language-${lang || 'text'}">${escapeHtml(codeText)}</code></pre>`;
-  }
-};
-
-marked.use({ renderer });
+// Configure marked options
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+  headerIds: true,
+  mangle: false
+});
 
 const mdPath = path.join(__dirname, '..', '..', 'complete_system_manual_th.md');
 const htmlOutputPathRoot = path.join(__dirname, '..', '..', 'complete_system_manual_th.html');
@@ -52,7 +34,21 @@ markdown = markdown.replace(/>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*\n>
 });
 
 console.log("Compiling Markdown to HTML...");
-const rawHtmlContent = marked(markdown);
+let rawHtmlContent = marked(markdown);
+
+// BULLETPROOF MERMAID BLOCK TRANSFORMATION
+// This catches the standard <pre><code class="language-mermaid"> block, preserves newlines,
+// decodes XML/HTML escapes, and transforms it into a clean <div class="mermaid"> block for Mermaid.js
+const mermaidRegex = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
+rawHtmlContent = rawHtmlContent.replace(mermaidRegex, (match, code) => {
+  const decodedCode = code
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'");
+  return `<div class="mermaid">${decodedCode}</div>`;
+});
 
 console.log("Injecting premium responsive CSS (fully supporting Mobile & iPad), print styles, and interactive navigation...");
 
@@ -357,9 +353,10 @@ const htmlTemplate = `<!DOCTYPE html>
       background-color: rgba(124, 58, 237, 0.02);
     }
 
-    /* Code Blocks */
+    /* Code Blocks - STRICT READABILITY FIX */
     pre {
       background-color: var(--code-bg) !important;
+      color: #F8FAFC !important; /* Bright white/gray text */
       border-radius: 12px;
       padding: 20px !important;
       overflow-x: auto;
@@ -383,9 +380,9 @@ const htmlTemplate = `<!DOCTYPE html>
     }
 
     pre code {
-      background-color: transparent;
-      color: inherit;
-      padding: 0;
+      background-color: transparent !important;
+      color: #E2E8F0 !important; /* Bright text for dark background */
+      padding: 0 !important;
       border-radius: 0;
       word-break: normal;
     }
@@ -402,6 +399,22 @@ const htmlTemplate = `<!DOCTYPE html>
       box-shadow: var(--shadow);
       overflow-x: auto;
       position: relative; /* Added for absolute positioning of download button */
+    }
+
+    /* Mermaid text readability and spacing fixes */
+    .mermaid svg {
+      font-family: var(--font-th) !important;
+    }
+    
+    .mermaid .edgeLabel rect {
+      fill: #FFFFFF !important;
+      opacity: 0.95 !important;
+    }
+    
+    .mermaid .edgeLabel text {
+      fill: #1E293B !important;
+      font-size: 11.5px !important;
+      font-weight: 600 !important;
     }
 
     /* Alert Boxes (Callouts) */
@@ -676,7 +689,8 @@ const htmlTemplate = `<!DOCTYPE html>
       startOnLoad: true,
       theme: 'default',
       securityLevel: 'loose',
-      flowchart: { useWidth: true, htmlLabels: true }
+      htmlLabels: false, // Force native SVG text elements to calculate text dimensions properly
+      flowchart: { useWidth: true, htmlLabels: false }
     });
 
     // Automatically inject "Download PNG" buttons after Mermaid renders diagrams
@@ -690,74 +704,130 @@ const htmlTemplate = `<!DOCTYPE html>
           div.style.position = "relative";
           div.style.paddingTop = "54px"; // Spacing for absolute button
 
-          // Create Download Button
-          const btn = document.createElement("button");
-          btn.innerHTML = "📥 เซฟภาพ PNG";
-          btn.style.position = "absolute";
-          btn.style.top = "12px";
-          btn.style.right = "12px";
-          btn.style.background = "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)";
-          btn.style.color = "white";
-          btn.style.border = "none";
-          btn.style.padding = "7px 14px";
-          btn.style.borderRadius = "8px";
-          btn.style.fontSize = "12px";
-          btn.style.fontWeight = "700";
-          btn.style.cursor = "pointer";
-          btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.2)";
-          btn.style.fontFamily = "'Sarabun', sans-serif";
-          btn.style.transition = "all 0.2s";
-          btn.style.zIndex = "10";
+          // Create Button Container
+          const btnContainer = document.createElement("div");
+          btnContainer.style.position = "absolute";
+          btnContainer.style.top = "12px";
+          btnContainer.style.right = "12px";
+          btnContainer.style.display = "flex";
+          btnContainer.style.gap = "8px";
+          btnContainer.style.zIndex = "10";
 
-          btn.onmouseover = () => {
-            btn.style.transform = "translateY(-1px)";
-            btn.style.boxShadow = "0 6px 14px rgba(124,58,237,0.3)";
-          };
-          btn.onmouseout = () => {
-            btn.style.transform = "translateY(0)";
-            btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.2)";
-          };
+          // Helper to style buttons beautifully
+          function styleMermaidBtn(btn) {
+            btn.style.background = "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)";
+            btn.style.color = "white";
+            btn.style.border = "none";
+            btn.style.padding = "6px 12px";
+            btn.style.borderRadius = "8px";
+            btn.style.fontSize = "11.5px";
+            btn.style.fontWeight = "700";
+            btn.style.cursor = "pointer";
+            btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.15)";
+            btn.style.fontFamily = "'Sarabun', sans-serif";
+            btn.style.transition = "all 0.2s";
 
-          btn.addEventListener("click", function() {
+            btn.onmouseover = () => {
+              btn.style.transform = "translateY(-1px)";
+              btn.style.boxShadow = "0 6px 14px rgba(124,58,237,0.25)";
+            };
+            btn.onmouseout = () => {
+              btn.style.transform = "translateY(0)";
+              btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.15)";
+            };
+          }
+
+          // Create PNG Button
+          const btnPng = document.createElement("button");
+          btnPng.innerHTML = "🖼️ เซฟรูป PNG";
+          styleMermaidBtn(btnPng);
+          btnPng.addEventListener("click", function() {
             saveSvgAsPng(svg, "smartaccess_diagram_" + (index + 1) + ".png");
           });
 
-          div.appendChild(btn);
+          // Create SVG Button
+          const btnSvg = document.createElement("button");
+          btnSvg.innerHTML = "📐 เซฟเวกเตอร์ SVG (ชัวร์สุด)";
+          styleMermaidBtn(btnSvg);
+          btnSvg.addEventListener("click", function() {
+            saveSvgAsSvg(svg, "smartaccess_diagram_" + (index + 1) + ".svg");
+          });
+
+          btnContainer.appendChild(btnPng);
+          btnContainer.appendChild(btnSvg);
+          div.appendChild(btnContainer);
         });
       }, 1500);
     });
 
-    // Convert SVG to high-quality PNG and trigger download
-    function saveSvgAsPng(svgElement, fileName) {
+    // 100% Bulletproof Direct SVG Vector Download
+    function saveSvgAsSvg(svgElement, fileName) {
       try {
-        const svgString = new XMLSerializer().serializeToString(svgElement);
+        const svgClone = svgElement.cloneNode(true);
+        const rect = svgElement.getBoundingClientRect();
+        const width = rect.width || svgElement.viewBox.baseVal.width || 800;
+        const height = rect.height || svgElement.viewBox.baseVal.height || 600;
+        
+        svgClone.setAttribute("width", width);
+        svgClone.setAttribute("height", height);
+
+        const svgString = new XMLSerializer().serializeToString(svgClone);
         let correctedSvgString = svgString;
-        if (!svgString.match(/^<svg[^>]+xmlns="http:\\/\\/www\\.w3\\.org\\/2000\\/svg"/)) {
+        if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
           correctedSvgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
         }
         
-        const svgBlob = new Blob([correctedSvgString], { type: 'image/svg+xml;charset=utf-8' });
+        const blob = new Blob([correctedSvgString], { type: 'image/svg+xml;charset=utf-8' });
         const URL = window.URL || window.webkitURL || window;
-        const blobURL = URL.createObjectURL(svgBlob);
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error("Error saving SVG", e);
+        alert("ไม่สามารถบันทึกไฟล์ SVG ได้: " + e.message);
+      }
+    }
+
+    // High compatibility SVG to PNG using HTML5 canvas
+    function saveSvgAsPng(svgElement, fileName) {
+      try {
+        const svgClone = svgElement.cloneNode(true);
+        const rect = svgElement.getBoundingClientRect();
+        const width = rect.width || svgElement.viewBox.baseVal.width || 800;
+        const height = rect.height || svgElement.viewBox.baseVal.height || 600;
+        
+        svgClone.setAttribute("width", width);
+        svgClone.setAttribute("height", height);
+
+        const svgString = new XMLSerializer().serializeToString(svgClone);
+        let correctedSvgString = svgString;
+        if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+          correctedSvgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+        
+        const blob = new Blob([correctedSvgString], { type: 'image/svg+xml;charset=utf-8' });
+        const URL = window.URL || window.webkitURL || window;
+        const blobURL = URL.createObjectURL(blob);
         
         const image = new Image();
         image.onload = () => {
-          // 2x Scaling for HD quality
-          const scale = 2;
-          const rect = svgElement.getBoundingClientRect();
-          const width = (rect.width || 800) * scale;
-          const height = (rect.height || 600) * scale;
-          
+          const scale = 2; // HD Quality
           const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = width * scale;
+          canvas.height = height * scale;
           const context = canvas.getContext('2d');
           
           // White background
           context.fillStyle = '#FFFFFF';
-          context.fillRect(0, 0, width, height);
+          context.fillRect(0, 0, canvas.width, canvas.height);
           
-          context.drawImage(image, 0, 0, width, height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
           
           const pngURL = canvas.toDataURL('image/png');
           const downloadLink = document.createElement('a');
@@ -769,15 +839,23 @@ const htmlTemplate = `<!DOCTYPE html>
           
           URL.revokeObjectURL(blobURL);
         };
+        
         image.onerror = (err) => {
-          console.error("Failed to load SVG into image", err);
-          alert("ไม่สามารถแปลงรูปภาพได้ กรุณาลองเซฟผ่านเบราว์เซอร์โดยตรง");
+          console.error("Failed canvas rendering, falling back to SVG download", err);
+          // If canvas fails due to security (e.g. foreignObjects on desktop Chrome), download SVG directly
+          saveSvgAsSvg(svgElement, fileName.replace('.png', '.svg'));
+          alert("⚠️ เบราว์เซอร์คอมพิวเตอร์ของคุณจำกัดสิทธิ์ความปลอดภัยในเครื่อง ระบบจึงสลับไปดาวน์โหลดไฟล์เป็นฟอร์แมต Vector SVG คมชัดสูงให้แทน ซึ่งสามารถนำไปใช้วางในเล่มวิจัยได้ดีเยี่ยมเช่นกันครับ!");
         };
+        
         image.src = blobURL;
       } catch (e) {
-        console.error("Error converting SVG to PNG", e);
-        alert("เกิดข้อผิดพลาดในการแปลงรูปภาพ: " + e.message);
+        console.error("Error converting to PNG, falling back to SVG", e);
+        saveSvgAsSvg(svgElement, fileName.replace('.png', '.svg'));
       }
+    }
+  </script>emoveChild(a);
+      URL.revokeObjectURL(url);
+      alert("⚠️ เบราว์เซอร์คอมพิวเตอร์ของคุณจำกัดสิทธิ์ความปลอดภัยในเครื่อง ระบบจึงสลับไปดาวน์โหลดไฟล์เป็นฟอร์แมต Vector SVG คมชัดสูงให้แทน ซึ่งสามารถนำไปใช้วางในสไลด์นำเสนอหรือเล่มรายงานวิจัยได้ดีเช่นกันครับ!");
     }
   </script>
 
