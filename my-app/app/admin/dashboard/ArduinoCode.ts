@@ -49,8 +49,8 @@ const char *root_ca_cert =
   return `/*
   ========================================================================
   SmartAccess Door Access Controller - Configuration for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom \${roomCode}
-  โหมด: \${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
+  ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
+  โหมด: ${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
   ========================================================================
 */
 
@@ -58,18 +58,18 @@ const char *root_ca_cert =
 #define CONFIG_H
 
 // --- WiFi Configuration ---
-\${wifiBlock}
+${wifiBlock}
 
 // --- IoT Cloud Server Configuration ---
-const char *server_url = "\${origin}/api/esp32/display?room=\${roomCode}";
-const char *room_code  = "\${roomCode}";
+const char *server_url = "${origin}/api/esp32/display?room=${roomCode}";
+const char *room_code  = "${roomCode}";
 
 // --- Security Provisioning: Shared Pre-shared API Key ---
 // ⚠️ IMPORTANT: ใส่ค่าจาก ESP32_API_KEY ใน Vercel Environment Variables
 // ห้ามนำ key จริงขึ้น version control
 const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
 
-\${certBlock}
+${certBlock}
 
 #endif // CONFIG_H`;
 };
@@ -86,12 +86,12 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
   return `/*
   ==============================================================
   SmartAccess Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom \${roomCode}
-  โหมด: \${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
+  ห้องปฏิบัติการเรียนการสอน: Classroom ${roomCode}
+  โหมด: ${mode === "wokwi" ? "Wokwi Simulator" : "Physical ESP32 Board"}
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-\${wokwiDefine}
+${wokwiDefine}
 #define DEBUG_MODE false  // ⚠️ Set true for development ONLY
 
 #if DEBUG_MODE
@@ -109,12 +109,9 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 #include <FS.h>
 #include <HTTPClient.h>
 #ifndef WOKWI_SIM
-#include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
-#include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
-#include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
-#else
-#include <WiFiServer.h> // Wokwi fallback: ใช้ WiFiServer แทน WebServer
+#include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA (เฉพาะบอร์ดจริง)
 #endif
+// หมายเหตุ: WiFiServer ถูกประกาศมาแล้วใน WiFi.h จึงไม่ต้อง include เพิ่ม
 #include <SPI.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
@@ -128,11 +125,7 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 const char* CURRENT_VERSION = "1.0.0";
 const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/firmware-ota";
 
-#ifndef WOKWI_SIM
-WebServer localServer(80); // พอร์ตเว็บเซิร์ฟเวอร์สำหรับคิวและ ElegantOTA
-#else
-WiFiServer localServer(80); // Wokwi fallback: ใช้ WiFiServer แทน WebServer
-#endif
+WiFiServer localServer(80); // เว็บเซิร์ฟเวอร์ LAN สำหรับคิวเปิดประตู/โหมดออฟไลน์
 bool localServerStarted = false;
 
 
@@ -571,13 +564,6 @@ void performHTTPSOTA() {
 
 void startLocalServer() {
   if (!localServerStarted) {
-#ifndef WOKWI_SIM
-    // กำหนด ElegantOTA Web Endpoint & Callbacks
-    ElegantOTA.begin(&localServer);
-    ElegantOTA.onStart(onOTAStart);
-    ElegantOTA.onEnd(onOTAEnd);
-#endif
-
     localServer.begin();
     localServerStarted = true;
     DBG("Local web server started on port 80.");
@@ -1073,10 +1059,6 @@ void setup() {
 
 void loop() {
   handleLocalValidation();
-  
-#ifndef WOKWI_SIM
-  ElegantOTA.loop();
-#endif
 
   if (is_offline_mode) {
     bool hasCache = SPIFFS.exists(cache_students_file);

@@ -1,19 +1,20 @@
 /*
   ==============================================================
   SmartAccess Door Access Controller - Firmware for ESP32
-  ห้องปฏิบัติการเรียนการสอน: Classroom CE-402
+  ห้องปฏิบัติการเรียนการสอน: กำหนด room_code ในไฟล์ config.h
+  โหมด: Wokwi Simulator (ควบคุมด้วย #define WOKWI_SIM ด้านล่าง)
   ระบบรองรับการรันผ่านคลาวด์ Vercel (HTTPS WiFiClientSecure)
   ==============================================================
 */
-#define WOKWI_SIM  // Wokwi Simulator — NEVER define this in production!
-#define DEBUG_MODE false // ⚠️ Set true for development ONLY
+#define WOKWI_SIM  // โหมด Wokwi Simulator — ห้าม deploy ขึ้นบอร์ดจริงโดยเปิดค่านี้ไว้!
+#define DEBUG_MODE false  // ⚠️ Set true for development ONLY
 
 #if DEBUG_MODE
-#define DBG(x) Serial.println(x)
-#define DBGF(fmt, ...) Serial.printf(fmt, __VA_ARGS__)
+  #define DBG(x) Serial.println(x)
+  #define DBGF(fmt, ...) Serial.printf(fmt, __VA_ARGS__)
 #else
-#define DBG(x)
-#define DBGF(fmt, ...)
+  #define DBG(x)
+  #define DBGF(fmt, ...)
 #endif
 
 #include "ricmoo_qrcode.h"
@@ -23,12 +24,9 @@
 #include <FS.h>
 #include <HTTPClient.h>
 #ifndef WOKWI_SIM
-#include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
-#include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
-#include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
-#else
-#include <WiFiServer.h> // Wokwi fallback: ใช้ WiFiServer แทน WebServer
+#include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA (เฉพาะบอร์ดจริง)
 #endif
+// หมายเหตุ: WiFiServer ถูกประกาศมาแล้วใน WiFi.h จึงไม่ต้อง include เพิ่ม
 #include <SPI.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
@@ -42,13 +40,16 @@
 const char* CURRENT_VERSION = "1.0.0";
 const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/firmware-ota";
 
+WiFiServer localServer(80); // เว็บเซิร์ฟเวอร์ LAN สำหรับคิวเปิดประตู/โหมดออฟไลน์
+bool localServerStarted = false;
+
 
 // ─── Compile-time production safety guard ───────────────────────────────────
 // Prevents accidentally shipping a Wokwi simulation build to a real device.
 #ifdef PRODUCTION
-#ifdef WOKWI_SIM
-#error "WOKWI_SIM must not be defined in production builds!"
-#endif
+  #ifdef WOKWI_SIM
+    #error "WOKWI_SIM must not be defined in production builds!"
+  #endif
 #endif
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -63,12 +64,22 @@ const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
-const int polling_delay = 2000; // ความเร็วในการดึงคำสั่ง (2 วินาที)
+// ─── Adaptive Polling ────────────────────────────────────────────────────────
+// เร่งความเร็ว polling เมื่อตรวจพบกิจกรรม ชะลอลงเมื่อ idle ประหยัด API call
+const unsigned long POLL_FAST   = 200;   // ms — มีคำสั่งรอ / เพิ่งปลดล็อก
+const unsigned long POLL_NORMAL = 1000;  // ms — ทำงานปกติ
+const unsigned long POLL_SLOW   = 5000;  // ms — idle ต่อเนื่อง 5 รอบ
+unsigned long currentPollDelay  = POLL_NORMAL;
+int idleCycles = 0; // นับรอบที่ไม่มีกิจกรรม
+String lastEtag = ""; // ETag จาก server สำหรับ 304 check
 
-// ตัวแปรเก็บสเตตัสเดิมเพื่อลดการวาดหน้าจอซ้ำซ้อน (ลดการกะพริบ)
+// ─── TFT Dirty-region tracking ───────────────────────────────────────────────
+// เก็บค่าเดิม — วาดเฉพาะส่วนที่เปลี่ยน ไม่ fillScreen ทั้งหน้าทุกรอบ
 int last_queue_count = -1;
 String last_approved_name = "";
 String last_active_token = "";
+String last_server_time = "";
+String last_status_text = "";
 String ip_address_str = "0.0.0.0";
 
 // ฟังก์ชันสำหรับสร้างและวาดภาพ QR Code แท้ๆ ที่สแกนได้ด้วยโทรศัพท์มือถือ 100%!
@@ -318,25 +329,25 @@ void drawRejectedScreen() {
   tft.print("PLEASE CONTACT CLASSROOM INSTRUCTOR");
 }
 
+// ─── Persistent TLS Connection (HTTP Keep-alive) ─────────────────────────────
+// ประกาศนอก loop() เพื่อให้ reuse TLS session ข้ามรอบ poll → ลด TLS handshake
+#ifndef WOKWI_SIM
+WiFiClientSecure persistentTlsClient;
+bool tlsClientInitialized = false;
+#endif
+
 // ─── Offline Mode Configurations & Helper Functions (Prompt 18) ─────────────
 bool is_offline_mode = false;
 int api_fail_count = 0;
 unsigned long last_student_sync = 0;
 unsigned long last_log_sync = 0;
 const unsigned long SYNC_STUDENTS_INTERVAL = 300000; // 5 minutes
-const unsigned long SYNC_LOGS_INTERVAL = 60000;      // 1 minute
+const unsigned long SYNC_LOGS_INTERVAL = 60000;     // 1 minute
 
 String cached_qr_key = "";
-const char *cache_students_file = "/student_cache.json";
-const char *cache_logs_file = "/offline_logs.json";
-const char *cache_key_file = "/qr_key.bin";
-
-#ifndef WOKWI_SIM
-WebServer localServer(80);
-#else
-WiFiServer localServer(80);
-#endif
-bool localServerStarted = false;
+const char* cache_students_file = "/student_cache.json";
+const char* cache_logs_file = "/offline_logs.json";
+const char* cache_key_file = "/qr_key.bin";
 
 // Forward declarations
 bool validateOfflineQR(String grant);
@@ -345,6 +356,7 @@ void saveOfflineLog(String student_id);
 void syncStudentCache();
 void syncOfflineLogs();
 
+#ifndef WOKWI_SIM
 void onOTAStart() {
   Serial.println("[Local OTA] เริ่มต้นกระบวนการแฟลชเฟิร์มแวร์ผ่าน LAN");
   tft.fillScreen(ILI9341_BLACK);
@@ -383,25 +395,58 @@ void onOTAEnd(bool success) {
   }
 }
 
+// ─── OTA Progress Bar บน TFT ─────────────────────────────────────────────────
+void onOTAProgress(int current, int total) {
+  if (total <= 0) return;
+  int pct = (current * 100) / total;
+  int barW = (pct * 280) / 100;
+  // Progress bar background
+  tft.drawRect(20, 130, 280, 16, ILI9341_WHITE);
+  tft.fillRect(21, 131, barW, 14, tft.color565(124, 58, 237));
+  // เคลียร์ + วาดตัวเลข %
+  tft.fillRect(20, 155, 160, 16, ILI9341_BLACK);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.setCursor(20, 155);
+  tft.print(pct);
+  tft.print("% (");
+  tft.print(current / 1024);
+  tft.print(" / ");
+  tft.print(total / 1024);
+  tft.println(" KB)");
+}
+
+#endif // !WOKWI_SIM
+
 void performHTTPSOTA() {
 #ifndef WOKWI_SIM
   WiFiClientSecure secureClient;
-  // ในเวอร์ชันใช้งานจริงควรโหลด Root Certificate ของ Vercel เข้ามาตรวจสอบความปลอดภัย HTTPS
-  secureClient.setInsecure(); 
-  
+  secureClient.setInsecure();
+
   tft.fillScreen(ILI9341_BLACK);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(2);
   tft.setCursor(10, 30);
   tft.println("SMARTACCESS OTA");
-  tft.drawFastHLine(10, 60, 300, ILI9341_PURPLE);
+  tft.drawFastHLine(10, 60, 300, tft.color565(124, 58, 237));
   tft.setCursor(10, 80);
   tft.setTextColor(ILI9341_WHITE);
-  tft.println("Downloading firmware...");
+  tft.setTextSize(1);
+  tft.println("Connecting to update server...");
+  tft.setCursor(10, 100);
+  tft.println("Please wait, do not power off.");
 
   httpUpdate.rebootOnUpdate(true);
   httpUpdate.addHeader("x-esp32-version", CURRENT_VERSION);
   httpUpdate.addHeader("Authorization", "Bearer SUPER_SECURE_ESP32_ACCESS_TOKEN");
+  // แนบ callback แสดง progress bar
+  httpUpdate.onProgress(onOTAProgress);
+
+  tft.fillRect(10, 80, 300, 20, ILI9341_BLACK);
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1);
+  tft.println("Downloading firmware...");
 
   t_httpUpdate_return ret = httpUpdate.update(secureClient, FIRMWARE_URL);
   if (ret == HTTP_UPDATE_FAILED) {
@@ -409,7 +454,12 @@ void performHTTPSOTA() {
     tft.setTextColor(ILI9341_RED);
     tft.setTextSize(2);
     tft.setCursor(10, 40);
-    tft.println("OTA UPDATE FAILED");
+    tft.println("OTA FAILED");
+    tft.setTextSize(1);
+    tft.setCursor(10, 80);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.print("Error: ");
+    tft.println(httpUpdate.getLastErrorString());
     delay(5000);
   }
 #else
@@ -429,12 +479,6 @@ void performHTTPSOTA() {
 
 void startLocalServer() {
   if (!localServerStarted) {
-#ifndef WOKWI_SIM
-    // กำหนด ElegantOTA Web Endpoint & Callbacks
-    ElegantOTA.begin(&localServer);
-    ElegantOTA.onStart(onOTAStart);
-    ElegantOTA.onEnd(onOTAEnd);
-#endif
     localServer.begin();
     localServerStarted = true;
     DBG("Local web server started on port 80.");
@@ -448,19 +492,16 @@ String base64Decode(String input) {
     input += "=";
   }
   int len = input.length();
-  uint8_t *out = (uint8_t *)malloc(len);
+  uint8_t* out = (uint8_t*)malloc(len);
   int decoded_len = 0;
-  const char *lookup =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const char* lookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   int bits = 0;
   int val = 0;
   for (int i = 0; i < len; i++) {
     char c = input[i];
-    if (c == '=')
-      break;
-    const char *p = strchr(lookup, c);
-    if (!p)
-      continue;
+    if (c == '=') break;
+    const char* p = strchr(lookup, c);
+    if (!p) continue;
     int idx = p - lookup;
     val = (val << 6) | idx;
     bits += 6;
@@ -503,16 +544,13 @@ String generateHMAC(String payload, String key) {
   mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
   mbedtls_md_init(&ctx);
   mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
-  mbedtls_md_hmac_starts(&ctx, (const unsigned char *)key.c_str(),
-                         key.length());
-  mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload.c_str(),
-                         payload.length());
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload.c_str(), payload.length());
   mbedtls_md_hmac_finish(&ctx, hmacResult);
   mbedtls_md_free(&ctx);
 
   String encoded = "";
-  const char *lookup =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const char* lookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
   int bits = 0;
   int val = 0;
   for (int i = 0; i < 32; i++) {
@@ -535,18 +573,17 @@ bool validateOfflineQR(String grant) {
     return false;
   }
   int dotIdx = grant.indexOf(".");
-  if (dotIdx == -1)
-    return false;
-
+  if (dotIdx == -1) return false;
+  
   String encodedPayload = grant.substring(0, dotIdx);
   String signature = grant.substring(dotIdx + 1);
-
+  
   String expectedSignature = generateHMAC(encodedPayload, cached_qr_key);
   if (!secureCompare(signature.c_str(), expectedSignature.c_str())) {
     DBG("Offline signature verification failed!");
     return false;
   }
-
+  
   String decoded = base64Decode(encodedPayload);
   StaticJsonDocument<384> doc;
   DeserializationError err = deserializeJson(doc, decoded);
@@ -554,24 +591,23 @@ bool validateOfflineQR(String grant) {
     DBG("Failed to parse decoded payload JSON!");
     return false;
   }
-
-  const char *room = doc["room"];
-  const char *student_id = doc["student_id"];
-
+  
+  const char* room = doc["room"];
+  const char* student_id = doc["student_id"];
+  
   if (String(room) != String(room_code)) {
     DBG("Room mismatch in offline grant!");
     return false;
   }
-
+  
   if (!SPIFFS.exists(cache_students_file)) {
     DBG("No student cache JSON file exists!");
     return false;
   }
-
+  
   File f = SPIFFS.open(cache_students_file, "r");
-  if (!f)
-    return false;
-
+  if (!f) return false;
+  
   StaticJsonDocument<2048> cacheDoc;
   DeserializationError cacheErr = deserializeJson(cacheDoc, f);
   f.close();
@@ -579,7 +615,7 @@ bool validateOfflineQR(String grant) {
     DBG("Failed to parse student cache JSON file!");
     return false;
   }
-
+  
   JsonArray arr = cacheDoc.as<JsonArray>();
   bool found = false;
   for (JsonVariant v : arr) {
@@ -633,38 +669,37 @@ void triggerDoorOpenOffline(String grant) {
   StaticJsonDocument<256> doc;
   deserializeJson(doc, decoded);
   String student_id = doc["student_id"].as<String>();
-
+  
   saveOfflineLog(student_id);
-
+  
   Serial.println("[INFO] Door unlocked");
   DBG("🔓 OFFLINE ACCESS GRANTED! Opening door...");
-
+  
   drawScanningScreen();
   tone(BUZZER_PIN, 1500, 100);
   delay(1200);
-
+  
   drawUnlockedScreen("OFFLINE MEMBER", student_id);
   digitalWrite(RELAY_PIN, HIGH);
-
+  
   tone(BUZZER_PIN, 1000, 150);
   delay(180);
   tone(BUZZER_PIN, 1500, 150);
   delay(180);
   tone(BUZZER_PIN, 2000, 300);
-
+  
   int countdownMs = 3800;
   int stepSize = 320 / 38;
   for (int i = 0; i < 38; i++) {
     tft.fillRect(0, 236, 320 - (i * stepSize), 4, tft.color565(16, 185, 129));
-    tft.fillRect(320 - (i * stepSize), 236, stepSize, 4,
-                 tft.color565(6, 78, 59));
+    tft.fillRect(320 - (i * stepSize), 236, stepSize, 4, tft.color565(6, 78, 59));
     delay(100);
   }
   digitalWrite(RELAY_PIN, LOW);
   Serial.println("[INFO] Door locked");
   DBG("🔒 Door auto locked (Offline).");
   tone(BUZZER_PIN, 800, 250);
-
+  
   last_queue_count = -1;
   last_approved_name = "FORCE_REDRAW";
   last_active_token = "FORCE_REDRAW";
@@ -672,8 +707,7 @@ void triggerDoorOpenOffline(String grant) {
 
 void handleLocalValidation() {
   WiFiClient client = localServer.available();
-  if (!client)
-    return;
+  if (!client) return;
   DBG("New client connected to local offline validation server.");
   unsigned long timeout = millis() + 2000;
   String req = "";
@@ -681,8 +715,7 @@ void handleLocalValidation() {
     if (client.available()) {
       char c = client.read();
       req += c;
-      if (req.endsWith("\r\n\r\n"))
-        break;
+      if (req.endsWith("\r\n\r\n")) break;
     }
   }
   if (req.indexOf("POST /door/open") != -1) {
@@ -751,13 +784,12 @@ void handleLocalValidation() {
     int grantIdx = req.indexOf("grant=");
     if (grantIdx != -1) {
       int endIdx = req.indexOf(" ", grantIdx);
-      if (endIdx == -1)
-        endIdx = req.indexOf("\r", grantIdx);
+      if (endIdx == -1) endIdx = req.indexOf("\r", grantIdx);
       String grant = req.substring(grantIdx + 6, endIdx);
       grant.replace("%2E", ".");
       grant.replace("%2D", "-");
       grant.replace("%5F", "_");
-
+      
       bool valid = validateOfflineQR(grant);
       if (valid) {
         client.println("HTTP/1.1 200 OK");
@@ -779,32 +811,25 @@ void handleLocalValidation() {
     client.println("Content-Type: text/html; charset=utf-8");
     client.println("Connection: close");
     client.println();
-    client.println("<!DOCTYPE html><html><head><meta "
-                   "charset='utf-8'><title>SmartAccess Offline Mode</title></head>");
-    client.println("<body style='font-family:sans-serif; text-align:center; "
-                   "padding:50px;'>");
+    client.println("<!DOCTYPE html><html><head><meta charset='utf-8'><title>SmartAccess Offline Mode</title></head>");
+    client.println("<body style='font-family:sans-serif; text-align:center; padding:50px;'>");
     client.println("<h1 style='color:#F59E0B;'>⚠️ OFFLINE MODE ACTIVE</h1>");
     client.println("<p>ระบบอยู่ในโหมดออฟไลน์ (อินเทอร์เน็ตขัดข้อง)</p>");
-    client.println(
-        "<p>กรุณาสแกนคีย์ QR โค้ดปลดล็อกของท่านเพื่อยืนยันสิทธิ์กับบอร์ดโดยตรง</p>");
+    client.println("<p>กรุณาสแกนคีย์ QR โค้ดปลดล็อกของท่านเพื่อยืนยันสิทธิ์กับบอร์ดโดยตรง</p>");
     client.println("</body></html>");
   }
   delay(1);
   client.stop();
 }
 
+
 void syncStudentCache() {
-  if (WiFi.status() != WL_CONNECTED)
-    return;
+  if (WiFi.status() != WL_CONNECTED) return;
   HTTPClient http;
   String syncUrl = String(server_url) + "&sync=1";
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
-#ifdef WOKWI_SIM
   client->setInsecure();
-#else
-  client->setCACert(root_ca_cert);
-#endif
   http.begin(*client, syncUrl);
   http.addHeader("x-api-key", api_key);
   int httpCode = http.GET();
@@ -814,7 +839,7 @@ void syncStudentCache() {
     DeserializationError error = deserializeJson(doc, payload);
     if (!error) {
       if (doc.containsKey("qr_key")) {
-        const char *key = doc["qr_key"];
+        const char* key = doc["qr_key"];
         cached_qr_key = String(key);
         File f = SPIFFS.open(cache_key_file, "w");
         if (f) {
@@ -837,13 +862,10 @@ void syncStudentCache() {
 }
 
 void syncOfflineLogs() {
-  if (WiFi.status() != WL_CONNECTED)
-    return;
-  if (!SPIFFS.exists(cache_logs_file))
-    return;
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (!SPIFFS.exists(cache_logs_file)) return;
   File f = SPIFFS.open(cache_logs_file, "r");
-  if (!f)
-    return;
+  if (!f) return;
   String content = f.readString();
   f.close();
   HTTPClient http;
@@ -851,11 +873,7 @@ void syncOfflineLogs() {
   logUrl.replace("display", "logs/sync");
   static WiFiClientSecure secureClient;
   WiFiClientSecure *client = &secureClient;
-#ifdef WOKWI_SIM
   client->setInsecure();
-#else
-  client->setCACert(root_ca_cert);
-#endif
   http.begin(*client, logUrl);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-api-key", api_key);
@@ -886,21 +904,19 @@ void setup() {
     }
   }
 
-  // 定義อินพุตเอาต์พุตพิน
+  // Pin modes
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_WIFI, OUTPUT);
   pinMode(LED_REJECT, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
 
-  digitalWrite(RELAY_PIN, LOW); // ค่าดีฟอลต์ประตูล็อกเสมอ
+  digitalWrite(RELAY_PIN, LOW); // Default locked
   digitalWrite(LED_WIFI, LOW);
   digitalWrite(LED_REJECT, LOW);
 
-  // สตาร์ตการทำงานหน้าจอ TFT LCD
   tft.begin();
-  tft.setRotation(1); // แนวนอน (Landscape)
+  tft.setRotation(1); // Landscape
 
-  // วาดหน้าจอกำลังล็อกอินเครือข่าย Wi-Fi
   tft.fillScreen(tft.color565(6, 7, 13));
   tft.fillRect(0, 0, 320, 45, tft.color565(14, 17, 28));
   tft.drawRect(0, 45, 320, 2, tft.color565(16, 185, 129));
@@ -923,7 +939,6 @@ void setup() {
   DBG("Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
 
-  // ระบบกะพริบไฟสถานะระหว่างรอ WiFi
   bool wifi_led_state = false;
   while (WiFi.status() != WL_CONNECTED) {
     wifi_led_state = !wifi_led_state;
@@ -932,13 +947,11 @@ void setup() {
     DBG(".");
   }
 
-  digitalWrite(LED_WIFI, HIGH); // สว่างค้างเมื่อเชื่อมต่อได้แล้ว
+  digitalWrite(LED_WIFI, HIGH);
   DBG("\nWiFi connected successfully!");
 
-  // ─── NTP Time Sync (จำเป็นสำหรับ HMAC timestamp) ───────────────────
   // UTC+7 (Bangkok ICT) — offset 7*3600 = 25200
   configTime(25200, 0, "pool.ntp.org", "time.cloudflare.com");
-  // รอให้ได้เวลาจริงจาก NTP (สูงสุด 5 วินาที)
   {
     int ntp_wait = 0;
     while (time(nullptr) < 1000000000UL && ntp_wait < 50) {
@@ -948,32 +961,21 @@ void setup() {
   }
   Serial.println("[INFO] NTP synced: " + String((long)time(nullptr)));
 
-  // บันทึก IP แอดมินของบอร์ดสำหรับการนำไปแสดง
   ip_address_str = WiFi.localIP().toString();
 
-  // เสียงดนตรีบูตระบบเสร็จสิ้นพร้อมใช้ (Sweet boot melody)
   tone(BUZZER_PIN, 1200, 150);
   delay(180);
   tone(BUZZER_PIN, 1600, 250);
 
-  // สตาร์ตเซิร์ฟเวอร์เว็บท้องถิ่นเพื่อการซิงค์แบบเรียลไทม์ (Real-Time Push)
   startLocalServer();
 
-  // วาดแผงหน้าจอหลักเริ่มต้น
   drawMainScreen(0, "", "12:00:00", "");
 }
 
 void loop() {
-  // Always run local web server to handle real-time push commands immediately
   handleLocalValidation();
 
-#ifndef WOKWI_SIM
-  // จัดการ OTA เว็บโฮสต์เครือข่ายภายใน LAN
-  ElegantOTA.loop();
-#endif
-
   if (is_offline_mode) {
-    // Status indicators
     bool hasCache = SPIFFS.exists(cache_students_file);
     if (hasCache) {
       static unsigned long lastBlink = 0;
@@ -990,8 +992,7 @@ void loop() {
       unsigned long mm = (sec / 60) % 60;
       unsigned long ss = sec % 60;
       char timeBuf[10];
-      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm,
-               (int)ss);
+      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
 
       static unsigned long lastScreenUpdate = 0;
       if (millis() - lastScreenUpdate > 5000) {
@@ -1018,46 +1019,36 @@ void loop() {
     }
   }
 
-  // Non-blocking cloud polling
   static unsigned long lastPollTime = 0;
   if (WiFi.status() == WL_CONNECTED && !is_offline_mode) {
     digitalWrite(LED_WIFI, HIGH);
 
-    if (millis() - lastPollTime >= polling_delay) {
+    if (millis() - lastPollTime >= currentPollDelay) {
       lastPollTime = millis();
 
-      // ดึงเวลาปัจจุบันจำลอง
       String time_str = "12:00:00";
-      // คำนวณเวลาแบบง่าย (ชั่วโมง:นาที:วินาที)
       unsigned long sec = millis() / 1000;
       unsigned long hh = (sec / 3600) % 24;
       unsigned long mm = (sec / 60) % 60;
       unsigned long ss = sec % 60;
       char timeBuf[10];
-      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm,
-               (int)ss);
+      snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", (int)hh, (int)mm, (int)ss);
       time_str = String(timeBuf);
 
       HTTPClient http;
       if (String(server_url).startsWith("https://")) {
-        static WiFiClientSecure secureClient;
-        WiFiClientSecure *client = &secureClient;
-        if (client) {
 #ifdef WOKWI_SIM
-          client->setInsecure(); // Wokwi สภาพแวดล้อมจำลอง — ไม่รองรับ TLS cert จริง
+        static WiFiClientSecure simClient;
+        simClient.setInsecure();
+        http.begin(simClient, server_url);
 #else
-          client->setCACert(root_ca_cert); // Production: ตรวจสอบ Root CA เสมอ
-#endif
-          http.begin(*client, server_url);
-        } else {
-          Serial.println("[ERROR] Connection failed");
-          DBG("Unable to create WiFiClientSecure");
-          api_fail_count++;
-          if (api_fail_count >= 5) {
-            is_offline_mode = true;
-          }
-          return;
+        if (!tlsClientInitialized) {
+          persistentTlsClient.setCACert(root_ca_cert);
+          tlsClientInitialized = true;
         }
+        http.setReuse(true);
+        http.begin(persistentTlsClient, server_url);
+#endif
       } else {
         http.begin(server_url);
       }
@@ -1067,16 +1058,32 @@ void loop() {
       http.addHeader("x-api-key", api_key);
       http.addHeader("x-esp32-version", CURRENT_VERSION);
 
-      // HMAC-SHA256 timestamp authentication (V11 fix)
       time_t nowTs = time(nullptr);
       String timestampStr = String((long)nowTs);
       String hmacPayload = timestampStr + ":/api/esp32/display";
       String signature = generateHMACHex(hmacPayload, String(api_key));
       http.addHeader("x-timestamp", timestampStr);
       http.addHeader("x-hmac-signature", signature);
+      if (lastEtag.length() > 0) {
+        http.addHeader("If-None-Match", lastEtag);
+      }
 
       int httpCode = http.GET();
+
+      if (httpCode == 304) {
+        idleCycles++;
+        if (idleCycles >= 5) {
+          currentPollDelay = POLL_SLOW;
+        }
+        http.end();
+        return;
+      }
+
       if (httpCode == 200) {
+        String newEtag = http.header("ETag");
+        if (newEtag.length() > 0) {
+          lastEtag = newEtag;
+        }
         api_fail_count = 0;
         is_offline_mode = false;
         if (millis() - last_student_sync > SYNC_STUDENTS_INTERVAL) {
@@ -1092,37 +1099,34 @@ void loop() {
         DeserializationError error = deserializeJson(doc, payload);
 
         if (!error) {
-          // ตรวจสอบสัญญาณอัปเกรดซอฟต์แวร์เฟิร์มแวร์แบบไร้สาย (HTTPS Cloud OTA Update)
           bool update_available = doc["update_available"] | false;
           if (update_available) {
-            Serial.println("[OTA] ตรวจพบซอฟต์แวร์รุ่นใหม่บนระบบคลาวด์! เริ่มอัปเดตทันที...");
+            Serial.println("[OTA] New version found! Starting OTA...");
             http.end();
+#ifndef WOKWI_SIM
             performHTTPSOTA();
+#endif
             return;
           }
 
-          const char *door_trigger = doc["door_trigger"]; // "open" หรือ "idle"
+          const char *door_trigger = doc["door_trigger"];
           int pending_count = doc["pending_count"];
           const char *server_time_text = doc["server_time_text"];
           if (server_time_text && strlen(server_time_text) >= 8) {
             time_str = String(server_time_text).substring(0, 8);
           }
 
-          // อ่านประวัติและชื่อล่าสุด
           String approvedName = "";
           String studentId = "";
-          if (doc.containsKey("last_approved") &&
-              !doc["last_approved"].isNull()) {
+          if (doc.containsKey("last_approved") && !doc["last_approved"].isNull()) {
             approvedName = doc["last_approved"]["name"].as<String>();
             studentId = doc["last_approved"]["student_id"].as<String>();
           }
 
-          // รับค่าคีย์ลงทะเบียนและ active token ล่าสุดจากคลาวด์เซิร์ฟเวอร์
           const char *active_token = doc["active_token"];
           const char *register_url = doc["register_url"];
           const char *requested_room = doc["requested_room"];
 
-          // สร้างหน้าลิงก์สแกน QR Code ประจำตัวบอร์ดแบบสมบูรณ์
           String qrText = "";
           if (active_token && register_url && requested_room) {
             String regUrl = String(register_url);
@@ -1133,60 +1137,56 @@ void loop() {
             } else {
               baseUrl = "https://project-sigma-ivory-21.vercel.app";
             }
-            qrText = baseUrl + "/?scan=" + String(active_token) +
-                     "&room=" + String(requested_room);
+            qrText = baseUrl + "/?scan=" + String(active_token) + "&room=" + String(requested_room);
           }
 
-          // --- ลำดับการอนุมัติปลดล็อกประตู (UNLOCKED SEQUENCE) ---
+          DBGF("Door command: %s | Queue: %d\n", door_trigger ? door_trigger : "NULL", pending_count);
+
+          if (String(door_trigger) == "open") {
+            idleCycles = 0;
+            currentPollDelay = POLL_FAST;
+          } else if (pending_count != last_queue_count || studentId != last_approved_name || (active_token && String(active_token) != last_active_token)) {
+            idleCycles = 0;
+            currentPollDelay = POLL_NORMAL;
+          } else {
+            idleCycles++;
+            if (idleCycles >= 5) currentPollDelay = POLL_SLOW;
+          }
+
           if (String(door_trigger) == "open") {
             Serial.println("[INFO] Door unlocked");
             DBG("🔓 UNLOCK SIGNAL RECEIVED! Opening door...");
 
-            // ขั้น 1: วาดหน้าจอกำลังประมวลผล (Scanning) สั้นๆ แล้วไปแสดงผลอนุมัติทันที
             drawScanningScreen();
             tone(BUZZER_PIN, 1500, 100);
             delay(300);
 
-            // ขั้น 2: แสดงหน้าจออนุมัติ (Access Granted)
             drawUnlockedScreen(approvedName, studentId);
-
-            // ส่งสัญญาณพอร์ตบวกไประดมการเปิดรีเลย์จริง
             digitalWrite(RELAY_PIN, HIGH);
 
-            // เล่นเพลงเสียงระดับสูงหวานหรูหราต้อนรับ
             tone(BUZZER_PIN, 1000, 150);
             delay(180);
             tone(BUZZER_PIN, 1500, 150);
             delay(180);
             tone(BUZZER_PIN, 2000, 300);
 
-            // ลูปแสดงเกจคูลดาวน์เวลาเปิดประตูก่อนที่จะกลับมาล็อก
-            // (ช่วยเพิ่มแอนิเมชันเกจลดเวลาประดับบนจอจำลองให้เหมือน esp32-preview)
             int stepSize = 320 / 38;
             for (int i = 0; i < 38; i++) {
-              tft.fillRect(0, 236, 320 - (i * stepSize), 4,
-                           tft.color565(16, 185, 129));
-              tft.fillRect(320 - (i * stepSize), 236, stepSize, 4,
-                           tft.color565(6, 78, 59));
+              tft.fillRect(0, 236, 320 - (i * stepSize), 4, tft.color565(16, 185, 129));
+              tft.fillRect(320 - (i * stepSize), 236, stepSize, 4, tft.color565(6, 78, 59));
               delay(100);
             }
 
-            digitalWrite(RELAY_PIN, LOW); // ดึงพินกลับคืนประตูล็อก
+            digitalWrite(RELAY_PIN, LOW);
             Serial.println("[INFO] Door locked");
             DBG("🔒 Door auto locked.");
-
-            // เสียงติ๊ดสั้นเมื่อประตูล็อกกลับคืน
             tone(BUZZER_PIN, 800, 250);
 
-            // บังคับให้ล้างค่าเก่าเพื่อรีดรอการวาดหน้าหลักสแตนด์บายรอบใหม่
             last_queue_count = -1;
             last_approved_name = "FORCE_REDRAW";
             last_active_token = "FORCE_REDRAW";
           }
-          // --- ส่วนลดการกะพริบ: โหลดข้อมูลใหม่เฉพาะจุดที่มีการอัปเดตสเตตัส ---
-          else if (pending_count != last_queue_count ||
-                   studentId != last_approved_name ||
-                   (active_token && String(active_token) != last_active_token)) {
+          else if (pending_count != last_queue_count || studentId != last_approved_name || (active_token && String(active_token) != last_active_token)) {
             last_queue_count = pending_count;
             last_approved_name = studentId;
             if (active_token)
@@ -1194,10 +1194,8 @@ void loop() {
 
             drawMainScreen(pending_count, studentId, time_str, qrText);
           } else {
-            // หากไม่มีคำสั่งและข้อมูลไม่เปลี่ยน แต่อยากให้อัปเดตเฉพาะนาฬิกา
             tft.setTextSize(1);
-            tft.fillRect(265, 0, 55, 20,
-                         tft.color565(14, 17, 28)); // ล้างแถบเวลาเก่า
+            tft.fillRect(265, 0, 55, 20, tft.color565(14, 17, 28));
             tft.setTextColor(tft.color565(16, 185, 129));
             tft.setCursor(265, 6);
             tft.print(time_str);
@@ -1210,15 +1208,13 @@ void loop() {
         if (api_fail_count >= 5) {
           if (!is_offline_mode) {
             is_offline_mode = true;
-            DBG("Entering offline fallback mode due to consecutive API "
-                "failures.");
+            DBG("Entering offline fallback mode.");
           }
         }
       }
       http.end();
     }
   } else if (WiFi.status() != WL_CONNECTED) {
-    // กะพริบเตือนกรณีสัญญาณเครือข่ายสูญหาย
     digitalWrite(LED_WIFI, LOW);
     delay(250);
     digitalWrite(LED_WIFI, HIGH);
@@ -1226,13 +1222,11 @@ void loop() {
   }
 }
 
-// ─── Security Hardening Helper: Constant-Time Comparison (VULN-036) ──────────
-// Prevents Timing Attacks when comparing sensitive keys or passwords.
-bool secureCompare(const char *a, const char *b) {
+bool secureCompare(const char* a, const char* b) {
   size_t lenA = strlen(a);
   size_t lenB = strlen(b);
   size_t len = (lenA > lenB) ? lenA : lenB;
-
+  
   volatile uint8_t result = lenA ^ lenB;
   for (size_t i = 0; i < len; i++) {
     uint8_t ca = (i < lenA) ? a[i] : 0;
@@ -1241,22 +1235,3 @@ bool secureCompare(const char *a, const char *b) {
   }
   return result == 0;
 }
-
-// NOTE: The following rate limiting block is prepared for future local web
-// server implementation:
-/*
-void handleLocalWebServerRequest() {
-  static unsigned long lastRequest = 0;
-  static int requestCount = 0;
-  if (millis() - lastRequest < 60000) {
-    requestCount++;
-    if (requestCount > 30) {  // max 30 req/min
-      // server.send(429, "text/plain", "Too many requests");
-      return;
-    }
-  } else {
-    requestCount = 0;
-    lastRequest = millis();
-  }
-}
-*/
