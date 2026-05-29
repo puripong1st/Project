@@ -48,6 +48,12 @@ export interface AccessLog {
   esp32_response?: string;
   notes?: string;
   requested_room?: string;
+  room_code?: string;
+  ip_address?: string;
+  user_agent?: string;
+  details?: string;
+  method?: string;
+  severity?: "info" | "warning" | "critical";
 }
 
 export interface CurrentUser {

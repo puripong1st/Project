@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/system/summary?period=day",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/system/summary?period=week",
+      "schedule": "0 16 * * 0"
+    }
+  ]
+}

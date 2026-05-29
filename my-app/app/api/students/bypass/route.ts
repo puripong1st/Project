@@ -4,6 +4,7 @@ import { getPool, initDatabase, StudentRow } from "@/lib/db";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
 import { rateLimit } from "@/lib/rate-limit";
+import { logEvent, getRequestContext } from "@/lib/access-log";
 
 let initialized = false;
 async function ensureInit() {
@@ -16,6 +17,7 @@ async function ensureInit() {
 export async function POST(req: NextRequest) {
   try {
     await ensureInit();
+    const { ip, userAgent } = getRequestContext(req);
     const body = await req.json();
     const { id, student_id, bypass_token } = body;
 
@@ -49,6 +51,15 @@ export async function POST(req: NextRequest) {
     });
 
     if (!rateLimitResult.success) {
+      await logEvent({
+        action: "bypass_rate_limited",
+        studentId: student.id,
+        room,
+        ip,
+        userAgent,
+        severity: "warning",
+        notes: `เรียกใช้ Bypass ถี่เกินกำหนด (จำกัด 1 ครั้ง/30 วินาที) — รหัสนักศึกษา ${student.student_id}`,
+      });
       return NextResponse.json(
         { error: "คุณเปิดประตูซ้ำถี่เกินไป กรุณารอสักครู่" },
         { status: 429 }
@@ -89,17 +100,18 @@ export async function POST(req: NextRequest) {
       await pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [student.id]);
     }
 
-    // Log the bypass entry event inside PostgreSQL (Supabase) access_logs
-    await pool.query(
-      `INSERT INTO access_logs (student_id, action, notes, esp32_response, room_code) VALUES ($1, $2, $3, $4, $5)`,
-      [
-        student.id, 
-        esp32Result.success ? "door_opened" : "door_failed", 
-        reasonText, 
-        esp32Result.message,
-        student.requested_room || 'default'
-      ]
-    );
+    // Log the bypass entry event inside PostgreSQL (Supabase) access_logs — ครบ IP/อุปกรณ์/severity
+    await logEvent({
+      action: esp32Result.success ? "door_opened" : "door_failed",
+      studentId: student.id,
+      room,
+      ip,
+      userAgent,
+      esp32Response: esp32Result.message,
+      notes: reasonText,
+      method: "bypass_5min",
+      severity: esp32Result.success ? "info" : "warning",
+    });
 
     // Send notification to Discord channel
     await sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
@@ -109,6 +121,8 @@ export async function POST(req: NextRequest) {
       esp32Response: esp32Result.message,
       reason: reasonText,
       room: student.requested_room,
+      ip,
+      userAgent,
     }).catch((err) => console.error("[Bypass Notification] failed:", err));
 
     return NextResponse.json({

@@ -6,6 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 import { getClientIp } from "@/lib/client-ip";
 import { sendDiscordNotification } from "@/lib/discord";
+import { logEvent } from "@/lib/access-log";
 
 let initialized = false;
 async function ensureInit() {
@@ -29,7 +30,23 @@ export async function POST(req: NextRequest) {
       windowMs: 60 * 1000,
     });
 
+    const ua = req.headers.get("user-agent") || "";
+
     if (!rateLimitResult.success) {
+      await logEvent({
+        action: "login_rate_limited",
+        ip,
+        userAgent: ua,
+        severity: "warning",
+        notes: "พยายามล็อกอินถี่เกินกำหนด (จำกัด 5 ครั้ง/นาที ต่อ IP)",
+      });
+      // แจ้งเตือนความปลอดภัย (อาจเป็นการเดารหัสผ่าน)
+      await sendDiscordNotification("security_alert", {
+        alertTitle: "ตรวจพบการล็อกอินถี่ผิดปกติ",
+        alertDetail: "มี IP พยายามล็อกอินเกินขีดจำกัด (อาจเป็น Brute-force)",
+        ip,
+        userAgent: ua,
+      }).catch(() => {});
       return NextResponse.json(
         { error: "พยายามล็อกอินมากเกินไป กรุณาลองใหม่ในอีก 1 นาที" },
         { status: 429 }
@@ -37,7 +54,6 @@ export async function POST(req: NextRequest) {
     }
 
     const { username, password } = await req.json();
-    const ua = req.headers.get("user-agent") || "";
 
     if (!username || !password) {
       return NextResponse.json({ error: "กรุณากรอก username และ password" }, { status: 400 });
@@ -58,10 +74,14 @@ export async function POST(req: NextRequest) {
         userAgent: ua,
         reason: "ไม่พบ Username ในระบบ หรือบัญชีถูกระงับ",
       }).catch((err) => console.error("[Login Failed Notification] failed:", err));
-      pool.query(
-        `INSERT INTO access_logs (action, ip_address, details, notes) VALUES ($1, $2, $3, $4)`,
-        ["admin_login_failed", ip, ua.substring(0, 500), `Username: ${String(username).substring(0, 30)} — ไม่พบในระบบ`]
-      ).catch(() => {});
+      await logEvent({
+        action: "admin_login_failed",
+        ip,
+        userAgent: ua,
+        severity: "warning",
+        details: ua.substring(0, 300),
+        notes: `Username: ${String(username).substring(0, 30)} — ไม่พบในระบบ`,
+      });
       return NextResponse.json({ error: "username หรือ password ไม่ถูกต้อง" }, { status: 401 });
     }
 
@@ -77,10 +97,15 @@ export async function POST(req: NextRequest) {
         userAgent: ua,
         reason: "Password ไม่ถูกต้อง",
       }).catch((err) => console.error("[Login Failed Notification] failed:", err));
-      pool.query(
-        `INSERT INTO access_logs (action, performed_by, ip_address, details, notes) VALUES ($1, $2, $3, $4, $5)`,
-        ["admin_login_failed", admin.id, ip, ua.substring(0, 500), "Password ไม่ถูกต้อง"]
-      ).catch(() => {});
+      await logEvent({
+        action: "admin_login_failed",
+        performedBy: admin.id,
+        ip,
+        userAgent: ua,
+        severity: "warning",
+        details: ua.substring(0, 300),
+        notes: "Password ไม่ถูกต้อง",
+      });
       return NextResponse.json({ error: "username หรือ password ไม่ถูกต้อง" }, { status: 401 });
     }
 
@@ -112,10 +137,15 @@ export async function POST(req: NextRequest) {
       userAgent: ua,
     }).catch((err) => console.error("[Login Notification] failed:", err));
 
-    pool.query(
-      `INSERT INTO access_logs (action, performed_by, ip_address, details, notes) VALUES ($1, $2, $3, $4, $5)`,
-      ["admin_login", admin.id, ip, ua.substring(0, 500), `เข้าสู่ระบบสำเร็จ — Role: ${admin.role}`]
-    ).catch(() => {});
+    await logEvent({
+      action: "admin_login",
+      performedBy: admin.id,
+      ip,
+      userAgent: ua,
+      severity: "info",
+      details: ua.substring(0, 300),
+      notes: `เข้าสู่ระบบสำเร็จ — Role: ${admin.role}`,
+    });
 
     return response;
   } catch (error) {

@@ -241,7 +241,44 @@ export const ACTION_METADATA: Record<string, { label: string; icon: React.ReactN
   export_pdf: { label: "จัดทำรายงาน PDF", icon: <SaveIcon />, color: "#3B82F6" },
   maintenance_cleanup: { label: "บำรุงรักษาระบบ", icon: <TerminalIcon />, color: "#7C3AED" },
   maintenance_purge: { label: "ล้างประวัติระบบ", icon: <TrashIcon />, color: "#D97706" },
+  // ── เหตุการณ์เพิ่มเติม / ความปลอดภัย ──
+  bypass_rate_limited: { label: "Bypass ถี่เกินกำหนด", icon: <AlertIcon />, color: "#F59E0B" },
+  bypass_denied: { label: "Bypass ถูกปฏิเสธ", icon: <CrossIcon />, color: "#EF4444" },
+  qr_expired: { label: "QR หมดอายุ", icon: <AlertIcon />, color: "#F59E0B" },
+  qr_invalid: { label: "QR ไม่ถูกต้อง", icon: <CrossIcon />, color: "#EF4444" },
+  login_rate_limited: { label: "ล็อกอินถี่เกินไป", icon: <AlertIcon />, color: "#F59E0B" },
+  admin_login: { label: "แอดมินเข้าสู่ระบบ", icon: <CheckIcon />, color: "#3B82F6" },
+  admin_logout: { label: "แอดมินออกจากระบบ", icon: <TerminalIcon />, color: "#6B7280" },
+  admin_login_failed: { label: "ล็อกอินล้มเหลว", icon: <AlertIcon />, color: "#EF4444" },
+  admin_created: { label: "สร้างผู้ดูแลระบบ", icon: <CheckIcon />, color: "#10B981" },
+  admin_updated: { label: "แก้ไขผู้ดูแลระบบ", icon: <FileTextIcon />, color: "#3B82F6" },
+  admin_deleted: { label: "ลบผู้ดูแลระบบ", icon: <TrashIcon />, color: "#D97706" },
+  settings_updated: { label: "อัปเดตการตั้งค่า", icon: <FileTextIcon />, color: "#7C3AED" },
+  firmware_deployed: { label: "ปล่อยเฟิร์มแวร์ใหม่", icon: <SaveIcon />, color: "#7C3AED" },
+  firmware_ota_triggered: { label: "ESP32 ดาวน์โหลด OTA", icon: <TerminalIcon />, color: "#3B82F6" },
+  esp32_offline: { label: "ESP32 ออฟไลน์", icon: <AlertIcon />, color: "#EF4444" },
+  hmac_invalid: { label: "ลายเซ็น HMAC ผิด", icon: <AlertIcon />, color: "#EF4444" },
+  unauthorized_access: { label: "เข้าถึงโดยไม่ได้รับสิทธิ์", icon: <AlertIcon />, color: "#EF4444" },
 };
+
+/** ย่อ User-Agent → "อุปกรณ์ · เบราว์เซอร์" สำหรับแสดงในตาราง logs */
+export function formatDeviceFromUA(ua?: string): string {
+  if (!ua) return "ไม่ทราบ";
+  let browser = "Other";
+  if (ua.includes("Edg/")) browser = "Edge";
+  else if (ua.includes("Chrome/") && !ua.includes("Chromium/")) browser = "Chrome";
+  else if (ua.includes("Firefox/")) browser = "Firefox";
+  else if (ua.includes("Safari/") && !ua.includes("Chrome/")) browser = "Safari";
+  else if (ua.includes("OPR/") || ua.includes("Opera/")) browser = "Opera";
+
+  let device = "Desktop";
+  if (/Android/i.test(ua)) device = "Android";
+  else if (/iPhone|iPad|iPod/i.test(ua)) device = "iOS";
+  else if (/Windows/i.test(ua)) device = "Windows";
+  else if (/Macintosh|Mac OS/i.test(ua)) device = "Mac";
+  else if (/Linux/i.test(ua)) device = "Linux";
+  return `${device} · ${browser}`;
+}
 
 export function getLogActionMetadata(log: AccessLog) {
   if (log.action === "rejected" && log.esp32_response === "System Cleanup") {

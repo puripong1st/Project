@@ -15,7 +15,9 @@ export type DiscordEventType =
   | "firmware_ota_triggered"
   | "settings_updated"
   | "admin_modified"
-  | "pdf_exported";
+  | "pdf_exported"
+  | "security_alert"
+  | "system_summary";
 
 export interface DiscordEmbed {
   title: string;
@@ -73,6 +75,23 @@ export interface NotifyData {
   firmwareChecksum?: string;
   firmwareSize?: number;
   previousVersion?: string;
+  // สำหรับ security_alert
+  alertTitle?: string;
+  alertDetail?: string;
+  // สำหรับ system_summary (สรุปรายวัน/สัปดาห์)
+  summary?: {
+    period: string;        // เช่น "วันนี้ (29 พ.ค. 2026)" หรือ "7 วันล่าสุด"
+    total: number;
+    doorOpened: number;
+    doorFailed: number;
+    registered: number;
+    approved: number;
+    rejected: number;
+    bypassRateLimited: number;
+    loginFailed: number;
+    critical: number;
+    topRoom?: string;
+  };
 }
 
 /**
@@ -93,8 +112,8 @@ export function notifyCategory(eventType: DiscordEventType): {
   ) {
     return { central: "approve", room: "approve" };
   }
-  if (eventType === "esp32_offline") return { central: "logs", room: "logs" };
-  // admin_login / admin_logout / admin_login_failed / firmware_*
+  if (eventType === "esp32_offline" || eventType === "security_alert") return { central: "logs", room: "logs" };
+  // admin_login / admin_logout / admin_login_failed / firmware_* / system_summary
   return { central: "admin_audit", room: "logs" };
 }
 
@@ -194,7 +213,8 @@ export function buildEventMessage(
       };
       break;
 
-    case "door_opened":
+    case "door_opened": {
+      const dev = parseUserAgent(data.userAgent || "");
       embed = {
         title: "🚪 ประตูเปิดแล้ว",
         description: data.reason ? `🔓 เข้าห้องสำเร็จด้วยสิทธิ์ Bypass` : `ระบบสั่งเปิดประตูสำเร็จ`,
@@ -206,6 +226,7 @@ export function buildEventMessage(
           { name: "📡 ESP32", value: `\`${data.esp32Response || "OK"}\``, inline: true },
           ...(data.adminName ? [{ name: "👨‍💼 ดำเนินการโดย", value: data.adminName, inline: true }] : []),
           ...(data.ip ? [{ name: "🌐 IP Address", value: `\`${data.ip}\``, inline: true }] : []),
+          ...(data.userAgent ? [{ name: "💻 อุปกรณ์", value: dev.device, inline: true }, { name: "🌍 Browser", value: dev.browser, inline: true }] : []),
           ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
@@ -213,8 +234,10 @@ export function buildEventMessage(
         timestamp: new Date().toISOString(),
       };
       break;
+    }
 
-    case "door_failed":
+    case "door_failed": {
+      const dev = parseUserAgent(data.userAgent || "");
       embed = {
         title: "⚠️ เปิดประตูไม่สำเร็จ",
         description: data.reason ? `❌ เปิดประตูด้วยสิทธิ์ Bypass ล้มเหลว` : `ไม่สามารถส่งคำสั่งไปยัง ESP32 ได้`,
@@ -225,6 +248,7 @@ export function buildEventMessage(
           { name: "🚪 ห้องเรียน", value: data.room || "-", inline: true },
           { name: "❌ ข้อผิดพลาด", value: `\`${data.esp32Response || "Timeout"}\``, inline: false },
           ...(data.ip ? [{ name: "🌐 บอร์ด IP", value: `\`${data.ip}\``, inline: true }] : []),
+          ...(data.userAgent ? [{ name: "💻 อุปกรณ์", value: dev.device, inline: true }, { name: "🌍 Browser", value: dev.browser, inline: true }] : []),
           ...(data.reason ? [{ name: "ℹ️ รายละเอียด / สิทธิ์ Bypass", value: data.reason, inline: false }] : []),
           { name: "⏰ เวลา", value: now, inline: false },
         ],
@@ -232,6 +256,7 @@ export function buildEventMessage(
         timestamp: new Date().toISOString(),
       };
       break;
+    }
 
     case "esp32_offline":
       embed = {
@@ -400,6 +425,54 @@ export function buildEventMessage(
         timestamp: new Date().toISOString(),
       };
       break;
+
+    case "security_alert": {
+      const dev = parseUserAgent(data.userAgent || "");
+      embed = {
+        title: `🚨 ${data.alertTitle || "แจ้งเตือนความปลอดภัย"}`,
+        description: data.alertDetail || "ตรวจพบเหตุการณ์ที่ควรตรวจสอบด้านความปลอดภัย",
+        color: COLORS.error,
+        fields: [
+          ...(data.adminUsername ? [{ name: "🏷️ Username", value: `\`${data.adminUsername}\``, inline: true }] : []),
+          ...(data.studentId ? [{ name: "🎓 รหัสนักศึกษา", value: data.studentId, inline: true }] : []),
+          ...(data.room ? [{ name: "🚪 ห้องเรียน", value: data.room, inline: true }] : []),
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          ...(data.userAgent ? [{ name: "💻 อุปกรณ์", value: dev.device, inline: true }, { name: "🌍 Browser", value: dev.browser, inline: true }] : []),
+          ...(data.reason ? [{ name: "📝 รายละเอียด", value: data.reason, inline: false }] : []),
+          { name: "⏰ เวลา", value: now, inline: false },
+        ],
+        footer: { text: "SmartAccess Security Alert" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
+
+    case "system_summary": {
+      const s = data.summary;
+      embed = {
+        title: "📊 รายงานสรุปการใช้งานระบบ",
+        description: s ? `สรุปเหตุการณ์ช่วง **${s.period}**` : "สรุปการใช้งานระบบ",
+        color: COLORS.info,
+        fields: s
+          ? [
+              { name: "📈 เหตุการณ์ทั้งหมด", value: `${s.total}`, inline: true },
+              { name: "🚪 เปิดประตูสำเร็จ", value: `${s.doorOpened}`, inline: true },
+              { name: "⚠️ เปิดประตูล้มเหลว", value: `${s.doorFailed}`, inline: true },
+              { name: "📝 ลงทะเบียนใหม่", value: `${s.registered}`, inline: true },
+              { name: "✅ อนุมัติ", value: `${s.approved}`, inline: true },
+              { name: "❌ ปฏิเสธ", value: `${s.rejected}`, inline: true },
+              { name: "🛑 Bypass ถี่เกิน", value: `${s.bypassRateLimited}`, inline: true },
+              { name: "🔐 ล็อกอินล้มเหลว", value: `${s.loginFailed}`, inline: true },
+              { name: "🚨 เหตุ critical", value: `${s.critical}`, inline: true },
+              ...(s.topRoom ? [{ name: "🏆 ห้องที่ใช้งานมากสุด", value: s.topRoom, inline: false }] : []),
+              { name: "⏰ สร้างรายงานเมื่อ", value: now, inline: false },
+            ]
+          : [{ name: "⏰ เวลา", value: now, inline: false }],
+        footer: { text: "SmartAccess Periodic Summary" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
   }
 
   // แทรกแท็กระบุห้องเรียนลงใน Embed ก่อนทำการส่ง เพื่อความชัดเจนและเรียบร้อยใน Discord

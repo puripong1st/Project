@@ -207,6 +207,28 @@ export async function initDatabase(): Promise<void> {
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='access_logs' AND column_name='details') THEN
               ALTER TABLE access_logs ADD COLUMN details TEXT;
           END IF;
+          -- ระดับความสำคัญของเหตุการณ์: info | warning | critical (ใช้กรอง/ไฮไลต์ใน UI)
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='access_logs' AND column_name='severity') THEN
+              ALTER TABLE access_logs ADD COLUMN severity VARCHAR(10) NOT NULL DEFAULT 'info';
+          END IF;
+          -- เก็บ User-Agent ดิบไว้วิเคราะห์อุปกรณ์/เบราว์เซอร์ย้อนหลัง
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='access_logs' AND column_name='user_agent') THEN
+              ALTER TABLE access_logs ADD COLUMN user_agent VARCHAR(300);
+          END IF;
+          -- รวมคอลัมน์ห้องให้เป็นมาตรฐานเดียว (room_code) — backfill จาก room เดิมที่ตกค้าง
+          UPDATE access_logs SET room_code = room
+            WHERE (room_code IS NULL OR room_code = 'default') AND room IS NOT NULL AND room <> '';
+      END
+      $$;
+    `);
+
+    // Index ช่วยกรองตาม severity (เช่น ดึงเฉพาะ critical)
+    await initPool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_logs_severity') THEN
+              CREATE INDEX idx_logs_severity ON access_logs (severity);
+          END IF;
       END
       $$;
     `);

@@ -548,7 +548,7 @@ function RegistrationPageInner() {
 
   useEffect(() => {
     // ─── 5-Minutes Returning Bypass Gate ───
-    const saved = sessionStorage.getItem("smartaccess_user_session");
+    const saved = localStorage.getItem("smartaccess_user_session");
     let isBypassValid = false;
     if (saved) {
       try {
@@ -888,10 +888,10 @@ function RegistrationPageInner() {
         setBypassState("success");
         // Auto-clear bypass tokens after successful use — token is consumed, no reuse possible
         sessionStorage.removeItem("smartaccess_temp_bypass_token");
-        sessionStorage.removeItem("smartaccess_user_session");
+        localStorage.removeItem("smartaccess_user_session");
         // We do NOT renew the timestamp so that the 5-minute session is strictly from the original approval time
       } else {
-        sessionStorage.removeItem("smartaccess_user_session");
+        localStorage.removeItem("smartaccess_user_session");
         setBypassState("none");
       }
     } catch {
@@ -902,7 +902,7 @@ function RegistrationPageInner() {
 
   // Check bypass session on component mount
   useEffect(() => {
-    const saved = sessionStorage.getItem("smartaccess_user_session");
+    const saved = localStorage.getItem("smartaccess_user_session");
     if (!saved) {
       setTimeout(() => {
         setBypassState("none");
@@ -922,13 +922,13 @@ function RegistrationPageInner() {
         }, 0);
       } else {
         // Expired
-        sessionStorage.removeItem("smartaccess_user_session");
+        localStorage.removeItem("smartaccess_user_session");
         setTimeout(() => {
           setBypassState("none");
         }, 0);
       }
     } catch {
-      sessionStorage.removeItem("smartaccess_user_session");
+      localStorage.removeItem("smartaccess_user_session");
       setTimeout(() => {
         setBypassState("none");
       }, 0);
@@ -1001,7 +1001,7 @@ function RegistrationPageInner() {
         last_name: success.last_name,
         requested_room: room,
       };
-      sessionStorage.setItem("smartaccess_user_session", JSON.stringify(session));
+      localStorage.setItem("smartaccess_user_session", JSON.stringify(session));
     }
   }, [success, currentStatus, room]);
 
@@ -1142,7 +1142,7 @@ function RegistrationPageInner() {
     let sessionName = "นักศึกษา";
     let sessionCode = "";
     try {
-      const saved = sessionStorage.getItem("smartaccess_user_session");
+      const saved = localStorage.getItem("smartaccess_user_session");
       if (saved) {
         const s = JSON.parse(saved);
         sessionName = `${s.title}${s.first_name} ${s.last_name}`;
@@ -1196,7 +1196,7 @@ function RegistrationPageInner() {
             className="btn-secondary"
             style={{ width: "100%", borderRadius: 14, cursor: "pointer" }}
             onClick={() => {
-              sessionStorage.removeItem("smartaccess_user_session");
+              localStorage.removeItem("smartaccess_user_session");
               setBypassState("none");
               setForm({ title: "นาย", first_name: "", last_name: "", student_id: "", year: "", faculty: "", branch: "" });
             }}

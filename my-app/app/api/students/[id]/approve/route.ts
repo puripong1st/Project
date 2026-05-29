@@ -5,6 +5,7 @@ import { getAdminFromCookie, canOperateRoom } from "@/lib/auth";
 import { openDoor } from "@/lib/esp32";
 import { sendDiscordNotification } from "@/lib/discord";
 import { sweepExpiredPending } from "@/lib/auto-reject";
+import { logEvent, getRequestContext } from "@/lib/access-log";
 
 let initialized = false;
 async function ensureInit() {
@@ -66,18 +67,19 @@ export async function POST(
     // Open door via ESP32
     const esp32Result = await openDoor(student.student_id, student.requested_room);
 
-    runBackground(pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, esp32_response, notes, room_code)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          studentId,
-          esp32Result.success ? "door_opened" : "door_failed",
-          admin.id,
-          esp32Result.message,
-          `อนุมัติโดย: ${admin.full_name}`,
-          student.requested_room || "default"
-        ]
-      ), "access log");
+    const { ip, userAgent } = getRequestContext(req);
+    runBackground(logEvent({
+      action: esp32Result.success ? "door_opened" : "door_failed",
+      studentId,
+      performedBy: admin.id,
+      room: student.requested_room,
+      ip,
+      userAgent,
+      esp32Response: esp32Result.message,
+      notes: `อนุมัติโดย: ${admin.full_name}`,
+      method: "admin_approve",
+      severity: esp32Result.success ? "info" : "warning",
+    }), "access log");
     if (esp32Result.success) {
       runBackground(
         pool.query("UPDATE students SET last_door_open = CURRENT_TIMESTAMP WHERE id = $1", [studentId]),
@@ -93,6 +95,8 @@ export async function POST(
       adminName: admin.full_name,
       esp32Response: esp32Result.message,
       room: student.requested_room,
+      ip,
+      userAgent,
     }).catch(() => {});
 
     return NextResponse.json({

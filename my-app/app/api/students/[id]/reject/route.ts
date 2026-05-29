@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPool, initDatabase, StudentRow } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
+import { logEvent, getRequestContext } from "@/lib/access-log";
 
 let initialized = false;
 async function ensureInit() {
@@ -45,10 +46,17 @@ export async function POST(
       [admin.id, finalReason, studentId]
     );
 
-    await pool.query(
-      `INSERT INTO access_logs (student_id, action, performed_by, notes, room_code) VALUES ($1, 'rejected', $2, $3, $4)`,
-      [studentId, admin.id, `เหตุผล: ${finalReason} | โดย: ${admin.full_name}`, student.requested_room || 'default']
-    );
+    const { ip, userAgent } = getRequestContext(req);
+    await logEvent({
+      action: "rejected",
+      studentId,
+      performedBy: admin.id,
+      room: student.requested_room,
+      ip,
+      userAgent,
+      notes: `เหตุผล: ${finalReason} | โดย: ${admin.full_name}`,
+      severity: "warning",
+    });
 
     await sendDiscordNotification("student_rejected", {
       studentName: `${student.first_name} ${student.last_name}`,
@@ -56,6 +64,8 @@ export async function POST(
       adminName: admin.full_name,
       reason: finalReason,
       room: student.requested_room,
+      ip,
+      userAgent,
     }).catch((err) => console.error("[Reject Notification] failed:", err));
 
     return NextResponse.json({ success: true, message: "ปฏิเสธคำขอสำเร็จ" });

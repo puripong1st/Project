@@ -9,7 +9,8 @@ import {
   BranchIcon,
   getLogActionMetadata,
   isAccessRejectedLog,
-  renderLogNotes
+  renderLogNotes,
+  formatDeviceFromUA
 } from "../DashboardHelpers";
 
 export default function AllPage() {
@@ -393,6 +394,16 @@ export default function AllPage() {
                           }}>
                             {meta.icon} {meta.label}
                           </span>
+                          {(log.severity === "warning" || log.severity === "critical") && (
+                            <span style={{
+                              display: "inline-flex", alignItems: "center", marginLeft: 6, padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 900,
+                              background: log.severity === "critical" ? "#EF444422" : "#F59E0B22",
+                              color: log.severity === "critical" ? "#EF4444" : "#D97706",
+                              border: `1px solid ${log.severity === "critical" ? "#EF444444" : "#F59E0B44"}`
+                            }}>
+                              {log.severity === "critical" ? "🚨 CRITICAL" : "⚠️ WARNING"}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: "14px" }}>
                           {log.student_name ? (
@@ -417,6 +428,12 @@ export default function AllPage() {
                               </div>
                             )}
                             {renderLogNotes(log.notes)}
+                            {(log.ip_address || log.user_agent) && (
+                              <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 4, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                {log.ip_address && <span>🌐 IP: {log.ip_address}</span>}
+                                {log.user_agent && <span>💻 {formatDeviceFromUA(log.user_agent)}</span>}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
