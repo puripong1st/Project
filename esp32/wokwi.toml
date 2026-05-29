@@ -26,3 +26,7 @@ from = "localhost:8180"
 to   = "target:80"
 [libraries]
 "QRCode" = "0.0.1"
+"Adafruit GFX Library" = "1.11.9"
+"Adafruit ILI9341" = "1.6.0"
+"ArduinoJson" = "6.21.3"
+"ElegantOTA" = "2.2.9"

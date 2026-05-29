@@ -1,0 +1,5 @@
+Adafruit GFX Library
+Adafruit ILI9341
+ArduinoJson@6.21.3
+ElegantOTA@2.2.9
+QRCode
