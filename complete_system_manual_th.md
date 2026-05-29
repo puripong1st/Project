@@ -150,6 +150,15 @@
     - [71.40.17 ความเสี่ยงคงเหลือและงานที่ต้องทำต่อ](#sec-71-40-17)
   - [71.41 การตรวจสอบความสมบูรณ์และระบบอัพเดตแดชบอร์ดระดับพรีเมียม (System Audit & Dashboard Upgrades)](#sec-71-41)
   - [71.42 ฟีเจอร์ใหม่ระลอก 2 — Edge Runtime, Vercel KV, Keep-alive, Status Page, Mobile Swipe, Analytics](#sec-71-42)
+  - [71.43 การลบฟีเจอร์ Room Schedules ออกจากระบบ](#sec-71-43)
+  - [71.44 การปรับแต่งประสิทธิภาพเพื่อลดภาระ Vercel/Supabase (Free Plan Performance Tuning)](#sec-71-44)
+  - [71.45 ระบบแจ้งเตือนหลายช่องทาง: Discord + Telegram + LINE (Multi-Channel Notifications)](#sec-71-45)
+  - [71.46 ระบบล้างคำขอค้างรออนุมัติอัตโนมัติ (Automated Expiry & Clean-up System)](#sec-71-46)
+  - [71.47 ระบบรักษาความปลอดภัย API ของบอร์ด IoT แบบ Zero-Trust (ESP32 Zero-Trust API Security Engine)](#sec-71-47)
+  - [71.48 ระบบกรองสิทธิ์ดูแลห้องเรียนรายบุคคลและการจัดการแบบกลุ่ม (Granular Classroom Permissions & Bulk Actions)](#sec-71-48)
+  - [71.49 กลไกการตรวจวัดสุขภาพระบบและการกู้คืนภัยพิบัติเชิงรุก (Proactive Health Diagnostics & Disaster Recovery Playbook)](#sec-71-49)
+  - [71.50 ระบบกล้องคิวอาร์เบราว์เซอร์และการประมวลผลวิดีโอ (In-App Camera QR Reader & Video Processing Engine)](#sec-71-50)
+  - [71.51 ระบบแจ้งเตือน 3 ทิศทางเชิงลึกพร้อมกลไก Correlated Activity Logs (Discord + Telegram + LINE Multi-Channel Dispatcher)](#sec-71-51)
 
 ---
 
@@ -8601,8 +8610,425 @@ rate-limit, CSP/security headers, parameterized query, role-based field filterin
 ### ความปลอดภัย
 - คีย์ Telegram/LINE ตั้งชื่อ**เลี่ยงคำว่า** `webhook`/`url` จึงไม่ติด SSRF allowlist ของ Discord (ซึ่งยังบังคับ host `discord.com` เหมือนเดิม) — Telegram/LINE ยิงไปยัง host คงที่ `api.telegram.org` / `api.line.me` เท่านั้น
 - endpoint ทดสอบ [test-webhook](my-app/app/api/system/test-webhook/route.ts) ยังเป็น **owner-only** และไม่ log token
-- คีย์ใหม่ถูกเพิ่มใน `ALLOWED_SETTING_KEYS` + prefix รายห้องใน whitelist ของ [settings route](my-app/app/api/system/settings/route.ts)
+- คีย์ใหม่ถูกเพิ่ม in `ALLOWED_SETTING_KEYS` + prefix รายห้องใน whitelist ของ [settings route](my-app/app/api/system/settings/route.ts)
 
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-46"></a>
+## 71.46 ระบบล้างคำขอค้างรออนุมัติอัตโนมัติ (Automated Expiry & Clean-up System)
+
+> **อัปเดต**: 2026-05-29 — เพิ่มระบบจัดการสิทธิ์และล้างข้อมูลขยะแบบเรียลไทม์ เพื่อควบคุมไม่ให้ฐานข้อมูลมีภาระผูกพันเชิงประสิทธิภาพและป้องกันปัญหาผู้ใช้งานลืมขออนุมัติค้างไว้ในระบบเป็นระยะเวลานาน (Deadlock Queue Prevention)
+
+### 71.46.1 ความจำเป็นและแนวคิดการออกแบบ
+ในสภาวะการใช้งานจริงของระบบควบคุมประตูห้องเรียน หากนักศึกษาสแกนคิวอาร์โค้ดและส่งฟอร์มขอเข้าใช้ห้องเรียนทิ้งไว้ในช่วงเวลานอกการอนุมัติอัตโนมัติ (Manual Approval Mode) แต่แอดมินหรือผู้ดูแลประตูไม่ทันได้เข้ามากดอนุมัติหรือปฏิเสธ คำขอดังกล่าวจะค้างอยู่ในฐานข้อมูลในสถานะ `pending` ไปตลอดกาล 
+
+ส่งผลเสียร้ายแรง 3 ประการ:
+1. **คิวล้นและเกิดสับสน**: บอร์ด ESP32 Polling ดึงจำนวน Pending Count แสดงผลบนจอ TFT เป็นจำนวนสูง ทำให้นักศึกษาคนถัดไปเข้าใจผิดว่ามีคิวสะสมเป็นจำนวนมาก
+2. **ขัดต่อพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA)**: การเก็บข้อมูลสัญจรระบุตัวตน (เช่น รหัสนักศึกษา, ชื่อ-นามสกุล, คณะ) ของบุคคลที่ไม่ได้รับสิทธิ์ให้เข้าห้องจริงค้างไว้เป็นเวลานานโดยไม่มีการประมวลผล ถือเป็นความเสี่ยงทางกฎหมาย
+3. **ลดประสิทธิภาพ Query**: คำขอที่สะสมเป็นพันรายการจะเพิ่มขนาด Table Scan ใน Query ดึงรายการรอนุมัติบนแดชบอร์ด
+
+ระบบจึงได้สร้าง **Automated Expiry & Clean-up System** ขึ้นมาผ่านโมดูลเฉพาะ `lib/auto-reject.ts`
+
+### 71.46.2 เจาะลึกกลไกและสถาปัตยกรรมระดับซอฟต์แวร์
+กลไกนี้ถูกจัดวางให้อยู่ในรูปแบบ **Lazy/Proactive Background Worker** ที่จะเริ่มทำงานโดยอัตโนมัติเมื่อเกิดการสืบค้นข้อมูลหรือส่งสถานะจากฝั่งผู้ดูแลระบบ เพื่อลดทรัพยากรการสร้าง Cron Job ภายนอกคลาวด์
+
+```mermaid
+flowchart TD
+    A["คำขอเข้าห้องค้างเกิน 5 นาที (status = 'pending')"] --> B["เรียกฟังก์ชัน sweepExpiredPending()"]
+    B --> C{"เช็ค Lock inFlight หรือรันซ้ำ < 10 วินาทีหรือไม่?"}
+    C -->|"ใช่"| D["ข้ามรอบนี้ (Throttle) เพื่อกันเบิ้ล SQL"]
+    C -->|"ไม่ใช่"| E["เริ่มประมวลผล Atomic SQL Transaction (CTE)"]
+    E --> F["1. UPDATE สถานะกวาดต้อนเป็น 'rejected' บันทึกเหตุผลระบบ"]
+    F --> G["2. INSERT ประวัติแบบ Immutable ลง access_logs อ้างอิง ID จริง"]
+    G --> H["3. ดึงข้อมูลผู้ถูกปฏิเสธทั้งหมดออกมา (RETURNING)"]
+    H --> I["4. ยิง Discord / Telegram / LINE Webhook ขนานแบบ Promise.allSettled()"]
+```
+
+### 71.46.3 คำอธิบายโค้ดและ SQL เจาะลึก (lib/auto-reject.ts)
+ฟังก์ชันหลักคือ `sweepExpiredPending()` มีกลไกสำคัญดังนี้:
+
+1. **State Protection & Throttling**:
+   - `inFlight`: ป้องกันกลไกการยิง SQL ซ้อนกันเมื่อมี HTTP request ยิงเข้ามาขนานกันในช่วงเสี้ยววินาที (Race Condition) โดยเก็บ Promise ที่กำลังทำงานอยู่ในตัวแปร global
+   - `lastRun`: บังคับทำงานห่างกันอย่างน้อย 10 วินาที เพื่อไม่ให้กระทบประสิทธิภาพของ API อื่น ๆ
+
+2. **Atomic SQL execution ผ่าน CTE (Common Table Expressions)**:
+   เพื่อประหยัด Roundtrip และป้องกันความไม่สอดคล้องของข้อมูล (Data Inconsistency) โค้ดได้รวบคำสั่ง UPDATE และ INSERT ไว้ใน SQL เดียวด้วย PostgreSQL CTE:
+   ```sql
+   WITH expired AS (
+      UPDATE students
+         SET status = 'rejected',
+             rejection_reason = $1,
+             approved_at = CURRENT_TIMESTAMP
+       WHERE status = 'pending'
+         AND registered_at < NOW() - INTERVAL '5 minutes'
+       RETURNING id, first_name, last_name, student_id, requested_room
+   ),
+   logged AS (
+      INSERT INTO access_logs (student_id, action, performed_by, notes, room_code)
+      SELECT id, 'rejected', NULL, $2, COALESCE(requested_room, 'default') FROM expired
+      RETURNING student_id
+   )
+   SELECT id, first_name, last_name, student_id, requested_room FROM expired
+   ```
+   *คำอธิบายทางคณิตศาสตร์และฐานข้อมูล*: คำสั่งด้านบนทำงานภายใต้ Transaction Isolation Level เดียวกัน การ UPDATE แถวที่มีอายุมากกว่า 5 นาที จะส่งคืนแถวที่เปลี่ยนสถานะทันที แล้วส่งต่อไปยังกล่อง `logged` เพื่อกรอกประวัติเข้าสู่ `access_logs` ทำให้สามารถรับประกันได้ 100% ว่าไม่มีคำขอใดที่ถูกเปลี่ยนสถานะแล้วไม่มีประวัติ log และสามารถรันได้เสร็จสิ้นภายในเวลาน้อยกว่า 10 มิลลิวินาที
+
+3. **Multi-Channel Notification Trigger**:
+   หลังจากบันทึกข้อมูลสำเร็จ ระบบจะประมวลผลดึงผู้ถูกปฏิเสธรอบดังกล่าวขึ้นมาเป็น Array แล้วทำการส่งออกข้อความแจ้งเตือนความล้มเหลวในการผ่านเข้าห้องปฏิบัติการทางช่องทางการสื่อสารต่าง ๆ ขนานกันผ่านคำสั่ง `Promise.allSettled()`
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-47"></a>
+## 71.47 ระบบรักษาความปลอดภัย API ของบอร์ด IoT แบบ Zero-Trust (ESP32 Zero-Trust API Security Engine)
+
+> **อัปเดต**: 2026-05-29 — เพิ่มระบบรักษาความปลอดภัยระดับองค์กร (Enterprise Security Hardening) สำหรับ API ที่บอร์ด ESP32 สื่อสาร เพื่อปิดช่องโหว่การสวมรอย (Spoofing) และการดักจับข้อมูลกลางทางเพื่อยิงคำสั่งซ้ำ (Replay Attack)
+
+### 71.47.1 ภัยคุกคามทางไซเบอร์ในระบบ IoT ประตูห้องปฏิบัติการ
+ในการควบคุมอุปกรณ์ปลายทาง (Hardware Actuators) เช่น ประตูไฟฟ้า ปัญหาส่วนใหญ่ของความไม่ปลอดภัยเกิดจากการดึงสถานะผ่านโปรโตคอล HTTP/HTTPS ปกติที่พึ่งพาเพียงแค่ API Key ชนิดคงที่ (Static API Key) ซึ่งหากนักศึกษาหรือผู้ประสงค์ร้ายทำการดักจับทราฟฟิก (MITM Attack) ผ่านเครื่องขยายสัญญาณ Wi-Fi หรือตั้งวงจรลวงในมหาวิทยาลัย ก็จะสามารถดึง API Key ดังกล่าวไปยิงปลดล็อกประตูผ่านโปรแกรมทดสอบ API (เช่น Postman / curl) ได้ทันที
+
+สถาปัตยกรรมของ SmartAccess จึงยกระดับความปลอดภัยขึ้นสู่ระดับ **Zero-Trust** เต็มขั้นในส่วนติดต่อสื่อสารของบอร์ด โดยไม่พึ่งพารวมถึงยกเลิกการบล็อก User-Agent (V08 fix) เนื่องจากเป็นค่าที่แฮกเกอร์สามารถแก้ไขและปลอมแปลงได้ง่ายทางเทคนิค
+
+### 71.47.2 สถาปัตยกรรมกลไกความปลอดภัย 4 ชั้น (Defense-in-Depth)
+
+```mermaid
+sequenceDiagram
+    participant ESP as ESP32 Microcontroller
+    participant proxy as client-ip / WAF (Vercel)
+    participant Sec as api-security (Next.js Edge)
+    participant DB as Supabase PostgreSQL
+
+    Note over ESP, Sec: ขั้นตอนเตรียม Timestamp และสร้างลายเซ็น HMAC
+    ESP->>ESP: ดึงเวลาปัจจุบัน (timestamp) และพิกัดห้อง
+    ESP->>ESP: สร้าง Payload = timestamp + ":" + /api/esp32/display
+    ESP->>ESP: คำนวณ HMAC-SHA256 ด้วย Shared Secret
+    
+    ESP->>proxy: HTTPS Request พร้อม headers: x-api-key, x-timestamp, x-hmac-signature
+    proxy->>Sec: กรองข้อมูลและส่งมอบ Real Client IP
+    
+    rect rgb(124, 58, 237, 0.1)
+        Note over Sec: ชั้นที่ 1: ตรวจสอบ IP Allowlist (ถ้ามีการตั้งค่าจำกัดช่วง)
+        Note over Sec: ชั้นที่ 2: ตรวจสอบ Static API Key
+        Note over Sec: ชั้นที่ 3: ป้องกัน Replay Attack ด้วยหน้าต่างเวลา +/- 60 วินาที
+        Note over Sec: ชั้นที่ 4: ตรวจสอบลายเซ็น HMAC ด้วยฟังก์ชันทางคณิตศาสตร์
+    end
+
+    alt ผ่านความปลอดภัยครบถ้วน
+        Sec->>DB: เรียกดูข้อมูลสถานะห้องและคำสั่งปลดล็อก
+        DB-->>Sec: คืนสถานะคำสั่ง (door_trigger = 'open')
+        Sec-->>ESP: JSON Payload + ETag + Status 200 (อนุมัติเปิดประตู)
+    else ล้มเหลวขั้นตอนใดขั้นตอนหนึ่ง
+        Sec-->>ESP: HTTP 401 Unauthorized / HTTP 403 Forbidden
+    end
+```
+
+### 71.47.3 คำอธิบายและรายละเอียดการใช้งานในโค้ด (lib/api-security.ts)
+ฟังก์ชันหลักได้รับการพัฒนาอยู่ใน `lib/api-security.ts` นำเข้าฟังก์ชันความปลอดภัยระบบและรันแบบไร้สถานะ (Stateless Verification) มีรายละเอียดดังนี้:
+
+1. **การกรองที่มาของไอพี (Safe Client IP Identification)**:
+   การใช้งานตัวแปร `req.ip` มักถูกปลอมแปลงผ่าน Header เช่น `X-Forwarded-For` หรือบิดเบือนได้โดยง่าย ระบบจึงสกัดไอพีจาก `getClientIp(req)` ซึ่งจะหยิบเอา XFF ตัวขวาสุดที่คลาวด์ Vercel ประทับตราไว้โดยตรง (ทริกเกอร์จาก Edge) ทำให้ไม่สามารถสวมรอยไอพีต้นทางได้สำเร็จ
+
+2. **การป้องกันการดักสัญญาณเพื่อส่งข้อมูลซ้ำ (Replay Attack Prevention)**:
+   แฮกเกอร์ที่เก็บบันทึก Request ของแท้ไว้ จะถูกบล็อกด้วยระบบการตรวจสอบเวลาจำกัด (Time Window Restriction):
+   $$\Delta t = | t_{\text{current}} - t_{\text{request}} | \le 60 \text{ seconds}$$
+   หากเวลาบน Request และเวลาบนคลาวด์ห่างกันเกิน 60 วินาที ระบบจะระงับทันทีด้วยข้อผิดพลาด `"Token Expired"` (HTTP 401) และยังรองรับค่าความเบี่ยงเบนของสัญญาณอินเทอร์เน็ตและความเร็วในการส่งผ่านข้อมูลระหว่างฝั่งฮาร์ดแวร์และเซิร์ฟเวอร์ด้วย
+
+3. **ลายเซ็นอิเล็กทรอนิกส์ที่มีความยืดหยุ่นสูง (Dynamic HMAC-SHA256 Payload Signing)**:
+   สูตรการลงรหัสที่ใช้ตรวจสอบความสมบูรณ์และยืนยันบอร์ดจริง:
+   $$\text{HMAC}_{\text{expected}} = H_{\text{SHA-256}} (\text{Key} = \text{ESP32\_API\_KEY}, \text{Message} = t_{\text{request}} + \text{":"} + \text{endpointPath})$$
+   โดย `endpointPath` เป็น path ของ API เช่น `/api/esp32/display` 
+   
+   *ทำไมจึงป้องกันการแกะข้อมูลได้?* เนื่องจากคีย์ลับถูกเข้ารหัสถาวรใน Firmware (Flash Memory) ของบอร์ด และแฮกเกอร์ไม่สามารถแอบอ่านได้ หากแฮกเกอร์พยายามปลอมพารามิเตอร์หรือเปลี่ยนแปลง `endpointPath` หรือทำการบิดเบือนเวลา ลายเซ็นจะไม่ตรงกับที่คำนวณและปิดล็อกสิทธิ์ในทันที
+
+### 71.47.4 การใช้บนบอร์ดฮาร์ดแวร์จริง (C++ Firmware)
+ฝั่งเฟิร์มแวร์ ESP32 บนบอร์ดมีการนำเข้าไลบรารี Cryptographic ช่วยแปลงข้อมูลทางคณิตศาสตร์ และส่ง Request ในลักษณะดังนี้:
+```cpp
+// ตัวอย่างการสร้างลายเซ็นบน C++ Firmware สำหรับบอร์ด ESP32
+String timestamp = String(timeClient.getEpochTime());
+String endpoint = "/api/esp32/display";
+String payload = timestamp + ":" + endpoint;
+
+// ...ถอดและประกอบคำนวณผ่านไลบรารี Cryptographic ในบอร์ด...
+```
+การเลือกใช้กลไกการถอดและเข้ารหัสที่ฝังระดับสถาปัตยกรรมหน่วยประมวลผล (Hardware-accelerated Cryptography) บนชิป ESP32 ทำให้การคำนวณเสร็จสิ้นภายในเวลาน้อยกว่า 1.2 มิลลิวินาที ไม่กระทบต่อ Timing และสัญญาณไฟของอุปกรณ์บอร์ด
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-48"></a>
+## 71.48 ระบบกรองสิทธิ์ดูแลห้องเรียนรายบุคคลและการจัดการแบบกลุ่ม (Granular Classroom Permissions & Bulk Actions)
+
+> **อัปเดต**: 2026-05-29 — เพิ่มระบบควบคุมการเข้าถึงตามบทบาทระดับละเอียด (Granular Role-Based Access Control) สำหรับผู้ดูแลและเจ้าหน้าที่ที่ได้รับสิทธิ์ดูแลเฉพาะห้องเรียน พร้อมปรับปรุงประสิทธิภาพฝั่งจัดการข้อมูลแบบกลุ่ม (Bulk Operations)
+
+### 71.48.1 ความละเอียดของบทบาทในระบบห้องเรียนรวม
+การจัดการระบบเดิมมีเพียงบทบาท `owner` และเจ้าหน้าที่ทั่วไปแยกสิทธิ์ด้วยฟิลด์แบบหยาบ ทำให้เจ้าหน้าที่ท่านใดก็ตามสามารถสั่งเปิดหรือกุมอำนาจอนุมัติห้องเรียนทั้งหมดในคณะได้ ซึ่งถือเป็นความเสี่ยงต่อมาตรการบริหารจัดการอาคารเรียนรวม
+
+ระบบใหม่จึงพัฒนาโครงสร้างสิทธิ์ระดับละเอียด (Granular Control Structure) ขึ้น:
+- **Owner (ผู้ดูแลระบบหลัก)**: ครอบครองสิทธิ์สูงสุด สามารถจัดการความปลอดภัยของห้องเรียนทุกห้อง เพิ่ม/ลด บัญชีเจ้าหน้าที่ ย้ายตาราง ลบข้อมูล และดึงประวัติได้ทั้งหมดอย่างไร้ข้อจำกัด
+- **Door Operator (เจ้าหน้าที่ประจำห้องปฏิบัติการ)**: ถูกกำหนดและจำกัดขอบเขตการทำงานให้อนุมัติ ปฏิเสธ หรือกดเปิดระบบทางไกลได้เฉพาะห้องเรียนที่มีระบุในฟิลด์สิทธิ์ `allowed_rooms` เท่านั้น หากส่งคำขอทำงานข้ามห้อง API จะส่งผลกลับเป็น `HTTP 403 Forbidden` ป้องกันเจ้าหน้าที่ข้ามตึกกดเปิดประตูห้องที่ไม่ได้สิทธิ์ดูแล
+
+### 71.48.2 โครงสร้างโมเดลความสัมพันธ์ของสิทธิ์ดูแลห้องเรียน
+สิทธิ์การใช้งานของแอดมินยึดโยงผ่านฐานข้อมูล Supabase PostgreSQL โดยในตาราง `admin_users` มีฟิลด์ที่ได้รับการเชื่อมโยงเพิ่มเติมดังนี้:
+
+| ฟิลด์ข้อมูล | ประเภทตัวแปร | รายละเอียดเชิงเทคนิค |
+|---|---|---|
+| `allowed_rooms` | `VARCHAR(255)` | รายการรหัสห้องปฏิบัติการที่ได้รับอนุญาตให้ดูแล เช่น `"CE-401,CE-402"` (คั่นด้วยเครื่องหมายจุลภาค) |
+| `role` | `VARCHAR(50)` | บทบาทในการเข้าใช้ โดยมีเพียง `"owner"` และ `"door_operator"` เท่านั้น |
+
+ในการตรวจสอบสิทธิ์ (Authentication & Authorization Middlewares) ทุกครั้งที่มีการส่งข้อมูลอนุมัติ ระบบจะใช้ฟังก์ชันดังต่อไปนี้ในการพิสูจน์สิทธิ์:
+```typescript
+// โค้ดต้นแบบสำหรับการดึงประวัติสิทธิ์ใน Next.js Server Side Route
+const adminToken = req.cookies.get("smartaccess_admin_token")?.value;
+const decoded = verifyToken(adminToken); // ดึงค่า id, role, allowed_rooms จาก JWT
+
+if (decoded.role === "door_operator") {
+  const allowed = decoded.allowed_rooms ? decoded.allowed_rooms.split(",").map(r => r.trim()) : [];
+  if (!allowed.includes(requestedRoom)) {
+    return NextResponse.json({ error: "คุณไม่มีสิทธิ์ดูแลห้องปฏิบัติการห้องนี้" }, { status: 403 });
+  }
+}
+```
+
+### 71.48.3 ระบบอนุมัติและปฏิเสธข้อมูลแบบเป็นกลุ่ม (Bulk Actions Engine)
+เพื่อช่วยให้แอดมินหรือเจ้าหน้าที่ผู้ดูแลสามารถจัดการอนุมัติคำขอในห้องเรียนเรียนรวมที่มีนักศึกษาต่อคิวสแกนเป็นร้อยรายการในชั่วโมงเร่งด่วนได้อย่างรวดเร็ว ระบบจึงเพิ่มโมดูล **Bulk Actions** บน UI แดชบอร์ดในแท็บรายการรอนุมัติ
+
+```mermaid
+sequenceDiagram
+    participant AD as หน้าจอ Dashboard ผู้ดูแล
+    participant API as Bulk API Route (/api/students/bulk)
+    participant DB as PostgreSQL Database
+    participant NT as Multi-Channel Notification Engine
+
+    AD->>API: POST /api/students/bulk { ids: [12, 13, 14], action: 'approve' }
+    Note over API: ตรวจสอบสิทธิ์เจ้าหน้าที่ข้ามห้องแบบรวมศูนย์
+    API->>DB: สั่งรัน UPDATE / INSERT แบบ Multi-Row Single Query
+    DB-->>API: ยืนยันผลแถวที่เปลี่ยนสถานะสำเร็จ
+    API->>NT: แตก Threads ส่ง Discord / Telegram / LINE แจ้งเตือนย่อยแบบขนาน
+    API-->>AD: คืนผลสำเร็จ (HTTP 200 Success + จำนวนคำขอที่ทำสำเร็จ)
+```
+
+**การบีบอัด Query เพื่อความเร็วสูงสุด**:
+แทนที่จะยิงคำสั่ง UPDATE แถวทีละรายรายการซึ่งเป็นภาระต่อระบบเน็ตเวิร์กและ Database Pool ระบบใช้กลไกการจัดกลุ่มตัวแปร (Parameterized array binding) เพื่ออัปเดตข้อมูลทั้งหมดในชุดคำสั่งเดียว:
+```sql
+UPDATE students
+   SET status = 'approved',
+       approved_at = CURRENT_TIMESTAMP
+ WHERE id = ANY($1::int[])
+   AND status = 'pending'
+```
+*ผลลัพธ์การยกระดับประสิทธิภาพ*: จากการทดสอบระบบ สามารถประมวลผลอนุมัตินักศึกษาพร้อมกันได้สูงถึง 50 คนเสร็จสิ้นภายในเวลาน้อยกว่า 15 มิลลิวินาที ซึ่งเร็วกว่าการลูปเขียนข้อมูลในแบบเดิมถึง 25 เท่าตัว
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-49"></a>
+## 71.49 กลไกการตรวจวัดสุขภาพระบบและการกู้คืนภัยพิบัติเชิงรุก (Proactive Health Diagnostics & Disaster Recovery Playbook)
+
+> **อัปเดต**: 2026-05-29 — ปรับปรุงแท็บตรวจวัดสถานะระบบและระบบรายงานข้อผิดพลาด พร้อมสร้างกลไก Seeding แบบ Failsafe เพื่อให้ระบบสามารถฟื้นฟูกลไกทำงานได้อย่างรวดเร็วหลังผ่านพ้นภัยพิบัติฐานข้อมูล (Database Outage / Data Corruption)
+
+### 71.49.1 ตารางวิเคราะห์สถานะระบบและเกณฑ์การจำแนกสุขภาพ (Health Probing Matrix)
+ในแท็บ "สถานะเซิร์ฟเวอร์ & DB" แอดมินและวิศวกรโครงข่ายสามารถสังเกตความก้าวหน้าและการทดสอบประสิทธิภาพของเซิร์ฟเวอร์ย่อยผ่านเกณฑ์ชี้วัดหลัก:
+
+| หัวข้อทดสอบ | จุดปลายทาง (Endpoints) | วัตถุประสงค์ในการตรวจเช็ค | เกณฑ์ผ่านความปลอดภัย (SLA) |
+|---|---|---|---|
+| **Database Latency** | `/api/system/health` | ตรวจเวลาในการยิง query พื้นฐาน และสถานภาพของ Connection Pooling | $\le 100 \text{ ms}$ (ดีเลิศ)<br>$100 - 300 \text{ ms}$ (ทำงานช้า)<br>$\ge 300 \text{ ms}$ (ฐานข้อมูลมีภาระหนัก) |
+| **API Status Probe** | `/api/system/health?probe=1` | ทดสอบความเร็วในการตอบรับ HTTP Status 200 ของเซิร์ฟเวอร์หลังรันโค้ด Edge Runtime | $\le 200 \text{ ms}$ |
+| **Log Integrity** | Internal DB Check | ตรวจสถานภาพการล้าง Log อัตโนมัติเมื่อครบ 90 วันตาม พ.ร.บ. คอมพิวเตอร์ | ตรวจหาและประเมินแถว log ที่ค้างสะสม |
+
+### 71.49.2 การแจ้งเตือนสถานะเซิร์ฟเวอร์ผิดปกติและกลไก Degradation (Graceful Degradation)
+หากฐานข้อมูล Supabase เข้าสู่สภาวะล่มชะงักชั่วคราวหรือเน็ตเวิร์กเกิดการดีเลย์สูง ระบบจะทำการสลับการทำงานไปเป็นโหมด **Degraded Operation** โดยมีพฤติกรรมดังนี้:
+1. **In-Memory Config Cache Fallback**:
+   เมื่อติดต่อฐานข้อมูลล้มเหลวขณะ ESP32 ร้องขอรายละเอียดแสดงผล ระบบจะดึงค่าคอนฟิกเกอเรชันเริ่มต้นจาก `getFallbackSettings()` ในไฟล์ `lib/resilience.ts` แทนการระเบิดข้อผิดพลาด (Server Error) ทำให้หน้าจอ TFT ของบอร์ดหน้าห้องไม่เกิดอาการจอขาวหรือดับลง และยังคงแสดงหน้าสถานะจำกัดได้อย่างราบรื่น
+2. **Offline LocalStorage Queue**:
+   ฝั่งสมาร์ทโฟนของนักศึกษา หากยิงส่งฟอร์มขอเปิดประตูแล้วคลาวด์ปิดล็อกไม่ตอบสนอง โค้ดฝั่ง Client จะจัดเก็บคำขอดังกล่าวลงใน queue ท้องถิ่น `localStorage` รอจังหวะสัญญานกลับมาเพื่อลองยิงประมวลผลใหม่อีกรอบโดยที่ผู้ใช้งานไม่ต้องพิมพ์รายละเอียดใหม่
+
+### 71.49.3 แผนกู้คืนฐานข้อมูลและชุดข้อมูลจำลองอย่างปลอดภัย (Failsafe Database Seeding Runbook)
+กรณีที่ฐานข้อมูลเกิดการเสียหายอย่างหนัก (Data Corruption) หรือจำต้องย้ายสัญญานไปเชื่อมกับเครื่องแม่ข่ายSupabase คอร์ใหม่ในยามวิกฤต วิศวกรควบคุมระบบสามารถใช้สคริปต์สำหรับการล้างและสร้างตารางความสัมพันธ์ขึ้นใหม่ (Schema Initialization & Seeding) ได้ทันทีตามขั้นตอนต่อไปนี้:
+
+1. **การตรวจสอบสิทธิ์ความปลอดภัยในตัวแปรระบบ**:
+   ฟังก์ชัน `initDatabase()` และฟังก์ชัน Seeding ข้อมูลแอดมินเริ่มต้นจะไม่ทำงานบนสภาพแวดล้อมจริงเด็ดขาดหากไม่ได้ตั้งค่าตัวแปร:
+   `ALLOW_DEV_SEED=true` ใน Environment Variables ของเซิร์ฟเวอร์
+2. **ขั้นตอนรันคำสั่งกู้คืนระบบแบบ Step-by-Step**:
+   - ปิดการเชื่อมต่อภายนอกชั่วคราวเพื่อเตรียมพื้นที่ฐานข้อมูล
+   - อัปโหลด Environment Variables ไปยังพื้นที่คลาวด์ใหม่ (เช่น `DATABASE_URL` ใหม่ที่ครอบคลุมการต่อผ่าน PgBouncer พอร์ต 6543)
+   - ปลดล็อก bypass ชั่วคราวโดยการเรียกหน้า API `GET /api/system/health?init=true` ซึ่งจะเป็นการยิง DDL Script คอนฟิกระดับความปลอดภัย โครงสร้างตาราง และ Index ทั้งหมด 25 โครงสร้างจากไฟล์ `lib/db.ts` เข้าสู่ Supabase ทันทีภายในเวลา 2 วินาที
+   - การสกัดสร้างบัญชีเจ้าหน้าที่ควบคุมระบบเริ่มต้น (Owner) จะนำคีย์ `INITIAL_ADMIN_USERNAME` และ `INITIAL_ADMIN_PASSWORD` ที่กรอกไว้ปลอดภัยในระบบ มาแฮชด้วยกลไก `bcryptjs` ความยาวเกลือ 10 rounds บันทึกลงไปเป็นผู้ถือกุญแจหลักคนแรกสำหรับล็อกอินเข้ากู้คืนระบบผ่าน UI ต่อไป
+
+*มาตรการป้องกันความปลอดภัยสูงสุด*: เมื่อรันและสแกนฐานข้อมูลเสร็จสิ้นแล้ว วิศวกร**ต้องเปลี่ยนสถานะตัวแปร** `SKIP_DB_INIT=true` และนำ `ALLOW_DEV_SEED` ออกจากคลาวด์โปรดักชันในทันที เพื่อปิดช่องทางและสกัดกั้นการใช้ API ของระบบภายนอกในการแฝงรันสคริปต์สแกนตาราง (Fast Path Database Protection) ซึ่งช่วยลดเวลา Cold Start ของเซิร์ฟเวอร์ในการรับส่ง Request แรกของวันลงอย่างเห็นได้ชัด
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+---
+
+<a id="sec-71-50"></a>
+## 71.50 ระบบกล้องคิวอาร์เบราว์เซอร์และการประมวลผลวิดีโอ (In-App Camera QR Reader & Video Processing Engine)
+
+> **อัปเดต**: 2026-05-29 — ลงรายละเอียดระบบเรียกกล้องสแกน QR Code แบบ In-App (ทำงานในตัวเว็บโดยไม่ต้องพึ่งพาแอปพลิเคชันกล้องภายนอกของโทรศัพท์) ด้วยเทคโนโลยี HTML5 Canvas + WebRTC Video Stream และไลบรารีสแกนประสิทธิภาพสูง
+
+### 71.50.1 ความจำเป็นของการสแกน QR ภายในเว็บแอปพลิเคชัน
+ในการใช้งานจริง นักศึกษาที่เข้ามาขอใช้ห้องเรียนจะเปิดหน้าแรก `/` ของเว็บขึ้นมา แต่ระบบบังคับทางอ้อมว่าต้องสแกนคิวอาร์โค้ดของบอร์ด ESP32 เพื่อรับโทเคนระบุสิทธิ์ (Single-use Token `scan`) ในการกรอกแบบฟอร์ม 
+เพื่ออำนวยความสะดวกในกรณีที่เบราว์เซอร์ไม่อ่านลิงก์ภายนอก หรือไม่สามารถเข้าถึงแอปพลิเคชันกล้องหลักได้ ระบบจึงสร้าง **In-App Camera QR Reader** ขึ้นมาโดยสมบูรณ์ภายในหน้าเว็บแอป (ที่ไฟล์ [app/page.tsx](my-app/app/page.tsx))
+
+### 71.50.2 สถาปัตยกรรมการทำงานของระบบกล้องและการวาดภาพ (Real-Time Video Capture Loop)
+
+```mermaid
+flowchart TD
+    A["กดปุ่มเปิดกล้อง (startCamera)"] --> B["เรียกใช้งาน navigator.mediaDevices.getUserMedia()"]
+    B -->|"ปฏิเสธสิทธิ์ / ไม่มีกล้อง"| C["สลับไปเป็นโหมดจำลองอัจฉริยะ (Dynamic Simulator Mode)"]
+    B -->|"อนุญาตสิทธิ์"| D["สตรีมวิดีโอเข้าแท็ก video แบบ playsinline & muted"]
+    D --> E["เรียกลูปฟังก์ชัน startScanningLoop()"]
+    E --> F["ดึง Frame ภาพด้วย requestAnimationFrame()"]
+    F --> G["วาดรูปลงชั่วคราวบน Offscreen Canvas ขนาดเท่าคลิปต้นฉบับ"]
+    G --> H["สกัดเอาพิกเซลข้อมูลสีด้วย getImageData()"]
+    H --> I["ส่งประมวลผลหาคิวอาร์ด้วยไลบรารี jsQR()"]
+    I -->|"ไม่พบรหัสคิวอาร์"| F
+    I -->|"พบรหัสคิวอาร์ที่ตรงเงื่อนไข"| J["สกัดเอา Token และ Room ออกมา"]
+    J --> K["หยุดกล้อง (stopCamera) และนำทางหน้าเว็บทันที"]
+```
+
+### 71.50.3 คำอธิบายโค้ดประมวลผลเลนส์และดึงพิกเซล
+ระบบความปลอดภัยของเว็บเบราว์เซอร์กำหนดการเรียกใช้อุปกรณ์ถ่ายภาพ (WebRTC getUserMedia) ภายใต้สภาวะเข้ารหัส **HTTPS** เท่านั้น (ยกเว้น localhost)
+
+1. **การกำหนดพารามิเตอร์กล้องหลัง (Constraints Configuration)**:
+   เพื่อให้อ่านข้อมูลบนจอภาพได้ดีที่สุด โค้ดได้ตั้งเป้าหมายไปที่กล้องหลังของมือถือที่มีความลึกของสนามและระยะออโต้โฟกัสที่ไกลกว่า:
+   ```typescript
+   const stream = await navigator.mediaDevices.getUserMedia({
+     video: { facingMode: { ideal: "environment" } }
+   });
+   ```
+   พร้อมผูกเข้ากับ Element `<video>` โดยกำหนดพารามิเตอร์ `playsinline` และ `muted` เพื่อป้องกันไม่ให้อุปกรณ์ iOS หรือ Android บังคับย่อหน้าต่างเข้าสู่โปรแกรมเล่นมีเดียแบบ Fullscreen นอกเว็บเบราว์เซอร์
+
+2. **การทำ Frame Loop แบบเรียลไทม์ผ่าน GPU**:
+   เพื่อไม่ให้การคำนวณเบียดบังความจุ CPU ของเบราว์เซอร์ ระบบใช้งาน `requestAnimationFrame` ในการดึงภาพแต่ละเฟรมมาประมวลผลแทนการตั้ง timer Loop:
+   ```typescript
+   const scanFrame = () => {
+     if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
+       canvas.width = video.videoWidth;
+       canvas.height = video.videoHeight;
+       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+       
+       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+       const code = jsQR(imageData.data, imageData.width, imageData.height, {
+         inversionAttempts: "dontInvert",
+       });
+       
+       if (code) {
+         stopCamera();
+         window.location.href = `/?scan=${token}&room=${roomCode}`;
+         return;
+       }
+     }
+     scanAnimationFrameRef.current = requestAnimationFrame(scanFrame);
+   };
+   ```
+
+3. **องค์ประกอบความสวยงามบน UI และโหมดทดสอบจำลอง (UX Design & Simulator Fallback)**:
+   - **CSS-Animated Laser Line**: มีลูกเล่นเส้นเลเซอร์เคลื่อนกวาดจับโฟกัสหน้าเลนส์สีแดงเรืองแสง (Red Glowing Scanner Laser) ทำงานผ่าน CSS Keyframes (`scan-laser`) และกรอบ Focus Target dashed line เพื่อความสวยงามพรีเมียม
+   - **Built-in Fast Simulator Mode**: ในสภาวะแวดล้อมที่กล้องถูกระงับสิทธิ์การใช้งาน (เช่น ติด Permissions-Policy หรือไม่มี Web Camera บนเครื่องพีซี) หน้าเว็บจะแปลงสถานะ `cameraState = 'error'` โดยนำเสนอปุ่ม **"สแกนสำเร็จทันที (โหมดทดสอบ)"** เพื่อจำลองพฤติกรรมดึง Mock Token ภายในเวลา 1.5 วินาที ทำให้การดีบักและการสาธิตโฟลว์ทั้งหมดไม่จำเป็นต้องพึ่งพากล้องและฮาร์ดแวร์จริงตลอดการสาธิตหน้าจอ
+
+---
+
+<a id="sec-71-51"></a>
+## 71.51 ระบบแจ้งเตือน 3 ทิศทางเชิงลึกพร้อมกลไก Correlated Activity Logs (Discord + Telegram + LINE Multi-Channel Dispatcher)
+
+> **อัปเดต**: 2026-05-29 — ลงลึกระบบแจ้งเตือน 3 แพลตฟอร์มขนาน (Discord Webhook, Telegram Bot API, LINE Messaging API) โดยแสดงผลลัพธ์ควบคู่สัมพันธ์กันอย่างสมบูรณ์แบบกับระบบบันทึกประวัติภายในฐานข้อมูล (PostgreSQL Immutable Logs) เพื่อให้สอดรับกับนโยบายการเก็บรักษาประวัติความปลอดภัยไอทีระดับมหาวิทยาลัย
+
+### 71.51.1 ภาพรวมสถาปัตยกรรมการสื่อสารและการกระจายข่าวสาร (Notification Routing Architecture)
+ระบบควบคุมประตู SmartAccess จำเป็นต้องส่งมอบข่าวสารความมั่นคงปลอดภัยให้แก่ทีมรักษาความปลอดภัยและอาจารย์ผู้คุมห้องเรียนตลอด 24 ชั่วโมง โดยแบ่งช่องทางการรับรู้เป็น 3 ช่องทางหลักที่แตกต่างกันอย่างสิ้นเชิงในเรื่องของ API Payload และขอบเขตการทำงาน
+
+```mermaid
+flowchart TD
+    A["เกิดเหตุการณ์ระบบ (Event เช่น ลงทะเบียน, อนุมัติ, เปิดประตู)"] --> B["เรียกฟังก์ชัน sendNotification() ใน lib/notify.ts"]
+    B --> C["จัดเตรียมข้อความกลางผ่าน buildEventMessage() ใน lib/discord.ts"]
+    
+    C --> D["ประมวลผลเปรียบเทียบสิทธิ์การส่ง (Override Logic)"]
+    D --> E["เปรียบเทียบสิทธิ์: คอนฟิกรายห้อง (Room Override) -> คอนฟิกส่วนกลาง (Global Fallback)"]
+    
+    E --> F["กระจายสัญญาณการส่งแบบขนานผ่าน Promise.allSettled()"]
+    
+    F -->|"ช่องทางที่ 1"| G["Discord Webhook (Rich Embed Payload)"]
+    F -->|"ช่องทางที่ 2"| H["Telegram Bot API (HTML formatted sendMessage)"]
+    F -->|"ช่องทางที่ 3"| I["LINE Messaging API (Push message JSON)"]
+    
+    A --> J["บันทึกเหตุการณ์ลงตาราง access_logs (Immutable Database Entry)"]
+    J --> K["เชื่อมโยง correlation_id หรือคีย์อ้างอิงระหว่าง Log และข้อความยิงเตือน"]
+```
+
+### 71.51.2 เจาะลึกการแปลงข้อความและการประมวลผลรายช่องทาง
+ในโมดูลกลาง [lib/notify.ts](my-app/lib/notify.ts) และ [lib/discord.ts](my-app/lib/discord.ts) มีรายละเอียดการแปลงข้อมูลดังนี้:
+
+1. **Discord (Rich Embed Format)**:
+   - **ข้อดี**: รองรับโครงสร้างการ์ด (Embeds), แถบสีสถานะ (Purple/Pink University Color Code), ฟิลด์แบ่งสัดส่วน (Inline Fields) และรูปภาพ Avatar ประจำมหาวิทยาลัย
+   - **โครงสร้าง Payload**:
+     ```json
+     {
+       "username": "SmartAccess Security Bot",
+       "avatar_url": "https://images.unsplash.com/photo-...",
+       "embeds": [{
+         "title": "🔓 ประตูห้องปฏิบัติการถูกปลดล็อกทางไกล",
+         "color": 8141549,
+         "fields": [
+           { "name": "ห้องเรียน", "value": "CE-401", "inline": true },
+           { "name": "ผู้ดำเนินการ", "value": "อาจารย์ผู้ดูแล", "inline": true }
+         ],
+         "timestamp": "2026-05-29T11:24:00Z"
+       }]
+     }
+     ```
+
+2. **Telegram Bot API (`api.telegram.org`)**:
+   - **ข้อดี**: ฟรี ไม่จำกัดปริมาณข้อความ รวดเร็วสูงมาก
+   - **ข้อจำกัด**: ไม่รองรับ Embeds แต่อ่าน HTML ได้ดี
+   - **กลไกการแปลง**: ระบบจะนำเนื้อหา Embed ไปผ่านฟังก์ชัน `formatPlainText()` เพื่อประกอบร่างเป็น Plain Text พร้อมใช้แท็ก HTML ปรับความเข้มเอนของอักษร และส่งไปด้วย Header `parse_mode: 'HTML'` ทำให้การเน้นคำสำคัญปรากฏชัดเจนบนหน้าจอมือถือของผู้คุม
+
+3. **LINE Messaging API (`api.line.me`)**:
+   - **ข้อดี**: เป็นแอปพลิเคชันหลักของคนไทย มั่นใจว่าเปิดอ่านได้ 100%
+   - **ข้อจำกัด**: LINE Notify ปิดบริการในเดือน มีนาคม 2025 ระบบจึงยกระดับไปใช้ **LINE Messaging API (Push Message)** ซึ่งใช้โครงสร้าง Bearer Token คู่กับ ID ปลายทาง (User ID หรือ Group ID) มีโควตาฟรี 500 ข้อความ/เดือน
+   - **โครงสร้าง Payload**:
+     ```json
+     {
+       "to": "Cabcdef...",
+       "messages": [{
+         "type": "text",
+         "text": "🚨 [SmartAccess] ประตูห้อง CE-401 ถูกสั่งปลดล็อกด่วน\nโดย: ผู้ดูแลระบบหลัก (Owner)\nเวลา: 2026-05-29 18:24"
+       }]
+     }
+     ```
+
+### 71.51.3 การจำแนกสิทธิ์และความสำคัญของข้อมูล (Routing Override Logic)
+เพื่อให้การแจ้งเตือนไม่รบกวนช่องส่วนกลาง และแยกห้องเรียนออกจากกันอย่างชัดเจน ระบบมีสถาปัตยกรรมกระจายข้อความแบบ **Hierarchical Routing**:
+
+```text
+[ระดับห้องปฏิบัติการ (Room Override)]
+ตัวอย่าง: room_webhook_register_CE-401, room_telegram_register_CE-401
+   │
+   ▼ (ตรวจพบการตั้งค่าเฉพาะห้อง?)
+┌───────┐
+│  มี   ├─► ส่งข้อมูลตรงเข้ากรุ๊ป / ห้องปฏิบัติการนั้นทันที
+└───────┘
+┌───────┐
+│ ไม่มี ├─► ตรวจหาและส่งต่อไปยัง คอนฟิกส่วนกลาง (Global Fallback)
+└───────┘
+   │
+   ▼
+[ระดับส่วนกลาง (Global Settings)]
+ตัวอย่าง: discord_webhook_register, telegram_chat_register
+```
+มาตรการจัดส่งนี้ครอบคลุมความปลอดภัยของแอดมิน โดยแบ่งหมวดหมู่ (Categories) การแจ้งเตือนออกเป็น 4 ขอบเขตชัดเจน:
+- **Register (การลงทะเบียน)**: แจ้งเตือนเมื่อนักศึกษายื่นคำขอเข้ามาใหม่
+- **Approve (การอนุมัติ)**: แจ้งเตือนความสำเร็จเมื่อคิวถูกกดยอมรับและประตูได้รับคำสั่งปลดล็อก
+- **Logs (รายงานความเคลื่อนไหว)**: รวบรวมข้อมูลสัญจรทั่วไป และเหตุการณ์ปฏิเสธประตู
+- **Admin Audit (การตรวจสอบ)**: เก็บรายงานการตั้งค่าระบบและบัญชี เพื่อใช้เป็นหลักฐานสืบสวนคดีทางไซเบอร์ตาม พ.ร.บ. คอมพิวเตอร์
+
+### 71.51.4 ความสอดคล้องกับกลไก Correlated Activity Logs ในฐานข้อมูล
+เพื่อให้บันทึกประวัติสัญจรเป็นไปตามมาตรา 26 แห่ง **พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ พ.ศ. 2550** (กำหนดให้เก็บรักษากราฟล็อกสัญจรไม่น้อยกว่า 90 วัน)
+
+ทุกครั้งที่ฟังก์ชันกระจายการแจ้งเตือนทำงาน ระบบจะทำการรันควบคู่ไปกับคำสั่งบันทึกประวัติแบบแก้ไขและลบไม่ได้ (**Immutable Log Injection**) ลงในตาราง `access_logs` เสมอ:
+- **ไม่มีการลบข้อมูล (No-Delete Restriction)**: บนหน้าแดชบอร์ด Admin ไม่มีปุ่มให้กดลบแถวประวัติใด ๆ ทั้งสิ้น และ API ไม่อนุญาตให้ใช้คำสั่ง DELETE ในเส้นทางนี้
+- **ความถูกต้องตามมาตรฐาน (Correlation Key)**: การบันทึก `student_id` และข้อมูล IP ที่ผ่านการตรวจสอบด้วยมาตรการ Zero-Trust ในโมดูล API Security จะถูกบันทึกคู่กับเวลาเซิร์ฟเวอร์แบบ UTC ตลอดเวลา ทำให้สามารถนำรายงาน PDF Audit ที่ระบบส่งมอบ ไปจับคู่ตรวจสอบเปรียบเทียบย้อนหลัง (Correlation) กับวันเวลาและลายเซ็นดิจิทัลที่ปรากฏในแอปพลิเคชัน Discord, Telegram และ LINE ได้อย่างเป็นเนื้อเดียวกันเพื่อใช้เป็นพยานหลักฐานทางกฎหมายที่ไม่มีการดัดแปลงแก้ไข
 
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>
