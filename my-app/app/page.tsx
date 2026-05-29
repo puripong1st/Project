@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SmartAccess_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
 import { IconDoor, IconAlert, IconHourglass } from "./components/Icons";
+import jsQR from "jsqr";
 
 interface OfflineEntry {
   id: string;
@@ -112,25 +113,13 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [cameraState, setCameraState] = useState<"idle" | "accessing" | "active" | "error">("idle");
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scanAnimationFrameRef = useRef<number | null>(null);
 
-  const startCamera = async () => {
-    setCameraState("accessing");
-    setShowScanner(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } }
-      });
-      setCameraState("active");
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.warn("Camera access denied or unavailable, switching to dynamic simulator:", err);
-      setCameraState("error");
+  const stopCamera = useCallback(() => {
+    if (scanAnimationFrameRef.current) {
+      cancelAnimationFrame(scanAnimationFrameRef.current);
+      scanAnimationFrameRef.current = null;
     }
-  };
-
-  const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
@@ -138,7 +127,96 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
     }
     setShowScanner(false);
     setCameraState("idle");
+  }, []);
+
+  const startScanningLoop = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const scanFrame = () => {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+
+        if (code) {
+          const resultText = code.data;
+          console.log("QR Code detected:", resultText);
+          
+          try {
+            const url = new URL(resultText);
+            const scanToken = url.searchParams.get("scan");
+            const roomCode = url.searchParams.get("room") || "CE-401";
+            
+            if (scanToken) {
+              setScanResult(`พบคิวอาร์ห้อง ${roomCode}! กำลังเข้าสู่ระบบ...`);
+              stopCamera();
+              window.location.href = `/?scan=${scanToken}&room=${roomCode}`;
+              return;
+            }
+          } catch {
+            if (resultText && resultText.trim().length > 10) {
+              setScanResult("พบรหัสคิวอาร์! กำลังเข้าสู่ระบบ...");
+              stopCamera();
+              window.location.href = `/?scan=${resultText.trim()}&room=CE-401`;
+              return;
+            }
+          }
+        }
+      }
+      scanAnimationFrameRef.current = requestAnimationFrame(scanFrame);
+    };
+
+    scanAnimationFrameRef.current = requestAnimationFrame(scanFrame);
+  }, [stopCamera]);
+
+  const startCamera = async () => {
+    setCameraState("accessing");
+    setShowScanner(true);
+    setScanResult(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } }
+      });
+      setCameraState("active");
+      
+      // Wait a short moment to ensure video element is mounted in DOM
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute("playsinline", "true");
+          videoRef.current.setAttribute("muted", "true");
+          videoRef.current.play()
+            .then(() => {
+              startScanningLoop();
+            })
+            .catch(err => {
+              console.error("Camera video play failed:", err);
+            });
+        }
+      }, 150);
+    } catch (err) {
+      console.warn("Camera access denied or unavailable, switching to dynamic simulator:", err);
+      setCameraState("error");
+    }
   };
+
+  // Clean up camera stream if component unmounts
+  useEffect(() => {
+    return () => {
+      if (scanAnimationFrameRef.current) {
+        cancelAnimationFrame(scanAnimationFrameRef.current);
+      }
+    };
+  }, []);
 
   const handleSimulateScan = () => {
     setScanResult("กำลังประมวลผลโทเคนคิวอาร์...");
