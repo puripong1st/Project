@@ -25,6 +25,12 @@ const htmlOutputPathRoot = path.join(__dirname, '..', '..', 'complete_system_man
 const htmlOutputPathPublic = path.join(__dirname, '..', 'public', 'complete_system_manual_th.html');
 
 console.log(`Reading manual markdown from: ${mdPath}`);
+if (!fs.existsSync(mdPath)) {
+  console.warn(`[WARNING] complete_system_manual_th.md not found at ${mdPath}.`);
+  console.warn("This is expected on Vercel deployment if only 'my-app' is uploaded in the root context.");
+  console.warn("Skipping compilation and utilizing the committed public HTML manual instead.");
+  process.exit(0); // Exit successfully to prevent Vercel build failures
+}
 let markdown = fs.readFileSync(mdPath, 'utf8');
 
 // Replace alerts like > [!NOTE] with beautiful HTML alerts
@@ -399,6 +405,7 @@ const htmlTemplate = `<!DOCTYPE html>
       box-shadow: var(--shadow);
       overflow-x: auto;
       position: relative; /* Added for absolute positioning of download button */
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
     /* Mermaid text readability and spacing fixes */
@@ -415,6 +422,86 @@ const htmlTemplate = `<!DOCTYPE html>
       fill: #1E293B !important;
       font-size: 11.5px !important;
       font-weight: 600 !important;
+    }
+
+    /* 🌓 COMPREHENSIVE DARK MODE DIALECT FOR MERMAID DIAGRAMS */
+    body.dark-mode .mermaid {
+      background: #1E293B !important; /* Premium dark background */
+      border-color: #334155 !important;
+    }
+
+    /* Dark Mode Flowcharts nodes styling */
+    body.dark-mode .mermaid svg g.node rect,
+    body.dark-mode .mermaid svg g.node circle,
+    body.dark-mode .mermaid svg g.node polygon,
+    body.dark-mode .mermaid svg g.node path {
+      fill: #2E1065 !important; /* Deep royal dark purple */
+      stroke: #A78BFA !important; /* Glowing light purple border */
+    }
+
+    body.dark-mode .mermaid svg g.node .label,
+    body.dark-mode .mermaid svg g.node text,
+    body.dark-mode .mermaid svg text {
+      fill: #F8FAFC !important; /* Bright crisp text */
+      color: #F8FAFC !important;
+    }
+
+    body.dark-mode .mermaid svg .edgePath .path {
+      stroke: #94A3B8 !important; /* Bright silver arrow lines */
+    }
+
+    body.dark-mode .mermaid svg .edgeLabel rect {
+      fill: #1E293B !important; /* Dark overlay box under text on arrows */
+    }
+
+    body.dark-mode .mermaid svg .edgeLabel text {
+      fill: #F8FAFC !important; /* Crisp text on arrows */
+    }
+
+    /* Dark Mode Sequence Diagrams elements */
+    body.dark-mode .mermaid svg .actor {
+      fill: #2E1065 !important;
+      stroke: #A78BFA !important;
+    }
+
+    body.dark-mode .mermaid svg text.actor {
+      fill: #F8FAFC !important;
+      stroke: none !important;
+    }
+
+    body.dark-mode .mermaid svg line {
+      stroke: #94A3B8 !important; /* Bright connector lines */
+    }
+
+    body.dark-mode .mermaid svg .messageText {
+      fill: #F8FAFC !important;
+      stroke: none !important;
+    }
+
+    body.dark-mode .mermaid svg .labelBox {
+      fill: #2E1065 !important;
+      stroke: #A78BFA !important;
+    }
+
+    body.dark-mode .mermaid svg .labelText {
+      fill: #F8FAFC !important;
+    }
+
+    body.dark-mode .mermaid svg .loopLine {
+      stroke: #94A3B8 !important;
+    }
+
+    body.dark-mode .mermaid svg .loopText {
+      fill: #F8FAFC !important;
+    }
+
+    body.dark-mode .mermaid svg .note {
+      fill: #312E81 !important; /* Deep dark indigo for notes */
+      stroke: #818CF8 !important;
+    }
+
+    body.dark-mode .mermaid svg .noteText {
+      fill: #F8FAFC !important;
     }
 
     /* Alert Boxes (Callouts) */
