@@ -335,6 +335,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     mobileMenuOpen,
     setMobileMenuOpen,
     showToast,
+    rawSettings,
     setEditingAdmin
   } = useDashboard();
 
@@ -729,6 +730,12 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                   telegram: { name: "Telegram", icon: "✈️", color: "#229ED9", tint: "rgba(34,158,217,0.08)" },
                   line: { name: "LINE", icon: "💬", color: "#06C755", tint: "rgba(6,199,85,0.08)" },
                 } as const;
+                const room = activeRoomDetails.room;
+                const mkTest = (type: "register" | "approve" | "logs", val: string) => () => {
+                  if (roomNotifyChannel === "discord") return handleTestWebhook(val, type, room);
+                  if (roomNotifyChannel === "telegram") return handleTestWebhook("", type, room, { channel: "telegram", botToken: rawSettings["telegram_bot_token"], chatId: val });
+                  return handleTestWebhook("", type, room, { channel: "line", channelToken: rawSettings["line_channel_token"], targetId: val });
+                };
                 const rows = roomNotifyChannel === "discord"
                   ? [
                       { label: "📝 ลงทะเบียนเข้าห้องใหม่", val: roomWebhookRegisterInput, set: setRoomWebhookRegisterInput, type: "register" as const, ph: "https://discord.com/api/webhooks/..." },
@@ -790,34 +797,35 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                               onChange={e => f.set(e.target.value)}
                               style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
                             />
-                            {roomNotifyChannel === "discord" && (
-                              <button
-                                type="button"
-                                onClick={() => handleTestWebhook(f.val, f.type, activeRoomDetails.room)}
-                                className="btn-ghost"
-                                style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
-                              >
-                                🧪 ทดสอบ
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={mkTest(f.type, f.val)}
+                              className="btn-ghost"
+                              style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700, borderColor: `${active.color}66`, color: active.color }}
+                            >
+                              🧪 ทดสอบ
+                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSaveRoomWebhook}
-                      disabled={roomDetailsLoading}
-                      className="btn-success"
-                      style={{
-                        padding: "11px 20px", borderRadius: 10, fontWeight: 800, fontSize: 12.5, alignSelf: "flex-end",
-                        background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
-                        color: "#fff", boxShadow: "0 4px 10px rgba(124,58,237,0.2)", border: "none", cursor: "pointer", marginTop: 4
-                      }}
-                    >
-                      {roomDetailsLoading ? "⏳ กำลังเซฟ..." : "💾 บันทึกการแจ้งเตือนทั้งหมดประจำห้อง"}
-                    </button>
+                    {/* sticky footer — กันปุ่มถูก modal clip/กลืน */}
+                    <div style={{ position: "sticky", bottom: 0, marginTop: 4, paddingTop: 14, paddingBottom: 4, background: "linear-gradient(to top, var(--bg-secondary) 70%, transparent)", display: "flex", justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        onClick={handleSaveRoomWebhook}
+                        disabled={roomDetailsLoading}
+                        className="btn-success"
+                        style={{
+                          padding: "12px 22px", borderRadius: 10, fontWeight: 800, fontSize: 13,
+                          background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
+                          color: "#fff", boxShadow: "0 6px 16px rgba(124,58,237,0.28)", border: "none", cursor: "pointer"
+                        }}
+                      >
+                        {roomDetailsLoading ? "⏳ กำลังเซฟ..." : "💾 บันทึกการแจ้งเตือนประจำห้อง"}
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
@@ -1373,7 +1381,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
                     <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: systemStatus?.discord?.configured ? "#10B981" : "#F59E0B" }} />
-                    <span>แจ้งเตือน Discord Webhook</span>
+                    <span>ช่องทางแจ้งเตือน</span>
                   </div>
                 </div>
               </div>
