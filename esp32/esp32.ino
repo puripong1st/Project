@@ -26,6 +26,8 @@
 #include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
 #include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
 #include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
+#else
+#include <WiFiServer.h> // Wokwi fallback: ใช้ WiFiServer แทน WebServer
 #endif
 #include <SPI.h>
 #include <SPIFFS.h>
@@ -329,7 +331,11 @@ const char *cache_students_file = "/student_cache.json";
 const char *cache_logs_file = "/offline_logs.json";
 const char *cache_key_file = "/qr_key.bin";
 
+#ifndef WOKWI_SIM
 WebServer localServer(80);
+#else
+WiFiServer localServer(80);
+#endif
 bool localServerStarted = false;
 
 // Forward declarations
@@ -378,13 +384,10 @@ void onOTAEnd(bool success) {
 }
 
 void performHTTPSOTA() {
+#ifndef WOKWI_SIM
   WiFiClientSecure secureClient;
-  #ifdef WOKWI_SIM
-  secureClient.setInsecure();
-  #else
   // ในเวอร์ชันใช้งานจริงควรโหลด Root Certificate ของ Vercel เข้ามาตรวจสอบความปลอดภัย HTTPS
   secureClient.setInsecure(); 
-  #endif
   
   tft.fillScreen(ILI9341_BLACK);
   tft.setTextColor(ILI9341_YELLOW);
@@ -409,6 +412,19 @@ void performHTTPSOTA() {
     tft.println("OTA UPDATE FAILED");
     delay(5000);
   }
+#else
+  // Wokwi: OTA ไม่รองรับใน Simulator — แสดงข้อความแจ้งเตือน
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(2);
+  tft.setCursor(10, 30);
+  tft.println("SMARTACCESS OTA");
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.println("OTA not available");
+  tft.println("in Wokwi Simulator");
+  delay(3000);
+#endif
 }
 
 void startLocalServer() {
@@ -419,7 +435,6 @@ void startLocalServer() {
     ElegantOTA.onStart(onOTAStart);
     ElegantOTA.onEnd(onOTAEnd);
 #endif
-    
     localServer.begin();
     localServerStarted = true;
     DBG("Local web server started on port 80.");

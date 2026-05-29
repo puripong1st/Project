@@ -108,10 +108,12 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
 #include <FS.h>
 #include <HTTPClient.h>
+#ifndef WOKWI_SIM
 #include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
 #include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
-#ifndef WOKWI_SIM
 #include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
+#else
+#include <WiFiServer.h> // Wokwi fallback: ใช้ WiFiServer แทน WebServer
 #endif
 #include <SPI.h>
 #include <SPIFFS.h>
@@ -126,7 +128,11 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 const char* CURRENT_VERSION = "1.0.0";
 const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/firmware-ota";
 
+#ifndef WOKWI_SIM
 WebServer localServer(80); // พอร์ตเว็บเซิร์ฟเวอร์สำหรับคิวและ ElegantOTA
+#else
+WiFiServer localServer(80); // Wokwi fallback: ใช้ WiFiServer แทน WebServer
+#endif
 bool localServerStarted = false;
 
 
@@ -505,6 +511,7 @@ void onOTAProgress(int current, int total) {
 #endif // !WOKWI_SIM
 
 void performHTTPSOTA() {
+#ifndef WOKWI_SIM
   WiFiClientSecure secureClient;
   secureClient.setInsecure();
 
@@ -547,6 +554,19 @@ void performHTTPSOTA() {
     tft.println(httpUpdate.getLastErrorString());
     delay(5000);
   }
+#else
+  // Wokwi: OTA ไม่รองรับใน Simulator — แสดงข้อความแจ้งเตือน
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(2);
+  tft.setCursor(10, 30);
+  tft.println("SMARTACCESS OTA");
+  tft.setCursor(10, 80);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.println("OTA not available");
+  tft.println("in Wokwi Simulator");
+  delay(3000);
+#endif
 }
 
 void startLocalServer() {
