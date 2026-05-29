@@ -417,18 +417,7 @@ function RegistrationPageInner() {
   // (ตัว success state จริงถูกประกาศที่บรรทัด ~556 — ใช้ ref นี้แทนเพื่อหลีกเลี่ยง use-before-declare)
   const submittedRef = useRef(false);
 
-  const [enrolledStudentId, setEnrolledStudentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-      const keys = Object.keys(localStorage);
-      const enrollKey = keys.find(k => k.startsWith("smartaccess_biometric_enroll_"));
-      if (enrollKey) {
-        const studentId = enrollKey.replace("smartaccess_biometric_enroll_", "");
-        setEnrolledStudentId(studentId);
-      }
-    } catch {}
-  }, []);
 
   // PDPA Cookie & Policy Consent state
   const [hasConsented, setHasConsented] = useState<boolean | null>(null);
@@ -1509,83 +1498,9 @@ function RegistrationPageInner() {
               </>
             )}
             {currentStatus === "approved" && (
-              <>
-                <p style={{ color: "#059669", fontSize: 13.5, fontWeight: 700, marginBottom: 14 }}>
-                  ประตูแม่เหล็กไฟฟ้าได้รับการเปิดออกแล้ว! คุณสามารถเดินผ่านเข้าห้องได้ทันที
-                </p>
-                {/* Biometric WebAuthn Bypass Enrollment */}
-                <button
-                  onClick={async () => {
-                    try {
-                      const isBiometricsAvailable = window.PublicKeyCredential && 
-                        await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-                      
-                      if (!isBiometricsAvailable) {
-                        alert("⚠️ อุปกรณ์นี้ไม่พบระบบสแกนใบหน้า/ลายนิ้วมือ (Windows Hello / Touch ID / Face ID) กรุณาใช้รหัสสแกนความปลอดภัยมาตรฐาน");
-                        return;
-                      }
-
-                      const challenge = new Uint8Array(32);
-                      window.crypto.getRandomValues(challenge);
-                      const userId = new Uint8Array(16);
-                      window.crypto.getRandomValues(userId);
-
-                      const credential = await navigator.credentials.create({
-                        publicKey: {
-                          challenge,
-                          rp: { name: "SmartAccess RMUTP Door" },
-                          user: {
-                            id: userId,
-                            name: success.student_id,
-                            displayName: `${success.first_name} ${success.last_name}`
-                          },
-                          pubKeyCredParams: [
-                            { type: "public-key", alg: -7 },  // ES256
-                            { type: "public-key", alg: -257 } // RS256
-                          ],
-                          authenticatorSelection: {
-                            authenticatorAttachment: "platform",
-                            userVerification: "required"
-                          },
-                          timeout: 60000
-                        }
-                      }) as PublicKeyCredential;
-
-                      if (credential) {
-                        const credentialIdB64 = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-                        const enrolRecord = {
-                          enrolled: true,
-                          timestamp: new Date().toISOString(),
-                          credentialId: credentialIdB64
-                        };
-                        localStorage.setItem(`smartaccess_biometric_enroll_${success.student_id}`, JSON.stringify(enrolRecord));
-                        alert("🔒 ผูกอุปกรณ์กับระบบสแกนลายนิ้วมือ/ใบหน้าของเครื่อง (Windows Hello / Face ID / Touch ID) สำเร็จแล้ว!");
-                      }
-                    } catch (err) {
-                      console.error("Biometric Enrollment Error:", err);
-                      alert("❌ การผูกอุปกรณ์ล้มเหลว หรือผู้ใช้ยกเลิกการลงทะเบียน");
-                    }
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "12px 18px",
-                    borderRadius: 12,
-                    background: "rgba(124,58,237,0.08)",
-                    border: "1px dashed var(--smartaccess-purple)",
-                    color: "var(--smartaccess-purple-dark)",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    transition: "all 0.2s"
-                  }}
-                >
-                  <span>🔒 ผูกอุปกรณ์กับ Face ID / Touch ID เพื่อการเข้าห้องครั้งถัดไป</span>
-                </button>
-              </>
+              <p style={{ color: "#059669", fontSize: 13.5, fontWeight: 700, marginBottom: 14 }}>
+                ประตูแม่เหล็กไฟฟ้าได้รับการเปิดออกแล้ว! คุณสามารถเดินผ่านเข้าห้องได้ทันที
+              </p>
             )}
             {currentStatus === "rejected" && (
               <p style={{ color: "#DC2626", fontSize: 13.5, fontWeight: 700 }}>
@@ -1696,81 +1611,7 @@ function RegistrationPageInner() {
           </div>
         </div>
 
-        {/* Biometric Bypass Card if enrolled */}
-        {enrolledStudentId && (
-          <div className="premium-card animate-fade-in" style={{ padding: 24, marginBottom: 24, textAlign: "center", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12, color: "#10B981" }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path d="M9 11l3 3 6-6" />
-              </svg>
-            </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 6px 0" }}>พบข้อมูล Biometrics บนเครื่องนี้</h3>
-            <p style={{ fontSize: 12.5, color: "var(--text-secondary)", margin: "0 0 18px 0" }}>ปลดล็อกประตูห้อง {room} ด่วนด้วยลายนิ้วมือหรือ Face ID ของคุณ</p>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const savedEnrollStr = localStorage.getItem(`smartaccess_biometric_enroll_${enrolledStudentId}`);
-                  if (!savedEnrollStr) {
-                    alert("❌ ไม่พบข้อมูลการผูกอุปกรณ์ความปลอดภัยบนเครื่องนี้");
-                    return;
-                  }
-                  
-                  const savedEnroll = JSON.parse(savedEnrollStr);
-                  const isBiometricsAvailable = window.PublicKeyCredential && 
-                    await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
 
-                  if (isBiometricsAvailable && savedEnroll.credentialId) {
-                    const rawId = new Uint8Array(
-                      atob(savedEnroll.credentialId).split("").map(c => c.charCodeAt(0))
-                    );
-
-                    const challenge = new Uint8Array(32);
-                    window.crypto.getRandomValues(challenge);
-
-                    alert("🔒 กำลังเรียกใช้งานตัวตรวจสอบ Biometrics (Face ID/Touch ID)...");
-                    await navigator.credentials.get({
-                      publicKey: {
-                        challenge,
-                        allowCredentials: [{
-                          id: rawId,
-                          type: "public-key"
-                        }],
-                        userVerification: "required",
-                        timeout: 60000
-                      }
-                    });
-                  } else {
-                    alert("🔒 กำลังเรียกใช้งานระบบตรวจสอบความปลอดภัยของเบราว์เซอร์...");
-                    await new Promise(r => setTimeout(r, 1200));
-                  }
-
-                  alert("✓ ยืนยันตัวตนสำเร็จ!");
-                  const mockToken = "biometric_" + Math.random().toString(36).slice(2, 10);
-                  window.location.href = `/?scan=${mockToken}&room=${room}`;
-                } catch (err) {
-                  console.error("Biometric Verification Error:", err);
-                  alert("❌ การยืนยันตัวตนล้มเหลว หรือถูกปฏิเสธโดยผู้ใช้งาน");
-                }
-              }}
-              style={{
-                width: "100%",
-                padding: "12px 20px",
-                borderRadius: 12,
-                background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
-                border: "none",
-                color: "#FFF",
-                fontSize: 13.5,
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 6px 18px rgba(16,185,129,0.25)"
-              }}
-            >
-              🔓 ปลดล็อกประตูด่วนด้วย Biometrics
-            </button>
-          </div>
-        )}
 
         {/* Form Card */}
         <div className="premium-card animate-fade-in-delay-1" style={{ padding: 32 }}>
