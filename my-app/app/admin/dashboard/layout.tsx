@@ -1148,8 +1148,8 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                 { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
                 { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
-              { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
               { id: "health", icon: <ActivityIcon />, label: "สถานะเซิร์ฟเวอร์ & DB", badge: 0 },
+              { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
             ].map(item => (
               <button
                 key={item.id}
