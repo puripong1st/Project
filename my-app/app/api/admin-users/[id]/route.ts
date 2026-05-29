@@ -32,6 +32,12 @@ export async function DELETE(
     }
 
     const pool = getPool();
+    // Prevent deleting owner
+    const { rows: checkRows } = await pool.query("SELECT role FROM admin_users WHERE id = $1", [targetId]);
+    if (checkRows.length > 0 && checkRows[0].role === "owner") {
+      return NextResponse.json({ error: "ไม่สามารถลบหรือถอนสิทธิ์บัญชีประเภท Owner ได้" }, { status: 400 });
+    }
+
     await pool.query("DELETE FROM admin_users WHERE id = $1", [targetId]);
     // V02 fix: clear the is_active cache so deleted admin is rejected immediately
     invalidateAdminActiveCache(targetId);
@@ -57,6 +63,13 @@ export async function PATCH(
       return NextResponse.json({ error: "ID แอดมินต้องเป็นตัวเลข" }, { status: 400 });
     }
 
+    const pool = getPool();
+    // Prevent editing owner
+    const { rows: checkRows } = await pool.query("SELECT role FROM admin_users WHERE id = $1", [targetId]);
+    if (checkRows.length > 0 && checkRows[0].role === "owner") {
+      return NextResponse.json({ error: "ไม่สามารถแก้ไขข้อมูลบัญชีประเภท Owner ได้" }, { status: 400 });
+    }
+
     const { full_name, role, allowed_rooms } = await req.json();
     if (!full_name || !role) {
       return NextResponse.json({ error: "กรุณากรอกข้อมูลให้ครบ" }, { status: 400 });
@@ -71,7 +84,6 @@ export async function PATCH(
       ? allowed_rooms.replace(/[^a-zA-Z0-9_,-]/g, "").slice(0, 1000)
       : null;
 
-    const pool = getPool();
     await pool.query(
       `UPDATE admin_users 
        SET full_name = $1, role = $2, allowed_rooms = $3 

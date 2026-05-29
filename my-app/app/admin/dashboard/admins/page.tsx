@@ -97,7 +97,7 @@ export default function AdminsPage() {
                 onChange={e => setNewAdmin((a: any) => ({ ...a, role: e.target.value }))}
               >
                 <option value="door_operator">Door Operator (เปิดประตูได้อย่างเดียว)</option>
-                <option value="log_viewer">Log Viewer (ดูประวัติและสถิติการเข้าออกห้องได้อย่างเดียว)</option>
+                <option value="log_viewer">Viewer / ผู้เยี่ยมชม (ดูรายงานและระบบได้ทุกอย่าง แต่กดอนุมัติไม่ได้)</option>
                 <option value="owner">Owner (เจ้าของสิทธิ์อนุมัติสิทธิ์และจัดการ)</option>
               </select>
             </div>
@@ -207,7 +207,7 @@ export default function AdminsPage() {
                         color: admin.role === "owner" ? "var(--edu-pink)" : "var(--smartaccess-purple-dark)"
                       }}>
                         {admin.role === "owner" ? <CrownIcon /> : <KeyIcon />}
-                        {admin.role === "owner" ? "Owner (เจ้าของ)" : admin.role === "log_viewer" ? "Log Viewer" : "Door Operator"}
+                        {admin.role === "owner" ? "Owner (เจ้าของ)" : admin.role === "log_viewer" ? "Viewer (ผู้เยี่ยมชม)" : "Door Operator"}
                       </span>
                     </td>
                     <td style={{ padding: "14px" }}>
@@ -220,8 +220,8 @@ export default function AdminsPage() {
                     </td>
                     <td style={{ padding: "14px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        {/* Prevent owner self delete */}
-                        {admin.username !== user.username && (
+                        {/* Prevent owner delete */}
+                        {admin.role !== "owner" && (
                           <button
                             onClick={() => handleDeleteAdmin(admin.id)}
                             className="btn-danger-light"
@@ -231,19 +231,21 @@ export default function AdminsPage() {
                           </button>
                         )}
 
-                        <button
-                          onClick={() => {
-                            setEditingAdmin(admin);
-                            setEditAdminForm({ full_name: admin.full_name, role: admin.role });
-                            setEditAdminAllowedRooms(
-                              admin.allowed_rooms ? admin.allowed_rooms.split(",") : []
-                            );
-                          }}
-                          className="btn-ghost"
-                          style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700 }}
-                        >
-                          ✏️ แก้ไขข้อมูล
-                        </button>
+                        {admin.role !== "owner" && (
+                          <button
+                            onClick={() => {
+                              setEditingAdmin(admin);
+                              setEditAdminForm({ full_name: admin.full_name, role: admin.role });
+                              setEditAdminAllowedRooms(
+                                admin.allowed_rooms ? admin.allowed_rooms.split(",") : []
+                              );
+                            }}
+                            className="btn-ghost"
+                            style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700 }}
+                          >
+                            ✏️ แก้ไขข้อมูล
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -325,7 +327,7 @@ export default function AdminsPage() {
                   onChange={e => setEditAdminForm((a: any) => ({ ...a, role: e.target.value }))}
                 >
                   <option value="door_operator">Door Operator (เปิดประตูได้อย่างเดียว)</option>
-                  <option value="log_viewer">Log Viewer (ดูประวัติและสถิติการเข้าออกห้องได้อย่างเดียว)</option>
+                  <option value="log_viewer">Viewer / ผู้เยี่ยมชม (ดูรายงานและระบบได้ทุกอย่าง แต่กดอนุมัติไม่ได้)</option>
                   <option value="owner">Owner (เจ้าของสิทธิ์อนุมัติสิทธิ์และจัดการ)</option>
                 </select>
               </div>

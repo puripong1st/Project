@@ -1167,7 +1167,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div style={{ fontSize: 10.5, color: isOwner ? "var(--edu-pink)" : "var(--smartaccess-purple)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
                 <span>{isOwner ? <CrownIcon /> : <KeyIcon />}</span>
-                <span>{isOwner ? "Owner (เจ้าของห้อง)" : "Door Operator"}</span>
+                <span>{isOwner ? "Owner (เจ้าของระบบ)" : user.role === "log_viewer" ? "Viewer (ผู้เยี่ยมชม)" : "Door Operator"}</span>
               </div>
             </div>
           </div>

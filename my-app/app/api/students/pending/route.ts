@@ -17,7 +17,7 @@ export async function GET() {
     await ensureInit();
     const admin = await getAdminFromCookie();
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (admin.role !== "owner" && admin.role !== "door_operator") {
+    if (admin.role !== "owner" && admin.role !== "door_operator" && admin.role !== "log_viewer") {
       return NextResponse.json({ error: "Permission denied" }, { status: 403 });
     }
 

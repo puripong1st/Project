@@ -34,7 +34,8 @@ export default function PendingPage() {
     pending,
     audioEnabled,
     setAudioEnabled,
-    playSoftChime
+    playSoftChime,
+    user
   } = useDashboard();
 
   return (
@@ -126,7 +127,7 @@ export default function PendingPage() {
           </div>
 
           {/* Bulk operations button panel */}
-          {selectedPendingIds.length > 0 && (
+          {selectedPendingIds.length > 0 && user?.role !== "log_viewer" && (
             <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
               <button
                 onClick={handleBulkApprove}
@@ -159,19 +160,21 @@ export default function PendingPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border)", fontSize: 12, color: "var(--text-secondary)" }}>
-                  <th style={{ padding: "12px 14px", width: 40 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedPendingIds.length === filteredPending.length && filteredPending.length > 0}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setSelectedPendingIds(filteredPending.map(s => s.id));
-                        } else {
-                          setSelectedPendingIds([]);
-                        }
-                      }}
-                    />
-                  </th>
+                  {user?.role !== "log_viewer" && (
+                    <th style={{ padding: "12px 14px", width: 40 }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedPendingIds.length === filteredPending.length && filteredPending.length > 0}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setSelectedPendingIds(filteredPending.map(s => s.id));
+                          } else {
+                            setSelectedPendingIds([]);
+                          }
+                        }}
+                      />
+                    </th>
+                  )}
                   <th style={{ padding: "12px 14px" }}>นักศึกษา</th>
                   <th style={{ padding: "12px 14px" }}>ข้อมูลการศึกษา / อัตลักษณ์</th>
                   <th style={{ padding: "12px 14px" }}>ห้องที่ขอ / สัญญาณ IP</th>
@@ -195,29 +198,31 @@ export default function PendingPage() {
                         position: "relative"
                       }}
                     >
-                      <td style={{ padding: "16px 14px" }}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setSelectedPendingIds((prev: number[]) => [...prev, student.id]);
-                            } else {
-                              setSelectedPendingIds((prev: number[]) => prev.filter(x => x !== student.id));
-                            }
-                          }}
-                        />
-                      </td>
+                      {user?.role !== "log_viewer" && (
+                        <td style={{ padding: "16px 14px" }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setSelectedPendingIds((prev: number[]) => [...prev, student.id]);
+                              } else {
+                                setSelectedPendingIds((prev: number[]) => prev.filter(x => x !== student.id));
+                              }
+                            }}
+                          />
+                        </td>
+                      )}
 
                       {/* Mobile Swipe Container Wrap */}
                       <td
-                        colSpan={5}
+                        colSpan={user?.role === "log_viewer" ? 6 : 5}
                         style={{ padding: 0 }}
                       >
                         <div
-                          onTouchStart={e => handleTouchStart(student.id, e)}
-                          onTouchMove={e => handleTouchMove(student.id, e)}
-                          onTouchEnd={() => handleTouchEnd(student.id, student.first_name + " " + student.last_name)}
+                          onTouchStart={user?.role !== "log_viewer" ? e => handleTouchStart(student.id, e) : undefined}
+                          onTouchMove={user?.role !== "log_viewer" ? e => handleTouchMove(student.id, e) : undefined}
+                          onTouchEnd={user?.role !== "log_viewer" ? () => handleTouchEnd(student.id, student.first_name + " " + student.last_name) : undefined}
                           style={{
                             display: "flex",
                             width: "100%",
@@ -291,24 +296,30 @@ export default function PendingPage() {
                               </div>
                             </div>
 
-                            <div style={{ padding: "16px 14px", flex: "0.8 1 0", minWidth: 150, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                              <button
-                                onClick={() => setRejectModal({ id: student.id, name: student.first_name + " " + student.last_name })}
-                                disabled={loadingId === student.id}
-                                className="btn-danger-light"
-                                style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                              >
-                                ✕ ปฏิเสธ
-                              </button>
-                              <button
-                                onClick={() => handleApprove(student.id)}
-                                disabled={loadingId === student.id}
-                                className="btn-success"
-                                style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
-                              >
-                                {loadingId === student.id ? "..." : "✓ อนุมัติ"}
-                              </button>
-                            </div>
+                            {user?.role !== "log_viewer" ? (
+                              <div style={{ padding: "16px 14px", flex: "0.8 1 0", minWidth: 150, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                                <button
+                                  onClick={() => setRejectModal({ id: student.id, name: student.first_name + " " + student.last_name })}
+                                  disabled={loadingId === student.id}
+                                  className="btn-danger-light"
+                                  style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                                >
+                                  ✕ ปฏิเสธ
+                                </button>
+                                <button
+                                  onClick={() => handleApprove(student.id)}
+                                  disabled={loadingId === student.id}
+                                  className="btn-success"
+                                  style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                                >
+                                  {loadingId === student.id ? "..." : "✓ อนุมัติ"}
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ padding: "16px 14px", flex: "0.8 1 0", minWidth: 150, display: "flex", justifyContent: "flex-end", color: "var(--text-muted)", fontSize: 12, fontWeight: 700 }}>
+                                👁️ ผู้เยี่ยมชม (ดูได้อย่างเดียว)
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
