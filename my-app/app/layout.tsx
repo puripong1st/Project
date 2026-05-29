@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
+import { Noto_Sans_Thai, Inter } from "next/font/google";
 import "./globals.css";
 import CookieConsent from "./components/CookieConsent";
+
+// Self-hosted via next/font — ตัด render-blocking @import จาก Google Fonts CDN
+// และ preload อัตโนมัติ (เร็วกว่า + ลด external request)
+const notoSansThai = Noto_Sans_Thai({
+  subsets: ["thai"],
+  display: "swap",
+  variable: "--font-noto-thai",
+});
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "SmartAccess Door Access System",
@@ -13,11 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
+    <html lang="th" className={`${notoSansThai.variable} ${inter.variable}`} suppressHydrationWarning>
       <body style={{ minHeight: "100vh" }}>
         {children}
         <CookieConsent />

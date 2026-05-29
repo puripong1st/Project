@@ -5671,7 +5671,7 @@ my-app/
 │   ├── discord.ts             - บริการจัดส่ง Discord Webhook แจ้งเตือนสถาบัน
 │   ├── rate-limit.ts          - ระบบสกัดกั้นสแปมและยิงถล่มด้วย PostgreSQL atomic counters
 │   └── client-ip.ts           - ดึงค่า IP แอดมินที่แท้จริงผ่าน Vercel trusted proxy chain
-└── middleware.ts              - ตรวจสอบสิทธิ์ระดับเน็ตเวิร์ก ป้องกันหน้าแผงควบคุม /admin/*
+└── proxy.ts                  - ตรวจสอบสิทธิ์ระดับเน็ตเวิร์ก ป้องกันหน้าแผงควบคุม /admin/* (เดิมชื่อ middleware.ts ก่อน Next 16)
 ```
 
 **หลักการทำงานการแบ่งชั้นสถาปัตยกรรม (Separation of Concerns):**
@@ -5779,7 +5779,7 @@ flowchart LR
         ATTACKER["Attacker"]
     end
     subgraph EDGE["🟣 Vercel Edge (Semi-trusted)"]
-        MW["middleware.ts<br/>JWT verify"]
+        MW["proxy.ts<br/>JWT verify"]
         API["API Routes"]
     end
     subgraph DB["🟢 Supabase (Trusted)"]
@@ -8386,6 +8386,22 @@ if (format === "dataurl") {
 - **Cache firmware version (TTL 60s)** — เวอร์ชันแทบไม่เปลี่ยน เดิม query ทุก poll → ตอนนี้ query เฉพาะตอน cache miss (4 → 3 query/poll ส่วนใหญ่); ล้าง cache อัตโนมัติเมื่ออัปโหลด firmware ใหม่ (`firmware/upload` เรียก `cacheDel("firmware:latest_version")`) → OTA ยังตรวจพบรุ่นใหม่ทันที
 - **Throttle heartbeat write** — `room_last_seen_{room}` เดิมเขียน DB ทุก poll (~30 write/นาที/บอร์ด) → จำกัดเป็นสูงสุดครั้งละ 30s/ห้อง ผ่าน KV marker (การเช็ค online ใช้ความละเอียดระดับนาทีอยู่แล้ว ไม่กระทบ)
 - **หมายเหตุ**: การ throttle/cache ทั้งหมดได้ผลดีสุดเมื่อตั้ง Vercel KV จริง (ข้าม instance); หากไม่ตั้ง จะ fallback เป็น in-memory ต่อ instance ซึ่งยังช่วยลดภาระภายใน warm instance ได้
+
+**7. Lazy-load แท็บ Dashboard (`app/admin/dashboard/page.tsx`)**
+- เดิม `page.tsx` `import` ตรงทั้ง 8 แท็บ (pending/iot/all/admins/rooms/settings/guide/health) → JS ของ**ทุกแท็บ**ถูกส่งมาพร้อมกันตั้งแต่โหลด dashboard ครั้งแรก
+- เปลี่ยนเป็น `next/dynamic` → โค้ดของแต่ละแท็บถูกแยกเป็น chunk และดาวน์โหลดเฉพาะตอนเปิดแท็บนั้นจริง (มี `loading` fallback "กำลังโหลด...")
+- ลด initial JS ของหน้า dashboard โดยเฉพาะแท็บหนัก เช่น guide (โค้ด Arduino), rooms (analytics SVG), health
+- **หมายเหตุ**: ไม่ได้แตะ `DashboardContext.tsx` (state/handler รวมศูนย์) เพราะเป็น shared state ที่ทุกแท็บใช้ การแยกไฟล์ context เฉย ๆ ไม่ลด JS จริงแต่เสี่ยง regression สูง — การ lazy-load ตัวแท้คือจุดที่ได้ผลจริง
+
+**8. Fonts ผ่าน `next/font` (`app/layout.tsx` + `app/globals.css`)**
+- เดิมโหลด Noto Sans Thai + Inter ผ่าน `@import url('https://fonts.googleapis.com/...')` ใน CSS → **render-blocking** (บล็อกการ parse CSS แล้วค่อยไปดึงจาก CDN)
+- เปลี่ยนเป็น `next/font/google` (self-hosted ใต้ `/_next`, preload อัตโนมัติ, `display: swap`) ผูกผ่าน CSS variable `--font-noto-thai` / `--font-inter`
+- ตัด `<link rel="preconnect">` Google Fonts ออก (ไม่ต้องแล้วเพราะ self-hosted) → ลด external request + เร็วขึ้นตอน first paint
+
+**9. Migrate `middleware.ts` → `proxy.ts`**
+- Next.js 16 เปลี่ยน convention: `middleware.ts` (function `middleware`) → `proxy.ts` (function `proxy`) — build เดิมเตือน deprecated
+- ย้ายไฟล์ + เปลี่ยนชื่อ export เป็น `proxy` แล้ว; `config.matcher` คงเดิม
+- **ข้อควรระวัง**: ไฟล์ `proxy.ts` **ห้าม**ประกาศ `export const runtime` (proxy รันบน Node.js runtime เสมอ มิฉะนั้น build จะ error)
 
 ### คำแนะนำ Production (ตั้งค่าครั้งเดียว)
 
