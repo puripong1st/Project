@@ -194,15 +194,15 @@ export default function AllPage() {
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>กรุณาลองเปลี่ยนคำค้นหา หรือเปลี่ยนสถานะที่กรอง</p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+          <div className="smartaccess-table-container">
+            <table className="smartaccess-table">
               <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)", fontSize: 12, color: "var(--text-secondary)" }}>
-                  <th style={{ padding: "12px 14px" }}>ชื่อ - นามสกุล / รหัสนักศึกษา</th>
-                  <th style={{ padding: "12px 14px" }}>ระดับชั้นปี / ข้อมูลคณะสาขา</th>
-                  <th style={{ padding: "12px 14px" }}>สิทธิ์ห้อง / วันเวลาลงทะเบียน</th>
-                  <th style={{ padding: "12px 14px" }}>สถานะอนุมัติ (Access Status)</th>
-                  <th style={{ padding: "12px 14px", textAlign: "right" }}>การจัดการ (Actions)</th>
+                <tr>
+                  <th>ชื่อ - นามสกุล / รหัสนักศึกษา</th>
+                  <th>ระดับชั้นปี / ข้อมูลคณะสาขา</th>
+                  <th>สิทธิ์ห้อง / วันเวลาลงทะเบียน</th>
+                  <th>สถานะอนุมัติ (Access Status)</th>
+                  <th style={{ textAlign: "right" }}>การจัดการ (Actions)</th>
                 </tr>
               </thead>
               <tbody>
@@ -360,15 +360,15 @@ export default function AllPage() {
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>ข้อมูลจะเก็บบันทึกอัตโนมัติเมื่อนักศึกษาสแกนหรือแอดมินปลดล็อกประตู</p>
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <div className="smartaccess-table-container">
+              <table className="smartaccess-table">
                 <thead>
-                  <tr style={{ borderBottom: "2px solid var(--border)", fontSize: 12, color: "var(--text-secondary)" }}>
-                    <th style={{ padding: "12px 14px", width: 180 }}>วันเวลาบันทึก (Timestamp)</th>
-                    <th style={{ padding: "12px 14px", width: 140 }}>ห้องเรียน</th>
-                    <th style={{ padding: "12px 14px", width: 160 }}>กิจกรรมจราจร (Action)</th>
-                    <th style={{ padding: "12px 14px", width: 220 }}>นักศึกษา / แอดมินดำเนินงาน</th>
-                    <th style={{ padding: "12px 14px" }}>ข้อมูลเพิ่มเติม / บันทึกความปลอดภัย</th>
+                  <tr>
+                    <th style={{ width: 180 }}>วันเวลาบันทึก (Timestamp)</th>
+                    <th style={{ width: 140 }}>ห้องเรียน</th>
+                    <th style={{ width: 160 }}>กิจกรรมจราจร (Action)</th>
+                    <th style={{ width: 220 }}>นักศึกษา / แอดมินดำเนินงาน</th>
+                    <th>ข้อมูลเพิ่มเติม / บันทึกความปลอดภัย</th>
                   </tr>
                 </thead>
                 <tbody>

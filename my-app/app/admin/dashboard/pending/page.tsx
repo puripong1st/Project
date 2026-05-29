@@ -156,12 +156,12 @@ export default function PendingPage() {
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>เมื่อนักศึกษาสแกนขอใช้ห้องเรียนสำเร็จ คำขอจะเด้งขึ้นที่แผงควบคุมนี้แบบเรียลไทม์ทันที</p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+          <div className="smartaccess-table-container">
+            <table className="smartaccess-table">
               <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)", fontSize: 12, color: "var(--text-secondary)" }}>
+                <tr>
                   {user?.role !== "log_viewer" && (
-                    <th style={{ padding: "12px 14px", width: 40 }}>
+                    <th style={{ width: 40 }}>
                       <input
                         type="checkbox"
                         checked={selectedPendingIds.length === filteredPending.length && filteredPending.length > 0}
@@ -175,11 +175,11 @@ export default function PendingPage() {
                       />
                     </th>
                   )}
-                  <th style={{ padding: "12px 14px" }}>นักศึกษา</th>
-                  <th style={{ padding: "12px 14px" }}>ข้อมูลการศึกษา / อัตลักษณ์</th>
-                  <th style={{ padding: "12px 14px" }}>ห้องที่ขอ / สัญญาณ IP</th>
-                  <th style={{ padding: "12px 14px" }}>เวลาที่ขอ</th>
-                  <th style={{ padding: "12px 14px", textAlign: "right" }}>การดำเนินการ (Actions)</th>
+                  <th>นักศึกษา</th>
+                  <th>ข้อมูลการศึกษา / อัตลักษณ์</th>
+                  <th>ห้องที่ขอ / สัญญาณ IP</th>
+                  <th>เวลาที่ขอ</th>
+                  <th style={{ textAlign: "right" }}>การดำเนินการ (Actions)</th>
                 </tr>
               </thead>
               <tbody>

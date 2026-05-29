@@ -207,8 +207,12 @@ export async function GET(req: NextRequest) {
         },
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("[PDF Export API] error:", error);
-    return NextResponse.json({ error: "เกิดข้อผิดพลาดในการสร้างไฟล์ PDF" }, { status: 500 });
+    return NextResponse.json({
+      error: "เกิดข้อผิดพลาดในการสร้างไฟล์ PDF",
+      details: error?.message || String(error),
+      stack: error?.stack
+    }, { status: 500 });
   }
 }

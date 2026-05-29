@@ -182,15 +182,15 @@ export default function AdminsPage() {
             <h4 style={{ fontSize: 14, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ไม่พบรายชื่อผู้ดูแลระบบในประวัติ</h4>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+          <div className="smartaccess-table-container">
+            <table className="smartaccess-table">
               <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)", fontSize: 12, color: "var(--text-secondary)" }}>
-                  <th style={{ padding: "12px 14px" }}>ชื่อผู้ดูแล (Full Name / Username)</th>
-                  <th style={{ padding: "12px 14px" }}>สิทธิ์การทำงาน (System Role)</th>
-                  <th style={{ padding: "12px 14px" }}>ขอบเขตความรับผิดชอบ (Classroom Scope)</th>
-                  <th style={{ padding: "12px 14px" }}>วันเวลาลงทะเบียนแอดมิน</th>
-                  <th style={{ padding: "12px 14px", textAlign: "right" }}>การจัดการ (Actions)</th>
+                <tr>
+                  <th>ชื่อผู้ดูแล (Full Name / Username)</th>
+                  <th>สิทธิ์การทำงาน (System Role)</th>
+                  <th>ขอบเขตความรับผิดชอบ (Classroom Scope)</th>
+                  <th>วันเวลาลงทะเบียนแอดมิน</th>
+                  <th style={{ textAlign: "right" }}>การจัดการ (Actions)</th>
                 </tr>
               </thead>
               <tbody>
