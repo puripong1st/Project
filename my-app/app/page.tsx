@@ -117,7 +117,9 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
     setCameraState("accessing");
     setShowScanner(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } }
+      });
       setCameraState("active");
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -327,6 +329,7 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
                   ref={videoRef}
                   autoPlay
                   playsInline
+                  muted
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               ) : (

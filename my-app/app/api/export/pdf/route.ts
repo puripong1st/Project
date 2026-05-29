@@ -46,13 +46,18 @@ export async function GET(req: NextRequest) {
     const formattedDate = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, "0")}${now.getDate().toString().padStart(2, "0")}`;
 
     if (idParam) {
+      const studentId = parseInt(idParam, 10);
+      if (isNaN(studentId)) {
+        return NextResponse.json({ error: "รูปแบบ ID ไม่ถูกต้อง" }, { status: 400 });
+      }
+
       // ─── Export Single Student Detailed Card ───────────────────────────
       const { rows } = await pool.query(
         `SELECT s.*, a.full_name as approver_name
          FROM students s
          LEFT JOIN admin_users a ON s.approved_by = a.id
          WHERE s.id = $1`,
-        [idParam]
+        [studentId]
       );
 
       const students = rows as StudentRow[];
@@ -76,7 +81,7 @@ export async function GET(req: NextRequest) {
         [
           student.id,
           admin.id,
-          `ส่งออกรายงาน PDF ประวัติรายบุคคล: ${student.title}${student.first_name} ${student.last_name} (${student.student_id})`
+          `ส่งออกรายงาน PDF ประวัติรายบุคคล: ${student.title || ""}${student.first_name} ${student.last_name} (${student.student_id})`
         ]
       );
 
@@ -101,7 +106,7 @@ export async function GET(req: NextRequest) {
         adminUsername: admin.username,
         adminRole: admin.role,
         ip,
-        reason: `📄 **ส่งออกประวัติรายบุคคลสำเร็จ**\n• ข้อมูลผู้ปฏิบัติการ: **${admin.full_name}** (สิทธิ์: **${admin.role}**)\n• รายงานของนักศึกษา: **${student.title}${student.first_name} ${student.last_name}**\n• รหัสนักศึกษา: \`${student.student_id}\`\n• ห้องเรียนปฏิบัติการ: **${student.requested_room || 'default'}**`,
+        reason: `📄 **ส่งออกประวัติรายบุคคลสำเร็จ**\n• ข้อมูลผู้ปฏิบัติการ: **${admin.full_name}** (สิทธิ์: **${admin.role}**)\n• รายงานของนักศึกษา: **${student.title || ""}${student.first_name} ${student.last_name}**\n• รหัสนักศึกษา: \`${student.student_id}\`\n• ห้องเรียนปฏิบัติการ: **${student.requested_room || 'default'}**`,
       }).catch(err => console.error("[Single Student PDF Notification] failed:", err));
 
       const cleanName = `${student.first_name}_${student.last_name}`.replace(/\s+/g, "_");
