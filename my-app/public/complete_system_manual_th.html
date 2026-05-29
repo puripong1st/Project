@@ -3822,7 +3822,7 @@ CREATE TABLE IF NOT EXISTS students (
   FOREIGN KEY (approved_by) REFERENCES admin_users(id) ON DELETE SET NULL
 );
 
--- 3) ตาราง audit log
+-- 3) ตาราง audit log (เก็บครบ IP + อุปกรณ์ + ห้อง + ระดับความสำคัญ)
 CREATE TABLE IF NOT EXISTS access_logs (
   id             SERIAL PRIMARY KEY,
   student_id     INT,
@@ -3831,11 +3831,13 @@ CREATE TABLE IF NOT EXISTS access_logs (
   timestamp      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   esp32_response VARCHAR(500),
   notes          TEXT,
-  room_code      VARCHAR(50) NOT NULL DEFAULT &#39;default&#39;,
-  room           VARCHAR(50),
-  method         VARCHAR(50),
+  room_code      VARCHAR(50) NOT NULL DEFAULT &#39;default&#39;,  -- คอลัมน์ห้องมาตรฐาน (ใช้คอลัมน์นี้เป็นหลัก)
+  room           VARCHAR(50),                              -- legacy: คง backward-compat, backfill → room_code แล้ว
+  method         VARCHAR(50),                              -- ช่องทาง: admin_approve | admin_manual | bypass_5min | HTTPS_OTA ฯลฯ
   ip_address     VARCHAR(50),
   details        TEXT,
+  severity       VARCHAR(10) NOT NULL DEFAULT &#39;info&#39;,      -- info | warning | critical
+  user_agent     VARCHAR(300),                             -- User-Agent ดิบ (แปลงเป็น device/browser ตอนแสดงผล)
   FOREIGN KEY (student_id)   REFERENCES students(id)    ON DELETE SET NULL,
   FOREIGN KEY (performed_by) REFERENCES admin_users(id) ON DELETE SET NULL
 );
@@ -3931,6 +3933,7 @@ CREATE INDEX IF NOT EXISTS idx_students_room_status ON students (requested_room,
 CREATE INDEX IF NOT EXISTS idx_room_timestamp      ON access_logs (room_code, timestamp);
 CREATE INDEX IF NOT EXISTS idx_logs_action         ON access_logs (action);
 CREATE INDEX IF NOT EXISTS idx_logs_timestamp_desc ON access_logs (timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_severity       ON access_logs (severity);
 CREATE INDEX IF NOT EXISTS idx_firmware_uploaded_at ON firmware_releases (uploaded_at DESC);
 CREATE INDEX IF NOT EXISTS idx_schedule_room       ON room_schedules (room_code, day_of_week, is_active);
 </code></pre>
@@ -4351,6 +4354,12 @@ T+4100    | resetCache → loop() ปกติ
 <td>ทางเลือก</td>
 <td>false</td>
 <td><code>true</code> = ข้าม <code>initDatabase()</code> (ไม่สร้างตาราง/index/seed) ลด ~25 DDL/cold start — ตั้งหลังรัน DDL §35 ครบแล้ว</td>
+</tr>
+<tr>
+<td><code>CRON_SECRET</code></td>
+<td>ทางเลือก*</td>
+<td>—</td>
+<td>รหัสลับสุ่ม (≥ 32 chars) ป้องกัน endpoint สรุปรายวัน/สัปดาห์ <code>/api/system/summary</code>. Vercel Cron จะแนบ <code>Authorization: Bearer &lt;CRON_SECRET&gt;</code> ให้อัตโนมัติ. *จำเป็นถ้าต้องการให้ Cron สรุปทำงาน — ถ้าเว้นว่าง Cron จะถูกปฏิเสธ 401 (owner ยังกดเองผ่านคุกกี้ได้)</td>
 </tr>
 </tbody></table>
 <blockquote>
@@ -13135,6 +13144,131 @@ if (decoded.role === &quot;door_operator&quot;) {
 <li><strong>หลักความปลอดภัยสูงสุด (Fail-Secure Principle):</strong> ป้องกันไม่ให้แผงควบคุมระบบจัดการการเข้าถึงห้องเรียนซึ่งเป็นพื้นที่ควบคุมความปลอดภัยทางกายภาพค้างอยู่ในหน้าจอของผู้ใช้รายอื่นที่มาสวมรอยใช้เครื่องต่อ</li>
 <li><strong>การล้างสถานะอย่างถาวร (Secure Session Pruning):</strong> การเรียก <code>setUser(null)</code> ร่วมกับการตั้งพารามิเตอร์ <code>?reason=idle</code> จะนำทางผู้ใช้งานกลับไปสู่หน้าจอลงชื่อเข้าใช้งานอย่างปลอดภัย พร้อมแสดงกล่องข้อความเตือนอย่างสุภาพว่า <strong>&quot;Session หมดอายุเนื่องจากไม่มีกิจกรรม&quot;</strong> ช่วยเพิ่มมิติความมั่นคงปลอดภัยและความน่าเชื่อถือให้สมบูรณ์แบบสูงสุด</li>
 </ol>
+<p align="right"><a href="#toc">กลับสารบัญ</a></p><p><a id="sec-71-53"></a></p>
+<h2>71.53 บันทึกการปรับปรุงระบบรอบล่าสุด (Engineering Changelog &amp; Deep-Dive)</h2>
+<blockquote>
+<p>ภาคผนวกนี้รวบรวมการแก้ไขและฟีเจอร์ที่เพิ่มในรอบพัฒนาล่าสุด พร้อมเหตุผลเชิงวิศวกรรม เพื่อให้คู่มือ &quot;ตรงกับโค้ดจริง&quot; ทุกประการ</p>
+</blockquote>
+<h3>71.53.1 เฟิร์มแวร์ ESP32 — แก้ปัญหาคอมไพล์และความเสถียร</h3>
+<p><strong>(ก) ตัด ElegantOTA / WebServer ออก ใช้ <code>WiFiServer</code> โหมดเดียว</strong></p>
+<ul>
+<li>ปัญหาเดิม: <code>esp32.ino</code> มี <code>#include &lt;ElegantOTA.h&gt;</code> (และ <code>WebServer.h</code>, <code>HTTPUpdate.h</code>) อยู่ในบล็อก <code>#ifndef WOKWI_SIM</code> เมื่อบิลด์โดยไม่ได้นิยาม <code>WOKWI_SIM</code> จึงคอมไพล์ล้ม <code>fatal error: ElegantOTA.h: No such file or directory</code> (ไลบรารีไม่ได้ติดตั้ง) และโค้ดเดิมยังเรียก <code>localServer.available()</code> ซึ่งเป็น API ของ <code>WiFiServer</code> ไม่ใช่ <code>WebServer</code></li>
+<li>การแก้: เอา ElegantOTA ออกทั้งหมด (include, <code>begin/onStart/onEnd</code>, <code>loop()</code>), ประกาศ <code>WiFiServer localServer(80)</code> โหมดเดียว (มาจาก <code>WiFi.h</code> อยู่แล้ว), คง <code>HTTPUpdate.h</code> ไว้เฉพาะบอร์ดจริง (<code>#ifndef WOKWI_SIM</code>) สำหรับ Cloud HTTPS OTA ผ่าน <code>performHTTPSOTA()</code></li>
+<li>ผล: บิลด์ Wokwi ผ่าน 100% โดยไม่ต้องลงไลบรารีนอก และ LAN OTA ที่ซ้ำซ้อนกับ Cloud OTA ถูกตัดออก</li>
+</ul>
+<p><strong>(ข) แก้ char literal ว่าง</strong> — <code>hexBuf[64] = &#39;&#39;;</code> (ผิดไวยากรณ์ C++) → <code>hexBuf[64] = &#39;\0&#39;;</code> ในฟังก์ชัน <code>generateHMACHex()</code></p>
+<p><strong>(ค) แก้ placeholder ค้างจาก template</strong> — ไฟล์ <code>esp32.ino</code> มีข้อความ <code>${wokwiDefine}</code>, <code>${roomCode}</code> หลุดมาจาก generator (<code>ArduinoCode.ts</code>) เพราะใช้ <code>\${...}</code> (escape) ทำให้ template literal ไม่ถูกแทนค่า แก้โดยลบ backslash นำหน้าทั้งหมด ทำให้ทั้งหน้า config.h/esp32.ino ในแดชบอร์ดแสดงค่าจริง (เช่น <code>room=CE-401</code>) ไม่ใช่ <code>${roomCode}</code></p>
+<p><strong>(ง) Edge-trigger กันเปิดประตูวนซ้ำ</strong> — เพิ่มตัวแปร <code>String last_door_trigger</code> ให้บอร์ด &quot;เปิดประตูเฉพาะตอนคำสั่งเปลี่ยน idle→open&quot; เท่านั้น หากเซิร์ฟเวอร์ยังส่ง <code>door_trigger:&quot;open&quot;</code> ค้างมา บอร์ดจะไม่เปิดซ้ำและกลับไปหน้า QR ตามปกติ (แก้อาการวนหน้า ACCESS GRANTED ไม่จบ)</p>
+<blockquote>
+<p>⚙️ ทั้งหมดนี้แก้ทั้งใน <code>esp32/esp32.ino</code> และตัว generator <code>my-app/app/admin/dashboard/ArduinoCode.ts</code> ให้ตรงกัน เพื่อไม่ให้โค้ดที่ generate ใหม่กลับมามีบั๊กเดิม</p>
+</blockquote>
+<h3>71.53.2 เซิร์ฟเวอร์ — แก้รากของอาการเปิดประตูวน (Edge Runtime Pitfall)</h3>
+<p>จุดสำคัญที่สุดอยู่ที่ <code>app/api/esp32/display/route.ts</code> (Edge Runtime):</p>
+<ul>
+<li>เดิมใช้ <code>sbUpdate(...)</code> แบบ <strong>fire-and-forget</strong> (ไม่ <code>await</code>) เพื่อ &quot;ล้าง&quot; คำสั่ง <code>room_cmd_&lt;room&gt;</code> จาก <code>&quot;unlock&quot;</code> → <code>&quot;consumed&quot;</code> แต่ใน <strong>Vercel Edge</strong> เมื่อ response ถูกส่งกลับ ฟังก์ชันจะถูก freeze/terminate ทันที งานเบื้องหลังที่ยังไม่ <code>await</code> จึง<strong>ไม่ถูกยิงจริง</strong> → ค่าใน DB ค้างเป็น <code>&quot;unlock&quot;</code> → ทุก poll ตอบ <code>open</code> → บอร์ดเปิดวนไม่จบ</li>
+<li>การแก้: เปลี่ยนเป็น <code>await sbFetch(... PATCH ...)</code> ให้การล้างคำสั่งเสร็จก่อนส่ง response เสมอ คำสั่งจึงถูก consume ครั้งเดียวจริง ๆ</li>
+<li>บทเรียน: ใน Serverless/Edge <strong>อย่าทำงานเขียน DB แบบไม่ await หลังส่ง response</strong> ถ้างานนั้นต้องเกิดจริง (ใช้ <code>await</code> หรือ <code>waitUntil</code>)</li>
+</ul>
+<h3>71.53.3 Bypass 5 นาที — จำข้ามการปิดเบราว์เซอร์</h3>
+<ul>
+<li>ปัญหาเดิม: session bypass เก็บใน <code>sessionStorage</code> ซึ่งถูกล้างเมื่อปิดแท็บ/เบราว์เซอร์ นักศึกษาที่อนุมัติแล้วเปิดมาสแกนใหม่จึงต้องกรอกฟอร์มซ้ำ</li>
+<li>การแก้: ย้าย key <code>smartaccess_user_session</code> ทั้งหมด (get/set/remove) ไปใช้ <code>localStorage</code> ใน <code>app/page.tsx</code></li>
+<li>คงนโยบายเดิม: อายุสิทธิ์ <strong>5 นาที</strong> (<code>diffSeconds &lt;= 300</code>) + room-isolated (สแกนได้เฉพาะห้องที่ลงทะเบียน) ทำงานภายใต้ functional cookie consent</li>
+</ul>
+<h3>71.53.4 ระบบ Logs v2 — ละเอียดและครอบคลุม</h3>
+<p><strong>คอลัมน์ใหม่ใน <code>access_logs</code></strong> (ดู DDL §35): <code>severity</code> (info/warning/critical) และ <code>user_agent</code>; พร้อม backfill <code>room_code</code> จากคอลัมน์ <code>room</code> เดิม และ index <code>idx_logs_severity</code></p>
+<p><strong>Helper รวมศูนย์ <code>lib/access-log.ts</code>:</strong></p>
+<table>
+<thead>
+<tr>
+<th>ฟังก์ชัน</th>
+<th>หน้าที่</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>logEvent(opts)</code></td>
+<td>INSERT log ครบทุกมิติ (student/admin/room_code/ip/user_agent/severity/method) — ออกแบบให้ &quot;ไม่ throw&quot; การบันทึก log ห้ามทำให้ flow หลักล้ม</td>
+</tr>
+<tr>
+<td><code>logEventFromRequest(req, opts)</code></td>
+<td>เหมือน <code>logEvent</code> แต่ดึง IP + User-Agent จาก request ให้อัตโนมัติ</td>
+</tr>
+<tr>
+<td><code>getRequestContext(req)</code></td>
+<td>ดึง <code>{ ip, userAgent }</code> (รองรับ <code>x-forwarded-for</code> ของ Vercel)</td>
+</tr>
+<tr>
+<td><code>parseDevice(ua)</code></td>
+<td>แปลง UA → <code>{ device, browser }</code></td>
+</tr>
+<tr>
+<td><code>severityForAction(action)</code></td>
+<td>จับคู่ระดับความสำคัญเริ่มต้นต่อ action</td>
+</tr>
+</tbody></table>
+<p><strong>เส้นทางที่เก็บ IP/อุปกรณ์/severity ครบแล้ว:</strong> เปิดประตู (<code>approve</code>, <code>door</code>, <code>bypass</code>), ปฏิเสธ (<code>reject</code>), ล็อกอิน (สำเร็จ/ล้มเหลว/โดน rate-limit)</p>
+<p><strong>Action ใหม่ที่เริ่มบันทึก:</strong> <code>bypass_rate_limited</code>, <code>login_rate_limited</code> (และเตรียม mapping ไว้สำหรับ <code>qr_expired</code>, <code>qr_invalid</code>, <code>hmac_invalid</code>, <code>esp32_offline</code>, <code>unauthorized_access</code>)</p>
+<p><strong>หน้า Logs (<code>/admin/dashboard/all</code>):</strong> เพิ่ม badge <strong>⚠️ WARNING / 🚨 CRITICAL</strong>, แสดงแถว <strong>🌐 IP + 💻 อุปกรณ์·เบราว์เซอร์</strong> ต่อรายการ, และ label ภาษาไทยของ action ใหม่ครบ (<code>ACTION_METADATA</code> ใน <code>DashboardHelpers.tsx</code>)</p>
+<h3>71.53.5 ระบบแจ้งเตือน — เนื้อหาแน่นขึ้น + ความปลอดภัย + สรุปอัตโนมัติ</h3>
+<ul>
+<li><strong>เนื้อหาละเอียดขึ้น:</strong> embed ของ <code>door_opened</code> / <code>door_failed</code> เพิ่ม 💻 อุปกรณ์ + 🌍 Browser; เส้นทาง approve/door/reject/bypass ส่ง <code>ip</code> + <code>userAgent</code> เข้าระบบแจ้งเตือนแล้ว</li>
+<li><strong>event ใหม่ <code>security_alert</code>:</strong> ยิงเตือนเมื่อตรวจพบล็อกอินถี่ผิดปกติ (กัน brute-force) ผ่านช่องหมวด logs/admin_audit ทั้ง Discord/Telegram/LINE</li>
+<li><strong>event ใหม่ <code>system_summary</code>:</strong> รายงานสรุปการใช้งาน (เปิดประตูสำเร็จ/ล้มเหลว, ลงทะเบียน, อนุมัติ, ปฏิเสธ, bypass ถี่เกิน, ล็อกอินล้มเหลว, เหตุ critical, ห้องที่ใช้งานมากสุด)</li>
+<li><strong>Endpoint <code>/api/system/summary?period=day|week</code>:</strong> ป้องกันด้วย <code>CRON_SECRET</code> (Vercel Cron แนบ <code>Authorization: Bearer</code> ให้อัตโนมัติ) หรือ owner เรียกทดสอบเองผ่านคุกกี้</li>
+<li><strong>Vercel Cron (<code>vercel.json</code>):</strong> สรุปรายวัน <code>0 16 * * *</code> (23:00 ICT) และรายสัปดาห์ <code>0 16 * * 0</code> (อาทิตย์ 23:00 ICT)</li>
+</ul>
+<blockquote>
+<p>🔑 ต้องตั้ง env <code>CRON_SECRET</code> (สุ่ม ≥ 32 chars) บน Vercel ให้ Cron ทำงาน — ดู §37</p>
+</blockquote>
+<h3>71.53.6 สรุปไฟล์ที่เปลี่ยน (อ้างอิงเร็ว)</h3>
+<table>
+<thead>
+<tr>
+<th>ไฟล์</th>
+<th>การเปลี่ยนแปลง</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>esp32/esp32.ino</code></td>
+<td>ตัด ElegantOTA, <code>WOKWI_SIM</code>, แก้ <code>&#39;\0&#39;</code>, edge-trigger door</td>
+</tr>
+<tr>
+<td><code>my-app/app/admin/dashboard/ArduinoCode.ts</code></td>
+<td>sync เฟิร์มแวร์ + ปลด escape <code>\${...}</code></td>
+</tr>
+<tr>
+<td><code>my-app/app/api/esp32/display/route.ts</code></td>
+<td><code>await</code> consume คำสั่งเปิดประตู</td>
+</tr>
+<tr>
+<td><code>my-app/app/page.tsx</code></td>
+<td>bypass session → <code>localStorage</code></td>
+</tr>
+<tr>
+<td><code>my-app/lib/db.ts</code></td>
+<td>คอลัมน์ <code>severity</code> + <code>user_agent</code> + backfill + index</td>
+</tr>
+<tr>
+<td><code>my-app/lib/access-log.ts</code></td>
+<td><strong>ไฟล์ใหม่</strong> — helper บันทึก log รวมศูนย์</td>
+</tr>
+<tr>
+<td><code>my-app/lib/discord.ts</code></td>
+<td>event <code>security_alert</code>, <code>system_summary</code>, device ใน embed</td>
+</tr>
+<tr>
+<td><code>my-app/app/api/system/summary/route.ts</code></td>
+<td><strong>ไฟล์ใหม่</strong> — รายงานสรุปรายวัน/สัปดาห์</td>
+</tr>
+<tr>
+<td><code>my-app/vercel.json</code></td>
+<td><strong>ไฟล์ใหม่</strong> — Vercel Cron</td>
+</tr>
+<tr>
+<td>routes: <code>approve</code>, <code>door</code>, <code>reject</code>, <code>bypass</code>, <code>auth/login</code></td>
+<td>ใช้ <code>logEvent</code> เก็บ IP/อุปกรณ์/severity</td>
+</tr>
+</tbody></table>
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>
 
       </article>
@@ -13389,6 +13523,8 @@ if (decoded.role === &quot;door_operator&quot;) {
         saveSvgAsSvg(svgElement, fileName.replace('.png', '.svg'));
       }
     }
+
+  </script>
 
   <script>
     // Build floating TOC sidebar dynamically from h2 elements

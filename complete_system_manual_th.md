@@ -2283,7 +2283,7 @@ CREATE TABLE IF NOT EXISTS students (
   FOREIGN KEY (approved_by) REFERENCES admin_users(id) ON DELETE SET NULL
 );
 
--- 3) ตาราง audit log
+-- 3) ตาราง audit log (เก็บครบ IP + อุปกรณ์ + ห้อง + ระดับความสำคัญ)
 CREATE TABLE IF NOT EXISTS access_logs (
   id             SERIAL PRIMARY KEY,
   student_id     INT,
@@ -2292,11 +2292,13 @@ CREATE TABLE IF NOT EXISTS access_logs (
   timestamp      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   esp32_response VARCHAR(500),
   notes          TEXT,
-  room_code      VARCHAR(50) NOT NULL DEFAULT 'default',
-  room           VARCHAR(50),
-  method         VARCHAR(50),
+  room_code      VARCHAR(50) NOT NULL DEFAULT 'default',  -- คอลัมน์ห้องมาตรฐาน (ใช้คอลัมน์นี้เป็นหลัก)
+  room           VARCHAR(50),                              -- legacy: คง backward-compat, backfill → room_code แล้ว
+  method         VARCHAR(50),                              -- ช่องทาง: admin_approve | admin_manual | bypass_5min | HTTPS_OTA ฯลฯ
   ip_address     VARCHAR(50),
   details        TEXT,
+  severity       VARCHAR(10) NOT NULL DEFAULT 'info',      -- info | warning | critical
+  user_agent     VARCHAR(300),                             -- User-Agent ดิบ (แปลงเป็น device/browser ตอนแสดงผล)
   FOREIGN KEY (student_id)   REFERENCES students(id)    ON DELETE SET NULL,
   FOREIGN KEY (performed_by) REFERENCES admin_users(id) ON DELETE SET NULL
 );
@@ -2392,6 +2394,7 @@ CREATE INDEX IF NOT EXISTS idx_students_room_status ON students (requested_room,
 CREATE INDEX IF NOT EXISTS idx_room_timestamp      ON access_logs (room_code, timestamp);
 CREATE INDEX IF NOT EXISTS idx_logs_action         ON access_logs (action);
 CREATE INDEX IF NOT EXISTS idx_logs_timestamp_desc ON access_logs (timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_severity       ON access_logs (severity);
 CREATE INDEX IF NOT EXISTS idx_firmware_uploaded_at ON firmware_releases (uploaded_at DESC);
 CREATE INDEX IF NOT EXISTS idx_schedule_room       ON room_schedules (room_code, day_of_week, is_active);
 ```
@@ -2614,6 +2617,7 @@ T+4100    | resetCache → loop() ปกติ
 | `KV_REST_API_TOKEN` | ทางเลือก | — | Token สำหรับเรียก Vercel KV REST API |
 | `KV_REST_API_READ_ONLY_TOKEN` | ทางเลือก | — | Token แบบอ่านอย่างเดียวสำหรับ Vercel KV |
 | `SKIP_DB_INIT` | ทางเลือก | false | `true` = ข้าม `initDatabase()` (ไม่สร้างตาราง/index/seed) ลด ~25 DDL/cold start — ตั้งหลังรัน DDL §35 ครบแล้ว |
+| `CRON_SECRET` | ทางเลือก* | — | รหัสลับสุ่ม (≥ 32 chars) ป้องกัน endpoint สรุปรายวัน/สัปดาห์ `/api/system/summary`. Vercel Cron จะแนบ `Authorization: Bearer <CRON_SECRET>` ให้อัตโนมัติ. *จำเป็นถ้าต้องการให้ Cron สรุปทำงาน — ถ้าเว้นว่าง Cron จะถูกปฏิเสธ 401 (owner ยังกดเองผ่านคุกกี้ได้) |
 
 > **กฎเหล็ก**: ใน production ต้องตั้ง `ALLOW_DEV_SEED=false` และ `JWT_SECRET`/`ESP32_API_KEY` ต้องเป็นค่าสุ่ม ≥ 32 ตัวอักษร
 >
@@ -9071,5 +9075,84 @@ flowchart TD
 ### 71.52.4 ความสอดคล้องด้านความปลอดภัยและกฎหมายคุ้มครองข้อมูลส่วนบุคคล (Security & Compliance)
 1. **หลักความปลอดภัยสูงสุด (Fail-Secure Principle):** ป้องกันไม่ให้แผงควบคุมระบบจัดการการเข้าถึงห้องเรียนซึ่งเป็นพื้นที่ควบคุมความปลอดภัยทางกายภาพค้างอยู่ในหน้าจอของผู้ใช้รายอื่นที่มาสวมรอยใช้เครื่องต่อ
 2. **การล้างสถานะอย่างถาวร (Secure Session Pruning):** การเรียก `setUser(null)` ร่วมกับการตั้งพารามิเตอร์ `?reason=idle` จะนำทางผู้ใช้งานกลับไปสู่หน้าจอลงชื่อเข้าใช้งานอย่างปลอดภัย พร้อมแสดงกล่องข้อความเตือนอย่างสุภาพว่า **"Session หมดอายุเนื่องจากไม่มีกิจกรรม"** ช่วยเพิ่มมิติความมั่นคงปลอดภัยและความน่าเชื่อถือให้สมบูรณ์แบบสูงสุด
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+<a id="sec-71-53"></a>
+## 71.53 บันทึกการปรับปรุงระบบรอบล่าสุด (Engineering Changelog & Deep-Dive)
+
+> ภาคผนวกนี้รวบรวมการแก้ไขและฟีเจอร์ที่เพิ่มในรอบพัฒนาล่าสุด พร้อมเหตุผลเชิงวิศวกรรม เพื่อให้คู่มือ "ตรงกับโค้ดจริง" ทุกประการ
+
+### 71.53.1 เฟิร์มแวร์ ESP32 — แก้ปัญหาคอมไพล์และความเสถียร
+
+**(ก) ตัด ElegantOTA / WebServer ออก ใช้ `WiFiServer` โหมดเดียว**
+- ปัญหาเดิม: `esp32.ino` มี `#include <ElegantOTA.h>` (และ `WebServer.h`, `HTTPUpdate.h`) อยู่ในบล็อก `#ifndef WOKWI_SIM` เมื่อบิลด์โดยไม่ได้นิยาม `WOKWI_SIM` จึงคอมไพล์ล้ม `fatal error: ElegantOTA.h: No such file or directory` (ไลบรารีไม่ได้ติดตั้ง) และโค้ดเดิมยังเรียก `localServer.available()` ซึ่งเป็น API ของ `WiFiServer` ไม่ใช่ `WebServer`
+- การแก้: เอา ElegantOTA ออกทั้งหมด (include, `begin/onStart/onEnd`, `loop()`), ประกาศ `WiFiServer localServer(80)` โหมดเดียว (มาจาก `WiFi.h` อยู่แล้ว), คง `HTTPUpdate.h` ไว้เฉพาะบอร์ดจริง (`#ifndef WOKWI_SIM`) สำหรับ Cloud HTTPS OTA ผ่าน `performHTTPSOTA()`
+- ผล: บิลด์ Wokwi ผ่าน 100% โดยไม่ต้องลงไลบรารีนอก และ LAN OTA ที่ซ้ำซ้อนกับ Cloud OTA ถูกตัดออก
+
+**(ข) แก้ char literal ว่าง** — `hexBuf[64] = '';` (ผิดไวยากรณ์ C++) → `hexBuf[64] = '\0';` ในฟังก์ชัน `generateHMACHex()`
+
+**(ค) แก้ placeholder ค้างจาก template** — ไฟล์ `esp32.ino` มีข้อความ `${wokwiDefine}`, `${roomCode}` หลุดมาจาก generator (`ArduinoCode.ts`) เพราะใช้ `\${...}` (escape) ทำให้ template literal ไม่ถูกแทนค่า แก้โดยลบ backslash นำหน้าทั้งหมด ทำให้ทั้งหน้า config.h/esp32.ino ในแดชบอร์ดแสดงค่าจริง (เช่น `room=CE-401`) ไม่ใช่ `${roomCode}`
+
+**(ง) Edge-trigger กันเปิดประตูวนซ้ำ** — เพิ่มตัวแปร `String last_door_trigger` ให้บอร์ด "เปิดประตูเฉพาะตอนคำสั่งเปลี่ยน idle→open" เท่านั้น หากเซิร์ฟเวอร์ยังส่ง `door_trigger:"open"` ค้างมา บอร์ดจะไม่เปิดซ้ำและกลับไปหน้า QR ตามปกติ (แก้อาการวนหน้า ACCESS GRANTED ไม่จบ)
+
+> ⚙️ ทั้งหมดนี้แก้ทั้งใน `esp32/esp32.ino` และตัว generator `my-app/app/admin/dashboard/ArduinoCode.ts` ให้ตรงกัน เพื่อไม่ให้โค้ดที่ generate ใหม่กลับมามีบั๊กเดิม
+
+### 71.53.2 เซิร์ฟเวอร์ — แก้รากของอาการเปิดประตูวน (Edge Runtime Pitfall)
+
+จุดสำคัญที่สุดอยู่ที่ `app/api/esp32/display/route.ts` (Edge Runtime):
+- เดิมใช้ `sbUpdate(...)` แบบ **fire-and-forget** (ไม่ `await`) เพื่อ "ล้าง" คำสั่ง `room_cmd_<room>` จาก `"unlock"` → `"consumed"` แต่ใน **Vercel Edge** เมื่อ response ถูกส่งกลับ ฟังก์ชันจะถูก freeze/terminate ทันที งานเบื้องหลังที่ยังไม่ `await` จึง**ไม่ถูกยิงจริง** → ค่าใน DB ค้างเป็น `"unlock"` → ทุก poll ตอบ `open` → บอร์ดเปิดวนไม่จบ
+- การแก้: เปลี่ยนเป็น `await sbFetch(... PATCH ...)` ให้การล้างคำสั่งเสร็จก่อนส่ง response เสมอ คำสั่งจึงถูก consume ครั้งเดียวจริง ๆ
+- บทเรียน: ใน Serverless/Edge **อย่าทำงานเขียน DB แบบไม่ await หลังส่ง response** ถ้างานนั้นต้องเกิดจริง (ใช้ `await` หรือ `waitUntil`)
+
+### 71.53.3 Bypass 5 นาที — จำข้ามการปิดเบราว์เซอร์
+
+- ปัญหาเดิม: session bypass เก็บใน `sessionStorage` ซึ่งถูกล้างเมื่อปิดแท็บ/เบราว์เซอร์ นักศึกษาที่อนุมัติแล้วเปิดมาสแกนใหม่จึงต้องกรอกฟอร์มซ้ำ
+- การแก้: ย้าย key `smartaccess_user_session` ทั้งหมด (get/set/remove) ไปใช้ `localStorage` ใน `app/page.tsx`
+- คงนโยบายเดิม: อายุสิทธิ์ **5 นาที** (`diffSeconds <= 300`) + room-isolated (สแกนได้เฉพาะห้องที่ลงทะเบียน) ทำงานภายใต้ functional cookie consent
+
+### 71.53.4 ระบบ Logs v2 — ละเอียดและครอบคลุม
+
+**คอลัมน์ใหม่ใน `access_logs`** (ดู DDL §35): `severity` (info/warning/critical) และ `user_agent`; พร้อม backfill `room_code` จากคอลัมน์ `room` เดิม และ index `idx_logs_severity`
+
+**Helper รวมศูนย์ `lib/access-log.ts`:**
+| ฟังก์ชัน | หน้าที่ |
+|----------|---------|
+| `logEvent(opts)` | INSERT log ครบทุกมิติ (student/admin/room_code/ip/user_agent/severity/method) — ออกแบบให้ "ไม่ throw" การบันทึก log ห้ามทำให้ flow หลักล้ม |
+| `logEventFromRequest(req, opts)` | เหมือน `logEvent` แต่ดึง IP + User-Agent จาก request ให้อัตโนมัติ |
+| `getRequestContext(req)` | ดึง `{ ip, userAgent }` (รองรับ `x-forwarded-for` ของ Vercel) |
+| `parseDevice(ua)` | แปลง UA → `{ device, browser }` |
+| `severityForAction(action)` | จับคู่ระดับความสำคัญเริ่มต้นต่อ action |
+
+**เส้นทางที่เก็บ IP/อุปกรณ์/severity ครบแล้ว:** เปิดประตู (`approve`, `door`, `bypass`), ปฏิเสธ (`reject`), ล็อกอิน (สำเร็จ/ล้มเหลว/โดน rate-limit)
+
+**Action ใหม่ที่เริ่มบันทึก:** `bypass_rate_limited`, `login_rate_limited` (และเตรียม mapping ไว้สำหรับ `qr_expired`, `qr_invalid`, `hmac_invalid`, `esp32_offline`, `unauthorized_access`)
+
+**หน้า Logs (`/admin/dashboard/all`):** เพิ่ม badge **⚠️ WARNING / 🚨 CRITICAL**, แสดงแถว **🌐 IP + 💻 อุปกรณ์·เบราว์เซอร์** ต่อรายการ, และ label ภาษาไทยของ action ใหม่ครบ (`ACTION_METADATA` ใน `DashboardHelpers.tsx`)
+
+### 71.53.5 ระบบแจ้งเตือน — เนื้อหาแน่นขึ้น + ความปลอดภัย + สรุปอัตโนมัติ
+
+- **เนื้อหาละเอียดขึ้น:** embed ของ `door_opened` / `door_failed` เพิ่ม 💻 อุปกรณ์ + 🌍 Browser; เส้นทาง approve/door/reject/bypass ส่ง `ip` + `userAgent` เข้าระบบแจ้งเตือนแล้ว
+- **event ใหม่ `security_alert`:** ยิงเตือนเมื่อตรวจพบล็อกอินถี่ผิดปกติ (กัน brute-force) ผ่านช่องหมวด logs/admin_audit ทั้ง Discord/Telegram/LINE
+- **event ใหม่ `system_summary`:** รายงานสรุปการใช้งาน (เปิดประตูสำเร็จ/ล้มเหลว, ลงทะเบียน, อนุมัติ, ปฏิเสธ, bypass ถี่เกิน, ล็อกอินล้มเหลว, เหตุ critical, ห้องที่ใช้งานมากสุด)
+- **Endpoint `/api/system/summary?period=day|week`:** ป้องกันด้วย `CRON_SECRET` (Vercel Cron แนบ `Authorization: Bearer` ให้อัตโนมัติ) หรือ owner เรียกทดสอบเองผ่านคุกกี้
+- **Vercel Cron (`vercel.json`):** สรุปรายวัน `0 16 * * *` (23:00 ICT) และรายสัปดาห์ `0 16 * * 0` (อาทิตย์ 23:00 ICT)
+
+> 🔑 ต้องตั้ง env `CRON_SECRET` (สุ่ม ≥ 32 chars) บน Vercel ให้ Cron ทำงาน — ดู §37
+
+### 71.53.6 สรุปไฟล์ที่เปลี่ยน (อ้างอิงเร็ว)
+
+| ไฟล์ | การเปลี่ยนแปลง |
+|------|----------------|
+| `esp32/esp32.ino` | ตัด ElegantOTA, `WOKWI_SIM`, แก้ `'\0'`, edge-trigger door |
+| `my-app/app/admin/dashboard/ArduinoCode.ts` | sync เฟิร์มแวร์ + ปลด escape `\${...}` |
+| `my-app/app/api/esp32/display/route.ts` | `await` consume คำสั่งเปิดประตู |
+| `my-app/app/page.tsx` | bypass session → `localStorage` |
+| `my-app/lib/db.ts` | คอลัมน์ `severity` + `user_agent` + backfill + index |
+| `my-app/lib/access-log.ts` | **ไฟล์ใหม่** — helper บันทึก log รวมศูนย์ |
+| `my-app/lib/discord.ts` | event `security_alert`, `system_summary`, device ใน embed |
+| `my-app/app/api/system/summary/route.ts` | **ไฟล์ใหม่** — รายงานสรุปรายวัน/สัปดาห์ |
+| `my-app/vercel.json` | **ไฟล์ใหม่** — Vercel Cron |
+| routes: `approve`, `door`, `reject`, `bypass`, `auth/login` | ใช้ `logEvent` เก็บ IP/อุปกรณ์/severity |
 
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>

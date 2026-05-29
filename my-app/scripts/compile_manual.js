@@ -1044,6 +1044,8 @@ const htmlTemplate = `<!DOCTYPE html>
       }
     }
 
+  </script>
+
   <script>
     // Build floating TOC sidebar dynamically from h2 elements
     document.addEventListener("DOMContentLoaded", function() {
