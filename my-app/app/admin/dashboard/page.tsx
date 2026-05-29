@@ -8,6 +8,7 @@ import AdminsPage from "./admins/page";
 import RoomsPage from "./rooms/page";
 import SettingsPage from "./settings/page";
 import GuidePage from "./guide/page";
+import HealthPage from "./health/page";
 
 export default function DashboardIndexPage() {
   const { tab, user } = useDashboard();
@@ -24,6 +25,7 @@ export default function DashboardIndexPage() {
       {tab === "rooms" && isOwner && <RoomsPage />}
       {tab === "settings" && isOwner && <SettingsPage />}
       {tab === "guide" && <GuidePage />}
+      {tab === "health" && <HealthPage />}
     </>
   );
 }

@@ -190,6 +190,12 @@ const AlertIcon = () => (
   </svg>
 );
 
+const ActivityIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+  </svg>
+);
+
 const TerminalIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }}>
     <polyline points="4 17 10 11 4 5" />
@@ -344,7 +350,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (pathname) {
       const endPath = pathname.split("/").pop();
-      if (endPath && ["pending", "all", "admins", "settings", "rooms", "guide", "iot"].includes(endPath)) {
+      if (endPath && ["pending", "all", "admins", "settings", "rooms", "guide", "iot", "health"].includes(endPath)) {
         setTab(endPath as any);
       }
       // Reset open modal states when changing route/tab
@@ -1143,6 +1149,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                 { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
               ] : []),
               { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
+              { id: "health", icon: <ActivityIcon />, label: "สถานะเซิร์ฟเวอร์ & DB", badge: 0 },
             ].map(item => (
               <button
                 key={item.id}
@@ -1256,10 +1263,16 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                       <span>ตั้งค่าระบบ & Webhook</span>
                     </span>
                   )}
-                  {tab === "guide" && (
+                   {tab === "guide" && (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <FileTextIcon />
                       <span>คู่มือการใช้งานระบบ & IoT</span>
+                    </span>
+                  )}
+                  {tab === "health" && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <ActivityIcon />
+                      <span>สถานะและความเสถียรของระบบ (System Health)</span>
                     </span>
                   )}
                 </h2>

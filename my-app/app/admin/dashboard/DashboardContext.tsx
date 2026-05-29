@@ -78,8 +78,8 @@ export const defaultRoomConfig = (): RoomConfig => ({
 });
 
 interface DashboardContextType {
-  tab: "pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot";
-  setTab: React.Dispatch<React.SetStateAction<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot">>;
+  tab: "pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot" | "health";
+  setTab: React.Dispatch<React.SetStateAction<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot" | "health">>;
   user: CurrentUser | null;
   setUser: React.Dispatch<React.SetStateAction<CurrentUser | null>>;
   pending: Student[];
@@ -289,7 +289,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   // DECLARE ALL STATE HOOKS AT THE VERY TOP
-  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot">("pending");
+  const [tab, setTab] = useState<"pending" | "all" | "admins" | "settings" | "rooms" | "guide" | "iot" | "health">("pending");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [pending, setPending] = useState<Student[]>([]);
   const [audioEnabled, setAudioEnabled] = useState(true);

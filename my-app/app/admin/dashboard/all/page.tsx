@@ -39,7 +39,14 @@ export default function AllPage() {
     displayedLogs,
     totalFilteredLogs,
     logCurrentPage,
-    totalLogPages
+    totalLogPages,
+    systemStatus,
+    fetchSystemStatus,
+    setConfirmPassword,
+    setDeleteModalOpen,
+    showToast,
+    fetchAll,
+    fetchLogs
   } = useDashboard();
 
   if (!user) return null;
@@ -465,6 +472,89 @@ export default function AllPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Log Data Retention & Maintenance Compliance Card ── */}
+      {(isOwner || user.role === "log_viewer") && (
+        <div className="premium-card animate-fade-in" style={{ padding: 26, borderLeft: "4px solid var(--edu-pink)", background: "var(--bg-secondary)", textAlign: "left" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 12 }}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                <span style={{ color: "var(--edu-pink)", fontSize: 20 }}>🛡️</span>
+                ศูนย์รักษาความปลอดภัยและบำรุงรักษาข้อมูล (Log Compliance Hub)
+              </h3>
+              <p style={{ color: "var(--text-secondary)", fontSize: 12.5, marginTop: 6, display: "flex", alignItems: "center", gap: 4, margin: "6px 0 0 0" }}>
+                <span>⚖️ ปฏิบัติตาม พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ มาตรา 26 (ต้องจัดเก็บประวัติไม่น้อยกว่า 90 วัน)</span>
+              </p>
+            </div>
+            {systemStatus && (
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ padding: "6px 12px", background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, textAlign: "center" }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{systemStatus.logSummary.total}</span>
+                  <span style={{ fontSize: 9, color: "var(--text-secondary)", fontWeight: 700 }}>ประวัติทั้งหมด</span>
+                </div>
+                <div style={{ padding: "6px 12px", background: "#ECFDF5", border: "1px solid rgba(5, 150, 105, 0.15)", borderRadius: 8, textAlign: "center" }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: "#059669" }}>{systemStatus.logSummary.active}</span>
+                  <span style={{ fontSize: 9, color: "#059669", fontWeight: 700 }}>อยู่ระหว่างเก็บรักษา</span>
+                </div>
+                <div style={{ padding: "6px 12px", background: systemStatus.logSummary.expired > 0 ? "#FEF2F2" : "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 8, textAlign: "center" }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: systemStatus.logSummary.expired > 0 ? "#DC2626" : "var(--text-primary)" }}>{systemStatus.logSummary.expired}</span>
+                  <span style={{ fontSize: 9, color: "var(--text-secondary)", fontWeight: 700 }}>หมดอายุ (&gt;90 วัน)</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
+            ระบบจัดเก็บบันทึกจราจรทางคอมพิวเตอร์เพื่อความปลอดภัยในการเข้าออกห้อง โดยจะเก็บรักษาข้อมูลอย่างถูกต้องตามกฎหมาย หากแอดมินระดับสูงสุดต้องการลบประวัติที่<strong>หมดอายุ (เกิน 90 วัน)</strong> สามารถทำได้ฟรีทันที แต่หากต้องการล้างข้อมูล<strong>ทั้งหมด (รวมข้อมูลไม่ถึง 90 วัน)</strong> ระบบความปลอดภัยจะบังคับให้ยืนยันรหัสผ่านเพื่อป้องกันภัยคุกคาม
+          </p>
+
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <button
+              onClick={async () => {
+                if (!confirm("ระบบจะบังคับสั่งงานเคลียร์ Log หมดอายุ (>90 วัน) ทันที ต้องการดำเนินการไหม?")) return;
+                try {
+                  const r = await fetch("/api/system/logs/cleanup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type: "expired" })
+                  });
+                  const d = await r.json();
+                  if (r.ok) {
+                    showToast(d.message || "ล้างข้อมูล Log หมดอายุสำเร็จ", "success");
+                    fetchSystemStatus();
+                    fetchAll();
+                    fetchLogs();
+                  } else {
+                    showToast(d.error, "error");
+                  }
+                } catch {
+                  showToast("เกิดข้อผิดพลาดในการล้างข้อมูล", "error");
+                }
+              }}
+              className="btn-secondary"
+              style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, borderColor: "var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)", fontWeight: 700 }}
+            >
+              ล้างข้อมูล Log หมดอายุ (&gt; 90 วัน)
+            </button>
+
+            {isOwner && (
+              <button
+                onClick={() => {
+                  setConfirmPassword("");
+                  setDeleteModalOpen(true);
+                }}
+                className="btn-danger"
+                style={{ padding: "10px 18px", borderRadius: 10, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                ล้างข้อมูลประวัติทั้งหมดในระบบ (ลบถาวร)
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
