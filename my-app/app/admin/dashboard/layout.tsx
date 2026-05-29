@@ -1237,12 +1237,20 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                       <span>ตรวจสอบสิทธิ์รออนุมัติ</span>
                     </span>
                   )}
-                  {tab === "iot" && (
+                   {tab === "iot" && (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <span style={{ color: "var(--smartaccess-purple)", display: "inline-flex" }}>
                         <TVIcon />
                       </span>
                       <span>สถานะบอร์ด IoT ทั้งหมด (Multi-Room)</span>
+                    </span>
+                  )}
+                  {tab === "rooms" && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "var(--smartaccess-purple)", display: "inline-flex" }}>
+                        <TVIcon />
+                      </span>
+                      <span>ห้องเรียน & ESP32</span>
                     </span>
                   )}
                   {tab === "all" && (
