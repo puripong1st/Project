@@ -1420,6 +1420,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       showToast("รหัสห้องเรียนนี้มีอยู่แล้ว", "error");
       return;
     }
+    const prevRooms = roomsList;
     const updatedRooms = [...roomsList, { room: code, ip }];
     setRoomsList(updatedRooms);
     setNewRoomCode("");
@@ -1449,9 +1450,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         fetchSettings();
         fetchSystemStatus();
       } else {
-        showToast(data.error || "ไม่สามารถบันทึกห้องเรียนใหม่ได้", "error");
+        // บันทึกไม่สำเร็จ → คืนค่า roomsList กลับ ไม่ให้ห้องค้างใน UI แล้วหายตอนรีโหลด
+        setRoomsList(prevRooms);
+        setNewRoomCode(code);
+        setNewRoomIp(ip);
+        const msg = r.status === 429
+          ? "บันทึกถี่เกินไป กรุณารอสักครู่แล้วลองใหม่อีกครั้ง"
+          : (data.error || "ไม่สามารถบันทึกห้องเรียนใหม่ได้");
+        showToast(msg, "error");
       }
     } catch {
+      setRoomsList(prevRooms);
+      setNewRoomCode(code);
+      setNewRoomIp(ip);
       showToast("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
     } finally {
       setSettingsLoading(false);

@@ -1,15 +1,16 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getPool, getSystemSettings, updateSystemSettings } from "@/lib/db";
+import { getSystemSettings, updateSystemSettings } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { sendDiscordNotification } from "@/lib/discord";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
+import { logEvent, getRequestContext } from "@/lib/access-log";
 
 // GET /api/system/settings — ดึงค่าการตั้งค่าระบบทั้งหมด (เฉพาะ owner เท่านั้น)
 export async function GET(req: NextRequest) {
   try {
-    const rateLimitRes = await withRateLimit(req, "system_settings", 20, 60);
+    const rateLimitRes = await withRateLimit(req, "system_settings", 60, 60);
     if (!rateLimitRes.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
 // POST /api/system/settings — อัปเดตค่าการตั้งค่าระบบ (เฉพาะ owner เท่านั้น)
 export async function POST(req: NextRequest) {
   try {
-    const rateLimitRes = await withRateLimit(req, "system_settings", 20, 60);
+    const rateLimitRes = await withRateLimit(req, "system_settings", 60, 60);
     if (!rateLimitRes.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },
@@ -251,43 +252,86 @@ export async function POST(req: NextRequest) {
 
     await updateSystemSettings(updates);
 
-    // ทำการเปรียบเทียบค่าก่อนและหลังเพื่อทำ Changelog ละเอียด
+    // ─── สร้าง Changelog แบบ "อ่านเข้าใจง่าย" (มนุษย์อ่านรู้เรื่อง) ───
+    // แปลง key ดิบ → ป้ายภาษาไทย และจัดการกรณีพิเศษ (เพิ่ม/ลบห้อง, ตั้ง IP ห้อง)
+    const FIELD_LABELS: Record<string, string> = {
+      auto_approve_enabled: "อนุมัติอัตโนมัติ",
+      auto_approve_start_time: "เวลาเริ่มอนุมัติอัตโนมัติ",
+      auto_approve_end_time: "เวลาสิ้นสุดอนุมัติอัตโนมัติ",
+      auto_approve_days: "วันที่อนุมัติอัตโนมัติ",
+      qr_expiry_seconds: "อายุ QR (วินาที)",
+      max_students_per_room: "จำนวนนักศึกษาสูงสุดต่อห้อง",
+      student_id_display_mode: "โหมดแสดงรหัสนักศึกษา",
+      discord_webhook_register: "Discord: ช่องลงทะเบียน",
+      discord_webhook_approve: "Discord: ช่องอนุมัติ",
+      discord_webhook_logs: "Discord: ช่อง Logs",
+      discord_webhook_admin_audit: "Discord: ช่อง Audit",
+      telegram_bot_token: "Telegram: Bot Token",
+      line_channel_token: "LINE: Channel Token",
+    };
+    const labelFor = (key: string): string => {
+      if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+      if (key === "configured_rooms") return "รายชื่อห้องในระบบ";
+      if (key.startsWith("room_ip_")) return `IP ของห้อง ${key.replace("room_ip_", "")}`;
+      if (key.startsWith("room_webhook_register_")) return `Discord ลงทะเบียน (ห้อง ${key.replace("room_webhook_register_", "")})`;
+      if (key.startsWith("room_webhook_approve_")) return `Discord อนุมัติ (ห้อง ${key.replace("room_webhook_approve_", "")})`;
+      if (key.startsWith("room_webhook_logs_")) return `Discord Logs (ห้อง ${key.replace("room_webhook_logs_", "")})`;
+      if (key.startsWith("room_telegram_")) return `Telegram (ห้อง ${key.replace(/^room_telegram_[a-z_]*?_/, "")})`;
+      if (key.startsWith("room_line_")) return `LINE (ห้อง ${key.replace(/^room_line_[a-z_]*?_/, "")})`;
+      if (key.startsWith("rcfg_")) return `ตั้งค่ารายห้อง (${key.replace("rcfg_", "")})`;
+      return key;
+    };
+
     const changedFields: string[] = [];
     for (const [key, newValue] of Object.entries(updates)) {
       const oldValue = oldSettings[key] || "";
-      if (oldValue !== newValue) {
-        let displayOld = oldValue.trim() === "" ? "(ว่าง)" : oldValue;
-        let displayNew = newValue.trim() === "" ? "(ว่าง)" : newValue;
+      if (oldValue === newValue) continue;
 
-        // บดบังข้อมูลสำคัญ (Mask sensitive info) เช่น Tokens, Webhooks, Secrets
-        const isSensitive = key.includes("token") || key.includes("webhook") || key.includes("secret") || key.includes("url");
-        if (isSensitive) {
-          displayOld = oldValue.trim() !== "" ? `${oldValue.substring(0, 8)}...` : "(ว่าง)";
-          displayNew = newValue.trim() !== "" ? `${newValue.substring(0, 8)}...` : "(ว่าง)";
-        }
-
-        changedFields.push(`• ${key}: ${displayOld} ➔ ${displayNew}`);
+      // กรณีพิเศษ: รายชื่อห้อง — สรุปเป็น "เพิ่มห้อง / ลบห้อง" ให้อ่านง่าย
+      if (key === "configured_rooms") {
+        const before = new Set(oldValue.split(",").map((r) => r.trim()).filter(Boolean));
+        const after = new Set(newValue.split(",").map((r) => r.trim()).filter(Boolean));
+        const added = [...after].filter((r) => !before.has(r));
+        const removed = [...before].filter((r) => !after.has(r));
+        if (added.length) changedFields.push(`• ➕ เพิ่มห้อง: ${added.join(", ")}`);
+        if (removed.length) changedFields.push(`• ➖ ลบห้อง: ${removed.join(", ")}`);
+        changedFields.push(`• 🏫 ห้องทั้งหมดในระบบตอนนี้: ${[...after].join(", ") || "(ไม่มี)"}`);
+        continue;
       }
+
+      // บดบังข้อมูลสำคัญ (Mask sensitive info)
+      const isSensitive = key.includes("token") || key.includes("webhook") || key.includes("secret") || key.includes("url");
+      let displayOld = oldValue.trim() === "" ? "(ว่าง)" : oldValue;
+      let displayNew = newValue.trim() === "" ? "(ว่าง)" : newValue;
+      if (isSensitive) {
+        displayOld = oldValue.trim() !== "" ? `${oldValue.substring(0, 8)}…` : "(ว่าง)";
+        displayNew = newValue.trim() !== "" ? `${newValue.substring(0, 8)}…` : "(ว่าง)";
+      }
+
+      changedFields.push(`• ${labelFor(key)}: ${displayOld} ➔ ${displayNew}`);
     }
 
     const changelogText = changedFields.length > 0
-      ? `รายละเอียดความเปลี่ยนแปลง:\n${changedFields.join("\n")}`
+      ? `รายการที่เปลี่ยนแปลง:\n${changedFields.join("\n")}`
       : "อัปเดตการตั้งค่าระบบ (ไม่มีการเปลี่ยนแปลงค่าจริง)";
 
-    // บันทึก log ในระบบอย่างละเอียด
-    const pool = getPool();
-    await pool.query(
-      "INSERT INTO access_logs (action, performed_by, notes) VALUES ('settings_updated', $1, $2)",
-      [admin.id, `อัปเดตการตั้งค่าระบบโดยแอดมิน: ${admin.full_name}\n${changelogText}`]
-    ).catch((err) => console.error("[System Settings] Background audit log failed:", err));
+    // บันทึก log ในระบบอย่างละเอียด (เก็บ IP/อุปกรณ์/severity ผ่าน helper)
+    const { ip, userAgent } = getRequestContext(req);
+    await logEvent({
+      action: "settings_updated",
+      performedBy: admin.id,
+      ip,
+      userAgent,
+      notes: `อัปเดตการตั้งค่าระบบโดยแอดมิน: ${admin.full_name}\n${changelogText}`,
+      severity: "info",
+    });
 
     // ยิงแจ้งเตือนเข้าระบบ Discord/Telegram/LINE logs พร้อมรายละเอียดความเปลี่ยนแปลง
     try {
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-                  req.headers.get("x-real-ip") || "ไม่ทราบ";
       await sendDiscordNotification("settings_updated", {
         adminName: admin.full_name,
         ip,
+        userAgent,
         reason: changelogText,
       }).catch((err) => console.error("[Settings Notification] failed:", err));
     } catch {}

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
+import { logEvent, getRequestContext } from "@/lib/access-log";
+import { sendDiscordNotification } from "@/lib/discord";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
@@ -27,6 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, password } = body;
 
+    const { ip, userAgent } = getRequestContext(request);
     const pool = getPool();
 
     // 3. Execution logic based on retention rules
@@ -38,14 +41,26 @@ export async function POST(request: NextRequest) {
       const affectedRows = rowCount || 0;
 
       // Log this maintenance action in the audit trail
-      await pool.query(
-        `INSERT INTO access_logs (action, performed_by, esp32_response, notes) 
-         VALUES ('maintenance_cleanup', $1, 'System Cleanup', $2)`,
-        [
-          admin.id,
-          `บำรุงรักษาระบบ: ล้างข้อมูลประวัติจราจรคอมพิวเตอร์ที่หมดอายุอายุเกิน 90 วันสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`
-        ]
-      );
+      const cleanupNote = `บำรุงรักษาระบบ: ล้างข้อมูลประวัติจราจรคอมพิวเตอร์ที่หมดอายุเกิน 90 วันสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`;
+      await logEvent({
+        action: "maintenance_cleanup",
+        performedBy: admin.id,
+        ip,
+        userAgent,
+        esp32Response: "System Cleanup",
+        notes: cleanupNote,
+        severity: "warning",
+      });
+
+      // แจ้งเตือนทุกช่องทาง (Discord/Telegram/LINE)
+      await sendDiscordNotification("security_alert", {
+        alertTitle: "ล้างประวัติที่หมดอายุ (> 90 วัน)",
+        alertDetail: `ผู้ดูแลระบบ **${admin.full_name}** ล้างประวัติที่หมดอายุออกจากระบบ`,
+        adminUsername: admin.username,
+        reason: `ลบออก ${affectedRows} รายการ (ประวัติเกิน 90 วันตาม พ.ร.บ.คอมพิวเตอร์ฯ ม.26)`,
+        ip,
+        userAgent,
+      }).catch((e) => console.error("[Cleanup Notify] failed:", e));
 
       return NextResponse.json({
         success: true,
@@ -82,14 +97,26 @@ export async function POST(request: NextRequest) {
       const affectedRows = rowCount || 0;
 
       // Insert fresh audit trail record about this massive purge!
-      await pool.query(
-        `INSERT INTO access_logs (action, performed_by, esp32_response, notes) 
-         VALUES ('maintenance_purge', $1, 'System Format', $2)`,
-        [
-          admin.id,
-          `การล้างข้อมูลครั้งใหญ่: ผู้ดูแลระบบสูงสุดได้ยืนยันรหัสผ่านและล้างข้อมูลประวัติเข้าออกทั้งหมดในระบบสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`
-        ]
-      );
+      const purgeNote = `การล้างข้อมูลครั้งใหญ่: ผู้ดูแลระบบสูงสุดได้ยืนยันรหัสผ่านและล้างข้อมูลประวัติเข้าออกทั้งหมดในระบบสำเร็จ (ลบออกจำนวน ${affectedRows} รายการ)`;
+      await logEvent({
+        action: "maintenance_purge",
+        performedBy: admin.id,
+        ip,
+        userAgent,
+        esp32Response: "System Format",
+        notes: purgeNote,
+        severity: "critical",
+      });
+
+      // แจ้งเตือนระดับวิกฤตทุกช่องทาง (ลบประวัติทั้งหมด = เหตุการณ์สำคัญสูงสุด)
+      await sendDiscordNotification("security_alert", {
+        alertTitle: "🚨 ลบประวัติทั้งหมดในระบบ (ถาวร)",
+        alertDetail: `ผู้ดูแลระบบสูงสุด **${admin.full_name}** ยืนยันรหัสผ่านและล้างประวัติเข้าออก**ทั้งหมด**ออกจากระบบ`,
+        adminUsername: admin.username,
+        reason: `ลบออก ${affectedRows} รายการ (รวมข้อมูลที่อายุไม่ถึง 90 วัน) — โปรดตรวจสอบว่าเป็นการกระทำที่ได้รับอนุญาต`,
+        ip,
+        userAgent,
+      }).catch((e) => console.error("[Purge Notify] failed:", e));
 
       return NextResponse.json({
         success: true,
