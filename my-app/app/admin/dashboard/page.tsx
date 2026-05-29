@@ -604,6 +604,7 @@ function AdminDashboardInner() {
     student_id_display_mode: "full",
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [roomSaving, setRoomSaving] = useState<Record<string, boolean>>({});
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [rawSettings, setRawSettings] = useState<Record<string, string>>({});
   const [activeRoomDetails, setActiveRoomDetails] = useState<{ room: string; ip: string } | null>(null);
@@ -2409,6 +2410,47 @@ void handleLocalWebServerRequest() {
       showToast("เกิดข้อผิดพลาดการบันทึกข้อมูล", "error");
     } finally {
       setSettingsLoading(false);
+    }
+  };
+
+  const saveSingleRoomSettings = async (roomCode: string, ipAddress: string) => {
+    setRoomSaving(prev => ({ ...prev, [roomCode]: true }));
+
+    const custom_settings: Record<string, string> = {};
+    custom_settings["configured_rooms"] = roomsList.map(r => r.room).join(",");
+    custom_settings[`room_ip_${roomCode}`] = ipAddress;
+    
+    const cfg = roomConfigs[roomCode] ?? defaultRoomConfig();
+    custom_settings[`rcfg_${roomCode}_auto_approve_enabled`] = cfg.auto_approve_enabled ? "1" : "0";
+    custom_settings[`rcfg_${roomCode}_auto_approve_start_time`] = cfg.auto_approve_start_time;
+    custom_settings[`rcfg_${roomCode}_auto_approve_end_time`] = cfg.auto_approve_end_time;
+    custom_settings[`rcfg_${roomCode}_auto_approve_days`] = cfg.auto_approve_days;
+    custom_settings[`rcfg_${roomCode}_auto_fill_enabled`] = cfg.auto_fill_enabled ? "1" : "0";
+    custom_settings[`rcfg_${roomCode}_auto_fill_mode`] = cfg.auto_fill_mode;
+    custom_settings[`rcfg_${roomCode}_student_id_display_mode`] = cfg.student_id_display_mode;
+
+    try {
+      const r = await fetch("/api/system/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...settings,
+          auto_approve_enabled: settings.auto_approve_enabled ? "1" : "0",
+          auto_fill_enabled: settings.auto_fill_enabled ? "1" : "0",
+          custom_settings
+        }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        showToast(`บันทึกการตั้งค่าห้อง ${roomCode} สำเร็จ`, "success");
+        fetchSettings();
+      } else {
+        showToast(data.error || "ไม่สามารถบันทึกได้", "error");
+      }
+    } catch {
+      showToast("เกิดข้อผิดพลาดการบันทึกข้อมูล", "error");
+    } finally {
+      setRoomSaving(prev => ({ ...prev, [roomCode]: false }));
     }
   };
 
@@ -6164,6 +6206,35 @@ void handleLocalWebServerRequest() {
                                 </div>
                               );
                             })()}
+                          </div>
+
+                          {/* 💾 ปุ่มบันทึกการตั้งค่าห้องเรียนนี้ */}
+                          <div style={{ marginTop: 12 }}>
+                            <button
+                              type="button"
+                              onClick={() => saveSingleRoomSettings(roomItem.room, roomItem.ip)}
+                              disabled={roomSaving[roomItem.room]}
+                              className="btn-primary"
+                              style={{
+                                width: "100%",
+                                justifyContent: "center",
+                                borderRadius: 8,
+                                padding: "10px 14px",
+                                fontSize: 13,
+                                fontWeight: 800,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
+                                border: "none",
+                                color: "#fff",
+                                transition: "all 0.2s ease",
+                                boxShadow: "0 4px 12px rgba(124, 58, 237, 0.15)"
+                              }}
+                            >
+                              <span>{roomSaving[roomItem.room] ? "⏳" : "💾"}</span>
+                              <span>{roomSaving[roomItem.room] ? "กำลังบันทึก..." : "บันทึกการตั้งค่าห้องนี้"}</span>
+                            </button>
                           </div>
                         </article>
                       );
