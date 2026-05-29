@@ -378,7 +378,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     const safeCode = code
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt bridge;");
+      .replace(/>/g, "&gt;");
 
     const tokenRegex = new RegExp(
       [
