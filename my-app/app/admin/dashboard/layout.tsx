@@ -339,6 +339,8 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   } = useDashboard();
 
   const [showWarning, setShowWarning] = useState(false);
+  // ช่องทางแจ้งเตือนที่กำลังตั้งค่าใน room modal (segmented selector)
+  const [roomNotifyChannel, setRoomNotifyChannel] = useState<"discord" | "telegram" | "line">("discord");
 
   const handleTimeout = useCallback(() => {
     fetch("/api/auth/logout", { method: "POST" })
@@ -605,7 +607,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, margin: "18px 28px", background: "var(--bg-primary)", padding: 6, borderRadius: 8, border: "1px solid var(--border)" }}>
               {[
                 { id: "api", label: "API & URLs", icon: <TerminalIcon /> },
-                { id: "webhook", label: "Discord Webhook", icon: <FileTextIcon /> },
+                { id: "webhook", label: "ระบบแจ้งเตือน", icon: <FileTextIcon /> },
                 { id: "arduino", label: "Arduino โค้ดบอร์ด (.ino)", icon: <SaveIcon /> }
               ].map(tabItem => (
                 <button
@@ -721,147 +723,104 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                 );
               })()}
 
-              {roomDetailsTab === "webhook" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }} className="animate-fade-in">
-                  <div style={{ padding: 14, background: "rgba(139,92,246,0.03)", border: "1px dashed rgba(139,92,246,0.25)", borderRadius: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple-dark)" }}>🔔 ระบบแจ้งเตือนเฉพาะกลุ่มห้องเรียน (Traffic Webhook Isolation)</span>
-                    <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.4" }}>
-                      ท่านสามารถระบุ Discord Webhook ประจำห้องเรียนห้องนี้ได้โดยเฉพาะ เพื่อส่งข้อมูลความปลอดภัยแยกขาดตามห้องปฏิบัติการได้แบบ 3 แชนแนล (สแกน, อนุมัติ, และบันทึกระบบ)
-                    </p>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                        📝 1. คำขอลงทะเบียนเข้าห้องใหม่ (Register Webhook)
-                      </label>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          className="smartaccess-input"
-                          placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
-                          value={roomWebhookRegisterInput}
-                          onChange={e => setRoomWebhookRegisterInput(e.target.value)}
-                          style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleTestWebhook(roomWebhookRegisterInput, "register", activeRoomDetails.room)}
-                          className="btn-ghost"
-                          style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
-                        >
-                          ทดสอบส่ง
-                        </button>
-                      </div>
+              {roomDetailsTab === "webhook" && (() => {
+                const CH = {
+                  discord: { name: "Discord", icon: "🟣", color: "#7C3AED", tint: "rgba(124,58,237,0.08)" },
+                  telegram: { name: "Telegram", icon: "✈️", color: "#229ED9", tint: "rgba(34,158,217,0.08)" },
+                  line: { name: "LINE", icon: "💬", color: "#06C755", tint: "rgba(6,199,85,0.08)" },
+                } as const;
+                const rows = roomNotifyChannel === "discord"
+                  ? [
+                      { label: "📝 ลงทะเบียนเข้าห้องใหม่", val: roomWebhookRegisterInput, set: setRoomWebhookRegisterInput, type: "register" as const, ph: "https://discord.com/api/webhooks/..." },
+                      { label: "🚪 อนุมัติ / เปิดประตูสำเร็จ", val: roomWebhookApproveInput, set: setRoomWebhookApproveInput, type: "approve" as const, ph: "https://discord.com/api/webhooks/..." },
+                      { label: "📊 Log จราจร / บอร์ดออฟไลน์", val: roomWebhookLogsInput, set: setRoomWebhookLogsInput, type: "logs" as const, ph: "https://discord.com/api/webhooks/..." },
+                    ]
+                  : roomNotifyChannel === "telegram"
+                  ? [
+                      { label: "📝 ลงทะเบียนเข้าห้องใหม่", val: roomTgRegisterInput, set: setRoomTgRegisterInput, type: "register" as const, ph: "Chat ID เช่น -1001234567890" },
+                      { label: "🚪 อนุมัติ / เปิดประตูสำเร็จ", val: roomTgApproveInput, set: setRoomTgApproveInput, type: "approve" as const, ph: "Chat ID เช่น -1001234567890" },
+                      { label: "📊 Log จราจร / บอร์ดออฟไลน์", val: roomTgLogsInput, set: setRoomTgLogsInput, type: "logs" as const, ph: "Chat ID เช่น -1001234567890" },
+                    ]
+                  : [
+                      { label: "📝 ลงทะเบียนเข้าห้องใหม่", val: roomLineRegisterInput, set: setRoomLineRegisterInput, type: "register" as const, ph: "User/Group ID เช่น Uxxxx หรือ Cxxxx" },
+                      { label: "🚪 อนุมัติ / เปิดประตูสำเร็จ", val: roomLineApproveInput, set: setRoomLineApproveInput, type: "approve" as const, ph: "User/Group ID เช่น Uxxxx หรือ Cxxxx" },
+                      { label: "📊 Log จราจร / บอร์ดออฟไลน์", val: roomLineLogsInput, set: setRoomLineLogsInput, type: "logs" as const, ph: "User/Group ID เช่น Uxxxx หรือ Cxxxx" },
+                    ];
+                const active = CH[roomNotifyChannel];
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }} className="animate-fade-in">
+                    <div style={{ padding: 14, background: "rgba(139,92,246,0.03)", border: "1px dashed rgba(139,92,246,0.25)", borderRadius: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple-dark)" }}>🔔 การแจ้งเตือนเฉพาะห้อง {activeRoomDetails.room} (Per-Room Notification Routing)</span>
+                      <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.5" }}>
+                        ตั้งปลายทางแยกเฉพาะห้องนี้ได้ 3 แชนแนล (ลงทะเบียน / อนุมัติ / Log) หากเว้นว่างจะใช้ค่าส่วนกลางจากแท็บ &quot;ตั้งค่าระบบ&quot;
+                        {roomNotifyChannel !== "discord" && <> — Telegram/LINE ใช้ <b>Token ส่วนกลาง</b> ร่วมกัน กรอกเฉพาะปลายทาง (Chat/Target ID)</>}
+                      </p>
                     </div>
 
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                        🚪 2. แจ้งเตือนอนุมัติสิทธิ์ / เปิดประตูสำเร็จ (Approve/Reject Webhook)
-                      </label>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          className="smartaccess-input"
-                          placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
-                          value={roomWebhookApproveInput}
-                          onChange={e => setRoomWebhookApproveInput(e.target.value)}
-                          style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
-                        />
+                    {/* Segmented channel selector */}
+                    <div style={{ display: "flex", gap: 8, background: "var(--bg-primary)", padding: 6, borderRadius: 10, border: "1px solid var(--border)" }}>
+                      {(["discord", "telegram", "line"] as const).map(ch => (
                         <button
+                          key={ch}
                           type="button"
-                          onClick={() => handleTestWebhook(roomWebhookApproveInput, "approve", activeRoomDetails.room)}
-                          className="btn-ghost"
-                          style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                          onClick={() => setRoomNotifyChannel(ch)}
+                          style={{
+                            flex: 1, padding: "9px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 800, cursor: "pointer",
+                            background: roomNotifyChannel === ch ? CH[ch].color : "transparent",
+                            color: roomNotifyChannel === ch ? "#fff" : "var(--text-secondary)",
+                            border: roomNotifyChannel === ch ? `1.5px solid ${CH[ch].color}` : "1.5px solid transparent",
+                            boxShadow: roomNotifyChannel === ch ? `0 6px 14px ${CH[ch].tint}` : "none",
+                            transition: "all 0.15s"
+                          }}
                         >
-                          🧪 ทดสอบส่ง
+                          {CH[ch].icon} {CH[ch].name}
                         </button>
-                      </div>
+                      ))}
                     </div>
 
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-                        📊 3. บันทึก Log จราจร/บอร์ดออฟไลน์ (Logs Webhook)
-                      </label>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          className="smartaccess-input"
-                          placeholder="วางลิงก์ https://discord.com/api/webhooks/..."
-                          value={roomWebhookLogsInput}
-                          onChange={e => setRoomWebhookLogsInput(e.target.value)}
-                          style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleTestWebhook(roomWebhookLogsInput, "logs", activeRoomDetails.room)}
-                          className="btn-ghost"
-                          style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
-                        >
-                          🧪 ทดสอบส่ง
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* per-room Telegram */}
-                  <div style={{ padding: 14, background: "rgba(37,99,235,0.04)", border: "1px dashed rgba(37,99,235,0.25)", borderRadius: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#1D4ED8" }}>✈️ Telegram Chat ID เฉพาะห้องนี้ (ใช้ Bot Token ส่วนกลาง)</span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {([
-                      { label: "📝 ลงทะเบียน (Register)", val: roomTgRegisterInput, set: setRoomTgRegisterInput, type: "register" as const },
-                      { label: "🚪 อนุมัติ/เปิดประตู (Approve)", val: roomTgApproveInput, set: setRoomTgApproveInput, type: "approve" as const },
-                      { label: "📊 Log/ออฟไลน์ (Logs)", val: roomTgLogsInput, set: setRoomTgLogsInput, type: "logs" as const },
-                    ]).map((f, i) => (
-                      <div key={i}>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>{f.label}</label>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input className="smartaccess-input" placeholder="Chat ID เช่น -1001234567890" value={f.val} onChange={e => f.set(e.target.value)} style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: 12, background: active.tint, border: `1px solid ${active.color}22` }}>
+                      {rows.map((f, i) => (
+                        <div key={i}>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>{f.label}</label>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                              className="smartaccess-input"
+                              placeholder={f.ph}
+                              value={f.val}
+                              onChange={e => f.set(e.target.value)}
+                              style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }}
+                            />
+                            {roomNotifyChannel === "discord" && (
+                              <button
+                                type="button"
+                                onClick={() => handleTestWebhook(f.val, f.type, activeRoomDetails.room)}
+                                className="btn-ghost"
+                                style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}
+                              >
+                                🧪 ทดสอบ
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  {/* per-room LINE */}
-                  <div style={{ padding: 14, background: "rgba(6,199,85,0.05)", border: "1px dashed rgba(6,199,85,0.3)", borderRadius: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#059669" }}>💬 LINE Target ID เฉพาะห้องนี้ (ใช้ Channel Token ส่วนกลาง)</span>
+                    <button
+                      type="button"
+                      onClick={handleSaveRoomWebhook}
+                      disabled={roomDetailsLoading}
+                      className="btn-success"
+                      style={{
+                        padding: "11px 20px", borderRadius: 10, fontWeight: 800, fontSize: 12.5, alignSelf: "flex-end",
+                        background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
+                        color: "#fff", boxShadow: "0 4px 10px rgba(124,58,237,0.2)", border: "none", cursor: "pointer", marginTop: 4
+                      }}
+                    >
+                      {roomDetailsLoading ? "⏳ กำลังเซฟ..." : "💾 บันทึกการแจ้งเตือนทั้งหมดประจำห้อง"}
+                    </button>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {([
-                      { label: "📝 ลงทะเบียน (Register)", val: roomLineRegisterInput, set: setRoomLineRegisterInput, type: "register" as const },
-                      { label: "🚪 อนุมัติ/เปิดประตู (Approve)", val: roomLineApproveInput, set: setRoomLineApproveInput, type: "approve" as const },
-                      { label: "📊 Log/ออฟไลน์ (Logs)", val: roomLineLogsInput, set: setRoomLineLogsInput, type: "logs" as const },
-                    ]).map((f, i) => (
-                      <div key={i}>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>{f.label}</label>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input className="smartaccess-input" placeholder="User/Group ID เช่น Uxxxx หรือ Cxxxx" value={f.val} onChange={e => f.set(e.target.value)} style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveRoomWebhook}
-                    disabled={roomDetailsLoading}
-                    className="btn-success"
-                    style={{
-                      padding: "10px 20px",
-                      borderRadius: 10,
-                      fontWeight: 800,
-                      fontSize: 12.5,
-                      alignSelf: "flex-end",
-                      background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
-                      color: "#fff",
-                      boxShadow: "0 4px 10px rgba(124,58,237,0.2)",
-                      border: "none",
-                      cursor: "pointer",
-                      marginTop: 8
-                    }}
-                  >
-                    {roomDetailsLoading ? "⏳ กำลังเซฟ..." : "💾 บันทึก Webhooks ทั้งหมดประจำห้อง"}
-                  </button>
-                </div>
-              )}
+                );
+              })()}
 
               {roomDetailsTab === "arduino" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }} className="animate-fade-in">
@@ -1191,7 +1150,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
               ] : []),
               ...(isOwner ? [
                 { id: "admins", icon: <KeyIcon />, label: "ผู้ดูแลระบบ", badge: 0 },
-                { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าระบบ & Webhook", badge: 0 },
+                { id: "settings", icon: <SettingsIcon />, label: "ตั้งค่าการแจ้งเตือน", badge: 0 },
               ] : []),
               { id: "health", icon: <ActivityIcon />, label: "สถานะเซิร์ฟเวอร์ & DB", badge: 0 },
               { id: "guide", icon: <FileTextIcon />, label: "คู่มือการใช้งานระบบ", badge: 0 },
@@ -1313,7 +1272,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                   {tab === "settings" && (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <SettingsIcon />
-                      <span>ตั้งค่าระบบ & Webhook</span>
+                      <span>ตั้งค่าการแจ้งเตือน</span>
                     </span>
                   )}
                    {tab === "guide" && (

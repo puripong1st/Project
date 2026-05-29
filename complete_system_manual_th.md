@@ -8593,6 +8593,11 @@ rate-limit, CSP/security headers, parameterized query, role-based field filterin
 **Telegram**: คุยกับ `@BotFather` → `/newbot` → ได้ **Bot Token**; หา **Chat ID** ของกลุ่ม/แชต (เช่นผ่าน `@userinfobot` หรือ `getUpdates`) แล้วเชิญบอทเข้ากลุ่ม → กรอกในแท็บตั้งค่าระบบ → กด"ทดสอบ"
 **LINE**: สร้าง Messaging API Channel ใน LINE Developers Console → ได้ **Channel Access Token (long-lived)**; ใช้ **User ID / Group ID** เป็น Target → กรอก → กด"ทดสอบ"
 
+### UI (อัปเดต 2026-05-29)
+- **แท็บ sidebar** เปลี่ยนชื่อจาก "ตั้งค่าระบบ & Webhook" → **"ตั้งค่าการแจ้งเตือน"**; หัวข้อหน้าเป็น "🔔 ศูนย์ตั้งค่าการแจ้งเตือน"
+- หน้าตั้งค่าใช้ **segmented selector** (Discord / Telegram / LINE) สลับดูทีละช่อง แทนการ์ดยาวเรียงกัน — แต่ละช่องมี token (Telegram/LINE) + 4 ปลายทาง + ปุ่มทดสอบ
+- ใน room modal แท็บเดิม "Discord Webhook" เปลี่ยนเป็น **"ระบบแจ้งเตือน"** และใช้ segmented selector เดียวกันสำหรับตั้ง override รายห้อง (Discord = URL+ปุ่มทดสอบ; Telegram/LINE = chat/target id ใช้ token ส่วนกลาง)
+
 ### ความปลอดภัย
 - คีย์ Telegram/LINE ตั้งชื่อ**เลี่ยงคำว่า** `webhook`/`url` จึงไม่ติด SSRF allowlist ของ Discord (ซึ่งยังบังคับ host `discord.com` เหมือนเดิม) — Telegram/LINE ยิงไปยัง host คงที่ `api.telegram.org` / `api.line.me` เท่านั้น
 - endpoint ทดสอบ [test-webhook](my-app/app/api/system/test-webhook/route.ts) ยังเป็น **owner-only** และไม่ log token

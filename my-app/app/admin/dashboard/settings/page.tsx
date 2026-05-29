@@ -1,15 +1,22 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { useDashboard } from "../DashboardContext";
 
 type ChannelType = "register" | "approve" | "logs" | "admin_audit";
+type Provider = "discord" | "telegram" | "line";
 
-const CHANNEL_ROWS: { label: string; type: ChannelType }[] = [
-  { label: "คำขอลงทะเบียนเข้าห้องใหม่", type: "register" },
-  { label: "อนุมัติสิทธิ์ / เปิดประตูสำเร็จ", type: "approve" },
-  { label: "Log จราจร / ความปลอดภัย", type: "logs" },
-  { label: "Log การบำรุงรักษาระบบ / แอดมิน", type: "admin_audit" },
+const CHANNEL_ROWS: { label: string; type: ChannelType; icon: string }[] = [
+  { label: "คำขอลงทะเบียนเข้าห้องใหม่", type: "register", icon: "📝" },
+  { label: "อนุมัติสิทธิ์ / เปิดประตูสำเร็จ", type: "approve", icon: "🚪" },
+  { label: "Log จราจร / ความปลอดภัย", type: "logs", icon: "📊" },
+  { label: "Log การบำรุงรักษา / แอดมิน", type: "admin_audit", icon: "🛠️" },
 ];
+
+const PROVIDERS: Record<Provider, { name: string; icon: string; color: string; tint: string }> = {
+  discord: { name: "Discord", icon: "🟣", color: "#7C3AED", tint: "rgba(124,58,237,0.07)" },
+  telegram: { name: "Telegram", icon: "✈️", color: "#229ED9", tint: "rgba(34,158,217,0.07)" },
+  line: { name: "LINE", icon: "💬", color: "#06C755", tint: "rgba(6,199,85,0.07)" },
+};
 
 export default function SettingsPage() {
   const {
@@ -24,122 +31,123 @@ export default function SettingsPage() {
     settingsLoading,
   } = useDashboard();
 
+  const [provider, setProvider] = useState<Provider>("discord");
+
   if (!user || !isOwner) return null;
 
   const raw = (k: string) => rawSettings[k] || "";
   const setRaw = (k: string, v: string) => setRawSettings((s: Record<string, string>) => ({ ...s, [k]: v }));
 
-  const cardStyle: React.CSSProperties = { padding: 28, textAlign: "left" };
-  const headingStyle: React.CSSProperties = { fontSize: 16.5, fontWeight: 900, color: "var(--text-primary)", borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 };
   const labelStyle: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 };
-  const saveBtnStyle: React.CSSProperties = { padding: "10px 22px", borderRadius: 10, fontSize: 13, fontWeight: 800, alignSelf: "flex-start", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", color: "#fff", border: "none", cursor: "pointer", boxShadow: "0 4px 10px rgba(124,58,237,0.2)", marginTop: 8 };
+  const tokenWrap: React.CSSProperties = { padding: 16, borderRadius: 12, marginBottom: 18 };
+  const active = PROVIDERS[provider];
+
+  // ── ค่าและคีย์ของช่องที่เลือก ──
+  const tokenField =
+    provider === "discord" ? null
+    : provider === "telegram" ? { key: "telegram_bot_token", label: "Telegram Bot Token", ph: "123456789:ABCdef..." }
+    : { key: "line_channel_token", label: "LINE Channel Access Token", ph: "long-lived channel access token..." };
+
+  const rowFor = (t: ChannelType) => {
+    if (provider === "discord") {
+      const key = `discord_webhook_${t}` as "discord_webhook_register" | "discord_webhook_approve" | "discord_webhook_logs" | "discord_webhook_admin_audit";
+      return {
+        value: settings[key] || "",
+        onChange: (v: string) => setSettings((s: typeof settings) => ({ ...s, [key]: v })),
+        ph: "https://discord.com/api/webhooks/...",
+        test: () => handleTestWebhook(settings[key], t),
+      };
+    }
+    const key = provider === "telegram" ? `telegram_chat_${t}` : `line_target_${t}`;
+    return {
+      value: raw(key),
+      onChange: (v: string) => setRaw(key, v),
+      ph: provider === "telegram" ? "Chat ID เช่น -1001234567890" : "User/Group ID เช่น Uxxxx หรือ Cxxxx",
+      test: () => provider === "telegram"
+        ? handleTestWebhook("", t, "default", { channel: "telegram", botToken: raw("telegram_bot_token"), chatId: raw(`telegram_chat_${t}`) })
+        : handleTestWebhook("", t, "default", { channel: "line", channelToken: raw("line_channel_token"), targetId: raw(`line_target_${t}`) }),
+    };
+  };
 
   return (
-    <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
-      {/* ─── Discord ─── */}
-      <div className="premium-card" style={cardStyle}>
-        <h3 style={headingStyle}>⚙️ ตั้งค่าลิงก์ Discord Webhook กลาง (Central System Discord Webhook Setup)</h3>
-        <div>
-          <span style={{ fontSize: 13, fontWeight: 900, color: "var(--smartaccess-purple-dark)", display: "block", marginBottom: 14 }}>
-            🔔 ตั้งค่า Discord Webhook ส่วนกลาง (Central Notification Webhooks)
-          </span>
-          <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 18, lineHeight: "1.4" }}>
-            กำหนด Webhook ส่วนกลางสำหรับการรับข่าวสารเมื่อห้องนั้นๆ ไม่ได้ตั้ง Discord Webhook แยกเฉพาะห้องไว้
+    <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20, maxWidth: 760 }}>
+      <div className="premium-card" style={{ padding: 28, textAlign: "left" }}>
+        {/* Header */}
+        <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 16, marginBottom: 20 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            🔔 ศูนย์ตั้งค่าการแจ้งเตือน
+          </h3>
+          <p style={{ color: "var(--text-secondary)", fontSize: 12.5, margin: "6px 0 0", lineHeight: 1.5 }}>
+            ตั้งค่าช่องทางแจ้งเตือนส่วนกลาง — เลือกได้หลายช่องทางพร้อมกัน ระบบจะส่งข้อความเดียวกันไปทุกช่องที่ตั้งไว้
+            (override รายห้องตั้งได้ในการ์ดแต่ละห้อง แท็บ &quot;ห้องเรียน &amp; ESP32&quot;)
           </p>
-          <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
-            {[
-              { label: "คำขอลงทะเบียนเข้าห้องใหม่", key: "discord_webhook_register" as const, type: "register" as const },
-              { label: "อนุมัติสิทธิ์ / เปิดประตูสำเร็จ", key: "discord_webhook_approve" as const, type: "approve" as const },
-              { label: "Log จราจร / ความปลอดภัย", key: "discord_webhook_logs" as const, type: "logs" as const },
-              { label: "Log การบำรุงรักษาระบบ / แอดมิน", key: "discord_webhook_admin_audit" as const, type: "admin_audit" as const },
-            ].map((field, idx) => (
-              <div key={idx}>
-                <label style={labelStyle}>{field.label} *</label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    className="smartaccess-input"
-                    type="text"
-                    placeholder="https://discord.com/api/webhooks/..."
-                    value={settings[field.key] || ""}
-                    onChange={e => setSettings((s: typeof settings) => ({ ...s, [field.key]: e.target.value }))}
-                    style={{ flex: 1, padding: "8px 12px", fontSize: 12.5 }}
-                  />
-                  <button type="button" onClick={() => handleTestWebhook(settings[field.key], field.type)} className="btn-ghost" style={{ padding: "8px 12px", fontSize: 11.5, borderRadius: 8, flexShrink: 0, fontWeight: 700 }}>
-                    ทดสอบ
-                  </button>
-                </div>
-              </div>
-            ))}
-            <button type="submit" disabled={settingsLoading} className="btn-success" style={saveBtnStyle}>
-              {settingsLoading ? "⏳ กำลังบันทึก..." : "💾 บันทึก Webhooks ส่วนกลาง"}
-            </button>
-          </form>
         </div>
-      </div>
 
-      {/* ─── Telegram ─── */}
-      <div className="premium-card" style={cardStyle}>
-        <h3 style={headingStyle}>✈️ ตั้งค่าแจ้งเตือนผ่าน Telegram (Telegram Bot Notifications)</h3>
-        <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 14, lineHeight: "1.5" }}>
-          สร้างบอทกับ <b>@BotFather</b> เพื่อรับ <b>Bot Token</b> แล้วหา <b>Chat ID</b> ของกลุ่ม/ห้องแชต (เช่นผ่าน @userinfobot)
-          จากนั้นเชิญบอทเข้ากลุ่ม — ฟรี ไม่จำกัดจำนวนข้อความ
-        </p>
-        <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
-          <div>
-            <label style={labelStyle}>Telegram Bot Token *</label>
-            <input className="smartaccess-input" type="text" placeholder="123456789:ABCdef..." value={raw("telegram_bot_token")} onChange={e => setRaw("telegram_bot_token", e.target.value)} style={{ width: "100%", padding: "8px 12px", fontSize: 12.5 }} />
-          </div>
+        {/* Provider segmented selector */}
+        <div style={{ display: "flex", gap: 8, background: "var(--bg-primary)", padding: 6, borderRadius: 10, border: "1px solid var(--border)", marginBottom: 22 }}>
+          {(Object.keys(PROVIDERS) as Provider[]).map(p => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setProvider(p)}
+              style={{
+                flex: 1, padding: "10px 12px", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: "pointer",
+                background: provider === p ? PROVIDERS[p].color : "transparent",
+                color: provider === p ? "#fff" : "var(--text-secondary)",
+                border: provider === p ? `1.5px solid ${PROVIDERS[p].color}` : "1.5px solid transparent",
+                boxShadow: provider === p ? `0 6px 16px ${PROVIDERS[p].tint}` : "none",
+                transition: "all 0.15s",
+              }}
+            >
+              {PROVIDERS[p].icon} {PROVIDERS[p].name}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* คำอธิบายเฉพาะช่อง */}
+          {provider === "telegram" && (
+            <div style={{ ...tokenWrap, background: active.tint, border: `1px solid ${active.color}22` }}>
+              <p style={{ color: "var(--text-secondary)", fontSize: 12, margin: 0, lineHeight: 1.55 }}>
+                สร้างบอทกับ <b>@BotFather</b> เพื่อรับ <b>Bot Token</b> แล้วหา <b>Chat ID</b> ของกลุ่ม (เช่นผ่าน @userinfobot) จากนั้นเชิญบอทเข้ากลุ่ม — ฟรี ไม่จำกัดจำนวนข้อความ
+              </p>
+            </div>
+          )}
+          {provider === "line" && (
+            <div style={{ ...tokenWrap, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }}>
+              <p style={{ color: "#B45309", fontSize: 11.5, margin: 0, lineHeight: 1.55 }}>
+                ⚠️ LINE Notify ปิดบริการแล้ว (มี.ค. 2025) ระบบจึงใช้ <b>LINE Messaging API</b> (push) ซึ่งฟรี <b>~500 ข้อความ/เดือน</b>
+                — สร้าง Channel ใน LINE Developers Console เพื่อรับ Channel Access Token และใช้ User/Group ID เป็น Target
+              </p>
+            </div>
+          )}
+
+          {/* Token (Telegram/LINE) */}
+          {tokenField && (
+            <div>
+              <label style={labelStyle}>{tokenField.label} *</label>
+              <input className="smartaccess-input" type="text" placeholder={tokenField.ph} value={raw(tokenField.key)} onChange={e => setRaw(tokenField.key, e.target.value)} style={{ width: "100%", padding: "10px 14px", fontSize: 12.5 }} />
+            </div>
+          )}
+
+          {/* 4 ช่องแจ้งเตือน */}
           {CHANNEL_ROWS.map((row) => {
-            const key = `telegram_chat_${row.type}`;
+            const f = rowFor(row.type);
             return (
-              <div key={key}>
-                <label style={labelStyle}>Chat ID — {row.label}</label>
+              <div key={row.type}>
+                <label style={labelStyle}>{row.icon} {row.label}</label>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input className="smartaccess-input" type="text" placeholder="-1001234567890 หรือ 123456789" value={raw(key)} onChange={e => setRaw(key, e.target.value)} style={{ flex: 1, padding: "8px 12px", fontSize: 12.5 }} />
-                  <button type="button" onClick={() => handleTestWebhook("", row.type, "default", { channel: "telegram", botToken: raw("telegram_bot_token"), chatId: raw(key) })} className="btn-ghost" style={{ padding: "8px 12px", fontSize: 11.5, borderRadius: 8, flexShrink: 0, fontWeight: 700 }}>
-                    ทดสอบ
+                  <input className="smartaccess-input" type="text" placeholder={f.ph} value={f.value} onChange={e => f.onChange(e.target.value)} style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }} />
+                  <button type="button" onClick={f.test} className="btn-ghost" style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700 }}>
+                    🧪 ทดสอบ
                   </button>
                 </div>
               </div>
             );
           })}
-          <button type="submit" disabled={settingsLoading} className="btn-success" style={saveBtnStyle}>
-            {settingsLoading ? "⏳ กำลังบันทึก..." : "💾 บันทึกการตั้งค่า Telegram"}
-          </button>
-        </form>
-      </div>
 
-      {/* ─── LINE ─── */}
-      <div className="premium-card" style={cardStyle}>
-        <h3 style={headingStyle}>💬 ตั้งค่าแจ้งเตือนผ่าน LINE (LINE Messaging API)</h3>
-        <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 8, lineHeight: "1.5" }}>
-          สร้าง <b>Messaging API Channel</b> ใน LINE Developers Console เพื่อรับ <b>Channel Access Token</b> และใช้ <b>User ID / Group ID</b> เป็น Target
-          (LINE Notify ปิดบริการแล้วตั้งแต่ มี.ค. 2025)
-        </p>
-        <p style={{ color: "#B45309", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, padding: "8px 12px", fontSize: 11.5, marginBottom: 16, lineHeight: "1.5" }}>
-          ⚠️ ข้อจำกัด LINE ฟรี: ส่งข้อความแบบ push ได้ ~500 ข้อความ/เดือน หากต้องการปริมาณมาก แนะนำใช้ Telegram หรือ Discord เป็นช่องหลัก
-        </p>
-        <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
-          <div>
-            <label style={labelStyle}>LINE Channel Access Token *</label>
-            <input className="smartaccess-input" type="text" placeholder="long-lived channel access token..." value={raw("line_channel_token")} onChange={e => setRaw("line_channel_token", e.target.value)} style={{ width: "100%", padding: "8px 12px", fontSize: 12.5 }} />
-          </div>
-          {CHANNEL_ROWS.map((row) => {
-            const key = `line_target_${row.type}`;
-            return (
-              <div key={key}>
-                <label style={labelStyle}>Target ID (User/Group) — {row.label}</label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input className="smartaccess-input" type="text" placeholder="Uxxxxxxxx หรือ Cxxxxxxxx" value={raw(key)} onChange={e => setRaw(key, e.target.value)} style={{ flex: 1, padding: "8px 12px", fontSize: 12.5 }} />
-                  <button type="button" onClick={() => handleTestWebhook("", row.type, "default", { channel: "line", channelToken: raw("line_channel_token"), targetId: raw(key) })} className="btn-ghost" style={{ padding: "8px 12px", fontSize: 11.5, borderRadius: 8, flexShrink: 0, fontWeight: 700 }}>
-                    ทดสอบ
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          <button type="submit" disabled={settingsLoading} className="btn-success" style={saveBtnStyle}>
-            {settingsLoading ? "⏳ กำลังบันทึก..." : "💾 บันทึกการตั้งค่า LINE"}
+          <button type="submit" disabled={settingsLoading} className="btn-success" style={{ padding: "11px 22px", borderRadius: 10, fontSize: 13, fontWeight: 800, alignSelf: "flex-start", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", color: "#fff", border: "none", cursor: "pointer", boxShadow: "0 4px 10px rgba(124,58,237,0.2)", marginTop: 8 }}>
+            {settingsLoading ? "⏳ กำลังบันทึก..." : `💾 บันทึกการตั้งค่า ${active.name}`}
           </button>
         </form>
       </div>
