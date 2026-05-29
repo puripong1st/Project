@@ -408,6 +408,34 @@ const htmlTemplate = `<!DOCTYPE html>
       transition: background-color 0.3s, border-color 0.3s;
     }
 
+    /* Mermaid Loader Skeleton & Spinner */
+    .mermaid-loader-skeleton {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 250px;
+      background: rgba(248, 250, 252, 0.4);
+      border-radius: 8px;
+      transition: background-color 0.3s;
+    }
+    body.dark-mode .mermaid-loader-skeleton {
+      background: rgba(30, 41, 59, 0.4);
+    }
+    .mermaid-loader-skeleton .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3.5px solid rgba(124, 58, 237, 0.15);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: mermaid-spin 1s linear infinite;
+    }
+    @keyframes mermaid-spin {
+      to { transform: rotate(360deg); }
+    }
+
     /* Mermaid text readability and spacing fixes */
     .mermaid svg {
       font-family: var(--font-th) !important;
@@ -771,91 +799,155 @@ const htmlTemplate = `<!DOCTYPE html>
     ▲
   </button>
 
-  <!-- Prism.js for code rendering -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <!-- Prism.js for code rendering (Deferred for instant page load) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js" defer></script>
 
-  <!-- Mermaid.js for Dynamic Diagrams -->
+  <!-- Mermaid.js for Dynamic Diagrams (Loaded asynchronously) -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script>
     mermaid.initialize({
-      startOnLoad: true,
+      startOnLoad: false, // CRITICAL: Stop auto-rendering to prevent mobile CPU freezing!
       theme: 'default',
       securityLevel: 'loose',
       htmlLabels: false, // Force native SVG text elements to calculate text dimensions properly
       flowchart: { useWidth: true, htmlLabels: false }
     });
 
-    // Automatically inject "Download PNG" buttons after Mermaid renders diagrams
-    window.addEventListener("load", function() {
-      setTimeout(function() {
-        const mermaidDivs = document.querySelectorAll(".mermaid");
-        mermaidDivs.forEach((div, index) => {
-          const svg = div.querySelector("svg");
-          if (!svg) return;
+    // Reusable function to inject download triggers
+    function injectDownloadButtons(div, svg, index) {
+      // Create Button Container
+      const btnContainer = document.createElement("div");
+      btnContainer.style.position = "absolute";
+      btnContainer.style.top = "12px";
+      btnContainer.style.right = "12px";
+      btnContainer.style.display = "flex";
+      btnContainer.style.gap = "8px";
+      btnContainer.style.zIndex = "10";
 
-          div.style.position = "relative";
-          div.style.paddingTop = "54px"; // Spacing for absolute button
+      // Helper to style buttons beautifully
+      function styleMermaidBtn(btn) {
+        btn.style.background = "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)";
+        btn.style.color = "white";
+        btn.style.border = "none";
+        btn.style.padding = "6px 12px";
+        btn.style.borderRadius = "8px";
+        btn.style.fontSize = "11.5px";
+        btn.style.fontWeight = "700";
+        btn.style.cursor = "pointer";
+        btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.15)";
+        btn.style.fontFamily = "'Sarabun', sans-serif";
+        btn.style.transition = "all 0.2s";
 
-          // Create Button Container
-          const btnContainer = document.createElement("div");
-          btnContainer.style.position = "absolute";
-          btnContainer.style.top = "12px";
-          btnContainer.style.right = "12px";
-          btnContainer.style.display = "flex";
-          btnContainer.style.gap = "8px";
-          btnContainer.style.zIndex = "10";
+        btn.onmouseover = () => {
+          btn.style.transform = "translateY(-1px)";
+          btn.style.boxShadow = "0 6px 14px rgba(124,58,237,0.25)";
+        };
+        btn.onmouseout = () => {
+          btn.style.transform = "translateY(0)";
+          btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.15)";
+        };
+      }
 
-          // Helper to style buttons beautifully
-          function styleMermaidBtn(btn) {
-            btn.style.background = "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)";
-            btn.style.color = "white";
-            btn.style.border = "none";
-            btn.style.padding = "6px 12px";
-            btn.style.borderRadius = "8px";
-            btn.style.fontSize = "11.5px";
-            btn.style.fontWeight = "700";
-            btn.style.cursor = "pointer";
-            btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.15)";
-            btn.style.fontFamily = "'Sarabun', sans-serif";
-            btn.style.transition = "all 0.2s";
+      // Create PNG Button
+      const btnPng = document.createElement("button");
+      btnPng.innerHTML = "🖼️ เซฟรูป PNG";
+      styleMermaidBtn(btnPng);
+      btnPng.addEventListener("click", function() {
+        saveSvgAsPng(svg, "smartaccess_diagram_" + index + ".png");
+      });
 
-            btn.onmouseover = () => {
-              btn.style.transform = "translateY(-1px)";
-              btn.style.boxShadow = "0 6px 14px rgba(124,58,237,0.25)";
-            };
-            btn.onmouseout = () => {
-              btn.style.transform = "translateY(0)";
-              btn.style.boxShadow = "0 4px 10px rgba(124,58,237,0.15)";
-            };
+      // Create SVG Button
+      const btnSvg = document.createElement("button");
+      btnSvg.innerHTML = "📐 เซฟเวกเตอร์ SVG (ชัวร์สุด)";
+      styleMermaidBtn(btnSvg);
+      btnSvg.addEventListener("click", function() {
+        saveSvgAsSvg(svg, "smartaccess_diagram_" + index + ".svg");
+      });
+
+      btnContainer.appendChild(btnPng);
+      btnContainer.appendChild(btnSvg);
+      div.appendChild(btnContainer);
+    }
+
+    // Lazy load and progressively render Mermaid diagrams using IntersectionObserver
+    window.addEventListener("DOMContentLoaded", function() {
+      const mermaidDivs = document.querySelectorAll(".mermaid");
+      
+      // 1. Initialize beautiful loading skeletons and backup raw code
+      mermaidDivs.forEach((div, index) => {
+        const diagramNum = index + 1;
+        
+        // Backup raw mermaid syntax
+        const rawCode = div.textContent.trim();
+        div.setAttribute("data-mermaid-code", rawCode);
+        div.setAttribute("data-index", diagramNum);
+        div.textContent = ""; // Clear content so it doesn't flash raw code
+        
+        const skeleton = document.createElement("div");
+        skeleton.className = "mermaid-loader-skeleton";
+        skeleton.innerHTML = '<div class="spinner"></div>' +
+          '<span style="font-size: 13px; color: var(--text-muted); font-weight: 600; font-family: \'Sarabun\', sans-serif;">' +
+          'กำลังโหลดไดอะแกรมที่ ' + diagramNum + '...' +
+          '</span>';
+        div.appendChild(skeleton);
+      });
+
+      // 2. Setup IntersectionObserver to only render diagrams as the user scrolls near them
+      const observer = new IntersectionObserver((entries, observerInstance) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const div = entry.target;
+            observerInstance.unobserve(div); // Trigger only once
+            
+            const rawCode = div.getAttribute("data-mermaid-code");
+            const diagramIndex = div.getAttribute("data-index");
+            const skeleton = div.querySelector(".mermaid-loader-skeleton");
+            
+            // Restore diagram raw code for rendering
+            div.textContent = rawCode;
+            
+            // Render this specific diagram asynchronously
+            mermaid.run({
+              nodes: [div]
+            }).then(() => {
+              // Clean up the skeleton
+              if (skeleton && skeleton.parentNode === div) {
+                div.removeChild(skeleton);
+              }
+              
+              const svg = div.querySelector("svg");
+              if (!svg) return;
+              
+              div.style.position = "relative";
+              div.style.paddingTop = "54px"; // Create space for the download panel
+              
+              // Inject download triggers
+              injectDownloadButtons(div, svg, diagramIndex);
+            }).catch(err => {
+              console.error("Error rendering diagram " + diagramIndex + ":", err);
+              if (skeleton) {
+                skeleton.innerHTML = '<span style="color: #EF4444; font-size: 13px; font-weight: 600; font-family: \'Sarabun\', sans-serif;">' +
+                  '⚠️ ไม่สามารถแสดงผลไดอะแกรมที่ ' + diagramIndex + ' ได้' +
+                  '</span>';
+              }
+            });
           }
-
-          // Create PNG Button
-          const btnPng = document.createElement("button");
-          btnPng.innerHTML = "🖼️ เซฟรูป PNG";
-          styleMermaidBtn(btnPng);
-          btnPng.addEventListener("click", function() {
-            saveSvgAsPng(svg, "smartaccess_diagram_" + (index + 1) + ".png");
-          });
-
-          // Create SVG Button
-          const btnSvg = document.createElement("button");
-          btnSvg.innerHTML = "📐 เซฟเวกเตอร์ SVG (ชัวร์สุด)";
-          styleMermaidBtn(btnSvg);
-          btnSvg.addEventListener("click", function() {
-            saveSvgAsSvg(svg, "smartaccess_diagram_" + (index + 1) + ".svg");
-          });
-
-          btnContainer.appendChild(btnPng);
-          btnContainer.appendChild(btnSvg);
-          div.appendChild(btnContainer);
         });
-      }, 1500);
+      }, {
+        rootMargin: "250px 0px", // Render when diagram is within 250px of viewport
+        threshold: 0.01
+      });
+
+      // 3. Observe each Mermaid container
+      mermaidDivs.forEach(div => {
+        observer.observe(div);
+      });
     });
 
     // 100% Bulletproof Direct SVG Vector Download
@@ -951,11 +1043,6 @@ const htmlTemplate = `<!DOCTYPE html>
         saveSvgAsSvg(svgElement, fileName.replace('.png', '.svg'));
       }
     }
-  </script>emoveChild(a);
-      URL.revokeObjectURL(url);
-      alert("⚠️ เบราว์เซอร์คอมพิวเตอร์ของคุณจำกัดสิทธิ์ความปลอดภัยในเครื่อง ระบบจึงสลับไปดาวน์โหลดไฟล์เป็นฟอร์แมต Vector SVG คมชัดสูงให้แทน ซึ่งสามารถนำไปใช้วางในสไลด์นำเสนอหรือเล่มรายงานวิจัยได้ดีเช่นกันครับ!");
-    }
-  </script>
 
   <script>
     // Build floating TOC sidebar dynamically from h2 elements

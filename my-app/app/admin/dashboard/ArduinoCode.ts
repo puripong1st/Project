@@ -76,7 +76,13 @@ const char *api_key = "YOUR_UNIQUE_ESP32_API_KEY_HERE";
 
 export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" | "physical" = "physical") => {
   const wokwiDefine = mode === "wokwi"
-    ? `#define WOKWI_SIM  // Wokwi Simulator mode — NEVER deploy to production with this defined!`
+    ? `#define WOKWI_SIM  // Wokwi Simulator mode — NEVER deploy to production with this defined!
+// 💡 สำหรับจำลองบน Wokwi Web อย่าลืมสร้างแท็บ libraries.txt และระบุ:
+// Adafruit GFX Library
+// Adafruit ILI9341
+// ArduinoJson@6.21.3
+// ElegantOTA@2.2.9
+// QRCode`
     : `// #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!`;
   return `/*
   ==============================================================
