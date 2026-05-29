@@ -4,6 +4,17 @@ import { NextRequest } from "next/server";
 import { initDatabase, getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+// Vercel caps serverless duration; cap the stream lifetime so the client
+// reconnects cleanly instead of the platform killing it mid-flight.
+export const maxDuration = 60;
+
+// Poll DB every 8s (was 3s) — cuts query volume ~60% per open tab while
+// staying near-real-time for approving pending requests on free Supabase.
+const POLL_INTERVAL_MS = 8000;
+// Close the stream just before maxDuration so the EventSource reconnects.
+const STREAM_LIFETIME_MS = 50_000;
+
 let initialized = false;
 async function ensureInit() {
   if (!initialized) {
@@ -14,7 +25,9 @@ async function ensureInit() {
 
 async function fetchSnapshot() {
   const pool = getPool();
-  const [pendingRes, logsRes, statusRes] = await Promise.all([
+  // Only pending + logs are consumed by the dashboard (applySnapshot).
+  // The previous room_last_seen query was unused, so it's removed.
+  const [pendingRes, logsRes] = await Promise.all([
     pool.query(
       `SELECT s.*, CONCAT(a.full_name) as approved_by_name
        FROM students s
@@ -31,18 +44,13 @@ async function fetchSnapshot() {
        FROM access_logs al
        LEFT JOIN students s ON al.student_id = s.id
        LEFT JOIN admin_users a ON al.performed_by = a.id
-       ORDER BY al.timestamp DESC LIMIT 100`
-    ),
-    pool.query(
-      `SELECT setting_key, setting_value FROM system_settings
-       WHERE setting_key LIKE 'room_last_seen_%'`
+       ORDER BY al.timestamp DESC LIMIT 50`
     ),
   ]);
 
   return {
     pending: pendingRes.rows,
     logs: logsRes.rows,
-    roomStatus: statusRes.rows,
     ts: Date.now(),
   };
 }
@@ -78,7 +86,7 @@ export async function GET(req: NextRequest) {
         console.error("[SSE] initial snapshot error:", e);
       }
 
-      // Poll DB every 3s and push only if changed
+      // Poll DB on an interval and push only if changed
       let lastHash = "";
       const interval = setInterval(async () => {
         if (closed) {
@@ -93,18 +101,27 @@ export async function GET(req: NextRequest) {
             lastHash = hash;
             send("update", snapshot);
           } else {
-            // Heartbeat every ~30s to keep connection alive
+            // Heartbeat to keep connection alive
             send("heartbeat", { ts: Date.now() });
           }
         } catch (e) {
           console.error("[SSE] poll error:", e);
         }
-      }, 3000);
+      }, POLL_INTERVAL_MS);
+
+      // Proactively end the stream before Vercel's function timeout so the
+      // browser EventSource reconnects cleanly instead of erroring out.
+      const lifetimeTimer = setTimeout(() => {
+        closed = true;
+        clearInterval(interval);
+        try { controller.close(); } catch { /* already closed */ }
+      }, STREAM_LIFETIME_MS);
 
       // Clean up when client disconnects
       req.signal.addEventListener("abort", () => {
         closed = true;
         clearInterval(interval);
+        clearTimeout(lifetimeTimer);
         try { controller.close(); } catch { /* already closed */ }
       });
     },

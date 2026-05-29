@@ -2,11 +2,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initDatabase, getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
+import { cacheGet, cacheSet } from "@/lib/kv-cache";
 
 let initialized = false;
 async function ensureInit() {
   if (!initialized) { await initDatabase(); initialized = true; }
 }
+
+// Analytics aggregations scan up to 30 days of logs — heavy on free Supabase.
+// Cache results for 120s (KV when configured, in-memory fallback otherwise).
+const ANALYTICS_TTL_S = 120;
 
 export async function GET(req: NextRequest) {
   await ensureInit();
@@ -16,6 +21,14 @@ export async function GET(req: NextRequest) {
   const pool = getPool();
   const { searchParams } = new URL(req.url);
   const metric = searchParams.get("metric") || "all";
+
+  const cacheKey = `analytics:${metric}`;
+  const cached = await cacheGet<Record<string, unknown>>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: { "Cache-Control": "private, max-age=60" },
+    });
+  }
 
   try {
     const results: Record<string, unknown> = {};
@@ -116,7 +129,10 @@ export async function GET(req: NextRequest) {
       results.kpi = kpiRows[0];
     }
 
-    return NextResponse.json(results);
+    await cacheSet(cacheKey, results, ANALYTICS_TTL_S);
+    return NextResponse.json(results, {
+      headers: { "Cache-Control": "private, max-age=60" },
+    });
   } catch (error) {
     console.error("[Analytics API]", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });

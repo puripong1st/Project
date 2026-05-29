@@ -5,6 +5,12 @@ import { getAdminFromCookie } from "@/lib/auth";
 import { getPool } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/client-ip";
+import { cacheGet, cacheSet } from "@/lib/kv-cache";
+
+// Cache the latest Vercel deployment lookup — it rarely changes but the
+// dashboard polls health frequently. Avoids hammering the Vercel API.
+const VERCEL_DEPLOY_CACHE_KEY = "health:vercel_deployment";
+const VERCEL_DEPLOY_TTL_S = 120;
 
 // ── Types ──
 interface VercelDeployment {
@@ -75,6 +81,12 @@ async function fetchVercelDeployment(): Promise<{
     return { latest: null, error: "VERCEL_TOKEN or VERCEL_PROJECT_ID not configured" };
   }
 
+  // Serve from cache when available to cut external API calls on frequent polls.
+  const cached = await cacheGet<{ latest: VercelDeployment | null; error: string | null }>(
+    VERCEL_DEPLOY_CACHE_KEY
+  );
+  if (cached) return cached;
+
   try {
     const res = await fetch(
       `https://api.vercel.com/v6/deployments?projectId=${projectId}&limit=1&state=READY`,
@@ -95,7 +107,9 @@ async function fetchVercelDeployment(): Promise<{
       return { latest: null, error: "No deployments found" };
     }
 
-    return { latest: deployments[0], error: null };
+    const result = { latest: deployments[0], error: null };
+    await cacheSet(VERCEL_DEPLOY_CACHE_KEY, result, VERCEL_DEPLOY_TTL_S);
+    return result;
   } catch (err) {
     return { latest: null, error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -147,26 +161,20 @@ export async function GET(req: NextRequest) {
     }
 
     if (dbStatus === "up") {
+      // Single round-trip for counts + last door open (was 3 separate queries).
       try {
         const { rows } = await pool.query(
-          `SELECT timestamp FROM access_logs
-           WHERE action = 'door_opened'
-           ORDER BY timestamp DESC
-           LIMIT 1`
+          `SELECT
+             (SELECT COUNT(*) FROM students)     AS total_students,
+             (SELECT COUNT(*) FROM access_logs)  AS total_logs,
+             (SELECT timestamp FROM access_logs
+                WHERE action = 'door_opened'
+                ORDER BY timestamp DESC LIMIT 1)  AS last_qr_scan`
         );
-        if (rows.length > 0) {
-          lastQrScan = (rows[0] as { timestamp: string }).timestamp;
-        }
-      } catch {
-        // ignore
-      }
-
-      // Get table counts for stats
-      try {
-        const studentRes = await pool.query("SELECT COUNT(*) as count FROM students");
-        totalStudents = parseInt((studentRes.rows[0] as { count: string }).count, 10);
-        const logRes = await pool.query("SELECT COUNT(*) as count FROM access_logs");
-        totalLogs = parseInt((logRes.rows[0] as { count: string }).count, 10);
+        const row = rows[0] as { total_students: string; total_logs: string; last_qr_scan: string | null };
+        totalStudents = parseInt(row.total_students, 10) || 0;
+        totalLogs = parseInt(row.total_logs, 10) || 0;
+        lastQrScan = row.last_qr_scan ?? null;
       } catch {
         // ignore
       }
@@ -210,11 +218,16 @@ export async function GET(req: NextRequest) {
 
     const cookie = req.headers.get("cookie") || "";
 
-    const apiProbes = await Promise.all([
-      probeApi(baseUrl, "/api/system/health", "Health Check (self)", cookie),
-      probeApi(baseUrl, "/api/system/status", "System Status", cookie),
-      probeApi(baseUrl, "/api/rooms", "Room List", cookie),
-    ]);
+    // Probes fan out to other internal endpoints (extra serverless invocations),
+    // so only run them when explicitly requested via ?probe=1. Never probe
+    // /api/system/health itself — that would recurse on every poll.
+    const runProbes = new URL(req.url).searchParams.get("probe") === "1";
+    const apiProbes = runProbes
+      ? await Promise.all([
+          probeApi(baseUrl, "/api/system/status", "System Status", cookie),
+          probeApi(baseUrl, "/api/rooms", "Room List", cookie),
+        ])
+      : [];
 
     // ── Overall Status ──
     let status: "healthy" | "degraded" | "unhealthy";

@@ -57,6 +57,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.2.49"],
   serverExternalPackages: ["pg", "pdfkit", "bcryptjs", "jsonwebtoken", "qrcode"],
+  // gzip responses to cut bandwidth on the free Vercel tier
+  compress: true,
+  // Source maps bloat the build output and aren't needed in production
+  productionBrowserSourceMaps: false,
+  // Drop console.* (except warn/error) from the production client bundle
+  compiler: {
+    removeConsole: isProduction ? { exclude: ["error", "warn"] } : false,
+  },
   async headers() {
     return [
       {

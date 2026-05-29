@@ -779,7 +779,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     });
     es.onerror = () => {
       es.close();
-      const iv = setInterval(() => { fetchPending(); fetchLogs(); }, 10000);
+      const iv = setInterval(() => { fetchPending(); fetchLogs(); }, 15000);
       return () => clearInterval(iv);
     };
 
@@ -792,14 +792,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       fetchSystemStatus();
     }, 0);
-    const interval = setInterval(fetchSystemStatus, 15000);
+    const interval = setInterval(fetchSystemStatus, 30000);
     return () => clearInterval(interval);
   }, [fetchSystemStatus, user]);
 
   useEffect(() => {
     if (!user) return;
     fetchHealthData();
-    const interval = setInterval(fetchHealthData, 30000);
+    const interval = setInterval(fetchHealthData, 60000);
     return () => clearInterval(interval);
   }, [fetchHealthData, user]);
 

@@ -8338,3 +8338,55 @@ if (format === "dataurl") {
 - `rcfg_{ROOM}_auto_approve_days` — วันที่อนุมัติ (0=อา, 1=จ, ... 6=ส)
 
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+## 71.44 การปรับแต่งประสิทธิภาพเพื่อลดภาระ Vercel/Supabase (Free Plan Performance Tuning)
+
+> **อัปเดต**: 2026-05-29 — ปรับ performance ฝั่งเว็บ + API ให้เร็วขึ้นและประหยัดโควตา Vercel Hobby (free) + Supabase free โดย**ไม่ลด**มาตรการความปลอดภัยใด ๆ
+
+### ปัญหาเดิม (ตัวกินทรัพยากร)
+
+| จุด | ปัญหา | ผลกระทบบน Free Plan |
+|-----|-------|---------------------|
+| `/api/sse` | ทุกแท็บ dashboard ถือ serverless function ค้าง + poll DB **ทุก 3 วินาที × 3 query** (~60 query/นาที/แท็บ) และมี query `room_last_seen` ที่ client ไม่ได้ใช้ | เปลือง Vercel GB-hours + Supabase compute สูงสุด |
+| `/api/system/health` | `probeApi` ยิง fetch กลับเข้า endpoint ตัวเอง (รวม `/api/system/health` → เรียกซ้ำตัวเอง) + แยกหลาย COUNT query + เรียก Vercel API ทุกครั้ง; dashboard poll ทุก 30s | invocation ทวีคูณ |
+| `/api/system/analytics` | 5 aggregation query (heatmap/30 วัน) ยิงสดทุกครั้ง ไม่มี cache | query หนักซ้ำ ๆ |
+| Dashboard | SSE 3s + systemStatus 15s + health 30s ทำงานพร้อมกัน | จำนวน request สูง |
+| Cold start | `initDatabase()` รัน ~25 DDL ทุกครั้งที่ lambda เย็น | latency request แรกสูง |
+
+### สิ่งที่แก้ไข
+
+**1. SSE เบาลง (`app/api/sse/route.ts`)**
+- เพิ่ม poll interval **3s → 8s**
+- ลบ query `room_last_seen` (statusRes) ที่ฝั่ง client ไม่ใช้ → จาก 3 เหลือ 2 query
+- logs query `LIMIT 100 → 50`
+- เพิ่ม `export const maxDuration = 60` + ปิด stream อัตโนมัติที่ ~50s ให้ browser EventSource reconnect เอง(กัน Vercel ตัด connection กลางคันแบบ error)
+- ผลลัพธ์: query/นาที/แท็บ จาก ~60 → ~15 (**ลด ~75%**)
+
+**2. Health เบาลง (`app/api/system/health/route.ts`)**
+- รวม COUNT students + COUNT logs + last door_open เป็น **query เดียว** (subquery)
+- ตัด self-probe ออก และทำ API probe เป็น optional — ทำงานเฉพาะเมื่อเรียก `?probe=1`
+- cache ผล Vercel deployment API ด้วย `kv-cache` (TTL 120s)
+
+**3. Analytics cache (`app/api/system/analytics/route.ts`)**
+- ห่อผลลัพธ์ด้วย `cacheGet/cacheSet` (key = `analytics:{metric}`) TTL **120s** + ส่ง header `Cache-Control: private, max-age=60`
+- ใช้ in-memory fallback ใน `lib/kv-cache.ts` ได้แม้ไม่ตั้งค่า Vercel KV
+
+**4. ลด polling ฝั่ง dashboard (`app/admin/dashboard/DashboardContext.tsx`)**
+- systemStatus **15s → 30s**
+- healthData **30s → 60s**
+- fallback polling ตอน SSE error **10s → 15s**
+
+**5. Build/Bundle (`next.config.ts`)**
+- `compress: true` (gzip)
+- `productionBrowserSourceMaps: false`
+- `compiler.removeConsole` — ตัด `console.*` (ยกเว้น error/warn) ออกจาก bundle production
+
+### คำแนะนำ Production (ตั้งค่าครั้งเดียว)
+
+- ตั้ง env **`SKIP_DB_INIT=true`** ใน Vercel หลัง migrate ตารางครั้งแรกเสร็จ → ข้าม ~25 DDL ทุก cold start (เห็น log `[DB] Fast Path: Skipping schema table checks`)
+- (ทางเลือก) ตั้ง `KV_REST_API_URL` + `KV_REST_API_TOKEN` เพื่อใช้ Vercel KV เป็น cache layer จริง แทน in-memory (ช่วยข้าม instance)
+
+### สิ่งที่ยังคงไว้ (ไม่แตะ)
+rate-limit, CSP/security headers, parameterized query, role-based field filtering, รูปแบบ JWT/bcrypt, schema และ index เดิม — ไม่มีการลบหรือลดความเข้มงวด
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
