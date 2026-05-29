@@ -19,9 +19,14 @@ export default function AdminsPage() {
     handleCreateAdmin,
     admins,
     handleDeleteAdmin,
+    editingAdmin,
     setEditingAdmin,
+    editAdminForm,
     setEditAdminForm,
-    setEditAdminAllowedRooms
+    editAdminAllowedRooms,
+    setEditAdminAllowedRooms,
+    editAdminLoading,
+    handleUpdateAdmin
   } = useDashboard();
 
   if (!user || !isOwner) return null;
@@ -248,6 +253,150 @@ export default function AdminsPage() {
           </div>
         )}
       </div>
+
+      {editingAdmin && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(15, 23, 42, 0.75)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div className="premium-card animate-fade-in" style={{ width: "100%", maxWidth: 480, padding: 24, background: "var(--bg-primary)", position: "relative" }}>
+            <button
+              onClick={() => setEditingAdmin(null)}
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                background: "rgba(255,255,255,0.05)",
+                border: "none",
+                borderRadius: "50%",
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: 16
+              }}
+            >
+              ✕
+            </button>
+
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text-primary)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+              ✏️ แก้ไขสิทธิ์แอดมิน: <span style={{ color: "var(--smartaccess-purple)" }}>{editingAdmin.username}</span>
+            </h3>
+            <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 20 }}>
+              ปรับปรุงชื่อ ตำแหน่ง และขอบเขตการดูแลห้องปฏิบัติการของ {editingAdmin.full_name}
+            </p>
+
+            <form onSubmit={handleUpdateAdmin}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                  ชื่อ - นามสกุล เจ้าหน้าที่ *
+                </label>
+                <input
+                  className="smartaccess-input"
+                  type="text"
+                  value={editAdminForm.full_name}
+                  onChange={e => setEditAdminForm((a: any) => ({ ...a, full_name: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label htmlFor="edit_admin_role" style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                  ขอบเขตสิทธิ์ในการทำงาน (Role) *
+                </label>
+                <select
+                  id="edit_admin_role"
+                  className="smartaccess-input"
+                  value={editAdminForm.role}
+                  onChange={e => setEditAdminForm((a: any) => ({ ...a, role: e.target.value }))}
+                >
+                  <option value="door_operator">Door Operator (เปิดประตูได้อย่างเดียว)</option>
+                  <option value="log_viewer">Log Viewer (ดูประวัติและสถิติการเข้าออกห้องได้อย่างเดียว)</option>
+                  <option value="owner">Owner (เจ้าของสิทธิ์อนุมัติสิทธิ์และจัดการ)</option>
+                </select>
+              </div>
+
+              {editAdminForm.role !== "owner" && (
+                <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: "1px dashed var(--border)", background: "rgba(255,255,255,0.01)" }}>
+                  <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+                    ห้องเรียนที่อนุญาตให้เข้าถึง / จัดการได้ *
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 10 }}>
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, color: "var(--smartaccess-purple)" }}>
+                      <input
+                        type="checkbox"
+                        checked={editAdminAllowedRooms.includes("*")}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setEditAdminAllowedRooms(["*"]);
+                          } else {
+                            setEditAdminAllowedRooms([]);
+                          }
+                        }}
+                      />
+                      ทุกห้องเรียน (*)
+                    </label>
+                  </div>
+
+                  {!editAdminAllowedRooms.includes("*") && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+                      {roomsList.map(r => (
+                        <label key={r.room} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={editAdminAllowedRooms.includes(r.room)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setEditAdminAllowedRooms((prev: any) => [...prev.filter((x: any) => x !== "*"), r.room]);
+                              } else {
+                                setEditAdminAllowedRooms((prev: any) => prev.filter((x: any) => x !== r.room));
+                              }
+                            }}
+                          />
+                          {r.room}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingAdmin(null)}
+                  className="btn-secondary"
+                  style={{ flex: 1, justifyContent: "center", borderRadius: 12, padding: "12px" }}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={editAdminLoading}
+                  className="btn-primary"
+                  style={{ flex: 1, justifyContent: "center", borderRadius: 12, padding: "12px" }}
+                >
+                  {editAdminLoading ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
