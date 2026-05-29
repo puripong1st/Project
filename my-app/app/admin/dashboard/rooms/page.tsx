@@ -89,9 +89,6 @@ export default function RoomsPage() {
             >
               รีเฟรชสถานะบอร์ด
             </button>
-            <button onClick={handleSaveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
-              {settingsLoading ? "กำลังบันทึก..." : "บันทึกห้องทั้งหมด"}
-            </button>
           </div>
         </div>
 
