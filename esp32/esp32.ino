@@ -24,7 +24,10 @@
 #include <HTTPClient.h>
 #include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
 #include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
+#if __has_include(<ElegantOTA.h>)
 #include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
+#define HAS_ELEGANT_OTA
+#endif
 #include <SPI.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
@@ -411,14 +414,16 @@ void performHTTPSOTA() {
 
 void startLocalServer() {
   if (!localServerStarted) {
+#ifdef HAS_ELEGANT_OTA
     // กำหนด ElegantOTA Web Endpoint & Callbacks
     ElegantOTA.begin(&localServer);
     ElegantOTA.onStart(onOTAStart);
     ElegantOTA.onEnd(onOTAEnd);
+#endif
     
     localServer.begin();
     localServerStarted = true;
-    DBG("Local web server started on port 80 with ElegantOTA.");
+    DBG("Local web server started on port 80.");
   }
 }
 
@@ -948,8 +953,10 @@ void loop() {
   // Always run local web server to handle real-time push commands immediately
   handleLocalValidation();
 
+#ifdef HAS_ELEGANT_OTA
   // จัดการ OTA เว็บโฮสต์เครือข่ายภายใน LAN
   ElegantOTA.loop();
+#endif
 
   if (is_offline_mode) {
     // Status indicators

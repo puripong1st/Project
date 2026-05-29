@@ -112,7 +112,10 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 #ifndef WOKWI_SIM
 #include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
 #include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
+#if __has_include(<ElegantOTA.h>)
 #include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
+#define HAS_ELEGANT_OTA
+#endif
 #endif
 #include <SPI.h>
 #include <SPIFFS.h>
@@ -554,14 +557,16 @@ void performHTTPSOTA() {
 void startLocalServer() {
 #ifndef WOKWI_SIM
   if (!localServerStarted) {
+#ifdef HAS_ELEGANT_OTA
     // กำหนด ElegantOTA Web Endpoint & Callbacks
     ElegantOTA.begin(&localServer);
     ElegantOTA.onStart(onOTAStart);
     ElegantOTA.onEnd(onOTAEnd);
+#endif
 
     localServer.begin();
     localServerStarted = true;
-    DBG("Local web server started on port 80 with ElegantOTA.");
+    DBG("Local web server started on port 80.");
   }
 #endif
 }
@@ -1062,7 +1067,7 @@ void loop() {
   handleLocalValidation();
 #endif
   
-#ifndef WOKWI_SIM
+#ifdef HAS_ELEGANT_OTA
   ElegantOTA.loop();
 #endif
 
