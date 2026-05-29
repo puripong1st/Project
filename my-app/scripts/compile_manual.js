@@ -6,19 +6,38 @@ console.log("Checking dependencies...");
 try {
   require.resolve('marked');
 } catch (e) {
-  console.log("Installing 'marked' library for high-performance markdown compilation...");
+  console.log("Installing 'marked' library...");
   execSync('npm install marked --no-save', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
 }
 
 const { marked } = require('marked');
 
-// Configure marked options
-marked.setOptions({
-  gfm: true,
-  breaks: true,
-  headerIds: true,
-  mangle: false
-});
+// Custom HTML escaper
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// Intercept code blocks for Mermaid rendering and Prism syntax highlighting
+const renderer = {
+  code(codeBlock) {
+    // In newer versions of marked, codeBlock is an object containing text and lang
+    const codeText = typeof codeBlock === 'string' ? codeBlock : codeBlock.text;
+    const lang = typeof codeBlock === 'object' ? (codeBlock.lang || '') : '';
+    
+    if (lang === 'mermaid') {
+      return `<div class="mermaid">${codeText}</div>`;
+    }
+    
+    return `<pre><code class="language-${lang || 'text'}">${escapeHtml(codeText)}</code></pre>`;
+  }
+};
+
+marked.use({ renderer });
 
 const mdPath = path.join(__dirname, '..', '..', 'complete_system_manual_th.md');
 const htmlOutputPath = path.join(__dirname, '..', '..', 'complete_system_manual_th.html');
@@ -35,7 +54,7 @@ markdown = markdown.replace(/>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*\n>
 console.log("Compiling Markdown to HTML...");
 const rawHtmlContent = marked(markdown);
 
-console.log("Injecting premium responsive CSS, print styles, and interactive navigation...");
+console.log("Injecting premium responsive CSS (fully supporting Mobile & iPad), print styles, and interactive navigation...");
 
 const htmlTemplate = `<!DOCTYPE html>
 <html lang="th">
@@ -56,6 +75,7 @@ const htmlTemplate = `<!DOCTYPE html>
     :root {
       --primary: #7C3AED;      /* Purple */
       --primary-dark: #6D28D9;
+      --primary-pale: rgba(124, 58, 237, 0.05);
       --secondary: #DB2777;    /* Pink */
       --secondary-dark: #C2185B;
       --bg-primary: #F8FAFC;
@@ -75,6 +95,7 @@ const htmlTemplate = `<!DOCTYPE html>
       --text-main: #F1F5F9;
       --text-muted: #94A3B8;
       --border: #334155;
+      --primary-pale: rgba(139, 92, 246, 0.15);
       --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
     }
 
@@ -89,7 +110,7 @@ const htmlTemplate = `<!DOCTYPE html>
       font-family: var(--font-th);
       background-color: var(--bg-primary);
       color: var(--text-main);
-      line-height: 1.7;
+      line-height: 1.75;
       font-size: 15.5px;
       transition: background-color 0.3s, color 0.3s;
     }
@@ -103,6 +124,45 @@ const htmlTemplate = `<!DOCTYPE html>
       position: relative;
     }
 
+    /* Mobile Header Panel */
+    .mobile-nav-bar {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 56px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+      padding: 0 16px;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .mobile-logo {
+      font-weight: 800;
+      font-size: 17px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .btn-hamburger {
+      background: var(--primary-pale);
+      border: 1px solid var(--border);
+      color: var(--primary);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     /* Sidebar Navigation */
     .sidebar {
       width: 320px;
@@ -113,8 +173,9 @@ const htmlTemplate = `<!DOCTYPE html>
       background-color: var(--bg-card);
       padding: 24px;
       overflow-y: auto;
-      z-index: 100;
+      z-index: 99;
       flex-shrink: 0;
+      transition: transform 0.3s ease;
     }
 
     .sidebar-header {
@@ -125,7 +186,7 @@ const htmlTemplate = `<!DOCTYPE html>
     }
 
     .sidebar-logo {
-      font-size: 20px;
+      font-size: 21px;
       font-weight: 800;
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       -webkit-background-clip: text;
@@ -193,6 +254,7 @@ const htmlTemplate = `<!DOCTYPE html>
       padding: 48px 64px;
       overflow-x: hidden;
       background-color: var(--bg-primary);
+      min-width: 0;
     }
 
     .content-card {
@@ -240,7 +302,7 @@ const htmlTemplate = `<!DOCTYPE html>
 
     p, li {
       color: var(--text-main);
-      font-size: 15px;
+      font-size: 15.5px;
     }
 
     ul, ol {
@@ -263,12 +325,20 @@ const htmlTemplate = `<!DOCTYPE html>
       text-decoration: underline;
     }
 
-    /* Tables */
+    /* Tables responsive wrapping */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 28px 0;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 28px 0;
       font-size: 14px;
+      min-width: 600px;
     }
 
     th, td {
@@ -304,6 +374,7 @@ const htmlTemplate = `<!DOCTYPE html>
       color: var(--primary-dark);
       padding: 2px 6px;
       border-radius: 6px;
+      word-break: break-word;
     }
 
     body.dark-mode code {
@@ -316,6 +387,20 @@ const htmlTemplate = `<!DOCTYPE html>
       color: inherit;
       padding: 0;
       border-radius: 0;
+      word-break: normal;
+    }
+
+    /* Mermaid Diagrams Styling */
+    .mermaid {
+      background: white !important;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin: 28px 0;
+      display: flex;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      overflow-x: auto;
     }
 
     /* Alert Boxes (Callouts) */
@@ -376,6 +461,23 @@ const htmlTemplate = `<!DOCTYPE html>
       transform: translateY(-1px);
     }
 
+    /* Backdrop Sidebar Overlay for mobile */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 98;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+
     /* Back to Top button */
     .back-to-top {
       position: fixed;
@@ -404,16 +506,63 @@ const htmlTemplate = `<!DOCTYPE html>
       visibility: visible;
     }
 
-    /* Responsive adjustments */
+    /* 📱📱 HIGH RESPONSIVENESS FOR TABLET (iPad) & MOBILE 📱📱 */
     @media (max-width: 1024px) {
+      .mobile-nav-bar {
+        display: flex; /* Show top action bar on Mobile/iPad */
+      }
+
+      .app-container {
+        padding-top: 56px; /* Offset for top bar */
+      }
+
       .sidebar {
-        display: none; /* Hide sidebar on small tablets/mobile */
+        position: fixed;
+        top: 0;
+        left: 0;
+        transform: translateX(-100%); /* Hide sidebar offscreen initially */
+        z-index: 999;
+        height: 100vh;
+        box-shadow: 10px 0 25px rgba(0,0,0,0.1);
       }
+
+      .sidebar.active {
+        transform: translateX(0); /* Slide in sidebar */
+      }
+
       .main-content {
-        padding: 24px;
+        padding: 24px 20px;
       }
+
       .content-card {
-        padding: 24px;
+        padding: 32px 24px;
+        border-radius: 14px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      h2 {
+        font-size: 20px;
+        margin-top: 36px;
+      }
+
+      h3 {
+        font-size: 17px;
+      }
+
+      pre {
+        padding: 14px !important;
+      }
+
+      code {
+        font-size: 12.5px;
+      }
+      
+      .header-panel {
+        margin-top: 8px;
+        justify-content: center;
       }
     }
 
@@ -424,7 +573,7 @@ const htmlTemplate = `<!DOCTYPE html>
         color: black !important;
         font-size: 12pt;
       }
-      .sidebar, .header-panel, .back-to-top, .sidebar-search {
+      .sidebar, .header-panel, .back-to-top, .sidebar-search, .mobile-nav-bar, .sidebar-overlay {
         display: none !important;
       }
       .main-content {
@@ -444,6 +593,11 @@ const htmlTemplate = `<!DOCTYPE html>
         border: 1px solid #cbd5e1 !important;
         page-break-inside: avoid;
       }
+      .mermaid {
+        border: 1px solid var(--border) !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+      }
       h1, h2, h3 {
         page-break-after: avoid;
         color: black !important;
@@ -460,16 +614,27 @@ const htmlTemplate = `<!DOCTYPE html>
 </head>
 <body>
 
+  <!-- Top bar for Mobile & iPad -->
+  <header class="mobile-nav-bar">
+    <button class="btn-hamburger" onclick="toggleSidebar()">
+      ☰ สารบัญ / เมนู
+    </button>
+    <div class="mobile-logo">SmartAccess Manual</div>
+  </header>
+
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
   <div class="app-container">
     <!-- Sidebar Left -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="appSidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">SmartAccess</div>
         <div class="sidebar-subtitle">Thesis System Manual</div>
       </div>
       <input type="text" id="searchInput" class="sidebar-search" placeholder="🔍 ค้นหาหัวข้อคู่มือ...">
       <ul class="toc-menu" id="tocMenu">
-        <!-- Will be populated dynamically or static list -->
+        <!-- Will be populated dynamically -->
       </ul>
     </aside>
 
@@ -503,13 +668,14 @@ const htmlTemplate = `<!DOCTYPE html>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
 
-  <!-- Mermaid.js for Diagrams -->
+  <!-- Mermaid.js for Dynamic Diagrams -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script>
     mermaid.initialize({
       startOnLoad: true,
       theme: 'default',
-      securityLevel: 'loose'
+      securityLevel: 'loose',
+      flowchart: { useWidth: true, htmlLabels: true }
     });
   </script>
 
@@ -530,10 +696,33 @@ const htmlTemplate = `<!DOCTYPE html>
         a.href = "#" + h.id;
         a.title = h.textContent;
         a.textContent = h.textContent;
+        // Close sidebar on click on mobile
+        a.addEventListener("click", () => {
+          if (window.innerWidth <= 1024) {
+            toggleSidebar();
+          }
+        });
         li.appendChild(a);
         tocMenu.appendChild(li);
       });
+
+      // Wrap tables in responsive wrapper div
+      const tables = document.querySelectorAll("#compiledContent table");
+      tables.forEach(table => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "table-container";
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      });
     });
+
+    // Mobile Sidebar toggle function
+    function toggleSidebar() {
+      const sidebar = document.getElementById("appSidebar");
+      const overlay = document.getElementById("sidebarOverlay");
+      sidebar.classList.toggle("active");
+      overlay.classList.toggle("active");
+    }
 
     // Simple search inside Sidebar
     const searchInput = document.getElementById("searchInput");
@@ -576,4 +765,4 @@ const htmlTemplate = `<!DOCTYPE html>
 
 console.log(`Writing fully pre-rendered static HTML to: ${htmlOutputPath}`);
 fs.writeFileSync(htmlOutputPath, htmlTemplate, 'utf8');
-console.log("Success! Compiled complete_system_manual_th.html is ready!");
+console.log("Success! Compiled complete_system_manual_th.html with full Mobile/iPad support and Mermaid renderer is ready!");
