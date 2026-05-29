@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-28 16:05:00 (+07:00)  
+อัปเดตล่าสุด: 2026-05-29 14:00:00 (+07:00)  
 โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -224,9 +224,20 @@ Project/
     app/
       page.tsx                         หน้าเว็บลงทะเบียนของนักศึกษา
       admin/login/page.tsx             หน้าเข้าสู่ระบบ Admin
-      admin/dashboard/page.tsx         แดชบอร์ดผู้ดูแลระบบ
+      admin/dashboard/
+        layout.tsx                     Shell หลักของ Dashboard (Sidebar, Header, Context)
+        DashboardContext.tsx           Shared state management สำหรับทุก Tab
+        page.tsx                       หน้าเริ่มต้น (redirect ไป pending)
+        pending/page.tsx               แท็บรายการรออนุมัติ
+        rooms/page.tsx                 แท็บห้องเรียน & ESP32
+        all/page.tsx                   แท็บทำเนียบ & ประวัติเข้าออก
+        admins/page.tsx                แท็บผู้ดูแลระบบ
+        settings/page.tsx              แท็บตั้งค่า Discord Webhook
+        health/page.tsx                แท็บสถานะเซิร์ฟเวอร์ & DB
+        guide/page.tsx                 แท็บคู่มือการใช้งานระบบ
       esp32-preview/page.tsx           หน้าจำลองจอ ESP32
       api/                             API ทั้งหมดของระบบ
+        system/health/route.ts         Health check API (DB, Memory, Vercel, API probes)
     lib/
       db.ts                            เชื่อม PostgreSQL และสร้างตาราง
       auth.ts                          JWT และ cookie session ของ Admin
@@ -436,12 +447,13 @@ https://project-sigma-ivory-21.vercel.app/admin/login
 
 | แท็บ | ใช้ทำอะไร |
 |---|---|
-| คิวรอตรวจสอบ | ดูคำขอใหม่, กดอนุมัติหรือปฏิเสธ |
-| ทำเนียบและประวัติ | ค้นหานักศึกษา, เปิดประตูรายบุคคล, export PDF, ดู access logs |
-| ผู้ดูแลระบบ | เพิ่มหรือลบ admin |
-| ห้องเรียนและ ESP32 | เพิ่มห้อง, ตั้ง IP, ทดสอบบอร์ด, ปลดล็อกด่วน |
-| ตั้งค่าระบบ | ตั้ง auto-approve, auto-fill, Discord webhook, การแสดงรหัสนักศึกษา |
-| คู่มือ | คู่มือย่อใน dashboard |
+| รายการรออนุมัติ | ดูคำขอใหม่, กดอนุมัติหรือปฏิเสธ |
+| ห้องเรียน & ESP32 | เพิ่มห้อง, ตั้ง IP, ทดสอบบอร์ด, ปลดล็อกด่วน, ตรวจสอบ heartbeat |
+| ทำเนียบ & ประวัติเข้าออก | ค้นหานักศึกษา, เปิดประตูรายบุคคล, export PDF, ดู access logs |
+| ผู้ดูแลระบบ | เพิ่มหรือลบ admin, จัดการสิทธิ์ห้องเรียน |
+| ตั้งค่าระบบ & Webhook | ตั้งค่า Discord Webhook ส่วนกลาง 4 หมวดหมู่ |
+| สถานะเซิร์ฟเวอร์ & DB | ตรวจสอบสุขภาพระบบ, Database latency, Vercel deployment, API status, Memory |
+| คู่มือการใช้งานระบบ | คู่มือย่อใน dashboard |
 
 ### 5.4 อนุมัติคำขอ
 
@@ -1658,6 +1670,17 @@ flowchart LR
 - ใช้สำหรับเคสนักศึกษาโดน rate-limit (เช่น พยายามใช้ bypass เกิน 3 ครั้ง/นาที)
 - เรียก endpoint reset rate-limit ตาม `student_id` + IP
 
+### 23.7 สถานะเซิร์ฟเวอร์ & DB (Health Monitor)
+
+แท็บสถานะเซิร์ฟเวอร์แสดงข้อมูลสุขภาพระบบแบบเรียลไทม์ แบ่งเป็น 4 ส่วนย่อย:
+
+1. **ภาพรวม (Overview)**: แสดงสถานะฐานข้อมูล (Online/Offline + Latency), Rate Limiter, Memory (RSS/Heap), เวลาเซิร์ฟเวอร์, QR Scan ล่าสุด, สภาพแวดล้อมการทำงาน (Production/Development)
+2. **Vercel**: แสดงข้อมูล Runtime (Region, Git SHA, Git Branch), สถานะ Deployment ล่าสุด (URL, เวลาสร้าง, Git commit), ต้องตั้งค่า VERCEL_TOKEN และ VERCEL_PROJECT_ID
+3. **API Status**: ทดสอบความเร็ว (Latency) ของ API endpoints หลักอัตโนมัติ พร้อม Progress bar แสดงผล
+4. **Runtime**: ข้อมูล Node.js version, Platform, Architecture, Process uptime, Memory breakdown แบบกราฟ
+
+ข้อมูลจะรีเฟรชอัตโนมัติทุก 30 วินาที ดึงจาก `/api/system/health`
+
 ---
 
 
@@ -2435,6 +2458,12 @@ T+4100    | resetCache → loop() ปกติ
 | `INITIAL_ADMIN_USERNAME` | dev | admin | ใช้ตอน seed |
 | `INITIAL_ADMIN_PASSWORD` | dev | — | ใช้ตอน seed |
 | `INITIAL_ADMIN_FULL_NAME` | dev | — | ใช้ตอน seed |
+| `VERCEL_TOKEN` | ทางเลือก | — | โทเคนสิทธิ์เข้าถึง Vercel API เพื่อดึงสถานะ Deployment (สร้างจาก Vercel Dashboard → Settings → Tokens) |
+| `VERCEL_PROJECT_ID` | ทางเลือก | — | รหัสโปรเจกต์ Vercel (ดูจาก Vercel Dashboard → Project Settings → General → Project ID) |
+| `KV_URL` | ทางเลือก | — | URL เชื่อมต่อ Vercel KV (Redis) สำหรับ cache |
+| `KV_REST_API_URL` | ทางเลือก | — | REST API endpoint ของ Vercel KV |
+| `KV_REST_API_TOKEN` | ทางเลือก | — | Token สำหรับเรียก Vercel KV REST API |
+| `KV_REST_API_READ_ONLY_TOKEN` | ทางเลือก | — | Token แบบอ่านอย่างเดียวสำหรับ Vercel KV |
 
 > **กฎเหล็ก**: ใน production ต้องตั้ง `ALLOW_DEV_SEED=false` และ `JWT_SECRET`/`ESP32_API_KEY` ต้องเป็นค่าสุ่ม ≥ 32 ตัวอักษร
 
@@ -2574,6 +2603,7 @@ flowchart LR
     M3["Discord channel<br/>รับ event realtime"] --> ALERT
     M4["heartbeat<br/>room_last_seen"] --> ALERT
     M5["Dashboard /api/system/status"] --> ALERT
+    M6["Health Monitor<br/>/api/system/health"] --> ALERT
 ```
 
 ### 39.2 ตัวชี้วัด (KPI)
@@ -2584,6 +2614,7 @@ flowchart LR
 | ESP32 uptime | ≥ 99% | heartbeat / รวม 24 ชม. |
 | ประตูเปิดสำเร็จ | ≥ 99.5% | นับจาก `action=door_opened` vs `door_failed` |
 | Login fail rate | < 2% | rate-limit log |
+| Health endpoint latency | < 3000ms | /api/system/health response time including all probes |
 
 ---
 
@@ -3646,6 +3677,37 @@ await fetch('/api/system/settings', {
 ### 47.8 Tab "คู่มือ"
 
 แสดง markdown ที่อธิบายระบบให้ admin ใหม่ — แต่จริง ๆ คู่มือที่คุณกำลังอ่านนี่ละเอียดกว่ามาก
+
+### 47.9 Tab "สถานะเซิร์ฟเวอร์ & DB" (Health Monitor)
+
+หน้าตรวจสอบสุขภาพระบบเรียลไทม์ ใช้ API `/api/system/health` ดึงข้อมูลทุก 30 วินาที
+
+**API Response Structure:**
+```json
+{
+  "status": "healthy | degraded | unhealthy",
+  "components": {
+    "database": { "status": "up|down", "latency_ms": 12, "total_students": 50, "total_logs": 200 },
+    "rate_limiter": { "status": "up|down" },
+    "memory": { "rss_mb": 85, "heap_used_mb": 45, "heap_total_mb": 64, "external_mb": 2 }
+  },
+  "vercel_runtime": { "region": "sin1", "environment": "production", "git_sha": "abc123", "is_vercel": true },
+  "node_runtime": { "version": "v20.x", "platform": "linux", "uptime_seconds": 3600 },
+  "vercel_deployment": { "state": "READY", "url": "...", "created": "...", "git_sha": "..." },
+  "api_probes": [ { "endpoint": "/api/system/health", "status": "up", "latency_ms": 50 } ]
+}
+```
+
+**UI แบ่ง 4 แท็บย่อย:**
+1. ภาพรวม — แสดง Metric cards 6 ใบ (Database, Rate Limiter, Memory, Server Time, Last QR Scan, Environment)
+2. Vercel — แสดง Runtime info + Deployment status ล่าสุด
+3. API Status — แสดง API endpoint latency พร้อม progress bar
+4. Runtime — แสดง Node.js info + Memory breakdown กราฟ
+
+**สถานะรวมระบบ:**
+- 🟢 healthy: DB ปกติ + latency < 500ms
+- 🟡 degraded: DB ปกติแต่ latency > 500ms หรือ rate limiter ล่ม
+- 🔴 unhealthy: DB ล่ม
 
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p>
 
