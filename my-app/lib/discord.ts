@@ -12,7 +12,10 @@ export type DiscordEventType =
   | "admin_logout"
   | "admin_login_failed"
   | "firmware_deployed"
-  | "firmware_ota_triggered";
+  | "firmware_ota_triggered"
+  | "settings_updated"
+  | "admin_modified"
+  | "pdf_exported";
 
 export interface DiscordEmbed {
   title: string;
@@ -345,6 +348,55 @@ export function buildEventMessage(
           { name: "⏰ เวลาเริ่มดาวน์โหลด", value: now, inline: false },
         ],
         footer: { text: "SmartAccess OTA Firmware Control Center" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "settings_updated":
+      embed = {
+        title: "⚙️ อัปเดตการตั้งค่าระบบเสร็จสมบูรณ์",
+        description: `มีการแก้ไขข้อมูลตัวแปรระบบและการตั้งค่าโดยแอดมิน`,
+        color: COLORS.warning,
+        fields: [
+          { name: "👨‍💼 ดำเนินการโดย", value: data.adminName || "-", inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "📝 รายละเอียดการเปลี่ยนการตั้งค่า", value: data.reason || "ไม่มีการเปลี่ยนแปลงค่าสำคัญ", inline: false },
+          { name: "⏰ เวลาดำเนินการ", value: now, inline: false },
+        ],
+        footer: { text: "SmartAccess System Settings Log" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "admin_modified":
+      embed = {
+        title: "👥 บันทึกการจัดการสิทธิ์แอดมิน (Admin User Audit)",
+        description: `มีการสร้าง แก้ไข หรือถอนสิทธิ์ผู้ดูแลระบบ/เจ้าหน้าที่ดำเนินการ`,
+        color: COLORS.purple,
+        fields: [
+          { name: "👨‍💼 ดำเนินการโดย", value: data.adminName || "-", inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "📝 รายละเอียดการทำรายการ", value: data.reason || "-", inline: false },
+          { name: "⏰ เวลาดำเนินการ", value: now, inline: false },
+        ],
+        footer: { text: "SmartAccess Security Directory Logs" },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "pdf_exported":
+      embed = {
+        title: "📥 ส่งออกรายงานระบบสำเร็จ (PDF Report Exported)",
+        description: `มีผู้ดูแลระบบทำการส่งออกเอกสารรายงานข้อมูลความปลอดภัย PDF ของระบบ`,
+        color: COLORS.success,
+        fields: [
+          { name: "👨‍💼 ผู้ส่งออกรายงาน", value: `${data.adminName || "-"} (Username: ${data.adminUsername || "-"})`, inline: true },
+          { name: "🛡️ สิทธิ์การใช้งาน (Role)", value: data.adminRole || "-", inline: true },
+          { name: "🌐 IP Address", value: `\`${data.ip || "ไม่ทราบ"}\``, inline: true },
+          { name: "📝 รายละเอียดการส่งออก", value: data.reason || "-", inline: false },
+          { name: "⏰ เวลาดำเนินการ", value: now, inline: false },
+        ],
+        footer: { text: "SmartAccess Security Report Center" },
         timestamp: new Date().toISOString(),
       };
       break;

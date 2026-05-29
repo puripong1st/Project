@@ -283,9 +283,12 @@ export async function POST(req: NextRequest) {
 
     // ยิงแจ้งเตือนเข้าระบบ Discord/Telegram/LINE logs พร้อมรายละเอียดความเปลี่ยนแปลง
     try {
-      await sendDiscordNotification("esp32_offline", {
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                  req.headers.get("x-real-ip") || "ไม่ทราบ";
+      await sendDiscordNotification("settings_updated", {
         adminName: admin.full_name,
-        reason: `แอดมินอัปเดตการตั้งค่าระบบเรียบร้อยแล้ว รายละเอียดความเปลี่ยนแปลงมีดังนี้:\n${changelogText}`,
+        ip,
+        reason: changelogText,
       }).catch((err) => console.error("[Settings Notification] failed:", err));
     } catch {}
 

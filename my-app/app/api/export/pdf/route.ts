@@ -5,6 +5,7 @@ import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { generateStudentsPDF, generateSingleStudentPDF } from "@/lib/pdf";
 import { getClientIp } from "@/lib/client-ip";
+import { sendDiscordNotification } from "@/lib/discord";
 
 let initialized = false;
 async function ensureInit() {
@@ -94,6 +95,15 @@ export async function GET(req: NextRequest) {
         ]
       );
 
+      // ส่งแจ้งเตือนส่งออกรายงานรายบุคคลอย่างละเอียด
+      await sendDiscordNotification("pdf_exported", {
+        adminName: admin.full_name,
+        adminUsername: admin.username,
+        adminRole: admin.role,
+        ip,
+        reason: `📄 **ส่งออกประวัติรายบุคคลสำเร็จ**\n• ข้อมูลผู้ปฏิบัติการ: **${admin.full_name}** (สิทธิ์: **${admin.role}**)\n• รายงานของนักศึกษา: **${student.title}${student.first_name} ${student.last_name}**\n• รหัสนักศึกษา: \`${student.student_id}\`\n• ห้องเรียนปฏิบัติการ: **${student.requested_room || 'default'}**`,
+      }).catch(err => console.error("[Single Student PDF Notification] failed:", err));
+
       const cleanName = `${student.first_name}_${student.last_name}`.replace(/\s+/g, "_");
       const filename = `student_card_${student.student_id}_${cleanName}_${formattedDate}.pdf`;
 
@@ -171,6 +181,15 @@ export async function GET(req: NextRequest) {
           })
         ]
       );
+
+      // ส่งแจ้งเตือนส่งออกรายงานรายชื่อรวมอย่างละเอียด
+      await sendDiscordNotification("pdf_exported", {
+        adminName: admin.full_name,
+        adminUsername: admin.username,
+        adminRole: admin.role,
+        ip,
+        reason: `📑 **ส่งออกเอกสารรายงานข้อมูลรวมสำเร็จ**\n• ข้อมูลผู้ปฏิบัติการ: **${admin.full_name}** (สิทธิ์: **${admin.role}**)\n• เงื่อนไขการกรอง (Filter): **${filter}**\n• ช่วงเวลาค้นหา: **${startDate || "เริ่มต้น"}** ถึง **${endDate || "ปัจจุบัน"}**\n• จำนวนข้อมูลทั้งหมด: **${students.length}** รายการ`,
+      }).catch(err => console.error("[List Student PDF Notification] failed:", err));
 
       const filename = `smartaccess_students_report_${filter}_${formattedDate}.pdf`;
 

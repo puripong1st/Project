@@ -4,6 +4,7 @@ import { getPool, initDatabase, AdminRow } from "@/lib/db";
 import { getAdminFromCookie, validatePasswordPolicy, validateUsername } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import bcrypt from "bcryptjs";
+import { sendDiscordNotification } from "@/lib/discord";
 
 let initialized = false;
 async function ensureInit() {
@@ -88,6 +89,25 @@ export async function POST(req: NextRequest) {
       "INSERT INTO admin_users (username, password_hash, full_name, role, allowed_rooms) VALUES ($1, $2, $3, $4, $5)",
       [username, hash, sanitizedFullName, role, sanitizedAllowedRooms]
     );
+
+    // บันทึก Log ละเอียดลง access_logs
+    const logText = `สร้างบัญชีผู้ดูแลระบบใหม่: ${sanitizedFullName} (Username: ${username}, Role: ${role}, ขอบเขตห้อง: ${sanitizedAllowedRooms || 'ทุกห้องเรียน (*)'})`;
+    await pool.query(
+      "INSERT INTO access_logs (action, performed_by, notes) VALUES ('admin_created', $1, $2)",
+      [admin.id, logText]
+    ).catch(err => console.error("[Admin Create Log] failed:", err));
+
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                req.headers.get("x-real-ip") || "ไม่ทราบ";
+
+    // ส่งแจ้งเตือนแบบละเอียด
+    await sendDiscordNotification("admin_modified", {
+      adminName: admin.full_name,
+      adminUsername: admin.username,
+      adminRole: admin.role,
+      ip,
+      reason: `➕ ลงทะเบียนเพิ่มสิทธิ์ผู้ดูแลระบบใหม่สำเร็จ:\n• บัญชีที่สร้าง: **${sanitizedFullName}** (Username: \`${username}\`)\n• สิทธิ์การทำงาน (Role): **${role}**\n• ขอบเขตห้องเรียนปฏิบัติการ: **${sanitizedAllowedRooms || "ทุกห้องเรียน (*)"}**`,
+    }).catch(err => console.error("[Admin Create Notification] failed:", err));
 
     return NextResponse.json({ success: true, message: "สร้าง Admin สำเร็จ" }, { status: 201 });
   } catch (error: any) {
