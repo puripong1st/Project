@@ -81,7 +81,6 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 // Adafruit GFX Library
 // Adafruit ILI9341
 // ArduinoJson@6.21.3
-// ElegantOTA@2.2.9
 // QRCode`
     : `// #define WOKWI_SIM  // Uncomment ONLY when running in Wokwi Simulator — NEVER in production!`;
   return `/*
