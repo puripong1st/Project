@@ -89,13 +89,13 @@ function PendingCountdown({ registeredAt }: { registeredAt: string }) {
   const bg = expired
     ? "linear-gradient(135deg, rgba(239,68,68,0.18), rgba(220,38,38,0.12))"
     : urgent
-    ? "linear-gradient(135deg, rgba(249,115,22,0.18), rgba(234,88,12,0.12))"
-    : "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(219,39,119,0.12))";
+      ? "linear-gradient(135deg, rgba(249,115,22,0.18), rgba(234,88,12,0.12))"
+      : "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(219,39,119,0.12))";
   const border = expired
     ? "1px solid rgba(239,68,68,0.45)"
     : urgent
-    ? "1px solid rgba(249,115,22,0.45)"
-    : "1px solid rgba(124,58,237,0.3)";
+      ? "1px solid rgba(249,115,22,0.45)"
+      : "1px solid rgba(124,58,237,0.3)";
   const color = expired ? "#DC2626" : urgent ? "#EA580C" : "var(--smartaccess-purple-dark, #5B21B6)";
 
   return (
@@ -1060,8 +1060,8 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
 // ─── Adaptive Polling ────────────────────────────────────────────────────────
 // เร่งความเร็ว polling เมื่อตรวจพบกิจกรรม ชะลอลงเมื่อ idle ประหยัด API call
-const unsigned long POLL_FAST   = 500;   // ms — มีคำสั่งรอ / เพิ่งปลดล็อก
-const unsigned long POLL_NORMAL = 2000;  // ms — ทำงานปกติ
+const unsigned long POLL_FAST   = 200;   // ms — มีคำสั่งรอ / เพิ่งปลดล็อก
+const unsigned long POLL_NORMAL = 1000;  // ms — ทำงานปกติ
 const unsigned long POLL_SLOW   = 5000;  // ms — idle ต่อเนื่อง 5 รอบ
 unsigned long currentPollDelay  = POLL_NORMAL;
 int idleCycles = 0; // นับรอบที่ไม่มีกิจกรรม
@@ -2711,7 +2711,7 @@ void handleLocalWebServerRequest() {
       const d = await r.json();
       const list = d.students || [];
       setPending(list);
-      
+
       // Trigger auditory bell chime if queue size increases
       if (list.length > lastPendingCountRef.current) {
         if (audioEnabled) {
@@ -3420,13 +3420,13 @@ void handleLocalWebServerRequest() {
                                 showToast(item.isRegistration ? "🚀 เปิดหน้าทดสอบสแกนลงทะเบียนสำเร็จ" : "🌐 เปิดหน้าทดสอบ API เรียบร้อย", "success");
                               }}
                               className="btn-ghost"
-                              style={{ 
-                                padding: "8px 12px", 
-                                fontSize: 11, 
-                                borderRadius: 8, 
-                                fontWeight: 700, 
-                                borderColor: item.isRegistration ? "var(--edu-pink)" : "var(--smartaccess-purple-light)", 
-                                color: item.isRegistration ? "var(--edu-pink)" : "var(--smartaccess-purple-dark)" 
+                              style={{
+                                padding: "8px 12px",
+                                fontSize: 11,
+                                borderRadius: 8,
+                                fontWeight: 700,
+                                borderColor: item.isRegistration ? "var(--edu-pink)" : "var(--smartaccess-purple-light)",
+                                color: item.isRegistration ? "var(--edu-pink)" : "var(--smartaccess-purple-dark)"
                               }}
                             >
                               {item.btnLabel}
@@ -4114,7 +4114,7 @@ void handleLocalWebServerRequest() {
                 <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--smartaccess-purple)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   🏥 สเตตัสระบบกลาง:
                 </span>
-                
+
                 {/* Database status */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
                   <span className="badge badge-approved" style={{ display: "inline-flex", padding: "2px 8px", fontSize: 10, background: systemStatus.postgresql.online ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)", color: systemStatus.postgresql.online ? "#10B981" : "#EF4444", borderColor: systemStatus.postgresql.online ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)" }}>
@@ -4227,8 +4227,8 @@ void handleLocalWebServerRequest() {
                       {pending.length === 0 ? "ตรวจสอบรายการรออนุมัติเสร็จสิ้น" : "ไม่มีคิวค้างสำหรับห้องเรียนนี้"}
                     </h3>
                     <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginTop: 6 }}>
-                      {pending.length === 0 
-                        ? "ไม่มีคำขอเปิดประตูค้างอยู่ ระบบจะคอยอัปเดตข้อมูลผู้ยื่นคำขอใหม่ทุกๆ 10 วินาที" 
+                      {pending.length === 0
+                        ? "ไม่มีคำขอเปิดประตูค้างอยู่ ระบบจะคอยอัปเดตข้อมูลผู้ยื่นคำขอใหม่ทุกๆ 10 วินาที"
                         : "ไม่มีคำขอรออนุมัติสำหรับรหัสห้องที่ท่านเลือกกรองอยู่ในขณะนี้"}
                     </p>
                   </div>
@@ -4515,20 +4515,20 @@ void handleLocalWebServerRequest() {
                             display: "flex",
                             flexDirection: "column",
                             gap: 16,
-                            background: isRecentlyUnlocked 
-                              ? "rgba(16, 185, 129, 0.03)" 
+                            background: isRecentlyUnlocked
+                              ? "rgba(16, 185, 129, 0.03)"
                               : "var(--bg-secondary)",
-                            border: isRecentlyUnlocked 
-                              ? "2px solid #10B981" 
-                              : connectionStatus === "online" 
-                                ? "1.5px solid rgba(16, 185, 129, 0.25)" 
+                            border: isRecentlyUnlocked
+                              ? "2px solid #10B981"
+                              : connectionStatus === "online"
+                                ? "1.5px solid rgba(16, 185, 129, 0.25)"
                                 : connectionStatus === "degraded"
                                   ? "1.5px solid rgba(245, 158, 11, 0.25)"
                                   : "1px solid var(--border)",
-                            boxShadow: isRecentlyUnlocked 
-                              ? "0 8px 30px rgba(16, 185, 129, 0.15)" 
-                              : isOnline 
-                                ? "0 8px 24px rgba(16, 185, 129, 0.04)" 
+                            boxShadow: isRecentlyUnlocked
+                              ? "0 8px 30px rgba(16, 185, 129, 0.15)"
+                              : isOnline
+                                ? "0 8px 24px rgba(16, 185, 129, 0.04)"
                                 : "var(--shadow-sm)",
                             transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
                             position: "relative",
@@ -4556,18 +4556,18 @@ void handleLocalWebServerRequest() {
                             </div>
 
                             {/* Active Diagnostics Telemetry badge */}
-                            <span 
-                              className={`badge`} 
-                              style={{ 
-                                display: "inline-flex", 
-                                alignItems: "center", 
+                            <span
+                              className={`badge`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
                                 gap: 4,
                                 padding: "4px 8px",
                                 borderRadius: 6,
                                 fontSize: 11,
                                 fontWeight: 800,
-                                background: connectionStatus === "online" 
-                                  ? "rgba(16, 185, 129, 0.08)" 
+                                background: connectionStatus === "online"
+                                  ? "rgba(16, 185, 129, 0.08)"
                                   : connectionStatus === "degraded"
                                     ? "rgba(245, 158, 11, 0.08)"
                                     : "rgba(220, 68, 68, 0.08)",
@@ -4584,19 +4584,19 @@ void handleLocalWebServerRequest() {
                               }}
                               title={`สัญญาณบอร์ดล่าสุด: ${lastSeenLabel}`}
                             >
-                              <span 
-                                className={connectionStatus === "online" ? 'animate-pulse-ring' : ''} 
-                                style={{ 
-                                  width: 6, 
-                                  height: 6, 
-                                  borderRadius: "50%", 
-                                  background: connectionStatus === "online" 
-                                    ? "#059669" 
+                              <span
+                                className={connectionStatus === "online" ? 'animate-pulse-ring' : ''}
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: "50%",
+                                  background: connectionStatus === "online"
+                                    ? "#059669"
                                     : connectionStatus === "degraded"
                                       ? "#D97706"
-                                      : "#DC2626", 
-                                  display: "inline-block" 
-                                }} 
+                                      : "#DC2626",
+                                  display: "inline-block"
+                                }}
                               />
                               {connectionStatus === "online" ? "🟢 ONLINE" : connectionStatus === "degraded" ? "🟡 SLOW (LATENCY)" : "🔴 OFFLINE"}
                             </span>
@@ -4670,8 +4670,8 @@ void handleLocalWebServerRequest() {
                                 alignItems: "center",
                                 justifyContent: "center",
                                 fontWeight: 700,
-                                background: isRecentlyUnlocked 
-                                  ? "#10B981" 
+                                background: isRecentlyUnlocked
+                                  ? "#10B981"
                                   : "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
                                 border: "none",
                                 boxShadow: isRecentlyUnlocked ? "0 4px 12px rgba(16, 185, 129, 0.3)" : "none",
@@ -4694,7 +4694,7 @@ void handleLocalWebServerRequest() {
                               style={{ padding: "10px", borderRadius: 10, color: "var(--smartaccess-purple)", borderColor: "var(--smartaccess-purple-light)", display: "flex", alignItems: "center", justifyContent: "center" }}
                               title="ตั้งค่า API & คัดลอกโค้ด Arduino บอร์ดห้องนี้"
                             >
-                              
+
                             </button>
                           </div>
 
@@ -5498,7 +5498,7 @@ void handleLocalWebServerRequest() {
                                       style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--smartaccess-purple)" }}
                                       title="แก้ไขขอบเขตสิทธิ์"
                                     >
-                                      
+
                                     </button>
                                     {a.id !== user.id && (
                                       <button
@@ -5582,7 +5582,7 @@ void handleLocalWebServerRequest() {
                               ทุกห้องเรียน (*)
                             </label>
                           </div>
-                          
+
                           {!newAdminAllowedRooms.includes("*") && (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
                               {roomsList.map(r => (
@@ -5648,20 +5648,20 @@ void handleLocalWebServerRequest() {
                       >
                         รีเฟรชสถานะบอร์ด
                       </button>
-                    <button onClick={saveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
-                      {settingsLoading ? "กำลังบันทึก..." : "บันทึกห้องทั้งหมด"}
-                    </button>
+                      <button onClick={saveSettings} disabled={settingsLoading} className="btn-primary" style={{ borderRadius: 8, padding: "11px 18px", fontSize: 13 }}>
+                        {settingsLoading ? "กำลังบันทึก..." : "บันทึกห้องทั้งหมด"}
+                      </button>
                     </div>
                   </div>
 
                   {/* Dynamic SVG Analytics Dashboard - Zero Dependency (2026-05) */}
-                  <div 
-                    className="premium-card animate-fade-in" 
-                    style={{ 
-                      padding: 24, 
-                      marginTop: 20, 
-                      background: "var(--bg-secondary)", 
-                      border: "1.5px solid var(--smartaccess-purple-pale)", 
+                  <div
+                    className="premium-card animate-fade-in"
+                    style={{
+                      padding: 24,
+                      marginTop: 20,
+                      background: "var(--bg-secondary)",
+                      border: "1.5px solid var(--smartaccess-purple-pale)",
                       borderRadius: 16,
                       boxShadow: "var(--shadow-md)"
                     }}
@@ -5676,7 +5676,7 @@ void handleLocalWebServerRequest() {
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
-                      
+
                       {/* Chart 1: Hour Distribution */}
                       <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12 }}>
                         <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
@@ -5700,15 +5700,15 @@ void handleLocalWebServerRequest() {
                               return (
                                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, height: "100%", justifyContent: "flex-end" }}>
                                   <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--text-secondary)", marginBottom: 4 }}>{cnt}</span>
-                                  <div 
-                                    style={{ 
-                                      width: "100%", 
-                                      height: `${Math.max(pct, 5)}%`, 
+                                  <div
+                                    style={{
+                                      width: "100%",
+                                      height: `${Math.max(pct, 5)}%`,
                                       background: "linear-gradient(to top, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
                                       borderRadius: "4px 4px 0 0",
                                       transition: "height 0.3s ease",
                                       minHeight: cnt > 0 ? 6 : 2
-                                    }} 
+                                    }}
                                     title={`ช่วงเวลา ${hrLabel}:00 น. | ทั้งหมด ${cnt} ครั้ง`}
                                   />
                                   <span style={{ fontSize: 9.5, color: "var(--text-secondary)", marginTop: 6, fontWeight: 700 }}>{hrLabel}</span>
@@ -5741,7 +5741,7 @@ void handleLocalWebServerRequest() {
                                   {/* Simple dynamic SVG Pie chart */}
                                   <svg width="90" height="90" viewBox="0 0 32 32" style={{ transform: "rotate(-90deg)", borderRadius: "50%" }}>
                                     <circle r="16" cx="16" cy="16" fill="transparent" stroke="#EF4444" strokeWidth="32" />
-                                    <circle r="16" cx="16" cy="16" fill="transparent" stroke="#10B981" strokeWidth="32" 
+                                    <circle r="16" cx="16" cy="16" fill="transparent" stroke="#10B981" strokeWidth="32"
                                       strokeDasharray={`${pctApp} 100`} />
                                   </svg>
                                 </div>
@@ -6084,7 +6084,7 @@ void handleLocalWebServerRequest() {
                                 </button>
                               );
                               const activeDays = cfg.auto_approve_days ? cfg.auto_approve_days.split(",").map(Number).filter(n => !isNaN(n)) : [];
-                              const dayDefs = [{ val:1,label:"จ.",color:"#EAB308" },{ val:2,label:"อ.",color:"#EC4899" },{ val:3,label:"พ.",color:"#10B981" },{ val:4,label:"พฤ.",color:"#F97316" },{ val:5,label:"ศ.",color:"#3B82F6" },{ val:6,label:"ส.",color:"#8B5CF6" },{ val:0,label:"อา.",color:"#EF4444" }];
+                              const dayDefs = [{ val: 1, label: "จ.", color: "#EAB308" }, { val: 2, label: "อ.", color: "#EC4899" }, { val: 3, label: "พ.", color: "#10B981" }, { val: 4, label: "พฤ.", color: "#F97316" }, { val: 5, label: "ศ.", color: "#3B82F6" }, { val: 6, label: "ส.", color: "#8B5CF6" }, { val: 0, label: "อา.", color: "#EF4444" }];
                               return (
                                 <div className="animate-fade-in" style={{ marginTop: 8, padding: 16, background: "rgba(124,58,237,0.03)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -6170,7 +6170,7 @@ void handleLocalWebServerRequest() {
                     })
                   )}
                 </section>
-                
+
                 <section className="room-form-band" style={{ marginTop: 24 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 900, color: "var(--text-primary)", margin: "0 0 14px" }}>เพิ่มห้อง / บอร์ดใหม่</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, alignItems: "end" }}>
@@ -6248,7 +6248,7 @@ void handleLocalWebServerRequest() {
                     {/* Upload firmware form */}
                     <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
                       <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>⚡ อัปโหลดเฟิร์มแวร์รุ่นใหม่ (.bin)</span>
-                      
+
                       <form onSubmit={async (e) => {
                         e.preventDefault();
                         if (!firmwareVersionInput || !firmwarePublicUrlInput) {
@@ -6259,7 +6259,7 @@ void handleLocalWebServerRequest() {
                           showToast("เลขเวอร์ชันต้องเป็นตัวเลขและจุดทศนิยมเท่านั้น (ตัวอย่าง: 1.0.2)", "error");
                           return;
                         }
-                        
+
                         setFirmwareUploadLoading(true);
                         try {
                           const fileToSend = firmwareFile || new File(["MOCK_DATA"], `v_${firmwareVersionInput.replace(/\./g, '_')}.bin`);
@@ -6292,9 +6292,9 @@ void handleLocalWebServerRequest() {
                       }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
                           <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>รุ่นซอฟต์แวร์ (Version) *</label>
-                          <input 
-                            className="smartaccess-input" 
-                            placeholder="ตัวอย่าง: 1.0.2" 
+                          <input
+                            className="smartaccess-input"
+                            placeholder="ตัวอย่าง: 1.0.2"
                             value={firmwareVersionInput}
                             onChange={e => setFirmwareVersionInput(e.target.value)}
                             style={{ padding: "6px 10px", fontSize: 12.5 }}
@@ -6304,9 +6304,9 @@ void handleLocalWebServerRequest() {
 
                         <div>
                           <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>Supabase Storage Public URL *</label>
-                          <input 
-                            className="smartaccess-input" 
-                            placeholder="วาง Public URL ลิงก์ตรงของไฟล์ .bin บน Supabase Storage..." 
+                          <input
+                            className="smartaccess-input"
+                            placeholder="วาง Public URL ลิงก์ตรงของไฟล์ .bin บน Supabase Storage..."
                             value={firmwarePublicUrlInput}
                             onChange={e => setFirmwarePublicUrlInput(e.target.value)}
                             style={{ padding: "6px 10px", fontSize: 12.5 }}
@@ -6316,8 +6316,8 @@ void handleLocalWebServerRequest() {
 
                         <div>
                           <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 4 }}>เลือกไฟล์ไบนารีบนคอมพิวเตอร์ (สำหรับคำนวณ MD5 Checksum) *</label>
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             accept=".bin"
                             onChange={e => {
                               if (e.target.files && e.target.files.length > 0) {
@@ -6328,9 +6328,9 @@ void handleLocalWebServerRequest() {
                           />
                         </div>
 
-                        <button 
-                          type="submit" 
-                          className="btn-primary" 
+                        <button
+                          type="submit"
+                          className="btn-primary"
                           disabled={firmwareUploadLoading}
                           style={{ padding: "10px", fontSize: 12.5, fontWeight: 800, borderRadius: 8, marginTop: 4, width: "100%", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", color: "#fff", border: "none", cursor: "pointer" }}
                         >
@@ -6342,7 +6342,7 @@ void handleLocalWebServerRequest() {
                     {/* Releases History list */}
                     <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, maxHeight: 310, overflowY: "auto" }}>
                       <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>📜 ประวัติการปล่อยเวอร์ชันไร้สาย</span>
-                      
+
                       {firmwareReleasesLoading ? (
                         <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-secondary)", fontSize: 12.5 }}>
                           กำลังโหลดข้อมูล...
@@ -6364,7 +6364,7 @@ void handleLocalWebServerRequest() {
                                   {new Date(release.uploaded_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}
                                 </span>
                               </div>
-                              <button 
+                              <button
                                 onClick={async () => {
                                   if (!confirm(`ต้องการถอนและลบประวัติเฟิร์มแวร์รุ่น ${release.version} ออกจากระบบ ใช่หรือไม่?`)) return;
                                   try {

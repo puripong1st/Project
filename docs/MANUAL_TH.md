@@ -595,8 +595,8 @@ SHA1(pendingCount | lastStudentId | activeToken | updateAvailable | firmwareVer)
 
 ```
 ค่า Constant:
-  POLL_FAST   = 500ms    ← เมื่อมีเหตุการณ์สำคัญ (ประตูเปิด)
-  POLL_NORMAL = 2000ms   ← ปกติ (มีการเปลี่ยนแปลงข้อมูล)
+  POLL_FAST   = 200ms    ← เมื่อมีเหตุการณ์สำคัญ (ประตูเปิด)
+  POLL_NORMAL = 1000ms   ← ปกติ (มีการเปลี่ยนแปลงข้อมูล)
   POLL_SLOW   = 5000ms   ← ไม่มีอะไรเปลี่ยน 5 รอบติดต่อกัน
 
 Logic:
