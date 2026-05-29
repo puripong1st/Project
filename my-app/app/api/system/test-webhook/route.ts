@@ -29,10 +29,10 @@ export async function POST(req: NextRequest) {
       if (!botToken || !chatId) {
         return NextResponse.json({ error: "กรุณาระบุ Telegram Bot Token และ Chat ID" }, { status: 400 });
       }
-      const ok = await sendTelegram(botToken, chatId, testMessage);
-      return ok
+      const result = await sendTelegram(botToken, chatId, testMessage);
+      return result.ok
         ? NextResponse.json({ success: true, message: "ส่งข้อความทดสอบเข้า Telegram สำเร็จแล้ว!" })
-        : NextResponse.json({ success: false, error: "Telegram ปฏิเสธการส่ง — ตรวจสอบ Bot Token / Chat ID" }, { status: 400 });
+        : NextResponse.json({ success: false, error: `Telegram ปฏิเสธการส่ง: ${result.error || "ตรวจสอบ Bot Token / Chat ID"}` }, { status: 400 });
     }
 
     // ── LINE Messaging API ──

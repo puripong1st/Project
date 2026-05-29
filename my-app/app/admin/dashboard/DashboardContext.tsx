@@ -147,6 +147,10 @@ interface DashboardContextType {
   setRoomLineApproveInput: React.Dispatch<React.SetStateAction<string>>;
   roomLineLogsInput: string;
   setRoomLineLogsInput: React.Dispatch<React.SetStateAction<string>>;
+  roomTgTokenInput: string;
+  setRoomTgTokenInput: React.Dispatch<React.SetStateAction<string>>;
+  roomLineTokenInput: string;
+  setRoomLineTokenInput: React.Dispatch<React.SetStateAction<string>>;
   roomDetailsLoading: boolean;
   setRoomDetailsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   originUrl: string;
@@ -342,6 +346,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [roomLineRegisterInput, setRoomLineRegisterInput] = useState("");
   const [roomLineApproveInput, setRoomLineApproveInput] = useState("");
   const [roomLineLogsInput, setRoomLineLogsInput] = useState("");
+  const [roomTgTokenInput, setRoomTgTokenInput] = useState("");
+  const [roomLineTokenInput, setRoomLineTokenInput] = useState("");
   const [roomDetailsLoading, setRoomDetailsLoading] = useState(false);
 
   const [roomsList, setRoomsList] = useState<{ room: string; ip: string }[]>([]);
@@ -562,6 +568,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setRoomLineRegisterInput(rawSettings[`room_line_register_${room}`] || "");
     setRoomLineApproveInput(rawSettings[`room_line_approve_${room}`] || "");
     setRoomLineLogsInput(rawSettings[`room_line_logs_${room}`] || "");
+    setRoomTgTokenInput(rawSettings[`room_telegram_bot_token_${room}`] || "");
+    setRoomLineTokenInput(rawSettings[`room_line_channel_token_${room}`] || "");
   };
 
   const handleSaveRoomWebhook = async () => {
@@ -582,6 +590,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             [`room_line_register_${activeRoomDetails.room}`]: roomLineRegisterInput,
             [`room_line_approve_${activeRoomDetails.room}`]: roomLineApproveInput,
             [`room_line_logs_${activeRoomDetails.room}`]: roomLineLogsInput,
+            [`room_telegram_bot_token_${activeRoomDetails.room}`]: roomTgTokenInput,
+            [`room_line_channel_token_${activeRoomDetails.room}`]: roomLineTokenInput,
           }
         })
       });
@@ -1569,6 +1579,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       roomLineRegisterInput, setRoomLineRegisterInput,
       roomLineApproveInput, setRoomLineApproveInput,
       roomLineLogsInput, setRoomLineLogsInput,
+      roomTgTokenInput, setRoomTgTokenInput,
+      roomLineTokenInput, setRoomLineTokenInput,
       roomDetailsLoading, setRoomDetailsLoading,
       originUrl,
       roomsList, setRoomsList,

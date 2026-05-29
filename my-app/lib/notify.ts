@@ -52,22 +52,50 @@ function resolveLineTarget(settings: Record<string, string>, cat: Cat, room: str
   return (roomVal || central || "").trim();
 }
 
-export async function sendTelegram(botToken: string, chatId: string, text: string): Promise<boolean> {
+export async function sendTelegram(botToken: string, chatId: string, text: string): Promise<{ ok: boolean; error?: string }> {
   try {
+    let actualChatId = chatId.trim();
+    let threadId: number | undefined = undefined;
+
+    if (actualChatId.includes(":")) {
+      const parts = actualChatId.split(":");
+      actualChatId = parts[0].trim();
+      const parsedThread = parseInt(parts[1].trim(), 10);
+      if (!isNaN(parsedThread)) {
+        threadId = parsedThread;
+      }
+    }
+
+    const payload: Record<string, any> = {
+      chat_id: actualChatId,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+    };
+
+    if (threadId !== undefined) {
+      payload.message_thread_id = threadId;
+    }
+
     const res = await fetch(`${TELEGRAM_API}/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
+      body: JSON.stringify(payload),
     });
-    return res.ok;
-  } catch (error) {
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      console.error("[Notify] Telegram API error response:", errBody);
+      return {
+        ok: false,
+        error: errBody.description || `Telegram responded with status ${res.status}`,
+      };
+    }
+
+    return { ok: true };
+  } catch (error: any) {
     console.error("[Notify] Telegram send failed:", error);
-    return false;
+    return { ok: false, error: error?.message || "Connection failed" };
   }
 }
 
@@ -110,11 +138,13 @@ export async function sendNotification(eventType: DiscordEventType, data: Notify
   const room = data.room ? data.room.trim() : "";
 
   // ── Telegram (HTML) ──
-  const tgToken = (settings["telegram_bot_token"] || "").trim();
+  const roomTgToken = room ? (settings[`room_telegram_bot_token_${room}`] || "").trim() : "";
+  const tgToken = roomTgToken || (settings["telegram_bot_token"] || "").trim();
   const tgChat = tgToken ? resolveTelegramChat(settings, cat, room) : "";
 
   // ── LINE Messaging API (plain text) ──
-  const lineToken = (settings["line_channel_token"] || "").trim();
+  const roomLineToken = room ? (settings[`room_line_channel_token_${room}`] || "").trim() : "";
+  const lineToken = roomLineToken || (settings["line_channel_token"] || "").trim();
   const lineTo = lineToken ? resolveLineTarget(settings, cat, room) : "";
 
   const plain = (tgChat || lineTo) ? formatPlainText(embed) : "";
@@ -125,7 +155,7 @@ export async function sendNotification(eventType: DiscordEventType, data: Notify
   const tasks: Promise<boolean>[] = [
     sendDiscordChannels(eventType, data, embed, settings),
   ];
-  if (tgToken && tgChat) tasks.push(sendTelegram(tgToken, tgChat, tgText));
+  if (tgToken && tgChat) tasks.push(sendTelegram(tgToken, tgChat, tgText).then(r => r.ok));
   if (lineToken && lineTo) tasks.push(sendLine(lineToken, lineTo, plain));
 
   const results = await Promise.allSettled(tasks);

@@ -155,9 +155,11 @@ export async function POST(req: NextRequest) {
                                  key.startsWith("room_webhook_register_") ||
                                  key.startsWith("room_webhook_approve_") ||
                                  key.startsWith("room_webhook_logs_") ||
+                                 key.startsWith("room_telegram_bot_token_") ||
                                  key.startsWith("room_telegram_register_") ||
                                  key.startsWith("room_telegram_approve_") ||
                                  key.startsWith("room_telegram_logs_") ||
+                                 key.startsWith("room_line_channel_token_") ||
                                  key.startsWith("room_line_register_") ||
                                  key.startsWith("room_line_approve_") ||
                                  key.startsWith("room_line_logs_");
@@ -172,7 +174,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (isDynamicRoomKey) {
-          const roomPart = key.replace(/^(room_ip_|room_webhook_register_|room_webhook_approve_|room_webhook_logs_|room_telegram_register_|room_telegram_approve_|room_telegram_logs_|room_line_register_|room_line_approve_|room_line_logs_)/, "");
+          const roomPart = key.replace(/^(room_ip_|room_webhook_register_|room_webhook_approve_|room_webhook_logs_|room_telegram_bot_token_|room_telegram_register_|room_telegram_approve_|room_telegram_logs_|room_line_channel_token_|room_line_register_|room_line_approve_|room_line_logs_)/, "");
           if (!/^[a-zA-Z0-9_-]+$/.test(roomPart)) {
             return NextResponse.json(
               { error: `Invalid setting key format: ${key}` },

@@ -314,6 +314,8 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     roomLineRegisterInput, setRoomLineRegisterInput,
     roomLineApproveInput, setRoomLineApproveInput,
     roomLineLogsInput, setRoomLineLogsInput,
+    roomTgTokenInput, setRoomTgTokenInput,
+    roomLineTokenInput, setRoomLineTokenInput,
     handleSaveRoomWebhook,
     handleTestWebhook,
     roomDetailsLoading,
@@ -733,8 +735,8 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                 const room = activeRoomDetails.room;
                 const mkTest = (type: "register" | "approve" | "logs", val: string) => () => {
                   if (roomNotifyChannel === "discord") return handleTestWebhook(val, type, room);
-                  if (roomNotifyChannel === "telegram") return handleTestWebhook("", type, room, { channel: "telegram", botToken: rawSettings["telegram_bot_token"], chatId: val });
-                  return handleTestWebhook("", type, room, { channel: "line", channelToken: rawSettings["line_channel_token"], targetId: val });
+                  if (roomNotifyChannel === "telegram") return handleTestWebhook("", type, room, { channel: "telegram", botToken: roomTgTokenInput.trim() || rawSettings["telegram_bot_token"], chatId: val });
+                  return handleTestWebhook("", type, room, { channel: "line", channelToken: roomLineTokenInput.trim() || rawSettings["line_channel_token"], targetId: val });
                 };
                 const rows = roomNotifyChannel === "discord"
                   ? [
@@ -760,7 +762,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                       <span style={{ fontSize: 12, fontWeight: 800, color: "var(--smartaccess-purple-dark)" }}>🔔 การแจ้งเตือนเฉพาะห้อง {activeRoomDetails.room} (Per-Room Notification Routing)</span>
                       <p style={{ color: "var(--text-secondary)", fontSize: 11.5, margin: "6px 0 0 0", lineHeight: "1.5" }}>
                         ตั้งปลายทางแยกเฉพาะห้องนี้ได้ 3 แชนแนล (ลงทะเบียน / อนุมัติ / Log) หากเว้นว่างจะใช้ค่าส่วนกลางจากแท็บ &quot;ตั้งค่าระบบ&quot;
-                        {roomNotifyChannel !== "discord" && <> — Telegram/LINE ใช้ <b>Token ส่วนกลาง</b> ร่วมกัน กรอกเฉพาะปลายทาง (Chat/Target ID)</>}
+                        {roomNotifyChannel !== "discord" && <> — สามารถระบุ Token แยกเฉพาะห้องได้ (หากเว้นว่างจะใช้ Token ส่วนกลางจากระบบ)</>}
                       </p>
                     </div>
 
@@ -786,6 +788,35 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: 12, background: active.tint, border: `1px solid ${active.color}22` }}>
+                      {roomNotifyChannel === "telegram" && (
+                        <div style={{ borderBottom: `1px dashed ${active.color}33`, paddingBottom: 12, marginBottom: 4 }}>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                            🔑 Telegram Bot Token เฉพาะห้องนี้ (เว้นว่างไว้เพื่อใช้บอร์ดตัวกลาง)
+                          </label>
+                          <input
+                            className="smartaccess-input"
+                            placeholder="ตัวอย่าง: 123456789:ABC..."
+                            value={roomTgTokenInput}
+                            onChange={e => setRoomTgTokenInput(e.target.value)}
+                            style={{ width: "100%", padding: "10px 14px", fontSize: 12.5 }}
+                          />
+                        </div>
+                      )}
+
+                      {roomNotifyChannel === "line" && (
+                        <div style={{ borderBottom: `1px dashed ${active.color}33`, paddingBottom: 12, marginBottom: 4 }}>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                            🔑 LINE Channel Access Token เฉพาะห้องนี้ (เว้นว่างไว้เพื่อใช้บอร์ดตัวกลาง)
+                          </label>
+                          <input
+                            className="smartaccess-input"
+                            placeholder="กรอก Access Token เฉพาะห้องนี้..."
+                            value={roomLineTokenInput}
+                            onChange={e => setRoomLineTokenInput(e.target.value)}
+                            style={{ width: "100%", padding: "10px 14px", fontSize: 12.5 }}
+                          />
+                        </div>
+                      )}
                       {rows.map((f, i) => (
                         <div key={i}>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>{f.label}</label>
