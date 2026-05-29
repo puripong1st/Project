@@ -87,7 +87,7 @@ export async function POST(
 
     // Discord notification
     const eventType = esp32Result.success ? "student_approved" : "door_failed";
-    sendDiscordNotification(eventType, {
+    await sendDiscordNotification(eventType, {
       studentName: `${student.first_name} ${student.last_name}`,
       studentId: student.student_id,
       adminName: admin.full_name,

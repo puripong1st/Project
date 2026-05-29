@@ -37,20 +37,22 @@ export async function sweepExpiredPending(): Promise<number> {
         [AUTO_REJECT_REASON, `เหตุผล: ${AUTO_REJECT_REASON} | โดย: ระบบอัตโนมัติ`]
       );
 
-      for (const s of rows as Array<{
+      const notifications = (rows as Array<{
         first_name: string;
         last_name: string;
         student_id: string;
         requested_room: string;
-      }>) {
+      }>).map((s) =>
         sendDiscordNotification("student_rejected", {
           studentName: `${s.first_name} ${s.last_name}`,
           studentId: s.student_id,
           adminName: "ระบบอัตโนมัติ",
           reason: AUTO_REJECT_REASON,
           room: s.requested_room,
-        }).catch(() => {});
-      }
+        }).catch((err) => console.error("[AutoReject] Notification error:", err))
+      );
+
+      await Promise.allSettled(notifications);
 
       return rows.length;
     } catch (err) {

@@ -50,13 +50,13 @@ export async function POST(
       [studentId, admin.id, `เหตุผล: ${finalReason} | โดย: ${admin.full_name}`, student.requested_room || 'default']
     );
 
-    sendDiscordNotification("student_rejected", {
+    await sendDiscordNotification("student_rejected", {
       studentName: `${student.first_name} ${student.last_name}`,
       studentId: student.student_id,
       adminName: admin.full_name,
       reason: finalReason,
       room: student.requested_room,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Reject Notification] failed:", err));
 
     return NextResponse.json({ success: true, message: "ปฏิเสธคำขอสำเร็จ" });
   } catch (error) {

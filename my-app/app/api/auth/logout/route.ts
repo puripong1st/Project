@@ -14,12 +14,12 @@ export async function POST(req: NextRequest) {
   response.cookies.delete("smartaccess_admin_token");
 
   if (admin) {
-    sendDiscordNotification("admin_logout", {
+    await sendDiscordNotification("admin_logout", {
       adminName: admin.full_name,
       adminUsername: admin.username,
       adminRole: admin.role,
       ip,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Logout Notification] failed:", err));
 
     getPool().query(
       `INSERT INTO access_logs (action, performed_by, ip_address, notes) VALUES ($1, $2, $3, $4)`,

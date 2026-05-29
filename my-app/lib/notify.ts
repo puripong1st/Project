@@ -112,7 +112,12 @@ export async function sendLine(channelToken: string, to: string, text: string): 
         messages: [{ type: "text", text: text.slice(0, 4900) }],
       }),
     });
-    return res.ok;
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      console.error("[Notify] LINE API error response:", errBody);
+      return false;
+    }
+    return true;
   } catch (error) {
     console.error("[Notify] LINE push failed:", error);
     return false;

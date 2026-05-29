@@ -266,13 +266,13 @@ export async function POST(req: NextRequest) {
           ]
         ), "auto-approve existing access log");
 
-        sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
+        await sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
           studentName: `${sanitizedTitle}${sanitizedFirstName} ${sanitizedLastName}`,
           studentId: existingStudent.student_id,
           adminName: "ระบบอนุมัติอัตโนมัติ (Auto-Approve)",
           esp32Response: esp32Result.message,
           room: sanitizedRequestedRoom,
-        }).catch(() => {});
+        }).catch((err) => console.error("[AutoApprove Existing Notification] failed:", err));
 
         return NextResponse.json({
           success: true,
@@ -314,14 +314,14 @@ export async function POST(req: NextRequest) {
           [existingStudent.id, `ส่งคำขอลงทะเบียนเข้าห้องอีกครั้ง นอกเวลาให้บริการอัตโนมัติ (จาก IP: ${ip})`, sanitizedRequestedRoom]
         ), "pending existing access log");
 
-        sendDiscordNotification("student_registered", {
+        await sendDiscordNotification("student_registered", {
           studentName: `${sanitizedTitle} ${sanitizedFirstName} ${sanitizedLastName}`,
           studentId: existingStudent.student_id,
           faculty: sanitizedFaculty,
           branch: sanitizedBranch,
           year: yearNum,
           room: sanitizedRequestedRoom,
-        }).catch(() => {});
+        }).catch((err) => console.error("[Register Existing Notification] failed:", err));
 
         return NextResponse.json({
           success: true,
@@ -358,13 +358,13 @@ export async function POST(req: NextRequest) {
         ]
       ), "auto-approve new access log");
 
-      sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
+      await sendDiscordNotification(esp32Result.success ? "student_approved" : "door_failed", {
         studentName: `${sanitizedTitle}${sanitizedFirstName} ${sanitizedLastName}`,
         studentId: sanitizedStudentId,
         adminName: "ระบบอนุมัติอัตโนมัติ (Auto-Approve)",
         esp32Response: esp32Result.message,
         room: sanitizedRequestedRoom,
-      }).catch(() => {});
+      }).catch((err) => console.error("[AutoApprove New Notification] failed:", err));
 
       return NextResponse.json({
         success: true,
@@ -389,14 +389,14 @@ export async function POST(req: NextRequest) {
         [insertId, `ลงทะเบียนนอกช่วงเวลาบริการจาก IP: ${ip} (รออนุมัติปกติ)`, sanitizedRequestedRoom]
       ), "pending new access log");
 
-      sendDiscordNotification("student_registered", {
+      await sendDiscordNotification("student_registered", {
         studentName: `${sanitizedTitle} ${sanitizedFirstName} ${sanitizedLastName}`,
         studentId: sanitizedStudentId,
         faculty: sanitizedFaculty,
         branch: sanitizedBranch,
         year: yearNum,
         room: sanitizedRequestedRoom,
-      }).catch(() => {});
+      }).catch((err) => console.error("[Register New Notification] failed:", err));
 
       return NextResponse.json({
         success: true,

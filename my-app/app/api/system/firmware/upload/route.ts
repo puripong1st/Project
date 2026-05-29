@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     // 8. ส่งแจ้งเตือน Discord
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
                 req.headers.get("x-real-ip") || "ไม่ทราบ";
-    sendDiscordNotification("firmware_deployed", {
+    await sendDiscordNotification("firmware_deployed", {
       adminName: admin.full_name,
       adminUsername: admin.username,
       adminRole: admin.role,

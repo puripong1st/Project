@@ -246,21 +246,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ดึงการตั้งค่าเดิมมาก่อนทำการบันทึกเพื่อนำมาเปรียบเทียบหาความแตกต่างอย่างละเอียด
+    const oldSettings = await getSystemSettings().catch(() => ({} as Record<string, string>));
+
     await updateSystemSettings(updates);
 
-    // บันทึก log ในระบบ
+    // ทำการเปรียบเทียบค่าก่อนและหลังเพื่อทำ Changelog ละเอียด
+    const changedFields: string[] = [];
+    for (const [key, newValue] of Object.entries(updates)) {
+      const oldValue = oldSettings[key] || "";
+      if (oldValue !== newValue) {
+        let displayOld = oldValue.trim() === "" ? "(ว่าง)" : oldValue;
+        let displayNew = newValue.trim() === "" ? "(ว่าง)" : newValue;
+
+        // บดบังข้อมูลสำคัญ (Mask sensitive info) เช่น Tokens, Webhooks, Secrets
+        const isSensitive = key.includes("token") || key.includes("webhook") || key.includes("secret") || key.includes("url");
+        if (isSensitive) {
+          displayOld = oldValue.trim() !== "" ? `${oldValue.substring(0, 8)}...` : "(ว่าง)";
+          displayNew = newValue.trim() !== "" ? `${newValue.substring(0, 8)}...` : "(ว่าง)";
+        }
+
+        changedFields.push(`• ${key}: ${displayOld} ➔ ${displayNew}`);
+      }
+    }
+
+    const changelogText = changedFields.length > 0
+      ? `รายละเอียดความเปลี่ยนแปลง:\n${changedFields.join("\n")}`
+      : "อัปเดตการตั้งค่าระบบ (ไม่มีการเปลี่ยนแปลงค่าจริง)";
+
+    // บันทึก log ในระบบอย่างละเอียด
     const pool = getPool();
-    pool.query(
+    await pool.query(
       "INSERT INTO access_logs (action, performed_by, notes) VALUES ('settings_updated', $1, $2)",
-      [admin.id, `อัปเดตการตั้งค่าระบบโดยแอดมิน: ${admin.full_name}`]
+      [admin.id, `อัปเดตการตั้งค่าระบบโดยแอดมิน: ${admin.full_name}\n${changelogText}`]
     ).catch((err) => console.error("[System Settings] Background audit log failed:", err));
 
-    // ยิงแจ้งเตือนเข้าระบบ Discord logs
+    // ยิงแจ้งเตือนเข้าระบบ Discord/Telegram/LINE logs พร้อมรายละเอียดความเปลี่ยนแปลง
     try {
-      sendDiscordNotification("esp32_offline", {
+      await sendDiscordNotification("esp32_offline", {
         adminName: admin.full_name,
-        reason: "อัปเดตตัวแปรตั้งค่าระบบและตัวแจ้งเตือนแยกช่องใหม่เรียบร้อยแล้ว",
-      }).catch(() => {});
+        reason: `แอดมินอัปเดตการตั้งค่าระบบเรียบร้อยแล้ว รายละเอียดความเปลี่ยนแปลงมีดังนี้:\n${changelogText}`,
+      }).catch((err) => console.error("[Settings Notification] failed:", err));
     } catch {}
 
     return NextResponse.json({ success: true, message: "บันทึกการตั้งค่าระบบเรียบร้อยแล้ว" });

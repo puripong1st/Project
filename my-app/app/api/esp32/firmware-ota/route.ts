@@ -64,7 +64,7 @@ export async function GET(req: Request) {
         ]
       );
 
-      sendDiscordNotification("firmware_ota_triggered", {
+      await sendDiscordNotification("firmware_ota_triggered", {
         room,
         ip: clientIp,
         firmwareVersion: latestVersion,

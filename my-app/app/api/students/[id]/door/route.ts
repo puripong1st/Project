@@ -62,13 +62,13 @@ export async function POST(
       [studentId, esp32Result.success ? "door_opened" : "door_failed", admin.id, esp32Result.message, `สั่งเปิดประตูโดย: ${admin.full_name}`, student.requested_room || 'default']
     ), "access log");
 
-    sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
+    await sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
       studentName: `${student.first_name} ${student.last_name}`,
       studentId: student.student_id,
       adminName: admin.full_name,
       esp32Response: esp32Result.message,
       room: student.requested_room,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Door Notification] failed:", err));
 
     return NextResponse.json({ success: esp32Result.success, message: esp32Result.message, esp32: esp32Result });
   } catch (error) {

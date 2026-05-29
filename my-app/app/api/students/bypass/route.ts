@@ -102,14 +102,14 @@ export async function POST(req: NextRequest) {
     );
 
     // Send notification to Discord channel
-    sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
+    await sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
       studentName: `${student.first_name} ${student.last_name}`,
       studentId: student.student_id,
       adminName: "ระบบอัตโนมัติ (Bypass)",
       esp32Response: esp32Result.message,
       reason: reasonText,
       room: student.requested_room,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Bypass Notification] failed:", err));
 
     return NextResponse.json({
       success: esp32Result.success,

@@ -52,12 +52,12 @@ export async function POST(req: NextRequest) {
     const admins = rows as AdminRow[];
     if (admins.length === 0) {
       // Fire-and-forget: failed login alert (unknown username)
-      sendDiscordNotification("admin_login_failed", {
+      await sendDiscordNotification("admin_login_failed", {
         adminUsername: String(username).substring(0, 30),
         ip,
         userAgent: ua,
         reason: "ไม่พบ Username ในระบบ หรือบัญชีถูกระงับ",
-      }).catch(() => {});
+      }).catch((err) => console.error("[Login Failed Notification] failed:", err));
       pool.query(
         `INSERT INTO access_logs (action, ip_address, details, notes) VALUES ($1, $2, $3, $4)`,
         ["admin_login_failed", ip, ua.substring(0, 500), `Username: ${String(username).substring(0, 30)} — ไม่พบในระบบ`]
@@ -69,14 +69,14 @@ export async function POST(req: NextRequest) {
     const valid = await bcrypt.compare(password, admin.password_hash);
     if (!valid) {
       // Fire-and-forget: failed login alert (wrong password)
-      sendDiscordNotification("admin_login_failed", {
+      await sendDiscordNotification("admin_login_failed", {
         adminUsername: admin.username,
         adminName: admin.full_name,
         adminRole: admin.role,
         ip,
         userAgent: ua,
         reason: "Password ไม่ถูกต้อง",
-      }).catch(() => {});
+      }).catch((err) => console.error("[Login Failed Notification] failed:", err));
       pool.query(
         `INSERT INTO access_logs (action, performed_by, ip_address, details, notes) VALUES ($1, $2, $3, $4, $5)`,
         ["admin_login_failed", admin.id, ip, ua.substring(0, 500), "Password ไม่ถูกต้อง"]
@@ -104,13 +104,13 @@ export async function POST(req: NextRequest) {
     pool.query("UPDATE admin_users SET last_login = NOW() WHERE id = $1", [admin.id])
       .catch((err) => console.error("[Auth] Failed to update last_login:", err));
 
-    sendDiscordNotification("admin_login", {
+    await sendDiscordNotification("admin_login", {
       adminName: admin.full_name,
       adminUsername: admin.username,
       adminRole: admin.role,
       ip,
       userAgent: ua,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Login Notification] failed:", err));
 
     pool.query(
       `INSERT INTO access_logs (action, performed_by, ip_address, details, notes) VALUES ($1, $2, $3, $4, $5)`,

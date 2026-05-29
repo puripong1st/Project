@@ -52,13 +52,13 @@ export async function POST(req: NextRequest) {
       ]
     );
 
-    sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
+    await sendDiscordNotification(esp32Result.success ? "door_opened" : "door_failed", {
       studentName: `ปลดล็อกระยะไกล (แอดมิน)`,
       studentId: "SYSTEM",
       adminName: admin.full_name,
       esp32Response: esp32Result.message,
       room: room,
-    }).catch(() => {});
+    }).catch((err) => console.error("[Unlock Room Notification] failed:", err));
 
     return NextResponse.json({ success: esp32Result.success, message: esp32Result.message });
   } catch (error) {
