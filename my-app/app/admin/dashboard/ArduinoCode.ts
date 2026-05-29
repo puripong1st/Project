@@ -108,9 +108,9 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 #include <ArduinoJson.h> // ติดตั้งผ่าน Library Manager (เวอร์ชัน 6.x)
 #include <FS.h>
 #include <HTTPClient.h>
-#ifndef WOKWI_SIM
 #include <HTTPUpdate.h> // สำหรับระบบดึงข้อมูลอัปเดต HTTPS OTA
 #include <WebServer.h> // สำหรับระบบบริการเว็บอัปเดตระยะใกล้ LAN OTA
+#ifndef WOKWI_SIM
 #include <ElegantOTA.h> // สำหรับบริการ ElegantOTA เว็บเซิร์ฟเวอร์บอร์ด
 #endif
 #include <SPI.h>
@@ -126,10 +126,8 @@ export const getArduinoCode = (roomCode: string, origin: string, mode: "wokwi" |
 const char* CURRENT_VERSION = "1.0.0";
 const char* FIRMWARE_URL = "https://project-sigma-ivory-21.vercel.app/api/esp32/firmware-ota";
 
-#ifndef WOKWI_SIM
 WebServer localServer(80); // พอร์ตเว็บเซิร์ฟเวอร์สำหรับคิวและ ElegantOTA
 bool localServerStarted = false;
-#endif
 
 
 // ─── Compile-time production safety guard ───────────────────────────────────
@@ -504,6 +502,8 @@ void onOTAProgress(int current, int total) {
   tft.println(" KB)");
 }
 
+#endif // !WOKWI_SIM
+
 void performHTTPSOTA() {
   WiFiClientSecure secureClient;
   secureClient.setInsecure();
@@ -548,21 +548,20 @@ void performHTTPSOTA() {
     delay(5000);
   }
 }
-#endif // !WOKWI_SIM
 
 void startLocalServer() {
-#ifndef WOKWI_SIM
   if (!localServerStarted) {
+#ifndef WOKWI_SIM
     // กำหนด ElegantOTA Web Endpoint & Callbacks
     ElegantOTA.begin(&localServer);
     ElegantOTA.onStart(onOTAStart);
     ElegantOTA.onEnd(onOTAEnd);
+#endif
 
     localServer.begin();
     localServerStarted = true;
-    DBG("Local web server started on port 80 with ElegantOTA.");
+    DBG("Local web server started on port 80.");
   }
-#endif
 }
 
 String base64Decode(String input) {
@@ -613,7 +612,7 @@ String generateHMACHex(String payload, String key) {
   for (int i = 0; i < 32; i++) {
     sprintf(hexBuf + i * 2, "%02x", hmacResult[i]);
   }
-  hexBuf[64] = '\\0';
+  hexBuf[64] = '\0';
   return String(hexBuf);
 }
 
@@ -785,7 +784,6 @@ void triggerDoorOpenOffline(String grant) {
   last_active_token = "FORCE_REDRAW";
 }
 
-#ifndef WOKWI_SIM
 void handleLocalValidation() {
   WiFiClient client = localServer.available();
   if (!client) return;
@@ -902,7 +900,6 @@ void handleLocalValidation() {
   delay(1);
   client.stop();
 }
-#endif // !WOKWI_SIM
 
 
 void syncStudentCache() {
@@ -1049,17 +1046,13 @@ void setup() {
   delay(180);
   tone(BUZZER_PIN, 1600, 250);
 
-#ifndef WOKWI_SIM
   startLocalServer();
-#endif
 
   drawMainScreen(0, "", "12:00:00", "");
 }
 
 void loop() {
-#ifndef WOKWI_SIM
   handleLocalValidation();
-#endif
   
 #ifndef WOKWI_SIM
   ElegantOTA.loop();

@@ -412,18 +412,18 @@ void performHTTPSOTA() {
 }
 
 void startLocalServer() {
-#ifndef WOKWI_SIM
   if (!localServerStarted) {
+#ifndef WOKWI_SIM
     // กำหนด ElegantOTA Web Endpoint & Callbacks
     ElegantOTA.begin(&localServer);
     ElegantOTA.onStart(onOTAStart);
     ElegantOTA.onEnd(onOTAEnd);
+#endif
     
     localServer.begin();
     localServerStarted = true;
-    DBG("Local web server started on port 80 with ElegantOTA.");
+    DBG("Local web server started on port 80.");
   }
-#endif
 }
 
 String base64Decode(String input) {
