@@ -911,33 +911,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     });
   }, [settingsLoaded, roomsList.length, systemStatus?.esp32Devices]);
 
-  // Auto-pruning expired logs on startup
+  // โหลดข้อมูลเฟิร์มแวร์ตอนเปิดแดชบอร์ด
+  // หมายเหตุ: การล้าง log หมดอายุ (>90 วัน) ย้ายไปทำผ่าน Vercel Cron วันละ 2 ครั้ง
+  // (เที่ยงวัน + เที่ยงคืน) ที่ /api/system/logs/cleanup — ไม่เรียกจากแดชบอร์ดทุกครั้งที่โหลดอีก
+  // เพื่อไม่ให้แจ้งเตือน "ล้างประวัติ" เด้งซ้ำ ๆ
   useEffect(() => {
     if (user?.role === "owner") {
       fetchFirmwares();
       fetchFirmwareLogs();
-      const autoPrune = async () => {
-        try {
-          const r = await fetch("/api/system/logs/cleanup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: "expired" })
-          });
-          const d = await r.json();
-          if (r.ok && d.affectedRows > 0) {
-            showToast(`ระบบบำรุงรักษาอัตโนมัติ: ล้างข้อมูลจราจรหมดอายุ (>90 วัน) ออกแล้ว ${d.affectedRows} รายการ`, "success");
-            fetchSystemStatus();
-            fetchAll();
-            fetchLogs();
-          }
-        } catch (err) {
-          console.error("Failed to auto prune expired logs", err);
-        }
-      };
-      const timer = setTimeout(autoPrune, 3000);
-      return () => clearTimeout(timer);
     }
-  }, [user, fetchSystemStatus, fetchAll, fetchLogs, fetchFirmwares, fetchFirmwareLogs]);
+  }, [user, fetchFirmwares, fetchFirmwareLogs]);
 
   // Watch tab switches
   useEffect(() => {

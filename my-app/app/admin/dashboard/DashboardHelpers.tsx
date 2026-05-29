@@ -256,6 +256,7 @@ export const ACTION_METADATA: Record<string, { label: string; icon: React.ReactN
   settings_updated: { label: "อัปเดตการตั้งค่า", icon: <FileTextIcon />, color: "#7C3AED" },
   firmware_deployed: { label: "ปล่อยเฟิร์มแวร์ใหม่", icon: <SaveIcon />, color: "#7C3AED" },
   firmware_ota_triggered: { label: "ESP32 ดาวน์โหลด OTA", icon: <TerminalIcon />, color: "#3B82F6" },
+  student_deleted: { label: "ลบข้อมูลนักศึกษา", icon: <TrashIcon />, color: "#D97706" },
   esp32_offline: { label: "ESP32 ออฟไลน์", icon: <AlertIcon />, color: "#EF4444" },
   hmac_invalid: { label: "ลายเซ็น HMAC ผิด", icon: <AlertIcon />, color: "#EF4444" },
   unauthorized_access: { label: "เข้าถึงโดยไม่ได้รับสิทธิ์", icon: <AlertIcon />, color: "#EF4444" },

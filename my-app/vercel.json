@@ -2,6 +2,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
+      "path": "/api/system/logs/cleanup",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/system/logs/cleanup",
+      "schedule": "0 17 * * *"
+    },
+    {
       "path": "/api/system/summary?period=day",
       "schedule": "0 16 * * *"
     },
