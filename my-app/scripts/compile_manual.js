@@ -441,7 +441,18 @@ const htmlTemplate = `<!DOCTYPE html>
 
     body.dark-mode .mermaid svg g.node .label,
     body.dark-mode .mermaid svg g.node text,
-    body.dark-mode .mermaid svg text {
+    body.dark-mode .mermaid svg text,
+    body.dark-mode .mermaid svg tspan,
+    body.dark-mode .mermaid svg span,
+    body.dark-mode .mermaid svg div,
+    body.dark-mode .mermaid svg .messageText,
+    body.dark-mode .mermaid svg .messageText tspan,
+    body.dark-mode .mermaid svg .loopText,
+    body.dark-mode .mermaid svg .loopText tspan,
+    body.dark-mode .mermaid svg .noteText,
+    body.dark-mode .mermaid svg .noteText tspan,
+    body.dark-mode .mermaid svg .labelText,
+    body.dark-mode .mermaid svg .labelText tspan {
       fill: #F8FAFC !important; /* Bright crisp text */
       color: #F8FAFC !important;
     }
