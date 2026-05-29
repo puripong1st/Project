@@ -87,6 +87,8 @@ export default function CookieConsent() {
   }, []);
 
   useEffect(() => {
+    // อ่าน query string หลัง mount เพื่อความปลอดภัยตอน SSR (window ไม่มีบนเซิร์ฟเวอร์)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQueryString(window.location.search || "");
 
     const existing = loadConsent();

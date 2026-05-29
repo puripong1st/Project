@@ -2,11 +2,12 @@ export const dynamic = "force-dynamic";
 
 // app/api/system/status/route.ts — Return dynamic status of system dependencies & all IoT boards
 import { NextResponse } from "next/server";
-import { getPool } from "@/lib/db";
+import { getPool, getSystemSettings } from "@/lib/db";
 import { getESP32Status } from "@/lib/esp32";
 import { getAdminFromCookie } from "@/lib/auth";
 import { getOrCreateActiveQRToken } from "@/lib/qr";
 import { getDependencyState, getFallbackSettings, parseConfiguredRooms } from "@/lib/resilience";
+import { cacheGet, cacheSet } from "@/lib/kv-cache";
 
 export async function GET() {
   try {
@@ -34,42 +35,39 @@ export async function GET() {
 
       // Only query dynamic settings if PostgreSQL is online
       if (postgresqlOnline) {
-        // Query Discord webhook settings from DB
-        const { rows: webhookRows } = await pool.query(
-          "SELECT setting_value FROM system_settings WHERE setting_key LIKE '%webhook%'"
-        );
-        const webhookSettings = webhookRows as { setting_value: string }[];
-        isDiscordWebhookConfigured = webhookSettings.some(
-          row => row.setting_value && row.setting_value.trim().startsWith("http")
+        // ใช้ getSystemSettings() (cache 30s, ดึงทุก key ใน query เดียว) แทนการยิง
+        // หลาย query แยก (webhook + configured_rooms + room_ip ต่อห้อง) ทุก poll
+        const settings = await getSystemSettings();
+
+        isDiscordWebhookConfigured = Object.entries(settings).some(
+          ([key, value]) => key.includes("webhook") && value && value.trim().startsWith("http")
         );
 
-        // Query configured rooms from DB
-        const { rows: roomsRows } = await pool.query(
-          "SELECT setting_value FROM system_settings WHERE setting_key = 'configured_rooms'"
-        );
-        const roomsConfig = roomsRows as { setting_value: string }[];
-        if (roomsConfig.length > 0 && roomsConfig[0].setting_value) {
-          roomCodes = roomsConfig[0].setting_value.split(",").filter(Boolean);
-        }
+        roomCodes = parseConfiguredRooms(settings);
         for (const roomCode of roomCodes) {
-          const { rows: ipRows } = await pool.query(
-            "SELECT setting_value FROM system_settings WHERE setting_key = $1",
-            [`room_ip_${roomCode}`]
-          );
-          if (ipRows[0]?.setting_value) {
-            fallbackSettings[`room_ip_${roomCode}`] = ipRows[0].setting_value;
-          }
+          const ip = settings[`room_ip_${roomCode}`];
+          if (ip) fallbackSettings[`room_ip_${roomCode}`] = ip;
         }
 
-        // Only query counts if admin is owner
+        // Only query counts if admin is owner — cache 60s เพราะ COUNT(*) บน
+        // access_logs ที่โตขึ้นเรื่อย ๆ หนัก และ admin หลายคน poll ทุก 30s
         if (admin.role === "owner") {
-          const { rows: totalRes } = await pool.query("SELECT COUNT(*) as count FROM access_logs");
-          totalLogs = (totalRes as { count: number }[])[0]?.count || 0;
-
-          const { rows: expiredRes } = await pool.query(
-            "SELECT COUNT(*) as count FROM access_logs WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '90 days'"
-          );
-          expiredLogs = (expiredRes as { count: number }[])[0]?.count || 0;
+          const cachedCounts = await cacheGet<{ total: number; expired: number }>("status:log_counts");
+          if (cachedCounts) {
+            totalLogs = cachedCounts.total;
+            expiredLogs = cachedCounts.expired;
+          } else {
+            const { rows: cntRows } = await pool.query(
+              `SELECT
+                 COUNT(*) AS total,
+                 COUNT(*) FILTER (WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '90 days') AS expired
+               FROM access_logs`
+            );
+            const c = cntRows[0] as { total: string; expired: string };
+            totalLogs = parseInt(c.total, 10) || 0;
+            expiredLogs = parseInt(c.expired, 10) || 0;
+            await cacheSet("status:log_counts", { total: totalLogs, expired: expiredLogs }, 60);
+          }
 
           activeLogs = totalLogs - expiredLogs;
 
@@ -79,6 +77,8 @@ export async function GET() {
             pool.query("DELETE FROM access_logs WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '90 days'")
               .then(() => {
                 console.log(`[Auto-GC] Successfully purged ${expiredLogs} expired logs older than 90 days from Supabase.`);
+                // ล้าง cache counts หลังลบ เพื่อให้ poll ถัดไปเห็นค่าจริง
+                cacheSet("status:log_counts", { total: totalLogs - expiredLogs, expired: 0 }, 60).catch(() => {});
               })
               .catch(err => {
                 console.error("[Auto-GC] Failed to purge expired logs:", err);
@@ -94,20 +94,9 @@ export async function GET() {
     // 3. Resolve status of ALL configured rooms concurrently
     const devicesList = await Promise.all(
       roomCodes.map(async (roomCode) => {
-        let ip = "192.168.1.100";
-        ip = fallbackSettings[`room_ip_${roomCode}`] || ip;
-        if (postgresqlOnline && pool) {
-          try {
-            const { rows: ipRows } = await pool.query(
-              "SELECT setting_value FROM system_settings WHERE setting_key = $1",
-              [`room_ip_${roomCode}`]
-            );
-            const ipSetting = ipRows as { setting_value: string }[];
-            if (ipSetting.length > 0 && ipSetting[0].setting_value) {
-              ip = ipSetting[0].setting_value;
-            }
-          } catch {}
-        }
+        // room_ip ถูกดึงไว้แล้วใน fallbackSettings (จาก getSystemSettings ด้านบน)
+        // — ไม่ต้อง query ซ้ำต่อห้องอีก
+        const ip = fallbackSettings[`room_ip_${roomCode}`] || "192.168.1.100";
 
         let activeToken = "";
         if (postgresqlOnline) {

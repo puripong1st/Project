@@ -22,6 +22,7 @@ export default function AllPage() {
     endDate,
     setEndDate,
     handleExportPDFWithDateRange,
+    pdfLoading,
     searchQ,
     setSearchQ,
     filterStatus,
@@ -130,7 +131,7 @@ export default function AllPage() {
                   <button
                     key={btn.type}
                     onClick={() => handleExportPDFWithDateRange(btn.type, startDate, endDate)}
-                    disabled={useDashboard().pdfLoading}
+                    disabled={pdfLoading}
                     className="btn-ghost"
                     style={{
                       padding: "8px 12px",
@@ -141,7 +142,7 @@ export default function AllPage() {
                       color: btn.color
                     }}
                   >
-                    {useDashboard().pdfLoading ? "⏳ กำลังดึง..." : btn.label}
+                    {pdfLoading ? "⏳ กำลังดึง..." : btn.label}
                   </button>
                 ))}
               </div>

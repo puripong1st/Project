@@ -308,6 +308,12 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     setRoomWebhookApproveInput,
     roomWebhookLogsInput,
     setRoomWebhookLogsInput,
+    roomTgRegisterInput, setRoomTgRegisterInput,
+    roomTgApproveInput, setRoomTgApproveInput,
+    roomTgLogsInput, setRoomTgLogsInput,
+    roomLineRegisterInput, setRoomLineRegisterInput,
+    roomLineApproveInput, setRoomLineApproveInput,
+    roomLineLogsInput, setRoomLineLogsInput,
     handleSaveRoomWebhook,
     handleTestWebhook,
     roomDetailsLoading,
@@ -322,6 +328,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     setConfirmPassword,
     deleteLoading,
     setSystemStatus,
+    fetchSystemStatus,
     fetchAll,
     fetchLogs,
     handleLogout,
@@ -794,6 +801,44 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </div>
 
+                  {/* per-room Telegram */}
+                  <div style={{ padding: 14, background: "rgba(37,99,235,0.04)", border: "1px dashed rgba(37,99,235,0.25)", borderRadius: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#1D4ED8" }}>✈️ Telegram Chat ID เฉพาะห้องนี้ (ใช้ Bot Token ส่วนกลาง)</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {([
+                      { label: "📝 ลงทะเบียน (Register)", val: roomTgRegisterInput, set: setRoomTgRegisterInput, type: "register" as const },
+                      { label: "🚪 อนุมัติ/เปิดประตู (Approve)", val: roomTgApproveInput, set: setRoomTgApproveInput, type: "approve" as const },
+                      { label: "📊 Log/ออฟไลน์ (Logs)", val: roomTgLogsInput, set: setRoomTgLogsInput, type: "logs" as const },
+                    ]).map((f, i) => (
+                      <div key={i}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>{f.label}</label>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input className="smartaccess-input" placeholder="Chat ID เช่น -1001234567890" value={f.val} onChange={e => f.set(e.target.value)} style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* per-room LINE */}
+                  <div style={{ padding: 14, background: "rgba(6,199,85,0.05)", border: "1px dashed rgba(6,199,85,0.3)", borderRadius: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#059669" }}>💬 LINE Target ID เฉพาะห้องนี้ (ใช้ Channel Token ส่วนกลาง)</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {([
+                      { label: "📝 ลงทะเบียน (Register)", val: roomLineRegisterInput, set: setRoomLineRegisterInput, type: "register" as const },
+                      { label: "🚪 อนุมัติ/เปิดประตู (Approve)", val: roomLineApproveInput, set: setRoomLineApproveInput, type: "approve" as const },
+                      { label: "📊 Log/ออฟไลน์ (Logs)", val: roomLineLogsInput, set: setRoomLineLogsInput, type: "logs" as const },
+                    ]).map((f, i) => (
+                      <div key={i}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>{f.label}</label>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input className="smartaccess-input" placeholder="User/Group ID เช่น Uxxxx หรือ Cxxxx" value={f.val} onChange={e => f.set(e.target.value)} style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleSaveRoomWebhook}
@@ -1075,7 +1120,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
                       showToast(d.message, "success");
                       setDeleteModalOpen(false);
                       setConfirmPassword("");
-                      useDashboard().fetchSystemStatus();
+                      fetchSystemStatus();
                       fetchAll();
                       fetchLogs();
                     } else {

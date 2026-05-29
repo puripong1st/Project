@@ -8403,6 +8403,13 @@ if (format === "dataurl") {
 - ย้ายไฟล์ + เปลี่ยนชื่อ export เป็น `proxy` แล้ว; `config.matcher` คงเดิม
 - **ข้อควรระวัง**: ไฟล์ `proxy.ts` **ห้าม**ประกาศ `export const runtime` (proxy รันบน Node.js runtime เสมอ มิฉะนั้น build จะ error)
 
+**10. `/api/system/status` — route ที่ admin ทุกคน poll ทุก 30s (`app/api/system/status/route.ts`)**
+- เดิมยิงหลาย query ต่อ poll: webhook + configured_rooms + `room_ip` **ต่อห้อง (และยิงซ้ำอีกรอบใน devicesList)** + `COUNT(*)` access_logs 2 ครั้งสำหรับ owner
+- เปลี่ยนมาใช้ `getSystemSettings()` (cache 30s, ดึงทุก setting ใน query เดียว) แทน 3+N query แยก
+- **ลบ query `room_ip` ที่ยิงซ้ำต่อห้อง** ใน `devicesList` (ใช้ค่าที่ดึงไว้แล้ว)
+- รวม 2 `COUNT(*)` เป็น query เดียว (`COUNT FILTER`) + cache ผล 60s (`status:log_counts`) และล้าง cache หลัง Auto-GC ลบ log หมดอายุ
+- ผลรวม: query/poll ลดจาก ~`(5 + 2N)` เหลือ ~`1–2` (ส่วนใหญ่ hit cache) ต่อ admin หนึ่งคน
+
 ### คำแนะนำ Production (ตั้งค่าครั้งเดียว)
 
 - ตั้ง env **`SKIP_DB_INIT=true`** ใน Vercel หลัง migrate ตารางครั้งแรกเสร็จ → ข้าม ~25 DDL ทุก cold start (เห็น log `[DB] Fast Path: Skipping schema table checks`)
@@ -8410,5 +8417,45 @@ if (format === "dataurl") {
 
 ### สิ่งที่ยังคงไว้ (ไม่แตะ)
 rate-limit, CSP/security headers, parameterized query, role-based field filtering, รูปแบบ JWT/bcrypt, schema และ index เดิม — ไม่มีการลบหรือลดความเข้มงวด
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+## 71.45 ระบบแจ้งเตือนหลายช่องทาง: Discord + Telegram + LINE (Multi-Channel Notifications)
+
+> **อัปเดต**: 2026-05-29 — เพิ่มช่องทางแจ้งเตือน **Telegram** และ **LINE** ควบคู่ Discord โดยใช้ข้อความชุดเดียวกัน ตั้งค่าได้ในแท็บ "ตั้งค่าระบบ" (ส่วนกลาง) และใน room modal (รายห้อง)
+
+### ภาพรวมสถาปัตยกรรม
+- **ตัวสร้างข้อความกลาง**: [lib/discord.ts](my-app/lib/discord.ts) `buildEventMessage(eventType, data)` คืน embed/ข้อความ 1 ชุดต่อ event (ใช้ร่วมทุกช่อง)
+- **ตัวกระจายรวมศูนย์**: [lib/notify.ts](my-app/lib/notify.ts) `sendNotification()` — สร้างข้อความครั้งเดียว แล้วส่งขนาน (`Promise.allSettled`) ไปยังทุกช่องที่ตั้งค่าไว้
+- `sendDiscordNotification()` เดิม (caller 12 ไฟล์เรียกอยู่) ถูกทำเป็น alias → delegate ไป `sendNotification` ผ่าน dynamic import (กัน circular dependency) ดังนั้น **ทุก event ที่เคยส่ง Discord จะส่ง Telegram/LINE อัตโนมัติ** เมื่อมีการตั้งค่า
+- Telegram/LINE ไม่รองรับ embed → ใช้ `formatPlainText()` แปลงเป็นข้อความตัวอักษร (Telegram ส่ง `parse_mode: HTML`)
+
+### ช่องทางและรูปแบบการเชื่อมต่อ
+| ช่องทาง | API | สิ่งที่ต้องตั้ง | ฟรี? |
+|--------|-----|----------------|------|
+| Discord | Incoming Webhook | webhook URL ต่อช่อง | ✅ ไม่จำกัด |
+| Telegram | Bot API `sendMessage` | bot token (1) + chat id ต่อช่อง | ✅ ไม่จำกัด |
+| LINE | Messaging API `push` | channel access token (1) + target id ต่อช่อง | ⚠️ ~500 ข้อความ/เดือน |
+
+> **หมายเหตุ LINE**: LINE Notify (webhook ง่าย ๆ) ปิดบริการ มี.ค. 2025 — ระบบจึงใช้ **LINE Messaging API** (push) ซึ่งมีโควตา free ~500 ข้อความ/เดือน แนะนำให้ Telegram/Discord เป็นช่องหลักถ้าปริมาณสูง
+
+### คีย์ใน `system_settings`
+**Telegram** (กลาง): `telegram_bot_token`, `telegram_chat_register`, `telegram_chat_approve`, `telegram_chat_logs`, `telegram_chat_admin_audit`
+**Telegram** (รายห้อง): `room_telegram_register_{room}`, `room_telegram_approve_{room}`, `room_telegram_logs_{room}`
+**LINE** (กลาง): `line_channel_token`, `line_target_register`, `line_target_approve`, `line_target_logs`, `line_target_admin_audit`
+**LINE** (รายห้อง): `room_line_register_{room}`, `room_line_approve_{room}`, `room_line_logs_{room}`
+
+การเลือกปลายทาง: รายห้อง override → ส่วนกลาง fallback (เหมือน Discord); หมวด `admin_audit` ถ้าว่างจะ fallback ไป `*_logs`
+
+### วิธีตั้งค่า
+**Telegram**: คุยกับ `@BotFather` → `/newbot` → ได้ **Bot Token**; หา **Chat ID** ของกลุ่ม/แชต (เช่นผ่าน `@userinfobot` หรือ `getUpdates`) แล้วเชิญบอทเข้ากลุ่ม → กรอกในแท็บตั้งค่าระบบ → กด"ทดสอบ"
+**LINE**: สร้าง Messaging API Channel ใน LINE Developers Console → ได้ **Channel Access Token (long-lived)**; ใช้ **User ID / Group ID** เป็น Target → กรอก → กด"ทดสอบ"
+
+### ความปลอดภัย
+- คีย์ Telegram/LINE ตั้งชื่อ**เลี่ยงคำว่า** `webhook`/`url` จึงไม่ติด SSRF allowlist ของ Discord (ซึ่งยังบังคับ host `discord.com` เหมือนเดิม) — Telegram/LINE ยิงไปยัง host คงที่ `api.telegram.org` / `api.line.me` เท่านั้น
+- endpoint ทดสอบ [test-webhook](my-app/app/api/system/test-webhook/route.ts) ยังเป็น **owner-only** และไม่ log token
+- คีย์ใหม่ถูกเพิ่มใน `ALLOWED_SETTING_KEYS` + prefix รายห้องใน whitelist ของ [settings route](my-app/app/api/system/settings/route.ts)
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
 
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>

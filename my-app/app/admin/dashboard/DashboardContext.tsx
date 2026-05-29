@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable react-hooks/exhaustive-deps */
+ 
+ 
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
@@ -135,6 +135,18 @@ interface DashboardContextType {
   setRoomWebhookApproveInput: React.Dispatch<React.SetStateAction<string>>;
   roomWebhookLogsInput: string;
   setRoomWebhookLogsInput: React.Dispatch<React.SetStateAction<string>>;
+  roomTgRegisterInput: string;
+  setRoomTgRegisterInput: React.Dispatch<React.SetStateAction<string>>;
+  roomTgApproveInput: string;
+  setRoomTgApproveInput: React.Dispatch<React.SetStateAction<string>>;
+  roomTgLogsInput: string;
+  setRoomTgLogsInput: React.Dispatch<React.SetStateAction<string>>;
+  roomLineRegisterInput: string;
+  setRoomLineRegisterInput: React.Dispatch<React.SetStateAction<string>>;
+  roomLineApproveInput: string;
+  setRoomLineApproveInput: React.Dispatch<React.SetStateAction<string>>;
+  roomLineLogsInput: string;
+  setRoomLineLogsInput: React.Dispatch<React.SetStateAction<string>>;
   roomDetailsLoading: boolean;
   setRoomDetailsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   originUrl: string;
@@ -178,7 +190,7 @@ interface DashboardContextType {
   fetchSettings: () => Promise<void>;
   handleOpenRoomDetails: (room: string, ip: string) => void;
   handleSaveRoomWebhook: () => Promise<void>;
-  handleTestWebhook: (webhookUrl: string, type: "register" | "approve" | "logs" | "admin_audit", room?: string) => Promise<void>;
+  handleTestWebhook: (webhookUrl: string, type: "register" | "approve" | "logs" | "admin_audit", room?: string, opts?: { channel?: "discord" | "telegram" | "line"; botToken?: string; chatId?: string; channelToken?: string; targetId?: string }) => Promise<void>;
   handleSaveSettings: (e: React.FormEvent | React.MouseEvent) => Promise<void>;
   handleUploadFirmware: (e: React.FormEvent) => Promise<void>;
   copyToClipboard: (text: string) => void;
@@ -323,6 +335,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [roomWebhookRegisterInput, setRoomWebhookRegisterInput] = useState("");
   const [roomWebhookApproveInput, setRoomWebhookApproveInput] = useState("");
   const [roomWebhookLogsInput, setRoomWebhookLogsInput] = useState("");
+  // per-room Telegram chat id + LINE target id (3 หมวด: register/approve/logs)
+  const [roomTgRegisterInput, setRoomTgRegisterInput] = useState("");
+  const [roomTgApproveInput, setRoomTgApproveInput] = useState("");
+  const [roomTgLogsInput, setRoomTgLogsInput] = useState("");
+  const [roomLineRegisterInput, setRoomLineRegisterInput] = useState("");
+  const [roomLineApproveInput, setRoomLineApproveInput] = useState("");
+  const [roomLineLogsInput, setRoomLineLogsInput] = useState("");
   const [roomDetailsLoading, setRoomDetailsLoading] = useState(false);
 
   const [roomsList, setRoomsList] = useState<{ room: string; ip: string }[]>([]);
@@ -537,6 +556,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setRoomWebhookRegisterInput(rawSettings[`room_webhook_register_${room}`] || "");
     setRoomWebhookApproveInput(rawSettings[`room_webhook_approve_${room}`] || "");
     setRoomWebhookLogsInput(rawSettings[`room_webhook_logs_${room}`] || "");
+    setRoomTgRegisterInput(rawSettings[`room_telegram_register_${room}`] || "");
+    setRoomTgApproveInput(rawSettings[`room_telegram_approve_${room}`] || "");
+    setRoomTgLogsInput(rawSettings[`room_telegram_logs_${room}`] || "");
+    setRoomLineRegisterInput(rawSettings[`room_line_register_${room}`] || "");
+    setRoomLineApproveInput(rawSettings[`room_line_approve_${room}`] || "");
+    setRoomLineLogsInput(rawSettings[`room_line_logs_${room}`] || "");
   };
 
   const handleSaveRoomWebhook = async () => {
@@ -551,6 +576,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
             [`room_webhook_register_${activeRoomDetails.room}`]: roomWebhookRegisterInput,
             [`room_webhook_approve_${activeRoomDetails.room}`]: roomWebhookApproveInput,
             [`room_webhook_logs_${activeRoomDetails.room}`]: roomWebhookLogsInput,
+            [`room_telegram_register_${activeRoomDetails.room}`]: roomTgRegisterInput,
+            [`room_telegram_approve_${activeRoomDetails.room}`]: roomTgApproveInput,
+            [`room_telegram_logs_${activeRoomDetails.room}`]: roomTgLogsInput,
+            [`room_line_register_${activeRoomDetails.room}`]: roomLineRegisterInput,
+            [`room_line_approve_${activeRoomDetails.room}`]: roomLineApproveInput,
+            [`room_line_logs_${activeRoomDetails.room}`]: roomLineLogsInput,
           }
         })
       });
@@ -567,27 +598,50 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleTestWebhook = async (webhookUrl: string, type: "register" | "approve" | "logs" | "admin_audit", room?: string) => {
-    if (!webhookUrl || !webhookUrl.trim().startsWith("https://discord.com/api/webhooks/")) {
+  const handleTestWebhook = async (
+    webhookUrl: string,
+    type: "register" | "approve" | "logs" | "admin_audit",
+    room?: string,
+    opts?: { channel?: "discord" | "telegram" | "line"; botToken?: string; chatId?: string; channelToken?: string; targetId?: string }
+  ) => {
+    const channel = opts?.channel || "discord";
+
+    // Client-side guard ต่อช่อง
+    if (channel === "discord" && (!webhookUrl || !webhookUrl.trim().startsWith("https://discord.com/api/webhooks/"))) {
       showToast(" ลิงก์ Discord Webhook ไม่ถูกต้อง หรือไม่ได้ระบุ", "error");
       return;
     }
-    showToast(" กำลังส่งข้อความทดสอบ...", "success");
+    if (channel === "telegram" && (!opts?.botToken?.trim() || !opts?.chatId?.trim())) {
+      showToast(" กรุณาระบุ Telegram Bot Token และ Chat ID ให้ครบ", "error");
+      return;
+    }
+    if (channel === "line" && (!opts?.channelToken?.trim() || !opts?.targetId?.trim())) {
+      showToast(" กรุณาระบุ LINE Channel Token และ Target ID ให้ครบ", "error");
+      return;
+    }
+
+    const channelLabel = channel === "telegram" ? "Telegram" : channel === "line" ? "LINE" : "Discord";
+    showToast(` กำลังส่งข้อความทดสอบเข้า ${channelLabel}...`, "success");
     try {
       const response = await fetch("/api/system/test-webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url: webhookUrl.trim(),
+          channel,
+          url: channel === "discord" ? webhookUrl.trim() : undefined,
           type,
-          room: room || "default"
+          room: room || "default",
+          botToken: opts?.botToken?.trim(),
+          chatId: opts?.chatId?.trim(),
+          channelToken: opts?.channelToken?.trim(),
+          targetId: opts?.targetId?.trim(),
         })
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        showToast(" ส่งข้อความทดสอบเข้า Discord สำเร็จเรียบร้อยแล้ว!", "success");
+        showToast(data.message || ` ส่งข้อความทดสอบเข้า ${channelLabel} สำเร็จเรียบร้อยแล้ว!`, "success");
       } else {
-        showToast(data.error || "เกิดข้อผิดพลาดในการส่งบอท Discord", "error");
+        showToast(data.error || `เกิดข้อผิดพลาดในการส่ง ${channelLabel}`, "error");
       }
     } catch {
       showToast("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
@@ -1191,6 +1245,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       custom_settings[`rcfg_${r.room}_student_id_display_mode`] = cfg.student_id_display_mode;
     });
 
+    // ช่องแจ้งเตือน Telegram + LINE ส่วนกลาง (เก็บใน rawSettings, ส่งผ่าน custom_settings)
+    const NOTIFY_CHANNEL_KEYS = [
+      "telegram_bot_token", "telegram_chat_register", "telegram_chat_approve", "telegram_chat_logs", "telegram_chat_admin_audit",
+      "line_channel_token", "line_target_register", "line_target_approve", "line_target_logs", "line_target_admin_audit",
+    ];
+    NOTIFY_CHANNEL_KEYS.forEach(k => {
+      if (rawSettings[k] !== undefined) custom_settings[k] = (rawSettings[k] || "").trim();
+    });
+
     try {
       const r = await fetch("/api/system/settings", {
         method: "POST",
@@ -1500,6 +1563,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       roomWebhookRegisterInput, setRoomWebhookRegisterInput,
       roomWebhookApproveInput, setRoomWebhookApproveInput,
       roomWebhookLogsInput, setRoomWebhookLogsInput,
+      roomTgRegisterInput, setRoomTgRegisterInput,
+      roomTgApproveInput, setRoomTgApproveInput,
+      roomTgLogsInput, setRoomTgLogsInput,
+      roomLineRegisterInput, setRoomLineRegisterInput,
+      roomLineApproveInput, setRoomLineApproveInput,
+      roomLineLogsInput, setRoomLineLogsInput,
       roomDetailsLoading, setRoomDetailsLoading,
       originUrl,
       roomsList, setRoomsList,

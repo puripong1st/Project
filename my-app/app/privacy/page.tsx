@@ -61,6 +61,8 @@ const tdStyle: React.CSSProperties = {
 export default function PrivacyPage() {
   const [queryString, setQueryString] = useState("");
   useEffect(() => {
+    // อ่าน query string หลัง mount เพื่อความปลอดภัยตอน SSR (window ไม่มีบนเซิร์ฟเวอร์)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQueryString(window.location.search || "");
   }, []);
 

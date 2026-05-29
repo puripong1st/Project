@@ -1,6 +1,4 @@
-// lib/discord.ts — Discord webhook notifications
-import { getSystemSettings } from "./db";
-
+// lib/discord.ts — Discord webhook notifications + shared event-message builder
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "";
 
 export type DiscordEventType =
@@ -16,7 +14,7 @@ export type DiscordEventType =
   | "firmware_deployed"
   | "firmware_ota_triggered";
 
-interface DiscordEmbed {
+export interface DiscordEmbed {
   title: string;
   description: string;
   color: number;
@@ -54,104 +52,69 @@ function parseUserAgent(ua: string): { browser: string; device: string } {
   return { browser, device };
 }
 
+export interface NotifyData {
+  studentName?: string;
+  studentId?: string;
+  faculty?: string;
+  branch?: string;
+  year?: number;
+  adminName?: string;
+  adminUsername?: string;
+  adminRole?: string;
+  reason?: string;
+  esp32Response?: string;
+  room?: string;
+  ip?: string;
+  userAgent?: string;
+  firmwareVersion?: string;
+  firmwareChecksum?: string;
+  firmwareSize?: number;
+  previousVersion?: string;
+}
+
+/**
+ * แมป event → หมวดหมู่ช่องแจ้งเตือน
+ * - `central`: คีย์ช่องกลาง (มี admin_audit แยกสำหรับ event ของแอดมิน/เฟิร์มแวร์)
+ * - `room`: คีย์ override รายห้อง (มีแค่ 3 หมวด: register/approve/logs)
+ */
+export function notifyCategory(eventType: DiscordEventType): {
+  central: "register" | "approve" | "logs" | "admin_audit";
+  room: "register" | "approve" | "logs";
+} {
+  if (eventType === "student_registered") return { central: "register", room: "register" };
+  if (
+    eventType === "student_approved" ||
+    eventType === "student_rejected" ||
+    eventType === "door_opened" ||
+    eventType === "door_failed"
+  ) {
+    return { central: "approve", room: "approve" };
+  }
+  if (eventType === "esp32_offline") return { central: "logs", room: "logs" };
+  // admin_login / admin_logout / admin_login_failed / firmware_*
+  return { central: "admin_audit", room: "logs" };
+}
+
+/**
+ * Entry point เดิม (callers ทั้งหมดเรียกตัวนี้) — delegate ไปยัง dispatcher รวมศูนย์
+ * lib/notify.ts ที่ส่งทั้ง Discord + Telegram + LINE
+ * ใช้ dynamic import เพื่อตัด circular dependency (notify.ts import จาก discord.ts)
+ */
 export async function sendDiscordNotification(
   eventType: DiscordEventType,
-  data: {
-    studentName?: string;
-    studentId?: string;
-    faculty?: string;
-    branch?: string;
-    year?: number;
-    adminName?: string;
-    adminUsername?: string;
-    adminRole?: string;
-    reason?: string;
-    esp32Response?: string;
-    room?: string;
-    ip?: string;
-    userAgent?: string;
-    firmwareVersion?: string;
-    firmwareChecksum?: string;
-    firmwareSize?: number;
-    previousVersion?: string;
-  }
+  data: NotifyData
 ): Promise<boolean> {
-  // Load dynamic webhook URLs from database
-  let targetWebhookUrl = "";
-  let logWebhookUrl = "";
+  const { sendNotification } = await import("./notify");
+  return sendNotification(eventType, data);
+}
 
-  try {
-    const settings = await getSystemSettings();
-    const sanitizedRoom = data.room ? data.room.trim() : "";
-
-    // ─── [IoT Cloud Room-Specific 3-Channel Webhook Routing] ───
-    // ค้นหาและแยกแยะช่องทาง Webhook ของห้องปฏิบัติการเป้าหมายตามประเภทกิจกรรม
-    if (sanitizedRoom) {
-      const roomRegWebhook = settings[`room_webhook_register_${sanitizedRoom}`] || "";
-      const roomApproveWebhook = settings[`room_webhook_approve_${sanitizedRoom}`] || "";
-      const roomLogsWebhook = settings[`room_webhook_logs_${sanitizedRoom}`] || "";
-
-      // 1. กำหนด Webhook ประจำกิจกรรมระบบ
-      if (eventType === "student_registered") {
-        targetWebhookUrl = roomRegWebhook || settings.discord_webhook_register || "";
-      } else if (
-        eventType === "student_approved" ||
-        eventType === "student_rejected" ||
-        eventType === "door_opened" ||
-        eventType === "door_failed"
-      ) {
-        targetWebhookUrl = roomApproveWebhook || settings.discord_webhook_approve || "";
-      } else if (
-        eventType === "esp32_offline" ||
-        eventType === "admin_login" ||
-        eventType === "admin_logout" ||
-        eventType === "admin_login_failed" ||
-        eventType === "firmware_deployed" ||
-        eventType === "firmware_ota_triggered"
-      ) {
-        targetWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || settings.discord_webhook_admin_audit || "";
-      }
-
-      // 2. กำหนด Webhook ประจำ Log จราจร/ความปลอดภัยอย่างละเอียด
-      logWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || "";
-
-      console.log(`[Discord Cloud] Routed room '${sanitizedRoom}' event '${eventType}' to: targetUrl=${targetWebhookUrl ? 'Configured' : 'Global Fallback'}, logUrl=${logWebhookUrl ? 'Configured' : 'Global Fallback'}`);
-    } else {
-      // หากไม่มีข้อมูลห้องเรียนเป้าหมาย ให้ Fallback ไปยังกิจกรรมส่วนกลาง
-      if (eventType === "student_registered") {
-        targetWebhookUrl = settings.discord_webhook_register || "";
-      } else if (
-        eventType === "student_approved" ||
-        eventType === "student_rejected" ||
-        eventType === "door_opened" ||
-        eventType === "door_failed"
-      ) {
-        targetWebhookUrl = settings.discord_webhook_approve || "";
-      } else if (
-        eventType === "admin_login" ||
-        eventType === "admin_logout" ||
-        eventType === "admin_login_failed" ||
-        eventType === "firmware_deployed" ||
-        eventType === "firmware_ota_triggered"
-      ) {
-        targetWebhookUrl = settings.discord_webhook_admin_audit || settings.discord_webhook_logs || "";
-      }
-      logWebhookUrl = settings.discord_webhook_logs || "";
-    }
-  } catch (error) {
-    console.error("[Discord] Failed to fetch settings from DB, using env fallback", error);
-  }
-
-  // Fallback to environment variable if database configuration is missing
-  if (!targetWebhookUrl) {
-    targetWebhookUrl = WEBHOOK_URL;
-  }
-
-  if (!targetWebhookUrl && !logWebhookUrl) {
-    console.warn("[Discord] Webhook URL and Log Webhook URL are not set");
-    return false;
-  }
-
+/**
+ * สร้าง embed/ข้อความตามประเภท event (ใช้ร่วมกันทุกช่องทาง)
+ */
+export function buildEventMessage(
+  eventType: DiscordEventType,
+  data: NotifyData
+): DiscordEmbed | undefined {
   const now = new Date().toLocaleString("th-TH", {
     timeZone: "Asia/Bangkok",
     year: "numeric",
@@ -392,9 +355,84 @@ export async function sendDiscordNotification(
     embed.fields.push({ name: "🚪 ห้องเรียน", value: data.room, inline: true });
   }
 
+  return embed;
+}
+
+/**
+ * ส่ง Discord (target webhook + audit log webhook) — ตรรกะเดิมทุกประการ
+ * แยกออกมาให้ dispatcher (lib/notify.ts) เรียกใช้
+ */
+export async function sendDiscordChannels(
+  eventType: DiscordEventType,
+  data: NotifyData,
+  embed: DiscordEmbed,
+  settings: Record<string, string>
+): Promise<boolean> {
+  let targetWebhookUrl = "";
+  let logWebhookUrl = "";
+
+  const sanitizedRoom = data.room ? data.room.trim() : "";
+
+  // ─── [IoT Cloud Room-Specific 3-Channel Webhook Routing] ───
+  if (sanitizedRoom) {
+    const roomRegWebhook = settings[`room_webhook_register_${sanitizedRoom}`] || "";
+    const roomApproveWebhook = settings[`room_webhook_approve_${sanitizedRoom}`] || "";
+    const roomLogsWebhook = settings[`room_webhook_logs_${sanitizedRoom}`] || "";
+
+    if (eventType === "student_registered") {
+      targetWebhookUrl = roomRegWebhook || settings.discord_webhook_register || "";
+    } else if (
+      eventType === "student_approved" ||
+      eventType === "student_rejected" ||
+      eventType === "door_opened" ||
+      eventType === "door_failed"
+    ) {
+      targetWebhookUrl = roomApproveWebhook || settings.discord_webhook_approve || "";
+    } else if (
+      eventType === "esp32_offline" ||
+      eventType === "admin_login" ||
+      eventType === "admin_logout" ||
+      eventType === "admin_login_failed" ||
+      eventType === "firmware_deployed" ||
+      eventType === "firmware_ota_triggered"
+    ) {
+      targetWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || settings.discord_webhook_admin_audit || "";
+    }
+
+    logWebhookUrl = roomLogsWebhook || settings.discord_webhook_logs || "";
+  } else {
+    if (eventType === "student_registered") {
+      targetWebhookUrl = settings.discord_webhook_register || "";
+    } else if (
+      eventType === "student_approved" ||
+      eventType === "student_rejected" ||
+      eventType === "door_opened" ||
+      eventType === "door_failed"
+    ) {
+      targetWebhookUrl = settings.discord_webhook_approve || "";
+    } else if (
+      eventType === "admin_login" ||
+      eventType === "admin_logout" ||
+      eventType === "admin_login_failed" ||
+      eventType === "firmware_deployed" ||
+      eventType === "firmware_ota_triggered"
+    ) {
+      targetWebhookUrl = settings.discord_webhook_admin_audit || settings.discord_webhook_logs || "";
+    }
+    logWebhookUrl = settings.discord_webhook_logs || "";
+  }
+
+  // Fallback to environment variable if database configuration is missing
+  if (!targetWebhookUrl) {
+    targetWebhookUrl = WEBHOOK_URL;
+  }
+
+  if (!targetWebhookUrl && !logWebhookUrl) {
+    return false;
+  }
+
   let success = false;
 
-  // Send to the specific event target Webhook URL
   if (targetWebhookUrl) {
     try {
       const response = await fetch(targetWebhookUrl, {
@@ -403,7 +441,7 @@ export async function sendDiscordNotification(
         body: JSON.stringify({
           username: "SmartAccess Door Access",
           avatar_url: "https://www.rmutp.ac.th/icon/favicon-96x96.png",
-          embeds: [embed!],
+          embeds: [embed],
         }),
       });
       success = response.ok;
@@ -412,8 +450,7 @@ export async function sendDiscordNotification(
     }
   }
 
-  // Send to the comprehensive Audit Log Webhook URL
-  if (logWebhookUrl) {
+  if (logWebhookUrl && logWebhookUrl !== targetWebhookUrl) {
     try {
       await fetch(logWebhookUrl, {
         method: "POST",
@@ -422,7 +459,7 @@ export async function sendDiscordNotification(
           username: "SmartAccess Audit Log Bot",
           avatar_url: "https://www.rmutp.ac.th/icon/favicon-96x96.png",
           content: `📊 **[SYSTEM LOG]** ตรวจพบเหตุการณ์ประเภท \`${eventType}\``,
-          embeds: [embed!],
+          embeds: [embed],
         }),
       });
     } catch (error) {
@@ -431,5 +468,4 @@ export async function sendDiscordNotification(
   }
 
   return success;
-
 }

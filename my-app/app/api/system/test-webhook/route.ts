@@ -1,6 +1,7 @@
-// app/api/system/test-webhook/route.ts — Live Discord webhook testing endpoint
+// app/api/system/test-webhook/route.ts — Live notification testing endpoint (Discord / Telegram / LINE)
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminFromCookie } from "@/lib/auth";
+import { sendTelegram, sendLine } from "@/lib/notify";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,8 +17,38 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { url, type, room } = body;
+    const { url, type, room, channel } = body;
 
+    const roomLabelEarly = room && room !== "default" ? `ห้องเรียน ${room}` : "ระบบส่วนกลาง";
+    const testMessage = `🧪 ทดสอบการเชื่อมต่อแจ้งเตือน SmartAccess\n• ตำแหน่ง: ${roomLabelEarly}\n• สถานะ: ONLINE\n• ทดสอบโดยแอดมิน: ${admin.full_name}\n• เวลา: ${new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}`;
+
+    // ── Telegram ──
+    if (channel === "telegram") {
+      const botToken = typeof body.botToken === "string" ? body.botToken.trim() : "";
+      const chatId = typeof body.chatId === "string" ? body.chatId.trim() : "";
+      if (!botToken || !chatId) {
+        return NextResponse.json({ error: "กรุณาระบุ Telegram Bot Token และ Chat ID" }, { status: 400 });
+      }
+      const ok = await sendTelegram(botToken, chatId, testMessage);
+      return ok
+        ? NextResponse.json({ success: true, message: "ส่งข้อความทดสอบเข้า Telegram สำเร็จแล้ว!" })
+        : NextResponse.json({ success: false, error: "Telegram ปฏิเสธการส่ง — ตรวจสอบ Bot Token / Chat ID" }, { status: 400 });
+    }
+
+    // ── LINE Messaging API ──
+    if (channel === "line") {
+      const channelToken = typeof body.channelToken === "string" ? body.channelToken.trim() : "";
+      const targetId = typeof body.targetId === "string" ? body.targetId.trim() : "";
+      if (!channelToken || !targetId) {
+        return NextResponse.json({ error: "กรุณาระบุ LINE Channel Access Token และ Target ID" }, { status: 400 });
+      }
+      const ok = await sendLine(channelToken, targetId, testMessage);
+      return ok
+        ? NextResponse.json({ success: true, message: "ส่งข้อความทดสอบเข้า LINE สำเร็จแล้ว!" })
+        : NextResponse.json({ success: false, error: "LINE ปฏิเสธการส่ง — ตรวจสอบ Channel Token / Target ID หรือโควตา push" }, { status: 400 });
+    }
+
+    // ── Discord (default, backward-compatible) ──
     if (!url || typeof url !== "string" || !url.trim().startsWith("https://discord.com/api/webhooks/")) {
       return NextResponse.json({ error: "ลิงก์ Discord Webhook ไม่ถูกต้อง" }, { status: 400 });
     }

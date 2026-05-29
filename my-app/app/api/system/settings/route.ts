@@ -120,11 +120,23 @@ export async function POST(req: NextRequest) {
     
     const ALLOWED_SETTING_KEYS = [
       'discord_webhook_url',
-      'discord_enabled', 
+      'discord_enabled',
       'auto_approve',
       'qr_expiry_seconds',
       'max_students_per_room',
       'configured_rooms',
+      // Telegram (central): bot token + chat id ต่อช่อง
+      'telegram_bot_token',
+      'telegram_chat_register',
+      'telegram_chat_approve',
+      'telegram_chat_logs',
+      'telegram_chat_admin_audit',
+      // LINE Messaging API (central): channel token + target id ต่อช่อง
+      'line_channel_token',
+      'line_target_register',
+      'line_target_approve',
+      'line_target_logs',
+      'line_target_admin_audit',
       // เพิ่มตาม business requirements (ห้องเรียน IP และ Webhooks แยกตามห้อง)
     ];
 
@@ -142,7 +154,13 @@ export async function POST(req: NextRequest) {
         const isDynamicRoomKey = key.startsWith("room_ip_") ||
                                  key.startsWith("room_webhook_register_") ||
                                  key.startsWith("room_webhook_approve_") ||
-                                 key.startsWith("room_webhook_logs_");
+                                 key.startsWith("room_webhook_logs_") ||
+                                 key.startsWith("room_telegram_register_") ||
+                                 key.startsWith("room_telegram_approve_") ||
+                                 key.startsWith("room_telegram_logs_") ||
+                                 key.startsWith("room_line_register_") ||
+                                 key.startsWith("room_line_approve_") ||
+                                 key.startsWith("room_line_logs_");
         // per-room config keys: rcfg_{ROOM}_{setting}
         const isRcfgKey = /^rcfg_[a-zA-Z0-9_-]+_[a-zA-Z0-9_]+$/.test(key);
 
@@ -154,7 +172,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (isDynamicRoomKey) {
-          const roomPart = key.replace(/^(room_ip_|room_webhook_register_|room_webhook_approve_|room_webhook_logs_)/, "");
+          const roomPart = key.replace(/^(room_ip_|room_webhook_register_|room_webhook_approve_|room_webhook_logs_|room_telegram_register_|room_telegram_approve_|room_telegram_logs_|room_line_register_|room_line_approve_|room_line_logs_)/, "");
           if (!/^[a-zA-Z0-9_-]+$/.test(roomPart)) {
             return NextResponse.json(
               { error: `Invalid setting key format: ${key}` },

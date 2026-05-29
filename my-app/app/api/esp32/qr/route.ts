@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     const admin = await getAdminFromCookie();
 
     const securityCheck = verifyEsp32Security(req, "/api/esp32/qr");
-    let isAuthenticatedDevice = securityCheck.allowed;
+    const isAuthenticatedDevice = securityCheck.allowed;
 
     if (!isAuthenticatedDevice && !isDevelopment && !admin) {
       if (securityCheck.errorResponse) {
