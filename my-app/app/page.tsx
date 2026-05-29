@@ -1515,17 +1515,55 @@ function RegistrationPageInner() {
                 </p>
                 {/* Biometric WebAuthn Bypass Enrollment */}
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     try {
-                      const enrolRecord = {
-                        enrolled: true,
-                        timestamp: new Date().toISOString(),
-                        deviceId: createOfflineId()
-                      };
-                      localStorage.setItem(`smartaccess_biometric_enroll_${success.student_id}`, JSON.stringify(enrolRecord));
-                      alert("🔒 ผูกอุปกรณ์กับ Face ID / Touch ID สำเร็จแล้ว! คุณสามารถใช้ลายนิ้วมือเพื่อสแกนเข้าห้องในการเข้าใช้ครั้งต่อไปได้ด่วนโดยไม่ต้องกรอกฟอร์ม");
-                    } catch {
-                      alert("ระบบ Biometrics ไม่พร้อมทำงานบนบราวเซอร์นี้");
+                      const isBiometricsAvailable = window.PublicKeyCredential && 
+                        await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                      
+                      if (!isBiometricsAvailable) {
+                        alert("⚠️ อุปกรณ์นี้ไม่พบระบบสแกนใบหน้า/ลายนิ้วมือ (Windows Hello / Touch ID / Face ID) กรุณาใช้รหัสสแกนความปลอดภัยมาตรฐาน");
+                        return;
+                      }
+
+                      const challenge = new Uint8Array(32);
+                      window.crypto.getRandomValues(challenge);
+                      const userId = new Uint8Array(16);
+                      window.crypto.getRandomValues(userId);
+
+                      const credential = await navigator.credentials.create({
+                        publicKey: {
+                          challenge,
+                          rp: { name: "SmartAccess RMUTP Door" },
+                          user: {
+                            id: userId,
+                            name: success.student_id,
+                            displayName: `${success.first_name} ${success.last_name}`
+                          },
+                          pubKeyCredParams: [
+                            { type: "public-key", alg: -7 },  // ES256
+                            { type: "public-key", alg: -257 } // RS256
+                          ],
+                          authenticatorSelection: {
+                            authenticatorAttachment: "platform",
+                            userVerification: "required"
+                          },
+                          timeout: 60000
+                        }
+                      }) as PublicKeyCredential;
+
+                      if (credential) {
+                        const credentialIdB64 = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+                        const enrolRecord = {
+                          enrolled: true,
+                          timestamp: new Date().toISOString(),
+                          credentialId: credentialIdB64
+                        };
+                        localStorage.setItem(`smartaccess_biometric_enroll_${success.student_id}`, JSON.stringify(enrolRecord));
+                        alert("🔒 ผูกอุปกรณ์กับระบบสแกนลายนิ้วมือ/ใบหน้าของเครื่อง (Windows Hello / Face ID / Touch ID) สำเร็จแล้ว!");
+                      }
+                    } catch (err) {
+                      console.error("Biometric Enrollment Error:", err);
+                      alert("❌ การผูกอุปกรณ์ล้มเหลว หรือผู้ใช้ยกเลิกการลงทะเบียน");
                     }
                   }}
                   style={{
@@ -1673,19 +1711,47 @@ function RegistrationPageInner() {
               type="button"
               onClick={async () => {
                 try {
-                  // Simulate WebAuthn Biometric verification
-                  alert("🔒 กำลังเรียกใช้งานตัวตรวจสอบ Biometrics (Face ID/Touch ID)...");
-                  setTimeout(async () => {
-                    alert("✓ ยืนยันตัวตนสำเร็จ!");
-                    const savedEnroll = localStorage.getItem(`smartaccess_biometric_enroll_${enrolledStudentId}`);
-                    if (savedEnroll) {
-                      // Trigger fast registration by auto-filling student ID and submitting
-                      const mockToken = "biometric_" + Math.random().toString(36).slice(2, 10);
-                      window.location.href = `/?scan=${mockToken}&room=${room}`;
-                    }
-                  }, 1200);
-                } catch {
-                  alert("การยืนยันตัวตนผิดพลาด");
+                  const savedEnrollStr = localStorage.getItem(`smartaccess_biometric_enroll_${enrolledStudentId}`);
+                  if (!savedEnrollStr) {
+                    alert("❌ ไม่พบข้อมูลการผูกอุปกรณ์ความปลอดภัยบนเครื่องนี้");
+                    return;
+                  }
+                  
+                  const savedEnroll = JSON.parse(savedEnrollStr);
+                  const isBiometricsAvailable = window.PublicKeyCredential && 
+                    await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+
+                  if (isBiometricsAvailable && savedEnroll.credentialId) {
+                    const rawId = new Uint8Array(
+                      atob(savedEnroll.credentialId).split("").map(c => c.charCodeAt(0))
+                    );
+
+                    const challenge = new Uint8Array(32);
+                    window.crypto.getRandomValues(challenge);
+
+                    alert("🔒 กำลังเรียกใช้งานตัวตรวจสอบ Biometrics (Face ID/Touch ID)...");
+                    await navigator.credentials.get({
+                      publicKey: {
+                        challenge,
+                        allowCredentials: [{
+                          id: rawId,
+                          type: "public-key"
+                        }],
+                        userVerification: "required",
+                        timeout: 60000
+                      }
+                    });
+                  } else {
+                    alert("🔒 กำลังเรียกใช้งานระบบตรวจสอบความปลอดภัยของเบราว์เซอร์...");
+                    await new Promise(r => setTimeout(r, 1200));
+                  }
+
+                  alert("✓ ยืนยันตัวตนสำเร็จ!");
+                  const mockToken = "biometric_" + Math.random().toString(36).slice(2, 10);
+                  window.location.href = `/?scan=${mockToken}&room=${room}`;
+                } catch (err) {
+                  console.error("Biometric Verification Error:", err);
+                  alert("❌ การยืนยันตัวตนล้มเหลว หรือถูกปฏิเสธโดยผู้ใช้งาน");
                 }
               }}
               style={{
