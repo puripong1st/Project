@@ -938,7 +938,7 @@ const htmlTemplate = `<!DOCTYPE html>
         const skeleton = document.createElement("div");
         skeleton.className = "mermaid-loader-skeleton";
         skeleton.innerHTML = '<div class="spinner"></div>' +
-          '<span style="font-size: 13px; color: var(--text-muted); font-weight: 600; font-family: \'Sarabun\', sans-serif;">' +
+          '<span style="font-size: 13px; color: var(--text-muted); font-weight: 600; font-family: Sarabun, sans-serif;">' +
           'กำลังโหลดไดอะแกรมที่ ' + diagramNum + '...' +
           '</span>';
         div.appendChild(skeleton);
@@ -978,7 +978,7 @@ const htmlTemplate = `<!DOCTYPE html>
             }).catch(err => {
               console.error("Error rendering diagram " + diagramIndex + ":", err);
               if (skeleton) {
-                skeleton.innerHTML = '<span style="color: #EF4444; font-size: 13px; font-weight: 600; font-family: \'Sarabun\', sans-serif;">' +
+                skeleton.innerHTML = '<span style="color: #EF4444; font-size: 13px; font-weight: 600; font-family: Sarabun, sans-serif;">' +
                   '⚠️ ไม่สามารถแสดงผลไดอะแกรมที่ ' + diagramIndex + ' ได้' +
                   '</span>';
               }
