@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { DoorClosed, Volume2, VolumeX, Inbox, Zap, XCircle, CheckCircle2, Eye } from "lucide-react";
 import { useDashboard } from "../DashboardContext";
 import {
   formatDateTime,
@@ -41,7 +42,7 @@ export default function PendingPage() {
   return (
     <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
       
-      {/* 🚪 Beautiful Classroom Filter Tabs & Audio Controls */}
+      {/* Beautiful Classroom Filter Tabs & Audio Controls */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
         {/* Classroom Selector */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", background: "rgba(124, 58, 237, 0.04)", padding: 6, borderRadius: 14, border: "1px solid rgba(124, 58, 237, 0.08)" }}>
@@ -60,7 +61,7 @@ export default function PendingPage() {
               transition: "all 0.2s ease"
             }}
           >
-            🚪 ทุกห้องเรียน ({pending.length})
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><DoorClosed size={14} /> ทุกห้องเรียน ({pending.length})</span>
           </button>
           {roomsList.map(r => {
             const count = pending.filter(s => s.requested_room === r.room).length;
@@ -111,7 +112,7 @@ export default function PendingPage() {
             boxShadow: "var(--shadow-sm)"
           }}
         >
-          <span>{audioEnabled ? "🔊 เสียงเตือนคิว: เปิด" : "🔇 เสียงเตือนคิว: ปิด"}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{audioEnabled ? <><Volume2 size={14} /> เสียงเตือนคิว: เปิด</> : <><VolumeX size={14} /> เสียงเตือนคิว: ปิด</>}</span>
         </button>
       </div>
 
@@ -119,7 +120,7 @@ export default function PendingPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14, borderBottom: "1px solid var(--border)", paddingBottom: 18, marginBottom: 18 }}>
           <div>
             <h3 style={{ fontSize: 16.5, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>
-              📥 รายการลงทะเบียนรอยืนยันสิทธิ์ ({filteredPending.length} คำขอ)
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Inbox size={16} /> รายการลงทะเบียนรอยืนยันสิทธิ์ ({filteredPending.length} คำขอ)</span>
             </h3>
             <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
               นักศึกษาที่สแกน QR โค้ดหน้าห้องและส่งฟอร์มขอเข้าใช้ห้องเรียน
@@ -135,7 +136,7 @@ export default function PendingPage() {
                 className="btn-success"
                 style={{ padding: "8px 14px", fontSize: 12.5, borderRadius: 10, display: "flex", alignItems: "center", gap: 6 }}
               >
-                ⚡ อนุมัติกลุ่ม ({selectedPendingIds.length})
+                <Zap size={14} /> อนุมัติกลุ่ม ({selectedPendingIds.length})
               </button>
               <button
                 onClick={handleBulkReject}
@@ -143,7 +144,7 @@ export default function PendingPage() {
                 className="btn-danger"
                 style={{ padding: "8px 14px", fontSize: 12.5, borderRadius: 10, display: "flex", alignItems: "center", gap: 6 }}
               >
-                ✕ ปฏิเสธกลุ่ม
+                <XCircle size={14} /> ปฏิเสธกลุ่ม
               </button>
             </div>
           )}
@@ -151,7 +152,7 @@ export default function PendingPage() {
 
         {filteredPending.length === 0 ? (
           <div style={{ padding: "60px 20px", textShadow: "none", textAlign: "center" }}>
-            <div style={{ fontSize: 44, marginBottom: 12 }}>📥</div>
+            <div style={{ marginBottom: 12, color: "var(--text-muted)" }}><Inbox size={44} /></div>
             <h4 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ไม่มีคำขอลงทะเบียนใหม่รอยืนยันสิทธิ์</h4>
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>เมื่อนักศึกษาสแกนขอใช้ห้องเรียนสำเร็จ คำขอจะเด้งขึ้นที่แผงควบคุมนี้แบบเรียลไทม์ทันที</p>
           </div>
@@ -304,7 +305,7 @@ export default function PendingPage() {
                                   className="btn-danger-light"
                                   style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
                                 >
-                                  ✕ ปฏิเสธ
+                                  <XCircle size={13} /> ปฏิเสธ
                                 </button>
                                 <button
                                   onClick={() => handleApprove(student.id)}
@@ -312,12 +313,12 @@ export default function PendingPage() {
                                   className="btn-success"
                                   style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
                                 >
-                                  {loadingId === student.id ? "..." : "✓ อนุมัติ"}
+                                  {loadingId === student.id ? "..." : <><CheckCircle2 size={13} /> อนุมัติ</>}
                                 </button>
                               </div>
                             ) : (
                               <div style={{ padding: "16px 14px", flex: "0.8 1 0", minWidth: 150, display: "flex", justifyContent: "flex-end", color: "var(--text-muted)", fontSize: 12, fontWeight: 700 }}>
-                                👁️ ผู้เยี่ยมชม (ดูได้อย่างเดียว)
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Eye size={14} /> ผู้เยี่ยมชม (ดูได้อย่างเดียว)</span>
                               </div>
                             )}
                           </div>

@@ -1,5 +1,27 @@
 "use client";
 import React from "react";
+import {
+  BarChart3,
+  CalendarDays,
+  Rocket,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Users,
+  Search,
+  Inbox,
+  FileSpreadsheet,
+  Unlock,
+  ScrollText,
+  Trash2,
+  AlertTriangle,
+  AlertOctagon,
+  Globe,
+  Laptop,
+  ShieldCheck,
+  Scale,
+} from "lucide-react";
 import { useDashboard } from "../DashboardContext";
 import {
   formatDateTime,
@@ -60,7 +82,7 @@ export default function AllPage() {
         <div className="premium-card export-hub" style={{ padding: 0 }}>
           <div style={{ padding: 22, borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", justifyItems: "center", justifyContent: "center", textAlign: "left" }}>
             <h4 style={{ fontSize: 15.5, fontWeight: 900, color: "var(--smartaccess-purple-dark)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-              📊 ศูนย์ประมวลและสร้างรายงานเอกสาร PDF (Automatic PDF Report Generator)
+              <BarChart3 size={16} /> ศูนย์ประมวลและสร้างรายงานเอกสาร PDF (Automatic PDF Report Generator)
             </h4>
             <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "8px 0 16px 0", lineHeight: "1.45" }}>
               ระบบรองรับการสร้างเอกสารและส่งออกแบบรวม (Batch PDF) ตามเงื่อนไขการค้นหาและฟิลเตอร์ช่วงวันที่ด้านล่างอย่างเป็นระบบ ถูกต้องตามพระราชบัญญัติคอมพิวเตอร์และ PDPA ทุกประการ
@@ -97,7 +119,7 @@ export default function AllPage() {
 
           {/* PDF control panel */}
           <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)" }}>📅 1. กำหนดช่วงข้อมูลวันที่ออกรายงาน (Date Retention Range)</span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "inline-flex", alignItems: "center", gap: 6 }}><CalendarDays size={14} /> 1. กำหนดช่วงข้อมูลวันที่ออกรายงาน (Date Retention Range)</span>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
               <div>
                 <label style={{ display: "block", fontSize: 10.5, color: "var(--text-secondary)", marginBottom: 4 }}>วันที่เริ่มต้น (Date Start):</label>
@@ -122,12 +144,12 @@ export default function AllPage() {
             </div>
 
             <div style={{ borderTop: "1px dashed var(--border)", paddingTop: 14, marginTop: 4 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)" }}>🚀 2. ดำเนินการออกรายงานแบ่งตามประเภทสเตตัส</span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "inline-flex", alignItems: "center", gap: 6 }}><Rocket size={14} /> 2. ดำเนินการออกรายงานแบ่งตามประเภทสเตตัส</span>
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                 {[
-                  { type: "all", label: "📄 รายงานรวมทุกสถานะ", color: "var(--smartaccess-purple-dark)" },
-                  { type: "approved", label: "✓ รายงานอนุมัติผ่านประตู", color: "#059669" },
-                  { type: "rejected", label: "✕ รายงานการปฏิเสธคำขอ", color: "#DC2626" },
+                  { type: "all", label: "รายงานรวมทุกสถานะ", icon: <FileText size={13} />, color: "var(--smartaccess-purple-dark)" },
+                  { type: "approved", label: "รายงานอนุมัติผ่านประตู", icon: <CheckCircle2 size={13} />, color: "#059669" },
+                  { type: "rejected", label: "รายงานการปฏิเสธคำขอ", icon: <XCircle size={13} />, color: "#DC2626" },
                 ].map(btn => (
                   <button
                     key={btn.type}
@@ -140,10 +162,13 @@ export default function AllPage() {
                       borderRadius: 8,
                       fontWeight: 700,
                       borderColor: btn.color,
-                      color: btn.color
+                      color: btn.color,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6
                     }}
                   >
-                    {pdfLoading ? "⏳ กำลังดึง..." : btn.label}
+                    {pdfLoading ? <><Loader2 size={13} className="animate-spin" /> กำลังดึง...</> : <>{btn.icon} {btn.label}</>}
                   </button>
                 ))}
               </div>
@@ -157,7 +182,7 @@ export default function AllPage() {
         <div style={{ display: "flex", justifyContent: "between", alignItems: "center", flexWrap: "wrap", gap: 14, borderBottom: "1px solid var(--border)", paddingBottom: 18, marginBottom: 18 }}>
           <div>
             <h3 style={{ fontSize: 16.5, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>
-              👥 ทำเนียบสิทธิ์ผ่านประตู & ประวัติการส่งขอเข้าใช้ห้องเรียน
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Users size={16} /> ทำเนียบสิทธิ์ผ่านประตู & ประวัติการส่งขอเข้าใช้ห้องเรียน</span>
             </h3>
             <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
               รายชื่อและสเตตัสนักศึกษาทุกคนที่ลงทะเบียนในระบบ
@@ -168,7 +193,7 @@ export default function AllPage() {
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="🔍 ค้นหานักศึกษา (ชื่อ, สกุล, รหัส)..."
+              placeholder="ค้นหานักศึกษา (ชื่อ, สกุล, รหัส)..."
               className="smartaccess-input"
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
@@ -181,16 +206,16 @@ export default function AllPage() {
               style={{ width: 130, height: 32, padding: "6px 12px", fontSize: 12 }}
             >
               <option value="all">ทุกสถานะสิทธิ์</option>
-              <option value="approved">✓ อนุมัติผ่านสิทธิ์แล้ว</option>
-              <option value="rejected">✕ ถูกปฏิเสธสิทธิ์</option>
-              <option value="pending">📥 รอยืนยันสิทธิ์</option>
+              <option value="approved">อนุมัติผ่านสิทธิ์แล้ว</option>
+              <option value="rejected">ถูกปฏิเสธสิทธิ์</option>
+              <option value="pending">รอยืนยันสิทธิ์</option>
             </select>
           </div>
         </div>
 
         {filteredStudents.length === 0 ? (
           <div style={{ padding: "40px 20px", textShadow: "none", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
+            <div style={{ marginBottom: 12, color: "var(--text-muted)" }}><Users size={40} /></div>
             <h4 style={{ fontSize: 14, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ไม่พบรายชื่อนักศึกษาตรงตามเงื่อนไขค้นหา</h4>
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>กรุณาลองเปลี่ยนคำค้นหา หรือเปลี่ยนสถานะที่กรอง</p>
           </div>
@@ -233,7 +258,7 @@ export default function AllPage() {
                         ห้อง {student.requested_room}
                       </span>
                       <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8 }}>
-                        📅 {formatDateTime(student.registered_at)}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><CalendarDays size={13} /> {formatDateTime(student.registered_at)}</span>
                       </div>
                     </td>
                     <td style={{ padding: "14px" }}>
@@ -244,7 +269,7 @@ export default function AllPage() {
                           background: "#ECFDF5", color: "#059669", border: "1px solid rgba(16,185,129,0.25)"
                         }}>
                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981" }} />
-                          ✓ ได้สิทธิ์ผ่านประตู
+                          ได้สิทธิ์ผ่านประตู
                         </span>
                       )}
                       {student.status === "rejected" && (
@@ -254,7 +279,7 @@ export default function AllPage() {
                             background: "#FEF2F2", color: "#DC2626", border: "1px solid rgba(220,38,38,0.2)"
                           }}>
                             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444" }} />
-                            ✕ ถูกปฏิเสธสิทธิ์
+                            ถูกปฏิเสธสิทธิ์
                           </span>
                           {student.rejection_reason && (
                             <span style={{ fontSize: 10.5, color: "var(--text-secondary)", fontStyle: "italic", marginLeft: 2 }}>
@@ -269,7 +294,7 @@ export default function AllPage() {
                           background: "#FFFBEB", color: "#D97706", border: "1px solid rgba(245,158,11,0.25)"
                         }}>
                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B" }} />
-                          ⏳ รอยืนยันสิทธิ์
+                          รอยืนยันสิทธิ์
                         </span>
                       )}
                     </td>
@@ -290,9 +315,9 @@ export default function AllPage() {
                           onClick={() => handleExportSingleStudentPDF(student.id, student.first_name + " " + student.last_name)}
                           disabled={loadingId === student.id}
                           className="btn-ghost"
-                          style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700 }}
+                          style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5 }}
                         >
-                          {loadingId === student.id ? "⏳ ดึงข้อมูล..." : "📇 ออกการ์ด PDF"}
+                          {loadingId === student.id ? <><Loader2 size={13} className="animate-spin" /> ดึงข้อมูล...</> : <><FileSpreadsheet size={13} /> ออกการ์ด PDF</>}
                         </button>
 
                         {student.status === "approved" && (isOwner || user.role === "door_operator") && (
@@ -302,7 +327,7 @@ export default function AllPage() {
                             className="btn-success"
                             style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", gap: 4 }}
                           >
-                            🔓 {loadingId === student.id ? "เปิด..." : "เปิดประตู"}
+                            <Unlock size={13} /> {loadingId === student.id ? "เปิด..." : "เปิดประตู"}
                           </button>
                         )}
                       </div>
@@ -321,7 +346,7 @@ export default function AllPage() {
           <div style={{ display: "flex", justifyContent: "between", alignItems: "center", flexWrap: "wrap", gap: 14, borderBottom: "1px solid var(--border)", paddingBottom: 18, marginBottom: 18 }}>
             <div>
               <h3 style={{ fontSize: 16.5, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>
-                📜 ประวัติจราจรและบันทึกความปลอดภัยเข้าออก (Access Traffic Audit Logs)
+                <ScrollText size={16} /> ประวัติจราจรและบันทึกความปลอดภัยเข้าออก (Access Traffic Audit Logs)
               </h3>
               <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>
                 บันทึกประวัติการผ่านประตูคำขอทุกสถานะ ตามข้อบังคับ พ.ร.บ. คอมพิวเตอร์ (เก็บรักษาขั้นต่ำ 90 วัน)
@@ -332,7 +357,7 @@ export default function AllPage() {
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
               <input
                 type="text"
-                placeholder="🔍 ค้นในบันทึก (ชื่อนักศึกษา/แอดมิน)..."
+                placeholder="ค้นในบันทึก (ชื่อนักศึกษา/แอดมิน)..."
                 className="smartaccess-input"
                 value={logSearch}
                 onChange={e => { setLogSearch(e.target.value); setLogCurrentPage(1); }}
@@ -345,18 +370,18 @@ export default function AllPage() {
                 style={{ width: 140, height: 32, padding: "6px 12px", fontSize: 12 }}
               >
                 <option value="all">ทุกกิจกรรมจราจร</option>
-                <option value="door_opened">✓ ปลดล็อกประตูสำเร็จ</option>
-                <option value="rejected">✕ ปฏิเสธการเข้าถึง</option>
-                <option value="approved">✓ อนุมัติสิทธิ์เข้าเรียน</option>
-                <option value="registered">📝 ลงทะเบียนขอผ่าน</option>
-                <option value="export_pdf">📊 ดาวน์โหลดรายงาน</option>
+                <option value="door_opened">ปลดล็อกประตูสำเร็จ</option>
+                <option value="rejected">ปฏิเสธการเข้าถึง</option>
+                <option value="approved">อนุมัติสิทธิ์เข้าเรียน</option>
+                <option value="registered">ลงทะเบียนขอผ่าน</option>
+                <option value="export_pdf">ดาวน์โหลดรายงาน</option>
               </select>
             </div>
           </div>
 
           {displayedLogs.length === 0 ? (
             <div style={{ padding: "40px 20px", textShadow: "none", textAlign: "center" }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>📜</div>
+              <div style={{ marginBottom: 12, color: "var(--text-muted)" }}><ScrollText size={40} /></div>
               <h4 style={{ fontSize: 14, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ไม่พบบันทึกการเข้าใช้งานระบบในหมวดหมู่นี้</h4>
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>ข้อมูลจะเก็บบันทึกอัตโนมัติเมื่อนักศึกษาสแกนหรือแอดมินปลดล็อกประตู</p>
             </div>
@@ -401,7 +426,7 @@ export default function AllPage() {
                               color: log.severity === "critical" ? "#EF4444" : "#D97706",
                               border: `1px solid ${log.severity === "critical" ? "#EF444444" : "#F59E0B44"}`
                             }}>
-                              {log.severity === "critical" ? "🚨 CRITICAL" : "⚠️ WARNING"}
+                              {log.severity === "critical" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AlertOctagon size={12} /> CRITICAL</span> : <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AlertTriangle size={12} /> WARNING</span>}
                             </span>
                           )}
                         </td>
@@ -424,14 +449,14 @@ export default function AllPage() {
                           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                             {isRejectedUser && log.esp32_response && (
                               <div style={{ color: "#EF4444", fontWeight: 700, fontSize: "11px", display: "flex", gap: 4, alignItems: "center" }}>
-                                <span>⚠️ บันทึกปฏิเสธ: {log.esp32_response}</span>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AlertTriangle size={12} /> บันทึกปฏิเสธ: {log.esp32_response}</span>
                               </div>
                             )}
                             {renderLogNotes(log.notes)}
                             {(log.ip_address || log.user_agent) && (
                               <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 4, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                {log.ip_address && <span>🌐 IP: {log.ip_address}</span>}
-                                {log.user_agent && <span>💻 {formatDeviceFromUA(log.user_agent)}</span>}
+                                {log.ip_address && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Globe size={12} /> IP: {log.ip_address}</span>}
+                                {log.user_agent && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Laptop size={12} /> {formatDeviceFromUA(log.user_agent)}</span>}
                               </div>
                             )}
                           </div>
@@ -499,11 +524,11 @@ export default function AllPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 12 }}>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
-                <span style={{ color: "var(--edu-pink)", fontSize: 20 }}>🛡️</span>
+                <span style={{ color: "var(--edu-pink)", display: "inline-flex" }}><ShieldCheck size={20} /></span>
                 ศูนย์รักษาความปลอดภัยและบำรุงรักษาข้อมูล (Log Compliance Hub)
               </h3>
               <p style={{ color: "var(--text-secondary)", fontSize: 12.5, marginTop: 6, display: "flex", alignItems: "center", gap: 4, margin: "6px 0 0 0" }}>
-                <span>⚖️ ปฏิบัติตาม พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ มาตรา 26 (ต้องจัดเก็บประวัติไม่น้อยกว่า 90 วัน)</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Scale size={14} /> ปฏิบัติตาม พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ มาตรา 26 (ต้องจัดเก็บประวัติไม่น้อยกว่า 90 วัน)</span>
               </p>
             </div>
             {systemStatus && (

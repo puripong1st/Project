@@ -1,5 +1,35 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, ReactNode } from "react";
+import {
+  BarChart3,
+  RefreshCw,
+  Cloud,
+  Plug,
+  Settings,
+  Zap,
+  RotateCw,
+  Database,
+  User,
+  ClipboardList,
+  ShieldCheck,
+  MemoryStick,
+  Clock,
+  Smartphone,
+  Globe,
+  Laptop,
+  MapPin,
+  Rocket,
+  Lightbulb,
+  Server,
+  Cpu,
+  Boxes,
+  Link2,
+  Hash,
+  Timer,
+  Calculator,
+  Package,
+  HardDrive,
+} from "lucide-react";
 import { useDashboard } from "../DashboardContext";
 
 // ── Types ──
@@ -53,7 +83,7 @@ function LatencyBar({ ms, max = 1000 }: { ms: number; max?: number }) {
 }
 
 // ── Metric Card Component ──
-function MetricCard({ title, children, icon }: { title: string; children: React.ReactNode; icon?: string }) {
+function MetricCard({ title, children, icon }: { title: string; children: React.ReactNode; icon?: ReactNode }) {
   return (
     <div style={{
       background: "var(--bg-primary)",
@@ -65,7 +95,7 @@ function MetricCard({ title, children, icon }: { title: string; children: React.
     className="hover-lift"
     >
       <span style={{ fontSize: 11, fontWeight: 900, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-        {icon && <span>{icon}</span>}
+        {icon && <span style={{ display: "inline-flex" }}>{icon}</span>}
         {title}
       </span>
       {children}
@@ -105,10 +135,10 @@ export default function HealthPage() {
   const isDegraded = healthData.status === "degraded";
 
   const sections = [
-    { id: "overview" as const, label: "📊 ภาพรวม", icon: "📊" },
-    { id: "vercel" as const, label: "☁️ Vercel", icon: "☁️" },
-    { id: "api" as const, label: "🔌 API Status", icon: "🔌" },
-    { id: "runtime" as const, label: "⚙️ Runtime", icon: "⚙️" },
+    { id: "overview" as const, label: "ภาพรวม", icon: <BarChart3 size={14} /> },
+    { id: "vercel" as const, label: "Vercel", icon: <Cloud size={14} /> },
+    { id: "api" as const, label: "API Status", icon: <Plug size={14} /> },
+    { id: "runtime" as const, label: "Runtime", icon: <Settings size={14} /> },
   ];
 
   return (
@@ -130,7 +160,7 @@ export default function HealthPage() {
               {healthData.status}
             </span>
             <h2 style={{ fontSize: 20, fontWeight: 900, color: "var(--smartaccess-purple-dark)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-              ⚡ System Health Monitor
+              <Zap size={18} /> System Health Monitor
             </h2>
             <p style={{ fontSize: 12.5, color: "var(--text-secondary)", margin: "4px 0 0" }}>
               อัปเดตล่าสุด: {new Date(healthData.timestamp).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} • Auto-refresh ทุก 30 วินาที
@@ -146,7 +176,7 @@ export default function HealthPage() {
               borderColor: "var(--smartaccess-purple-light)", color: "var(--smartaccess-purple)"
             }}
           >
-            ↻ {loading ? "กำลังรีเฟรช..." : "รีเฟรชสถานะ"}
+            <RotateCw size={14} className={loading ? "animate-spin" : ""} /> {loading ? "กำลังรีเฟรช..." : "รีเฟรชสถานะ"}
           </button>
         </div>
 
@@ -165,7 +195,7 @@ export default function HealthPage() {
                 cursor: "pointer", transition: "all 0.2s"
               }}
             >
-              {sec.label}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{sec.icon} {sec.label}</span>
             </button>
           ))}
         </div>
@@ -177,7 +207,7 @@ export default function HealthPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
 
             {/* Database */}
-            <MetricCard title="DATABASE" icon="🗄️">
+            <MetricCard title="DATABASE" icon={<Database size={18} />}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(healthData.components.database.status) }} />
                 <span style={{ fontSize: 15, fontWeight: 800, color: healthData.components.database.status === "up" ? "#059669" : "#DC2626" }}>
@@ -189,13 +219,13 @@ export default function HealthPage() {
               </div>
               <LatencyBar ms={healthData.components.database.latency_ms} max={500} />
               <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 10.5, color: "var(--text-muted)" }}>
-                <span>👤 {healthData.components.database.total_students ?? "—"} รายการ</span>
-                <span>📋 {healthData.components.database.total_logs ?? "—"} Logs</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><User size={12} /> {healthData.components.database.total_students ?? "—"} รายการ</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ClipboardList size={12} /> {healthData.components.database.total_logs ?? "—"} Logs</span>
               </div>
             </MetricCard>
 
             {/* Rate Limiter */}
-            <MetricCard title="RATE LIMITER" icon="🛡️">
+            <MetricCard title="RATE LIMITER" icon={<ShieldCheck size={18} />}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(healthData.components.rate_limiter.status) }} />
                 <span style={{ fontSize: 15, fontWeight: 800, color: healthData.components.rate_limiter.status === "up" ? "#059669" : "#DC2626" }}>
@@ -207,7 +237,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Memory */}
-            <MetricCard title="MEMORY" icon="💾">
+            <MetricCard title="MEMORY" icon={<MemoryStick size={18} />}>
               <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums", marginBottom: 4 }}>
                 {healthData.components.memory.rss_mb} MB
               </div>
@@ -225,7 +255,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Server Time */}
-            <MetricCard title="เวลาเซิร์ฟเวอร์" icon="🕐">
+            <MetricCard title="เวลาเซิร์ฟเวอร์" icon={<Clock size={18} />}>
               <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-primary)", marginBottom: 4 }}>
                 {healthData.server_time}
               </div>
@@ -233,7 +263,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Last QR Scan */}
-            <MetricCard title="LAST QR SCAN" icon="📱">
+            <MetricCard title="LAST QR SCAN" icon={<Smartphone size={18} />}>
               <div style={{ fontSize: 13.5, fontWeight: 900, color: "var(--text-primary)", lineHeight: 1.4 }}>
                 {healthData.last_qr_scan
                   ? new Date(healthData.last_qr_scan).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
@@ -243,16 +273,16 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Environment */}
-            <MetricCard title="ENVIRONMENT" icon="🌐">
+            <MetricCard title="ENVIRONMENT" icon={<Globe size={18} />}>
               <div style={{ fontSize: 15, fontWeight: 800, color: "var(--smartaccess-purple)" }}>
                 {healthData.vercel_runtime?.environment || "unknown"}
               </div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
-                {healthData.vercel_runtime?.is_vercel ? "☁️ Vercel Cloud" : "💻 Local Development"}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{healthData.vercel_runtime?.is_vercel ? <><Cloud size={13} /> Vercel Cloud</> : <><Laptop size={13} /> Local Development</>}</span>
               </div>
               {healthData.vercel_runtime?.region && (
                 <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4, fontWeight: 600 }}>
-                  📍 Region: {healthData.vercel_runtime.region}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><MapPin size={12} /> Region: {healthData.vercel_runtime.region}</span>
                 </div>
               )}
             </MetricCard>
@@ -268,7 +298,7 @@ export default function HealthPage() {
             {/* Vercel Runtime */}
             <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                ☁️ Vercel Runtime Information
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Cloud size={16} /> Vercel Runtime Information</span>
               </h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
                 {[
@@ -289,7 +319,7 @@ export default function HealthPage() {
             {/* Vercel Deployment */}
             <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                🚀 Latest Deployment
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Rocket size={15} /> Latest Deployment</span>
               </h3>
 
               {healthData.vercel_deployment ? (
@@ -344,7 +374,7 @@ export default function HealthPage() {
                   </span>
                   {healthData.vercel_deployment_error?.includes("not configured") && (
                     <div style={{ marginTop: 12, padding: "10px 16px", background: "#FFFBEB", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 12, color: "#92400E", textAlign: "left" }}>
-                      <strong>💡 วิธีเปิดใช้งาน:</strong> เพิ่มตัวแปร <code>VERCEL_TOKEN</code> และ <code>VERCEL_PROJECT_ID</code> ใน .env.local หรือ Vercel Environment Variables
+                      <strong><span style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><Lightbulb size={13} /> วิธีเปิดใช้งาน:</span></strong> เพิ่มตัวแปร <code>VERCEL_TOKEN</code> และ <code>VERCEL_PROJECT_ID</code> ใน .env.local หรือ Vercel Environment Variables
                     </div>
                   )}
                 </div>
@@ -360,7 +390,7 @@ export default function HealthPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
             <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                🔌 API Endpoint Status & Latency
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Plug size={16} /> API Endpoint Status & Latency</span>
               </h3>
 
               {healthData.api_probes && healthData.api_probes.length > 0 ? (
@@ -419,7 +449,7 @@ export default function HealthPage() {
               )}
 
               <div style={{ marginTop: 16, padding: "12px 16px", background: "var(--bg-secondary)", borderRadius: 10, border: "1px solid var(--border)", fontSize: 11, color: "var(--text-muted)" }}>
-                💡 API Probes จะทดสอบการเข้าถึงเส้นทาง API หลักของระบบโดยอัตโนมัติ ค่า Latency แสดงเวลาตอบสนองจากเซิร์ฟเวอร์ในการตรวจสอบแต่ละรอบ (วัดจากฝั่ง server-to-server ภายใน)
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><Lightbulb size={13} /></span> API Probes จะทดสอบการเข้าถึงเส้นทาง API หลักของระบบโดยอัตโนมัติ ค่า Latency แสดงเวลาตอบสนองจากเซิร์ฟเวอร์ในการตรวจสอบแต่ละรอบ (วัดจากฝั่ง server-to-server ภายใน)
               </div>
             </div>
           </div>
@@ -462,7 +492,7 @@ export default function HealthPage() {
             {/* Memory Usage Visual */}
             <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                📊 Memory Breakdown
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><BarChart3 size={15} /> Memory Breakdown</span>
               </h3>
               <div style={{ display: "grid", gap: 14 }}>
                 {[

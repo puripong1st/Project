@@ -1,5 +1,28 @@
 "use client";
 import React from "react";
+import {
+  BarChart3,
+  Rocket,
+  Clock,
+  Target,
+  GraduationCap,
+  FileText,
+  CheckCircle2,
+  DoorOpen,
+  XCircle,
+  Zap,
+  Flame,
+  Settings,
+  Lock,
+  ClipboardList,
+  RefreshCw,
+  UploadCloud,
+  Download,
+  Trash2,
+  Save,
+  Loader2,
+  FolderOpen,
+} from "lucide-react";
 import { useDashboard, defaultRoomConfig } from "../DashboardContext";
 
 const TrashIcon = () => (
@@ -106,7 +129,7 @@ export default function RoomsPage() {
         >
           <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 14, marginBottom: 20 }}>
             <h3 style={{ fontSize: 16.5, fontWeight: 900, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
-              📊 รายงานสถิติและบทวิเคราะห์เชิงลึก (Zero-Dependency SVG Analytics Dashboard)
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><BarChart3 size={16} /> รายงานสถิติและบทวิเคราะห์เชิงลึก (Zero-Dependency SVG Analytics Dashboard)</span>
             </h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 12.5, margin: "6px 0 0", lineHeight: 1.4 }}>
               ข้อมูลวิเคราะห์อัตราการเข้าเรียนสูงสุดแยกตามช่วงเวลา คณะวิชา และอัตราความสำเร็จของคำขอประมวลผลแบบ Real-time จากประวัติ logs
@@ -118,7 +141,7 @@ export default function RoomsPage() {
             {/* Chart 1: Hour Distribution */}
             <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12 }}>
               <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
-                ⏰ ช่วงชั่วโมงที่มีการเข้าออกสูงสุด (Peak Access Hours)
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Clock size={15} /> ช่วงชั่วโมงที่มีการเข้าออกสูงสุด (Peak Access Hours)</span>
               </h4>
               <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: 130, gap: 8, paddingTop: 10, paddingBottom: 5 }}>
                 {(() => {
@@ -159,7 +182,7 @@ export default function RoomsPage() {
             {/* Chart 2: Success/Failure Ratio */}
             <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12, display: "flex", flexDirection: "column" }}>
               <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
-                🎯 อัตราการตรวจสอบสำเร็จ (Request Handling Success)
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Target size={15} /> อัตราการตรวจสอบสำเร็จ (Request Handling Success)</span>
               </h4>
               <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "space-around", gap: 16, height: 130 }}>
                 {(() => {
@@ -204,7 +227,7 @@ export default function RoomsPage() {
             {/* Chart 3: Department Ratios */}
             <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12 }}>
               <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 12 }}>
-                🎓 สัดส่วนการเข้าใช้งานจำแนกตามภาควิชา (Department Ratios)
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><GraduationCap size={15} /> สัดส่วนการเข้าใช้งานจำแนกตามภาควิชา (Department Ratios)</span>
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, height: 130, justifyContent: "center" }}>
                 {(() => {
@@ -244,15 +267,15 @@ export default function RoomsPage() {
             {analyticsData.kpi && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: "ลงทะเบียน (7 วัน)", value: analyticsData.kpi.reg_7d, color: "#7C3AED", icon: "📝" },
-                  { label: "อนุมัติ (7 วัน)", value: analyticsData.kpi.approved_7d, color: "#10B981", icon: "✅" },
-                  { label: "เปิดประตู (7 วัน)", value: analyticsData.kpi.opens_7d, color: "#3B82F6", icon: "🚪" },
-                  { label: "ปฏิเสธ (7 วัน)", value: analyticsData.kpi.rejected_7d, color: "#EF4444", icon: "❌" },
-                  { label: "ลงทะเบียน (24 ชม.)", value: analyticsData.kpi.reg_24h, color: "#F59E0B", icon: "🕐" },
-                  { label: "เปิดประตู (24 ชม.)", value: analyticsData.kpi.opens_24h, color: "#06B6D4", icon: "⚡" },
+                  { label: "ลงทะเบียน (7 วัน)", value: analyticsData.kpi.reg_7d, color: "#7C3AED", icon: <FileText size={22} /> },
+                  { label: "อนุมัติ (7 วัน)", value: analyticsData.kpi.approved_7d, color: "#10B981", icon: <CheckCircle2 size={22} /> },
+                  { label: "เปิดประตู (7 วัน)", value: analyticsData.kpi.opens_7d, color: "#3B82F6", icon: <DoorOpen size={22} /> },
+                  { label: "ปฏิเสธ (7 วัน)", value: analyticsData.kpi.rejected_7d, color: "#EF4444", icon: <XCircle size={22} /> },
+                  { label: "ลงทะเบียน (24 ชม.)", value: analyticsData.kpi.reg_24h, color: "#F59E0B", icon: <Clock size={22} /> },
+                  { label: "เปิดประตู (24 ชม.)", value: analyticsData.kpi.opens_24h, color: "#06B6D4", icon: <Zap size={22} /> },
                 ].map(({ label, value, color, icon }) => (
                   <div key={label} style={{ padding: "14px 16px", background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12, textAlign: "center" }}>
-                    <div style={{ fontSize: 22, marginBottom: 4 }}>{icon}</div>
+                    <div style={{ marginBottom: 4, color, display: "flex", justifyContent: "center" }}>{icon}</div>
                     <div style={{ fontSize: 26, fontWeight: 900, color }}>{value ?? 0}</div>
                     <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.3 }}>{label}</div>
                   </div>
@@ -265,7 +288,7 @@ export default function RoomsPage() {
               {analyticsData.heatmap && analyticsData.heatmap.length > 0 && (
                 <div style={{ padding: 16, background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 12, gridColumn: "1 / -1" }}>
                   <h4 style={{ fontSize: 13.5, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginTop: 0, marginBottom: 14 }}>
-                    🔥 Heatmap ชั่วโมงพีค (30 วัน) — แต่ละแถว = วันในสัปดาห์, แต่ละคอลัมน์ = ชั่วโมง 0–23
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Flame size={14} /> Heatmap ชั่วโมงพีค (30 วัน) — แต่ละแถว = วันในสัปดาห์, แต่ละคอลัมน์ = ชั่วโมง 0–23</span>
                   </h4>
                   <div style={{ overflowX: "auto" }}>
                     <div style={{ minWidth: 560 }}>
@@ -408,7 +431,7 @@ export default function RoomsPage() {
                     onClick={() => toggleRoomSettings(roomItem.room)}
                     style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border)", background: expandedRoomSettings.has(roomItem.room) ? "var(--smartaccess-purple-pale)" : "transparent", color: expandedRoomSettings.has(roomItem.room) ? "var(--smartaccess-purple)" : "var(--text-secondary)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
                   >
-                    <span>⚙️ ตั้งค่าการอนุมัติ & หน้าจอ ESP32</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Settings size={14} /> ตั้งค่าการอนุมัติ & หน้าจอ ESP32</span>
                     <span style={{ fontSize: 10 }}>{expandedRoomSettings.has(roomItem.room) ? "▲" : "▼"}</span>
                   </button>
 
@@ -453,7 +476,7 @@ export default function RoomsPage() {
 
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <label style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 5 }}>
-                            🔒 ความปลอดภัยหน้าจอ ESP32 (รหัสนักศึกษาล่าสุด)
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Lock size={13} /> ความปลอดภัยหน้าจอ ESP32 (รหัสนักศึกษาล่าสุด)</span>
                           </label>
                           <select value={cfg.student_id_display_mode} onChange={e => setRoomConfig(roomItem.room, { student_id_display_mode: e.target.value })} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 12.5, outline: "none" }}>
                             <option value="full">โชว์รหัสแบบเต็ม (Full ID)</option>
@@ -519,7 +542,7 @@ export default function RoomsPage() {
                       boxShadow: "0 4px 12px rgba(124, 58, 237, 0.15)"
                     }}
                   >
-                    <span>{roomSaving[roomItem.room] ? "⏳" : "💾"}</span>
+                    <span style={{ display: "inline-flex" }}>{roomSaving[roomItem.room] ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}</span>
                     <span>{roomSaving[roomItem.room] ? "กำลังบันทึก..." : "บันทึกการตั้งค่าห้องนี้"}</span>
                   </button>
                 </div>
@@ -562,12 +585,12 @@ export default function RoomsPage() {
         {/* OTA Activity Logs */}
         <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, marginBottom: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>📋 บันทึกกิจกรรม OTA แบบละเอียด</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><ClipboardList size={14} /> บันทึกกิจกรรม OTA แบบละเอียด</span></span>
             <button
               onClick={fetchFirmwareLogs}
               style={{ padding: "4px 10px", background: "none", border: "1px solid var(--border-medium)", color: "var(--smartaccess-purple)", fontSize: 11, borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
             >
-              🔄 รีเฟรช
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><RefreshCw size={13} /> รีเฟรช</span>
             </button>
           </div>
           {firmwareLogsLoading ? (
@@ -579,7 +602,7 @@ export default function RoomsPage() {
               {firmwareLogs.map((log: any) => {
                 const isOtaTrigger = log.action === "firmware_ota_triggered";
                 const isDelete = (log.notes || "").includes("ลบเฟิร์มแวร์");
-                const icon = isOtaTrigger ? "⬇️" : isDelete ? "🗑️" : "🚀";
+                const icon = isOtaTrigger ? <Download size={16} /> : isDelete ? <Trash2 size={16} /> : <Rocket size={16} />;
                 const color = isOtaTrigger ? "#3B82F6" : isDelete ? "#EF4444" : "#7C3AED";
                 return (
                   <div key={log.id} style={{ padding: "8px 12px", background: "var(--bg-secondary)", border: "1px solid var(--border)", borderLeft: `3px solid ${color}`, borderRadius: 6 }}>
@@ -606,7 +629,7 @@ export default function RoomsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: 24 }}>
           {/* Upload firmware form */}
           <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
-            <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>⚡ อัปโหลดเฟิร์มแวร์รุ่นใหม่ (.bin)</span>
+            <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><UploadCloud size={14} /> อัปโหลดเฟิร์มแวร์รุ่นใหม่ (.bin)</span></span>
 
             <form onSubmit={async (e) => {
               e.preventDefault();
@@ -655,14 +678,14 @@ export default function RoomsPage() {
                 className="btn-primary"
                 style={{ width: "100%", justifyContent: "center", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}
               >
-                {settingsLoading ? "⏳ กำลังบันทึก..." : "🚀 เปิดตัวปล่อยอัปเดตแบบไร้สาย (Deploy OTA)"}
+                {settingsLoading ? <><Loader2 size={14} className="animate-spin" /> กำลังบันทึก...</> : <><Rocket size={14} /> เปิดตัวปล่อยอัปเดตแบบไร้สาย (Deploy OTA)</>}
               </button>
             </form>
           </div>
 
           {/* Catalog list */}
           <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
-            <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>📁 แค็ตตาล็อกเฟิร์มแวร์ทั้งหมด</span>
+            <span style={{ display: "block", fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><FolderOpen size={14} /> แค็ตตาล็อกเฟิร์มแวร์ทั้งหมด</span></span>
             {firmwareReleasesLoading ? (
               <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-secondary)", fontSize: 12.5 }}>กำลังโหลด...</div>
             ) : firmwareReleases.length === 0 ? (

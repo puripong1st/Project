@@ -1,21 +1,37 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, ReactNode } from "react";
+import {
+  FileText,
+  DoorOpen,
+  BarChart3,
+  Wrench,
+  MessageCircle,
+  Send,
+  MessageSquare,
+  Bell,
+  CheckCircle2,
+  Circle,
+  Key,
+  FlaskConical,
+  Loader2,
+  Save,
+} from "lucide-react";
 import { useDashboard } from "../DashboardContext";
 
 type ChannelType = "register" | "approve" | "logs" | "admin_audit";
 type Provider = "discord" | "telegram" | "line";
 
-const CHANNEL_ROWS: { label: string; type: ChannelType; icon: string }[] = [
-  { label: "คำขอลงทะเบียนเข้าห้องใหม่", type: "register", icon: "📝" },
-  { label: "อนุมัติสิทธิ์ / เปิดประตูสำเร็จ", type: "approve", icon: "🚪" },
-  { label: "Log จราจร / ความปลอดภัย", type: "logs", icon: "📊" },
-  { label: "Log การบำรุงรักษา / แอดมิน", type: "admin_audit", icon: "🛠️" },
+const CHANNEL_ROWS: { label: string; type: ChannelType; icon: ReactNode }[] = [
+  { label: "คำขอลงทะเบียนเข้าห้องใหม่", type: "register", icon: <FileText size={14} /> },
+  { label: "อนุมัติสิทธิ์ / เปิดประตูสำเร็จ", type: "approve", icon: <DoorOpen size={14} /> },
+  { label: "Log จราจร / ความปลอดภัย", type: "logs", icon: <BarChart3 size={14} /> },
+  { label: "Log การบำรุงรักษา / แอดมิน", type: "admin_audit", icon: <Wrench size={14} /> },
 ];
 
-const PROVIDERS: Record<Provider, { name: string; icon: string; color: string; tint: string }> = {
-  discord: { name: "Discord", icon: "🟣", color: "#7C3AED", tint: "rgba(124,58,237,0.07)" },
-  telegram: { name: "Telegram", icon: "✈️", color: "#229ED9", tint: "rgba(34,158,217,0.07)" },
-  line: { name: "LINE", icon: "💬", color: "#06C755", tint: "rgba(6,199,85,0.07)" },
+const PROVIDERS: Record<Provider, { name: string; icon: ReactNode; color: string; tint: string }> = {
+  discord: { name: "Discord", icon: <MessageCircle size={16} />, color: "#7C3AED", tint: "rgba(124,58,237,0.07)" },
+  telegram: { name: "Telegram", icon: <Send size={16} />, color: "#229ED9", tint: "rgba(34,158,217,0.07)" },
+  line: { name: "LINE", icon: <MessageSquare size={16} />, color: "#06C755", tint: "rgba(6,199,85,0.07)" },
 };
 
 export default function SettingsPage() {
@@ -84,14 +100,14 @@ export default function SettingsPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
               <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                🔔 ศูนย์ตั้งค่าการแจ้งเตือน
+                <Bell size={18} /> ศูนย์ตั้งค่าการแจ้งเตือน
               </h3>
               <p style={{ color: "var(--text-secondary)", fontSize: 12.5, margin: "6px 0 0", lineHeight: 1.5, maxWidth: 540 }}>
                 ส่งข้อความเดียวกันไปยังทุกช่องที่เปิดไว้พร้อมกัน — ตั้ง override รายห้องได้ที่แท็บ &quot;ห้องเรียน &amp; ESP32&quot;
               </p>
             </div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: configuredCount > 0 ? "rgba(16,185,129,0.12)" : "rgba(148,163,184,0.15)", border: `1px solid ${configuredCount > 0 ? "rgba(16,185,129,0.35)" : "var(--border)"}`, color: configuredCount > 0 ? "#059669" : "var(--text-secondary)", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
-              {configuredCount > 0 ? "🟢" : "⚪"} เปิดใช้ {configuredCount}/3 ช่องทาง
+              {configuredCount > 0 ? <CheckCircle2 size={13} /> : <Circle size={13} />} เปิดใช้ {configuredCount}/3 ช่องทาง
             </div>
           </div>
         </div>
@@ -143,14 +159,14 @@ export default function SettingsPage() {
               )}
               {provider === "line" && (
                 <p style={{ color: "#B45309", fontSize: 11.5, margin: 0, lineHeight: 1.55, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "10px 14px", borderRadius: 10 }}>
-                  ⚠️ LINE Notify ปิดบริการแล้ว (มี.ค. 2025) ระบบใช้ <b>LINE Messaging API</b> (push) ฟรี <b>~500 ข้อความ/เดือน</b> — สร้าง Channel ใน LINE Developers Console รับ Channel Access Token และใช้ User/Group ID เป็น Target
+                  LINE Notify ปิดบริการแล้ว (มี.ค. 2025) ระบบใช้ <b>LINE Messaging API</b> (push) ฟรี <b>~500 ข้อความ/เดือน</b> — สร้าง Channel ใน LINE Developers Console รับ Channel Access Token และใช้ User/Group ID เป็น Target
                 </p>
               )}
 
               {/* Token (Telegram/LINE) */}
               {tokenField && (
                 <div style={{ background: active.tint, padding: "12px 14px", borderRadius: 10, border: `1px solid ${active.color}22` }}>
-                  <label style={labelStyle}>🔑 {tokenField.label} *</label>
+                  <label style={labelStyle}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Key size={13} /> {tokenField.label} *</span></label>
                   <input className="smartaccess-input" type="text" placeholder={tokenField.ph} value={raw(tokenField.key)} onChange={e => setRaw(tokenField.key, e.target.value)} style={{ width: "100%", padding: "10px 14px", fontSize: 12.5 }} />
                 </div>
               )}
@@ -169,16 +185,16 @@ export default function SettingsPage() {
                     </label>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <input className="smartaccess-input" type="text" placeholder={f.ph} value={f.value} onChange={e => f.onChange(e.target.value)} style={{ flex: 1, padding: "10px 14px", fontSize: 12.5 }} />
-                      <button type="button" onClick={f.test} className="btn-ghost" style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700, borderColor: `${active.color}66`, color: active.color }}>
-                        🧪 ทดสอบ
+                      <button type="button" onClick={f.test} className="btn-ghost" style={{ padding: "10px 14px", fontSize: 11.5, borderRadius: 10, flexShrink: 0, fontWeight: 700, borderColor: `${active.color}66`, color: active.color, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <FlaskConical size={13} /> ทดสอบ
                       </button>
                     </div>
                   </div>
                 );
               })}
 
-              <button type="submit" disabled={settingsLoading} className="btn-success" style={{ padding: "12px 22px", borderRadius: 10, fontSize: 13, fontWeight: 800, alignSelf: "flex-start", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", color: "#fff", border: "none", cursor: "pointer", boxShadow: "0 6px 16px rgba(124,58,237,0.25)", marginTop: 4 }}>
-                {settingsLoading ? "⏳ กำลังบันทึก..." : `💾 บันทึกการตั้งค่า ${active.name}`}
+              <button type="submit" disabled={settingsLoading} className="btn-success" style={{ padding: "12px 22px", borderRadius: 10, fontSize: 13, fontWeight: 800, alignSelf: "flex-start", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", color: "#fff", border: "none", cursor: "pointer", boxShadow: "0 6px 16px rgba(124,58,237,0.25)", marginTop: 4, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {settingsLoading ? <><Loader2 size={14} className="animate-spin" /> กำลังบันทึก...</> : <><Save size={14} /> บันทึกการตั้งค่า {active.name}</>}
               </button>
             </form>
           </div>
