@@ -1405,6 +1405,26 @@ const htmlTemplate = `<!DOCTYPE html>
       const tocMenu = document.getElementById("tocMenu");
       const sidebar = document.getElementById("appSidebar");
 
+      // Unified Accordion Helper to expand one group and collapse all others
+      function expandGroup(groupId) {
+        document.querySelectorAll(".toc-group-list").forEach(list => {
+          const header = list.previousElementSibling;
+          if (list.id === groupId) {
+            list.classList.remove("collapsed");
+            if (header) {
+              const arrow = header.querySelector(".toc-group-arrow");
+              if (arrow) arrow.classList.remove("collapsed");
+            }
+          } else {
+            list.classList.add("collapsed");
+            if (header) {
+              const arrow = header.querySelector(".toc-group-arrow");
+              if (arrow) arrow.classList.add("collapsed");
+            }
+          }
+        });
+      }
+
       // Define standard groups
       const groups = [
         { id: "group-1", title: "📘 ภาคหลัก (1-19)", range: [1, 19] },
@@ -1430,26 +1450,12 @@ const htmlTemplate = `<!DOCTYPE html>
         subUl.className = "toc-group-list collapsed";
         subUl.id = g.id;
 
-        // Toggle click handler
+        // Toggle click handler using expandGroup accordion
         headerDiv.addEventListener("click", () => {
           const isCollapsed = subUl.classList.contains("collapsed");
           if (isCollapsed) {
-            // Collapse all other groups
-            document.querySelectorAll(".toc-group-list").forEach(list => {
-              if (list !== subUl) {
-                list.classList.add("collapsed");
-                const otherHeader = list.previousElementSibling;
-                if (otherHeader) {
-                  const arrow = otherHeader.querySelector(".toc-group-arrow");
-                  if (arrow) arrow.classList.add("collapsed");
-                }
-              }
-            });
-            // Expand this one
-            subUl.classList.remove("collapsed");
-            headerDiv.querySelector(".toc-group-arrow").classList.remove("collapsed");
+            expandGroup(g.id);
           } else {
-            // Collapse this one
             subUl.classList.add("collapsed");
             headerDiv.querySelector(".toc-group-arrow").classList.add("collapsed");
           }
@@ -1842,29 +1848,9 @@ const htmlTemplate = `<!DOCTYPE html>
         }
       });
 
-      // Synchronize Sidebar scroll with content scroll (Active Section Highlighting)
+      // Synchronize Sidebar scroll with content scroll (Bulletproof Throttled Scroll Spy & Unified Accordion)
       let activeHeaderId = "";
-      const observerOptions = {
-        root: null,
-        rootMargin: "-80px 0px -60% 0px", // Trigger when header passes upper-middle of viewport
-        threshold: 0
-      };
 
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const id = entry.target.id;
-            if (id) {
-              activeHeaderId = id;
-              updateActiveState(id);
-            }
-          }
-        });
-      }, observerOptions);
-
-      headers.forEach(header => observer.observe(header));
-
-      // Handle custom update logic for highlights, auto scroll sidebar, and URL push
       function updateActiveState(activeId) {
         // 1. Highlight in sidebar
         const tocLinks = document.querySelectorAll("#tocMenu a");
@@ -1875,27 +1861,7 @@ const htmlTemplate = `<!DOCTYPE html>
             // Expand parent group dynamically and collapse all others!
             const parentUl = link.closest(".toc-group-list");
             if (parentUl) {
-              // Collapse all other groups
-              document.querySelectorAll(".toc-group-list").forEach(list => {
-                if (list !== parentUl) {
-                  list.classList.add("collapsed");
-                  const otherHeader = list.previousElementSibling;
-                  if (otherHeader) {
-                    const arrow = otherHeader.querySelector(".toc-group-arrow");
-                    if (arrow) arrow.classList.add("collapsed");
-                  }
-                }
-              });
-
-              // Expand parent group if collapsed
-              if (parentUl.classList.contains("collapsed")) {
-                parentUl.classList.remove("collapsed");
-                const headerDiv = parentUl.previousElementSibling;
-                if (headerDiv) {
-                  const arrow = headerDiv.querySelector(".toc-group-arrow");
-                  if (arrow) arrow.classList.remove("collapsed");
-                }
-              }
+              expandGroup(parentUl.id);
             }
 
             // Auto-scroll sidebar if active item is out of view, but only if the user is not hovering/interacting with it
@@ -1916,6 +1882,35 @@ const htmlTemplate = `<!DOCTYPE html>
           history.pushState(null, null, "#" + activeId);
         }
       }
+
+      function updateScrollSpy() {
+        let activeHeader = null;
+        for (let i = 0; i < headers.length; i++) {
+          const rect = headers[i].getBoundingClientRect();
+          // Trigger when header top is at or above 150px from top of viewport
+          if (rect.top <= 150) {
+            activeHeader = headers[i];
+          } else {
+            break;
+          }
+        }
+        if (activeHeader && activeHeader.id && activeHeaderId !== activeHeader.id) {
+          activeHeaderId = activeHeader.id;
+          updateActiveState(activeHeader.id);
+        }
+      }
+
+      // Throttle scroll listener using requestAnimationFrame for premium 60fps performance
+      let scrollTimeout;
+      window.addEventListener("scroll", () => {
+        if (scrollTimeout) {
+          window.cancelAnimationFrame(scrollTimeout);
+        }
+        scrollTimeout = window.requestAnimationFrame(updateScrollSpy);
+      }, { passive: true });
+
+      // Run once on load to set initial active state
+      updateScrollSpy();
     });
 
     // Mobile Sidebar toggle function
