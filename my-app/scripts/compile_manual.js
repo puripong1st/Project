@@ -1259,16 +1259,23 @@ const htmlTemplate = `<!DOCTYPE html>
         tempContainer.style.padding = "40px";
         tempContainer.style.fontFamily = "'Sarabun', sans-serif";
         tempContainer.style.borderRadius = "12px";
-        tempContainer.style.position = "fixed";
+        tempContainer.style.position = "absolute";
         tempContainer.style.top = "0";
-        tempContainer.style.left = "0";
+        tempContainer.style.left = "5000px"; // Render far outside active viewport
         tempContainer.style.zIndex = "-9999"; // Hide beneath the body layer
-        tempContainer.style.opacity = "0.01"; // Keep rendering active but invisible
+        tempContainer.style.display = "block";
+        tempContainer.style.opacity = "1"; // Maintain active visibility for canvas engine capture
         tempContainer.style.width = "800px"; // standard rendering width
         document.body.appendChild(tempContainer);
 
         // Extract clean filename from section title
-        const cleanTitle = header.textContent.replace(/[\/\\?%*:|"<>\s]/g, "_").substring(0, 50);
+        // Clean out any appended button texts like "📄 บันทึกเฉพาะส่วนนี้ (PDF)" from the filename string
+        let rawTitle = header.innerText || header.textContent;
+        rawTitle = rawTitle.replace(/📄\s*บันทึกเฉพาะส่วนนี้\s*\(PDF\)/g, "")
+                           .replace(/🖼\s*บันทึกเฉพาะส่วนนี้\s*\(PNG\)/g, "")
+                           .replace(/🖼️\s*บันทึกเฉพาะส่วนนี้\s*\(PNG\)/g, "")
+                           .trim();
+        const cleanTitle = rawTitle.replace(/[\/\\?%*:|"<>\s]/g, "_").substring(0, 80);
 
         if (format === 'pdf') {
           // Configuration for premium quality PDF
@@ -1318,12 +1325,12 @@ const htmlTemplate = `<!DOCTYPE html>
         
         const btnPdf = document.createElement("button");
         btnPdf.className = "btn-section-export";
-        btnPdf.innerHTML = "📄 เซฟเฉพาะส่วนนี้ (PDF)";
+        btnPdf.innerHTML = "📄 บันทึกเฉพาะส่วนนี้ (PDF)";
         btnPdf.onclick = () => window.exportSection(h.id, 'pdf');
         
         const btnPng = document.createElement("button");
         btnPng.className = "btn-section-export";
-        btnPng.innerHTML = "🖼️ เซฟเฉพาะส่วนนี้ (PNG)";
+        btnPng.innerHTML = "🖼️ บันทึกเฉพาะส่วนนี้ (PNG)";
         btnPng.onclick = () => window.exportSection(h.id, 'png');
         
         actionSpan.appendChild(btnPdf);
@@ -1361,12 +1368,12 @@ const htmlTemplate = `<!DOCTYPE html>
 
             const btnPdf = document.createElement("button");
             btnPdf.className = "btn-section-export";
-            btnPdf.innerHTML = "📄 เซฟเฉพาะส่วนนี้ (PDF)";
+            btnPdf.innerHTML = "📄 บันทึกเฉพาะส่วนนี้ (PDF)";
             btnPdf.onclick = () => window.exportSection(parentHeaderId, 'pdf');
 
             const btnPng = document.createElement("button");
             btnPng.className = "btn-section-export";
-            btnPng.innerHTML = "🖼️ เซฟเฉพาะส่วนนี้ (PNG)";
+            btnPng.innerHTML = "🖼️ บันทึกเฉพาะส่วนนี้ (PNG)";
             btnPng.onclick = () => window.exportSection(parentHeaderId, 'png');
 
             inlineActions.appendChild(btnPdf);
