@@ -8,8 +8,8 @@ export function getClientIp(req: NextRequest): string {
   }
 
   // Prioritize Next.js-provided socket connection IP which cannot be spoofed by custom headers
-  if (req.ip) {
-    return req.ip;
+  if ((req as NextRequest & { ip?: string }).ip) {
+    return (req as NextRequest & { ip?: string }).ip!;
   }
 
   // Vercel แนบ IP จริงที่ right-most ของ X-Forwarded-For ( fallback )
