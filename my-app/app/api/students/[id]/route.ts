@@ -24,10 +24,10 @@ export async function GET(
     const admin = await getAdminFromCookie();
 
     const { id } = await params;
-    const numId = parseInt(id);
-    if (isNaN(numId)) {
+    if (!/^\d+$/.test(id)) {
       return NextResponse.json({ error: "ID นักศึกษาต้องเป็นตัวเลข" }, { status: 400 });
     }
+    const numId = parseInt(id, 10);
 
     await sweepExpiredPending();
 
@@ -103,10 +103,10 @@ export async function DELETE(
     if (admin.role !== "owner") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
 
     const { id } = await params;
-    const numId = parseInt(id, 10);
-    if (isNaN(numId)) {
+    if (!/^\d+$/.test(id)) {
       return NextResponse.json({ error: "ID นักศึกษาต้องเป็นตัวเลข" }, { status: 400 });
     }
+    const numId = parseInt(id, 10);
     const pool = getPool();
 
     // ดึงข้อมูลนักศึกษาก่อนลบ — เพื่อเก็บชื่อ/รหัส/ห้องไว้ใน log+แจ้งเตือน

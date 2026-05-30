@@ -18,6 +18,21 @@ export async function POST(req: NextRequest) {
   try {
     await ensureInit();
     const { ip, userAgent } = getRequestContext(req);
+
+    // 1. IP-Based Rate Limit (Database Exhaustion Prevention): Max 10 attempts per minute per IP
+    const ipRateLimit = await rateLimit({
+      key: `bypass_ip:${ip}`,
+      limit: 10,
+      windowMs: 60 * 1000,
+    });
+
+    if (!ipRateLimit.success) {
+      return NextResponse.json(
+        { error: "คุณส่งคำขอ Bypass ถี่เกินไป กรุณารอสักครู่" },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { id, student_id, bypass_token } = body;
 
