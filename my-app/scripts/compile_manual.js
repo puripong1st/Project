@@ -1106,7 +1106,7 @@ const htmlTemplate = `<!DOCTYPE html>
                 const nodeText = sheet.ownerNode.textContent || "";
                 const nodeId = sheet.ownerNode.id || "";
                 if (nodeId.startsWith("mermaid") || nodeText.includes(".mermaid") || nodeId.includes("mermaid")) {
-                  mermaidStyles += nodeText + "\n";
+                  mermaidStyles += nodeText + "\\n";
                 }
               }
             } catch (e) {}
@@ -1226,7 +1226,7 @@ const htmlTemplate = `<!DOCTYPE html>
                 const nodeText = sheet.ownerNode.textContent || "";
                 const nodeId = sheet.ownerNode.id || "";
                 if (nodeId.startsWith("mermaid") || nodeText.includes(".mermaid") || nodeId.includes("mermaid")) {
-                  mermaidStyles += nodeText + "\n";
+                  mermaidStyles += nodeText + "\\n";
                 }
               }
             } catch (e) {}
@@ -1426,7 +1426,7 @@ const htmlTemplate = `<!DOCTYPE html>
             cleanTitle += node.textContent;
           }
         }
-        cleanTitle = cleanTitle.trim().replace(/[\/\\?%*:|"<>\s]/g, "_").substring(0, 80);
+        cleanTitle = cleanTitle.trim().replace(/[\\/\\\\?%*:|\"\u003c\u003e\\s]/g, \"_\").substring(0, 80);
         if (!cleanTitle) {
           cleanTitle = "Section_" + headerId;
         }
