@@ -1360,14 +1360,16 @@ const htmlTemplate = `<!DOCTYPE html>
         const tempContainer = document.createElement("div");
         tempContainer.className = "compiled-export-temp";
         
-        // Create a hidden wrapper container that is placed off-screen but kept active so html2pdf and html2canvas can render it with full dimensions (fixes the blank PDF/PNG bugs!)
+        // Create an off-screen wrapper container that is kept active in layout but hidden from user via opacity (prevents coordinates offsets & collapsing)
         const hiddenWrapper = document.createElement("div");
-        hiddenWrapper.style.position = "absolute";
-        hiddenWrapper.style.top = "-99999px"; // Render far off-screen
-        hiddenWrapper.style.left = "-99999px";
-        hiddenWrapper.style.width = "850px";  // Give it stable width matching tempContainer
+        hiddenWrapper.className = "compiled-export-wrapper";
+        hiddenWrapper.style.position = "fixed";
+        hiddenWrapper.style.top = "0";
+        hiddenWrapper.style.left = "0";
+        hiddenWrapper.style.width = "850px";
         hiddenWrapper.style.height = "auto";
-        hiddenWrapper.style.visibility = "visible";
+        hiddenWrapper.style.opacity = "0.01"; // Tiny opacity to keep browser rendering active but invisible to user
+        hiddenWrapper.style.pointerEvents = "none";
         hiddenWrapper.style.zIndex = "-9999";
         document.body.appendChild(hiddenWrapper);
 
@@ -1389,9 +1391,16 @@ const htmlTemplate = `<!DOCTYPE html>
           
           // Clone element and ensure lazy-loaded mermaid blocks have their rendered SVG ready
           const clone = el.cloneNode(true);
-          const mermaidDiv = el.querySelector(".mermaid svg");
-          if (mermaidDiv && clone.querySelector(".mermaid")) {
-            clone.querySelector(".mermaid").innerHTML = mermaidDiv.outerHTML;
+          
+          // Correct check to see if el itself is the mermaid div or contains it
+          const originalMermaidSvg = el.classList.contains("mermaid") ? el.querySelector("svg") : el.querySelector(".mermaid svg");
+          const cloneMermaidTarget = clone.classList.contains("mermaid") ? clone : clone.querySelector(".mermaid");
+          
+          if (originalMermaidSvg && cloneMermaidTarget) {
+            cloneMermaidTarget.innerHTML = originalMermaidSvg.outerHTML;
+            // Force clean presentation inside cloned target (no download panels)
+            cloneMermaidTarget.style.paddingTop = "0px";
+            cloneMermaidTarget.style.position = "relative";
           }
           
           tempContainer.appendChild(clone);
@@ -1406,7 +1415,7 @@ const htmlTemplate = `<!DOCTYPE html>
         tempContainer.style.width = "800px"; // standard rendering width
         tempContainer.style.boxSizing = "border-box";
         
-        // Append tempContainer to the hiddenWrapper instead of body directly
+        // Append tempContainer to the hiddenWrapper
         hiddenWrapper.appendChild(tempContainer);
 
         // Extract clean filename PURELY from the h2 text (ignoring child nodes like buttons entirely!)
@@ -1434,12 +1443,27 @@ const htmlTemplate = `<!DOCTYPE html>
               logging: false,
               backgroundColor: "#FFFFFF",
               onclone: function(clonedDoc) {
-                // Strip dark-mode from the cloned document to prevent white text on white background!
+                // Strip dark-mode from the cloned document
                 clonedDoc.body.classList.remove("dark-mode");
                 
-                // Force content-visibility: visible for offscreen sections to prevent blank pages
+                // Force wrapper opacity and visibility to 1 inside the clone!
+                const clonedWrapper = clonedDoc.querySelector(".compiled-export-wrapper");
+                if (clonedWrapper) {
+                  clonedWrapper.style.opacity = "1";
+                  clonedWrapper.style.visibility = "visible";
+                  clonedWrapper.style.position = "relative";
+                  clonedWrapper.style.zIndex = "1";
+                }
+
+                // Force content-visibility: visible for offscreen sections
                 clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
                   el.style.contentVisibility = "visible";
+                  
+                  // Hide any download button containers inside cloned mermaid blocks
+                  const btnGroup = el.querySelector("div");
+                  if (btnGroup) {
+                    btnGroup.style.display = "none";
+                  }
                 });
               }
             },
@@ -1460,12 +1484,27 @@ const htmlTemplate = `<!DOCTYPE html>
             useCORS: true,
             backgroundColor: "#FFFFFF",
             onclone: function(clonedDoc) {
-              // Strip dark-mode from the cloned document to prevent white text on white background!
+              // Strip dark-mode from the cloned document
               clonedDoc.body.classList.remove("dark-mode");
               
-              // Force content-visibility: visible for offscreen sections to prevent blank images
+              // Force wrapper opacity and visibility to 1 inside the clone!
+              const clonedWrapper = clonedDoc.querySelector(".compiled-export-wrapper");
+              if (clonedWrapper) {
+                clonedWrapper.style.opacity = "1";
+                clonedWrapper.style.visibility = "visible";
+                clonedWrapper.style.position = "relative";
+                clonedWrapper.style.zIndex = "1";
+              }
+
+              // Force content-visibility: visible for offscreen sections
               clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
                 el.style.contentVisibility = "visible";
+                
+                // Hide any download button containers inside cloned mermaid blocks
+                const btnGroup = el.querySelector("div");
+                if (btnGroup) {
+                  btnGroup.style.display = "none";
+                }
               });
             }
           }).then(canvas => {
