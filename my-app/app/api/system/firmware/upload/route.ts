@@ -87,10 +87,10 @@ export async function POST(req: NextRequest) {
       message: `อัปโหลดและเปิดระบบกระจายเฟิร์มแวร์ไร้สายรุ่น v${cleanVersion} สำเร็จ! MD5: ${fileHash}`,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("[Firmware Upload API Error]:", error);
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการนำส่งเฟิร์มแวร์", detail: error.message },
+      { error: "เกิดข้อผิดพลาดในการนำส่งเฟิร์มแวร์", detail: error instanceof Error ? error.message : "unknown error" },
       { status: 500 }
     );
   }

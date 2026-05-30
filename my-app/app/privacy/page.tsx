@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 // PDPA-compliant Privacy Policy v2.0
 // ครอบคลุม PDPA ม.23 ครบ 7 รายการ + สิทธิเจ้าของข้อมูล 8 ข้อ (ม.19, 30-36, 73)
 import { useState, useEffect } from "react";
@@ -445,7 +445,7 @@ export default function PrivacyPage() {
                 <tr>
                   <td style={tdStyle}>ม.19 วรรค 5</td>
                   <td style={tdStyle}><strong>สิทธิเพิกถอนความยินยอม</strong> (Right to Withdraw Consent)</td>
-                  <td style={tdStyle}>กดปุ่ม "จัดการความยินยอม" ด้านบน หรืออีเมล DPO</td>
+                  <td style={tdStyle}>กดปุ่ม &quot;จัดการความยินยอม&quot; ด้านบน หรืออีเมล DPO</td>
                 </tr>
                 <tr>
                   <td style={tdStyle}>ม.30</td>

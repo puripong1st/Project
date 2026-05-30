@@ -66,7 +66,7 @@ export async function sendTelegram(botToken: string, chatId: string, text: strin
       }
     }
 
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       chat_id: actualChatId,
       text,
       parse_mode: "HTML",
@@ -93,9 +93,9 @@ export async function sendTelegram(botToken: string, chatId: string, text: strin
     }
 
     return { ok: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("[Notify] Telegram send failed:", error);
-    return { ok: false, error: error?.message || "Connection failed" };
+    return { ok: false, error: error instanceof Error ? error.message : "Connection failed" };
   }
 }
 
