@@ -816,10 +816,19 @@ const htmlTemplate = `<!DOCTYPE html>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js" defer></script>
 
-  <!-- Mermaid.js for Dynamic Diagrams (Deferred for instant page load) -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js" defer></script>
+  <!-- Mermaid.js for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 
   <script>
+    // Initialize Mermaid synchronously to prevent automatic rendering on DOMContentLoaded
+    mermaid.initialize({
+      startOnLoad: false, // CRITICAL: Stop auto-rendering to prevent mobile CPU freezing!
+      theme: 'default',
+      securityLevel: 'loose',
+      htmlLabels: false, // Force native SVG text elements to calculate text dimensions properly
+      flowchart: { useWidth: true, htmlLabels: false }
+    });
+
     // Reusable function to inject download triggers
     function injectDownloadButtons(div, svg, index) {
       // Create Button Container
@@ -878,15 +887,6 @@ const htmlTemplate = `<!DOCTYPE html>
 
     // Lazy load and progressively render Mermaid diagrams using IntersectionObserver
     window.addEventListener("DOMContentLoaded", function() {
-      // Initialize Mermaid safely now that script is loaded with 'defer'
-      mermaid.initialize({
-        startOnLoad: false, // CRITICAL: Stop auto-rendering to prevent mobile CPU freezing!
-        theme: 'default',
-        securityLevel: 'loose',
-        htmlLabels: false, // Force native SVG text elements to calculate text dimensions properly
-        flowchart: { useWidth: true, htmlLabels: false }
-      });
-
       const mermaidDivs = document.querySelectorAll(".mermaid");
       
       // 1. Initialize beautiful loading skeletons and backup raw code
