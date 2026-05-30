@@ -918,7 +918,7 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 19:29:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 19:35:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
@@ -1030,7 +1030,7 @@
 <li><a href="#sec-71-21">71.21 พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ (Computer Crime Act Compliance)</a></li>
 <li><a href="#sec-71-22">71.22 ข้อตกลงและเงื่อนไขการใช้บริการอย่างเป็นทางการ (Terms and Conditions Guide)</a></li>
 <li><a href="#sec-71-23">71.23 นโยบายความเป็นส่วนตัวของระบบควบคุมห้องเรียน (Official Privacy Policy)</a></li>
-<li><a href="#sec-71-24">71.24 Threat Model แบบ STRIDE และการประเมิน DREAD</a></li>
+<li><a href="#sec-71-24">71.24 Threat Model แบบ STRIDE และการประเมี้ิน DREAD</a></li>
 <li><a href="#sec-71-25">71.25 Data Flow Diagram (DFD) ระดับ 0/1/2 — สำหรับ PDPA DPIA</a></li>
 <li><a href="#sec-71-26">71.26 กฎหมายอื่นที่ต้องปฏิบัติตาม (Cybersecurity Act, ก.พ.อ., License Audit)</a></li>
 <li><a href="#sec-71-27">71.27 ROC (Record of Processing) ตาม PDPA มาตรา 39</a></li>
@@ -1084,9 +1084,31 @@
 <li><a href="#sec-71-56">71.56 คู่มือและโครงสร้างระบบจำลองบอร์ดควบคุมและทดสอบสัญจรประตูปิดอัตโนมัติ (E2E Integration &amp; Simulated ESP32 Mock Sandbox)</a></li>
 <li><a href="#sec-71-57">71.57 รายงานการทดลองและประเมินประสิทธิภาพระบบรับโหลดหนาแน่นเชิงตัวเลข (High-Throughput Load Testing &amp; DB Index Telemetry Report)</a></li>
 <li><a href="#sec-72">72. การยกระดับไอคอน UI เป็นเวกเตอร์พรีเมียม (Emoji → Lucide Vector Icons)</a></li>
+<li><a href="#sec-72-1">72.1 รายการที่ปรับปรุงแล้ว (ผ่าน tsc --noEmit ไม่มี error)</a></li>
 </ul>
 </li>
-<li><a href="#sec-73">73. ภาคผนวกวิศวกรรมเชิงลึกฉบับปรับปรุงจากซอร์สโค้ดจริง (Source-Verified Deep Dive)</a></li>
+<li><a href="#sec-73">73. ภาคผนวกวิศวกรรมเชิงลึกฉบับปรับปรุงจากซอร์สโค้ดจริง (Source-Verified Deep Dive)</a><ul>
+<li><a href="#sec-73-1">73.1 สถาปัตยกรรมภาพรวมและการไหลของคำขอ (System-wide Request Flow)</a></li>
+<li><a href="#sec-73-2">73.2 โครงสร้างฐานข้อมูลครบทุกตาราง (Complete Database Schema)</a></li>
+<li><a href="#sec-73-3">73.3 ความปลอดภัยการตรวจสอบสิทธิ์แอดมิน (JWT + bcrypt + Active-check Cache)</a></li>
+<li><a href="#sec-73-4">73.4 ตัวจำกัดอัตราแบบ Atomic บน PostgreSQL (Serverless Rate Limiting)</a></li>
+<li><a href="#sec-73-5">73.5 วงจรชีวิตของ Dynamic QR Token (สร้าง → สแกน → verify → consume → expire)</a></li>
+<li><a href="#sec-73-6">73.6 เส้นทาง Edge /api/esp32/display — หัวใจการสื่อสาร IoT</a></li>
+<li><a href="#sec-73-7">73.7 State Machine และ Main Loop ของเฟิร์มแวร์ ESP32</a></li>
+<li><a href="#sec-73-8">73.8 ESP32 Zero-Trust API Security (4 ชั้น)</a></li>
+<li><a href="#sec-73-9">73.9 Bypass 5 นาที (Re-entry without Re-registration)</a></li>
+<li><a href="#sec-73-10">73.10 การปฏิบัติตาม พ.ร.บ.คอมพิวเตอร์ฯ — การล้าง Log (Retention Policy)</a></li>
+<li><a href="#sec-73-11">73.11 ระบบล้างคำขอค้างอนุมัติอัตโนมัติ (Auto-Reject Sweep)</a></li>
+<li><a href="#sec-73-12">73.12 สถาปัตยกรรมการแจ้งเตือนหลายช่องทาง (Discord + Telegram + LINE)</a></li>
+<li><a href="#sec-73-13">73.13 ระบบ OTA Firmware ผ่านคลาวด์ (HTTPS Over-The-Air)</a></li>
+<li><a href="#sec-73-14">73.14 สรุปตาราง API Endpoints ครบทุกเส้นทาง (ตรวจสอบจาก app/api/)</a></li>
+<li><a href="#sec-73-15">73.15 การพัฒนาระบบธีมและโหมดมืดพรีเมียม (Premium Dark Mode &amp; Harmony Palette Design System)</a></li>
+<li><a href="#sec-73-16">73.16 การออกแบบระบบรายงานและสถิติวินิจฉัยเชิงลึกด้วยกราฟวิเคราะห์ Recharts (Recharts Interactive Analytics Engine)</a></li>
+<li><a href="#sec-73-17">73.17 การออกแบบโครงสร้างความก้าวหน้าและการแสดงสถานะแบบอะซิงโครนัส (Asynchronous Loading States, Table Skeletons, and Micro-interactions)</a></li>
+<li><a href="#sec-73-18">73.18 แก้ไขปัญหาจุดบกพร่องของโหมดมืดและการแสดงผลกราฟในรอบการเข้าถึงครั้งแรก (Dark Mode Color Leaks and Initial Chart Load Fixes)</a></li>
+<li><a href="#sec-73-19">73.19 โครงสร้างแถบควบคุมสารบัญนำทางพลวัตแบบประสานสัญจรร่วมกัน (Dynamic Synchronized Left Sidebar and Table of Contents Grouping)</a></li>
+</ul>
+</li>
 </ul>
 <hr>
 <p><a id="sec-1"></a></p>
@@ -15061,7 +15083,7 @@ RETURNING count, reset_time;
       // Helper to parse section number
       function getSectionNumber(text) {
         const cleanText = text.replace(/^§/, "").trim();
-        const match = cleanText.match(/^(d+)/);
+        const match = cleanText.match(/^(\d+)/);
         if (match) {
           return parseInt(match[1], 10);
         }

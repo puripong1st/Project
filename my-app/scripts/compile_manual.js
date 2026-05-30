@@ -1446,7 +1446,7 @@ const htmlTemplate = `<!DOCTYPE html>
       // Helper to parse section number
       function getSectionNumber(text) {
         const cleanText = text.replace(/^§/, "").trim();
-        const match = cleanText.match(/^(\d+)/);
+        const match = cleanText.match(/^(\\d+)/);
         if (match) {
           return parseInt(match[1], 10);
         }

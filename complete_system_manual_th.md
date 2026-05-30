@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-30 19:29:00 (+07:00)
+อัปเดตล่าสุด: 2026-05-30 19:35:00 (+07:00)
 โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -114,7 +114,7 @@
   - [71.21 พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ (Computer Crime Act Compliance)](#sec-71-21)
   - [71.22 ข้อตกลงและเงื่อนไขการใช้บริการอย่างเป็นทางการ (Terms and Conditions Guide)](#sec-71-22)
   - [71.23 นโยบายความเป็นส่วนตัวของระบบควบคุมห้องเรียน (Official Privacy Policy)](#sec-71-23)
-  - [71.24 Threat Model แบบ STRIDE และการประเมิน DREAD](#sec-71-24)
+  - [71.24 Threat Model แบบ STRIDE และการประเมี้ิน DREAD](#sec-71-24)
   - [71.25 Data Flow Diagram (DFD) ระดับ 0/1/2 — สำหรับ PDPA DPIA](#sec-71-25)
   - [71.26 กฎหมายอื่นที่ต้องปฏิบัติตาม (Cybersecurity Act, ก.พ.อ., License Audit)](#sec-71-26)
   - [71.27 ROC (Record of Processing) ตาม PDPA มาตรา 39](#sec-71-27)
@@ -166,7 +166,27 @@
   - [71.56 คู่มือและโครงสร้างระบบจำลองบอร์ดควบคุมและทดสอบสัญจรประตูปิดอัตโนมัติ (E2E Integration & Simulated ESP32 Mock Sandbox)](#sec-71-56)
   - [71.57 รายงานการทดลองและประเมินประสิทธิภาพระบบรับโหลดหนาแน่นเชิงตัวเลข (High-Throughput Load Testing & DB Index Telemetry Report)](#sec-71-57)
   - [72. การยกระดับไอคอน UI เป็นเวกเตอร์พรีเมียม (Emoji → Lucide Vector Icons)](#sec-72)
+  - [72.1 รายการที่ปรับปรุงแล้ว (ผ่าน tsc --noEmit ไม่มี error)](#sec-72-1)
 - [73. ภาคผนวกวิศวกรรมเชิงลึกฉบับปรับปรุงจากซอร์สโค้ดจริง (Source-Verified Deep Dive)](#sec-73)
+  - [73.1 สถาปัตยกรรมภาพรวมและการไหลของคำขอ (System-wide Request Flow)](#sec-73-1)
+  - [73.2 โครงสร้างฐานข้อมูลครบทุกตาราง (Complete Database Schema)](#sec-73-2)
+  - [73.3 ความปลอดภัยการตรวจสอบสิทธิ์แอดมิน (JWT + bcrypt + Active-check Cache)](#sec-73-3)
+  - [73.4 ตัวจำกัดอัตราแบบ Atomic บน PostgreSQL (Serverless Rate Limiting)](#sec-73-4)
+  - [73.5 วงจรชีวิตของ Dynamic QR Token (สร้าง → สแกน → verify → consume → expire)](#sec-73-5)
+  - [73.6 เส้นทาง Edge /api/esp32/display — หัวใจการสื่อสาร IoT](#sec-73-6)
+  - [73.7 State Machine และ Main Loop ของเฟิร์มแวร์ ESP32](#sec-73-7)
+  - [73.8 ESP32 Zero-Trust API Security (4 ชั้น)](#sec-73-8)
+  - [73.9 Bypass 5 นาที (Re-entry without Re-registration)](#sec-73-9)
+  - [73.10 การปฏิบัติตาม พ.ร.บ.คอมพิวเตอร์ฯ — การล้าง Log (Retention Policy)](#sec-73-10)
+  - [73.11 ระบบล้างคำขอค้างอนุมัติอัตโนมัติ (Auto-Reject Sweep)](#sec-73-11)
+  - [73.12 สถาปัตยกรรมการแจ้งเตือนหลายช่องทาง (Discord + Telegram + LINE)](#sec-73-12)
+  - [73.13 ระบบ OTA Firmware ผ่านคลาวด์ (HTTPS Over-The-Air)](#sec-73-13)
+  - [73.14 สรุปตาราง API Endpoints ครบทุกเส้นทาง (ตรวจสอบจาก app/api/)](#sec-73-14)
+  - [73.15 การพัฒนาระบบธีมและโหมดมืดพรีเมียม (Premium Dark Mode & Harmony Palette Design System)](#sec-73-15)
+  - [73.16 การออกแบบระบบรายงานและสถิติวินิจฉัยเชิงลึกด้วยกราฟวิเคราะห์ Recharts (Recharts Interactive Analytics Engine)](#sec-73-16)
+  - [73.17 การออกแบบโครงสร้างความก้าวหน้าและการแสดงสถานะแบบอะซิงโครนัส (Asynchronous Loading States, Table Skeletons, and Micro-interactions)](#sec-73-17)
+  - [73.18 แก้ไขปัญหาจุดบกพร่องของโหมดมืดและการแสดงผลกราฟในรอบการเข้าถึงครั้งแรก (Dark Mode Color Leaks and Initial Chart Load Fixes)](#sec-73-18)
+  - [73.19 โครงสร้างแถบควบคุมสารบัญนำทางพลวัตแบบประสานสัญจรร่วมกัน (Dynamic Synchronized Left Sidebar and Table of Contents Grouping)](#sec-73-19)
 
 ---
 
