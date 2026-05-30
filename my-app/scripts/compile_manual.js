@@ -265,6 +265,20 @@ const htmlTemplate = `<!DOCTYPE html>
       padding-left: 16px;
     }
 
+    .toc-menu a.toc-h3 {
+      padding-left: 24px;
+      font-size: 12.5px;
+      opacity: 0.85;
+    }
+
+    .toc-menu a.toc-h3:hover {
+      padding-left: 28px;
+    }
+
+    .toc-menu a.toc-h3.active {
+      padding-left: 28px;
+    }
+
     /* Main Content Area */
     .main-content {
       flex: 1;
@@ -1334,9 +1348,9 @@ const htmlTemplate = `<!DOCTYPE html>
   </script>
 
   <script>
-    // Build floating TOC sidebar dynamically from h2 elements and keep them synchronized
+    // Build floating TOC sidebar dynamically from h2 and h3 elements and keep them synchronized
     document.addEventListener("DOMContentLoaded", function() {
-      const headers = document.querySelectorAll("#compiledContent h2");
+      const headers = document.querySelectorAll("#compiledContent h2, #compiledContent h3");
       const tocMenu = document.getElementById("tocMenu");
       const sidebar = document.getElementById("appSidebar");
       
@@ -1351,6 +1365,10 @@ const htmlTemplate = `<!DOCTYPE html>
         a.id = "toc-link-" + h.id;
         a.title = h.textContent;
         a.textContent = h.textContent;
+        
+        if (h.tagName === "H3" || h.tagName === "h3") {
+          a.classList.add("toc-h3");
+        }
         
         a.addEventListener("click", (e) => {
           e.preventDefault();

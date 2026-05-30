@@ -205,6 +205,20 @@
       padding-left: 16px;
     }
 
+    .toc-menu a.toc-h3 {
+      padding-left: 24px;
+      font-size: 12.5px;
+      opacity: 0.85;
+    }
+
+    .toc-menu a.toc-h3:hover {
+      padding-left: 28px;
+    }
+
+    .toc-menu a.toc-h3.active {
+      padding-left: 28px;
+    }
+
     /* Main Content Area */
     .main-content {
       flex: 1;
@@ -14439,10 +14453,17 @@ RETURNING count, reset_time;
 <li><strong>การปรับแต่งสีป้ายบอกสถานะแบบพลวัต (Theme-safe Status Badges):</strong> เพื่อหลีกเลี่ยงความเปรียบต่างที่ขัดสายตาของป้ายสถานะทึบแสง (เช่น สีเขียวทึบ <code>#ECFDF5</code> หรือสีแดงทึบ <code>#FEF2F2</code> ที่กลายเป็นแผ่นสว่างจ้าในโหมดกลางคืน) จึงปรับปรุงกลไกสไตล์ป้ายบอกสถานะออนไลน์บอร์ดและป้ายสิทธิ์ผ่านประตูในหน้าทำเนียบนักศึกษาทั้งหมด (<a href="my-app/app/admin/dashboard/all/page.tsx">all/page.tsx</a>) ให้เปลี่ยนมาใช้การจัดรูปแบบสีแบบโปร่งแสงแบรนด์ผสมผสาน ได้แก่ <code>rgba(16,185,129,0.12)</code> (สำหรับความสำเร็จ/ออนไลน์) และ <code>rgba(239,68,68,0.12)</code> (สำหรับข้อผิดพลาด/ออฟไลน์) ร่วมกับการใช้ข้อความสีสว่างพลวัต ช่วยส่งเสริมให้ชิ้นงานคงความงดงามตามสไตล์ Minimalist Glassmorphism ที่สมบูรณ์แบบในโหมดกลางคืนอย่างเป็นเอกภาพ</li>
 </ul>
 </li>
+<li><p><strong>การยกระดับการแจ้งเตือนสัญญะทำความสะอาดระบบไปสู่ช่องทางแบบรวมศูนย์ (Unified Multi-channel System Cleanup Notifications &amp; Spam Guard):</strong></p>
+<ul>
+<li><strong>การย้ายระบบสื่อสารรวมศูนย์:</strong> ตรวจพบการเรียกใช้โมดูลอ้างอิง <code>sendDiscordNotification</code> ตัวเดิมจาก <code>lib/discord.ts</code> ภายในฟังก์ชันจัดการ API ล้างข้อมูลจราจรคอมพิวเตอร์ที่หมดอายุ <code>/api/system/logs/cleanup</code> ส่งผลให้ข้อมูลประวัติการทำงานบำรุงรักษาระบบ (Maintenance Cleanup) ข้อมูลถูกจำกัดการส่งไปเฉพาะบนแผง Discord Webhook เท่านั้น โดยไม่มีการส่งต่อไปยัง LINE และ Telegram</li>
+<li>ดำเนินการอัปเกรดระบบสื่อสารความปลอดภัยของ API โดยเปลี่ยนตัวสถาปัตยกรรมตัวยิงข้อความเป็น <code>sendNotification</code> จาก <code>@/lib/notify</code> ส่งผลให้การยิงแจ้งเตือนการล้างประวัติ (ทั้งการกดลบมือ POST และการรันอัตโนมัติ GET) จะกระจายตัวออกไปยังทั้ง <strong>Discord Webhook, LINE Messaging API และ Telegram Bot API</strong> ขนานพร้อมกันทันที</li>
+<li><strong>การออกแบบกลไกป้องกันขยะแจ้งเตือน (Notification Spam Guard):</strong> เพื่อป้องกันไม่ให้ช่องแจ้งเตือนแอดมินเกิดสภาวะขยะแจ้งเตือน (Notification Spamming) จากกระบวนการทำงานอัตโนมัติของเซิร์ฟเวอร์ (Vercel Cron) ทุก 12 ชั่วโมง ระบบจึงถูกออกแบบให้ทำการประมวลผลลบอย่างนุ่มนวลและตอบกลับสถานะเสร็จสิ้นแบบปกติโดยไม่ต้องสั่งยิงแจ้งเตือนและประทับล็อกบันทึกเหตุการณ์ลงระบบ <strong>ในกรณีที่ไม่มีข้อมูล Log หมดอายุเลย (ลบออก 0 รายการ)</strong> ระบบจะจัดส่งข้อความแจ้งเตือนความปลอดภัยและความก้าวหน้าไปทุกกลุ่มช่องทางและประทับล็อก Audit log <strong>เฉพาะเมื่อมีผลลัพธ์การลบจริงที่มากกว่า 0 รายการเท่านั้น (<code>affectedRows &gt; 0</code>)</strong></li>
+</ul>
+</li>
 </ol>
 <hr>
 <blockquote>
-<p><strong>บทสรุปภาค §73:</strong> ภาคผนวกนี้ได้ตรวจสอบและบันทึกรายละเอียดทางวิศวกรรมจากซอร์สโค้ดจริงทุกชั้น ตั้งแต่ฐานข้อมูล 12 ตาราง, อัลกอริทึม JWT/bcrypt/HMAC/rate-limit, วงจรชีวิต QR token, state machine ของเฟิร์มแวร์ ไปจนถึงสถาปัตยกรรมแจ้งเตือน 3 ช่องทาง ตลอดจนระบบธีมโหมดมืดพรีเมียม, ระบบกราฟสถิติวิเคราะห์เชิงตอบสนอง, การแก้ไขจุดบกพร่องสลับธีมสีขาวรั่วไหล และสภาวะแข่งขันของการแสดงแผนภูมิ เพื่อให้คู่มือสะท้อนสถานะปัจจุบันของระบบ SmartAccess อย่างถูกต้องครบถ้วน เหมาะแก่การใช้อ้างอิงในเล่มปริญญานิพนธ์และการตรวจประเมินทางวิชาการอย่างสมบูรณ์แบบที่สุด</p>
+<p><strong>บทสรุปภาค §73:</strong> ภาคผนวกนี้ได้ตรวจสอบและบันทึกรายละเอียดทางวิศวกรรมจากซอร์สโค้ดจริงทุกชั้น ตั้งแต่ฐานข้อมูล 12 ตาราง, อัลกอริทึม JWT/bcrypt/HMAC/rate-limit, วงจรชีวิต QR token, state machine ของเฟิร์มแวร์ ไปจนถึงสถาปัตยกรรมแจ้งเตือน 3 ช่องทาง ตลอดจนระบบธีมโหมดมืดพรีเมียม, ระบบกราฟสถิติวิเคราะห์เชิงตอบสนอง, การแก้ไขจุดบกพร่องสลับธีมสีขาวรั่วไหล, สภาวะแข่งขันของการแสดงแผนภูมิ และสถาปัตยกรรมบูรณาการแจ้งเตือนรวมศูนย์การดูแลรักษาระบบ เพื่อให้คู่มือสะท้อนสถานะปัจจุบันของระบบ SmartAccess อย่างถูกต้องครบถ้วน เหมาะแก่การใช้อ้างอิงในเล่มปริญญานิพนธ์และการตรวจประเมินทางวิชาการอย่างสมบูรณ์แบบที่สุด</p>
 </blockquote>
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>
 
@@ -14867,9 +14888,9 @@ RETURNING count, reset_time;
   </script>
 
   <script>
-    // Build floating TOC sidebar dynamically from h2 elements and keep them synchronized
+    // Build floating TOC sidebar dynamically from h2 and h3 elements and keep them synchronized
     document.addEventListener("DOMContentLoaded", function() {
-      const headers = document.querySelectorAll("#compiledContent h2");
+      const headers = document.querySelectorAll("#compiledContent h2, #compiledContent h3");
       const tocMenu = document.getElementById("tocMenu");
       const sidebar = document.getElementById("appSidebar");
       
@@ -14884,6 +14905,10 @@ RETURNING count, reset_time;
         a.id = "toc-link-" + h.id;
         a.title = h.textContent;
         a.textContent = h.textContent;
+        
+        if (h.tagName === "H3" || h.tagName === "h3") {
+          a.classList.add("toc-h3");
+        }
         
         a.addEventListener("click", (e) => {
           e.preventDefault();

@@ -3,7 +3,7 @@ import { getPool } from "@/lib/db";
 import { getAdminFromCookie } from "@/lib/auth";
 import { withRateLimit } from "@/lib/rate-limit-middleware";
 import { logEvent, getRequestContext } from "@/lib/access-log";
-import { sendDiscordNotification } from "@/lib/discord";
+import { sendNotification } from "@/lib/notify";
 import bcrypt from "bcryptjs";
 
 /**
@@ -35,7 +35,7 @@ async function purgeExpiredLogs(opts: {
     severity: "info",
   });
 
-  await sendDiscordNotification("security_alert", {
+  await sendNotification("security_alert", {
     alertTitle: "ล้างประวัติที่หมดอายุ (> 90 วัน)",
     alertDetail: `${source} ล้างประวัติที่หมดอายุออกจากระบบ`,
     reason: `ลบออก ${affectedRows} รายการ (ประวัติเกิน 90 วันตาม พ.ร.บ.คอมพิวเตอร์ฯ ม.26)`,
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       });
 
       // แจ้งเตือนระดับวิกฤตทุกช่องทาง (ลบประวัติทั้งหมด = เหตุการณ์สำคัญสูงสุด)
-      await sendDiscordNotification("security_alert", {
+      await sendNotification("security_alert", {
         alertTitle: "🚨 ลบประวัติทั้งหมดในระบบ (ถาวร)",
         alertDetail: `ผู้ดูแลระบบสูงสุด **${admin.full_name}** ยืนยันรหัสผ่านและล้างประวัติเข้าออก**ทั้งหมด**ออกจากระบบ`,
         adminUsername: admin.username,
