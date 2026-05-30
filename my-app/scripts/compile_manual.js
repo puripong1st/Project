@@ -819,6 +819,7 @@ const htmlTemplate = `<!DOCTYPE html>
   <!-- Mermaid.js for Dynamic Diagrams (Deferred for instant page load) -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js" defer></script>
 
+  <script>
     // Reusable function to inject download triggers
     function injectDownloadButtons(div, svg, index) {
       // Create Button Container
