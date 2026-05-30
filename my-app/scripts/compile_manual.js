@@ -1227,6 +1227,17 @@ const htmlTemplate = `<!DOCTYPE html>
         const tempContainer = document.createElement("div");
         tempContainer.className = "compiled-export-temp";
         
+        // Create a hidden wrapper container that has size 0 but layout active so html2pdf can render it 100% visible (fixes the blank PDF bug!)
+        const hiddenWrapper = document.createElement("div");
+        hiddenWrapper.style.position = "absolute";
+        hiddenWrapper.style.top = "0";
+        hiddenWrapper.style.left = "0";
+        hiddenWrapper.style.width = "0";
+        hiddenWrapper.style.height = "0";
+        hiddenWrapper.style.overflow = "hidden";
+        hiddenWrapper.style.zIndex = "-9999";
+        document.body.appendChild(hiddenWrapper);
+
         // Copy the header (without the action button panel)
         const headerClone = header.cloneNode(true);
         const actionsPanel = headerClone.querySelector(".section-actions");
@@ -1259,23 +1270,24 @@ const htmlTemplate = `<!DOCTYPE html>
         tempContainer.style.padding = "40px";
         tempContainer.style.fontFamily = "'Sarabun', sans-serif";
         tempContainer.style.borderRadius = "12px";
-        tempContainer.style.position = "absolute";
-        tempContainer.style.top = "0";
-        tempContainer.style.left = "5000px"; // Render far outside active viewport
-        tempContainer.style.zIndex = "-9999"; // Hide beneath the body layer
-        tempContainer.style.display = "block";
-        tempContainer.style.opacity = "1"; // Maintain active visibility for canvas engine capture
         tempContainer.style.width = "800px"; // standard rendering width
-        document.body.appendChild(tempContainer);
+        tempContainer.style.boxSizing = "border-box";
+        
+        // Append tempContainer to the hiddenWrapper instead of body directly
+        hiddenWrapper.appendChild(tempContainer);
 
-        // Extract clean filename from section title
-        // Clean out any appended button texts like "📄 บันทึกเฉพาะส่วนนี้ (PDF)" from the filename string
-        let rawTitle = header.innerText || header.textContent;
-        rawTitle = rawTitle.replace(/📄\s*บันทึกเฉพาะส่วนนี้\s*\(PDF\)/g, "")
-                           .replace(/🖼\s*บันทึกเฉพาะส่วนนี้\s*\(PNG\)/g, "")
-                           .replace(/🖼️\s*บันทึกเฉพาะส่วนนี้\s*\(PNG\)/g, "")
-                           .trim();
-        const cleanTitle = rawTitle.replace(/[\/\\?%*:|"<>\s]/g, "_").substring(0, 80);
+        // Extract clean filename PURELY from the h2 text (ignoring child nodes like buttons entirely!)
+        let cleanTitle = "";
+        for (let i = 0; i < header.childNodes.length; i++) {
+          const node = header.childNodes[i];
+          if (node.nodeType === Node.TEXT_NODE) {
+            cleanTitle += node.textContent;
+          }
+        }
+        cleanTitle = cleanTitle.trim().replace(/[\/\\?%*:|"<>\s]/g, "_").substring(0, 80);
+        if (!cleanTitle) {
+          cleanTitle = "Section_" + headerId;
+        }
 
         if (format === 'pdf') {
           // Configuration for premium quality PDF
@@ -1293,10 +1305,10 @@ const htmlTemplate = `<!DOCTYPE html>
           };
           
           html2pdf().from(tempContainer).set(pdfOptions).save().then(() => {
-            document.body.removeChild(tempContainer);
+            document.body.removeChild(hiddenWrapper);
           }).catch(err => {
             console.error("PDF export failed:", err);
-            document.body.removeChild(tempContainer);
+            document.body.removeChild(hiddenWrapper);
           });
           
         } else if (format === 'png') {
@@ -1310,10 +1322,10 @@ const htmlTemplate = `<!DOCTYPE html>
             link.href = canvas.toDataURL("image/png");
             link.download = cleanTitle + ".png";
             link.click();
-            document.body.removeChild(tempContainer);
+            document.body.removeChild(hiddenWrapper);
           }).catch(err => {
             console.error("PNG export failed:", err);
-            document.body.removeChild(tempContainer);
+            document.body.removeChild(hiddenWrapper);
           });
         }
       };
