@@ -202,9 +202,9 @@
       margin: 0;
       margin-top: 4px;
       padding-left: 4px;
-      max-height: 2000px;
+      max-height: 1000px;
       overflow: hidden;
-      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+      transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out;
       opacity: 1;
     }
 
@@ -216,7 +216,7 @@
 
     .toc-group-arrow {
       font-size: 10px;
-      transition: transform 0.3s;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       opacity: 0.7;
     }
 
@@ -918,7 +918,7 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 19:42:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 19:50:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
@@ -1220,7 +1220,8 @@ npm install
 <p>หน้าจำลอง ESP32</p>
 <pre><code class="language-text">https://project-sigma-ivory-21.vercel.app/esp32-preview
 </code></pre>
-<div class="alert-box alert-note"><strong>NOTE:</strong> ลิงก์ด้านบนเป็นเว็บไซต์จำลองบนโปรดักชันหลัก (Production URL) สำหรับรันใช้งานจริง ส่วนกรณีที่รันระบบทดสอบภายในเครื่องนักพัฒนา (Local Development) สามารถเข้าใช้งานผ่าน `http://localhost:3000`, `http://localhost:3000/admin/login` และ `http://localhost:3000/esp32-preview` ตามลำดับ</div><h3>3.2 ตัวแปรสภาพแวดล้อมที่ควรตั้งค่า</h3>
+<div class="alert-box alert-note"><strong>NOTE:</strong> ลิงก์ด้านบนเป็นเว็บไซต์จำลองบนโปรดักชันหลัก (Production URL) สำหรับรันใช้งานจริง ส่วนกรณีที่รันระบบทดสอบภายในเครื่องนักพัฒนา (Local Development) สามารถเข้าใช้งานผ่าน `http://localhost:3000`, `http://localhost:3000/admin/login` และ `http://localhost:3000/esp32-preview` ตามลำดับ
+</div><h3>3.2 ตัวแปรสภาพแวดล้อมที่ควรตั้งค่า</h3>
 <p>สร้างไฟล์ <code>my-app/.env.local</code></p>
 <pre><code class="language-env"># ── ฐานข้อมูล (PostgreSQL / Supabase Connection) ──
 # ใช้ Connection String หลัก (PgBouncer pooler พอร์ต 6543)
@@ -8087,7 +8088,8 @@ voltage    ────┐                     ┌───┐
 <td><strong>381ms (ติดการยืนยันสิทธิ์)</strong></td>
 </tr>
 </tbody></table>
-<div class="alert-box alert-tip"><strong>TIP:</strong> **วิเคราะห์ผลทดสอบ:**</div>
+<div class="alert-box alert-tip"><strong>TIP:</strong> **วิเคราะห์ผลทดสอบ:**
+</div>
 > ค่าเฉลี่ยการดึงสถานะสำหรับ ESP32 (Hot Path Polling) อยู่ที่เพียง **97ms (P95)** ซึ่งถือว่ารวดเร็วกว่าข้อกำหนดการพัฒนาทั่วไปอย่างมาก ส่งผลให้วงรอบในการดึงข้อมูลของบอร์ด ESP32 ที่ทำงานทุก ๆ 2 วินาที ใช้ขีดความสามารถการรับส่งข้อมูลของเน็ตเวิร์กเพียง 5% เท่านั้น และป้องกันปัญหากลอนประตูตอบสนองล่าช้าเมื่อผู้ใช้งานได้รับอนุมัติได้อย่างเด็ดขาด<p><a id="sec-71-3"></a></p>
 <h3>71.3 สถาปัตยกรรมการสื่อสารแบบ &quot;Push-via-Poll&quot; ในระบบเครือข่ายองค์กร</h3>
 <p>การเชื่อมต่อและสื่อสารอุปกรณ์ IoT (ESP32) เข้ากับคลาวด์เซิร์ฟเวอร์ในสภาพแวดล้อมเครือข่ายของมหาวิทยาลัยหรือองค์กรขนาดใหญ่ เผชิญความท้าทายหลัก 3 ประการ:</p>
@@ -8115,7 +8117,8 @@ voltage    ────┐                     ┌───┐
 <li>บอร์ดรับค่าไปประมวลผลสั่งเปิดประตู</li>
 <li><code>UPDATE</code> ค่า <code>room_cmd</code> ให้กลายเป็น <code>&#39;consumed&#39;</code></li>
 </ol>
-<div class="alert-box alert-warning"><strong>WARNING:</strong> **ช่องโหว่ความมั่นคง:** ในระบบ Serverless หรือมีผู้ใช้ปริมาณมาก (High Concurrency) ระหว่างขั้นตอนที่ 1 และ 3 อาจมีอีก Request หนึ่งร้องขอเข้ามาสำเร็จและเห็นสถานะเป็น `'unlock'` เช่นเดียวกัน ส่งผลให้คำสั่งเปิดประตูทำงานสองรอบซ้อน หรือเปิดค้างโดยไม่มีผู้รับผิดชอบ</div><p><strong>แนวทางแก้ไขเชิงทฤษฎีในโครงงานวิจัย:</strong><br>ระบบได้ออกแบบให้ใช้ <strong>Single-step Atomic Update</strong> ในระดับ SQL Engine บนเครื่องยนต์ฐานข้อมูล Supabase PostgreSQL ผ่านประโยคคำสั่งเดียวที่เป็นอะตอมิก (ไม่สามารถแยกการประมวลผลย่อยได้):</p>
+<div class="alert-box alert-warning"><strong>WARNING:</strong> **ช่องโหว่ความมั่นคง:** ในระบบ Serverless หรือมีผู้ใช้ปริมาณมาก (High Concurrency) ระหว่างขั้นตอนที่ 1 และ 3 อาจมีอีก Request หนึ่งร้องขอเข้ามาสำเร็จและเห็นสถานะเป็น `'unlock'` เช่นเดียวกัน ส่งผลให้คำสั่งเปิดประตูทำงานสองรอบซ้อน หรือเปิดค้างโดยไม่มีผู้รับผิดชอบ
+</div><p><strong>แนวทางแก้ไขเชิงทฤษฎีในโครงงานวิจัย:</strong><br>ระบบได้ออกแบบให้ใช้ <strong>Single-step Atomic Update</strong> ในระดับ SQL Engine บนเครื่องยนต์ฐานข้อมูล Supabase PostgreSQL ผ่านประโยคคำสั่งเดียวที่เป็นอะตอมิก (ไม่สามารถแยกการประมวลผลย่อยได้):</p>
 <pre><code class="language-sql">UPDATE system_settings 
 SET setting_value = &#39;consumed&#39; 
 WHERE setting_key = &#39;room_cmd_CE-401&#39; AND setting_value = &#39;unlock&#39; 
@@ -14604,9 +14607,10 @@ RETURNING count, reset_time;
 <li><strong>ตรรกะจัดอันดับอัตโนมัติ (Automated Parsing Engine):</strong> นำชุดคำสั่งนิพจน์ปกติ (Regular Expression) ใน JavaScript ช่วยตรวจสอบหัวข้อระดับสูง <code>H2</code> ทุกครั้งที่สแกนเอกสาร เพื่อสกัดเอาดัชนีตัวเลขหัวข้อระบบ (<code>sectionNum</code>) จากตัวอักษรของชื่อเรื่อง (เช่น <code>&quot;1. ภาพภาพภาพ&quot;</code> -&gt; <code>1</code>, <code>&quot;71.55 รายงานสรุป...&quot;</code> -&gt; <code>71</code>) แล้วนำมาจัดอันดับโยกย้ายลิงก์เข้าสู่หน่วยหมวดหมู่เมนู <code>Group</code> ย่อยทางด้านซ้ายอย่างแม่นยำ พร้อมทั้งส่งต่อระบบสืบทอดค่ากลุ่มหมวดหมู่ลงไปยังหัวข้อระดับ <code>H3</code> ที่อยู่ภายใต้หัวข้อแม่นั้นอัตโนมัติ</li>
 </ul>
 </li>
-<li><p><strong>ประสบการณ์โต้ตอบระดับพรีเมียม (Premium Navigation &amp; Collapsible Transitions):</strong></p>
+<li><p><strong>ประสบการณ์โต้ตอบระดับพรีเมียมและการประสานงานแบบสลับบานพับอัตโนมัติ (Premium Accordion Model &amp; Fluid Transitions):</strong></p>
 <ul>
-<li><strong>Collapsible Menu &amp; Smart Scroll Sync:</strong> แถบหัวข้อหมวดหมู่เมนูทั้ง 4 กลุ่มถูกกำหนดให้อยู่ในสถานะปิดพับไว้เป็นค่าเริ่มต้น (Collapsed by default) เพื่อความโล่งและเรียบง่ายสบายตาของแถบควบคุมด้านข้าง และเมื่อผู้ใช้ทำงานเลื่อนอ่านหน้าเอกสาร (Scroll) กลไกของระบบสืบหาความใกล้เคียง (<code>IntersectionObserver</code>) จะทำการตรวจจับและไฮไลต์ลิงก์นำทางปัจจุบัน พร้อมเร่งส่งคำสั่งขยายขอบเขตหมวดหมู่แม่ของหัวข้อนั้นออกโดยอัตโนมัติแบบนุ่มนวลผ่าน CSS Transitions และทำการพับปิดหมวดหมู่ที่ไม่ได้ใช้งานอื่นลงเพื่อให้สมาธิของผู้ใช้งานอยู่กับเนื้อหาปัจจุบัน</li>
+<li><strong>ระบบนำทางแบบสลับบานพับ (Strict Accordion Behavior):</strong> ปรับปรุงระบบควบคุมเมนูด้านซ้ายใหม่ทั้งหมดให้ทำตัวเป็น &quot;บานพับสลับเดี่ยว (Strict Accordion Model)&quot; เพื่อแก้ไขปัญหาการเปิดแท็บทิ้งค้างไว้จนรกร้างและเบียดบังเนื้อหาอื่น โดยกำหนดสถาปัตยกรรมทางคำสั่งไว้ว่า เมื่อผู้ใช้ทำการกดเปิดขยายหมวดหมู่ใด ๆ หรือเมื่อระบบตรวจจับความใกล้เคียงจากการเลื่อนอ่านหน้าหลัก (IntersectionObserver) เพื่อแสดงแท็บตามเนื้อหาจริง (เช่น เลื่อนจากภาคหลักข้อ 19 ไปยังภาคผนวกข้อ 20, 21) ระบบจะสั่งขยายเฉพาะกล่องรายการหมวดหมู่ใหม่ขึ้นมา และทำการพับปิด (Collapse) หมวดหมู่อื่นที่เหลืออยู่ทั้งหมดโดยอัตโนมัติทันที</li>
+<li><strong>เส้นโค้งแอนิเมชันความหน่วงพลวัต (Dynamic Transition Optimization):</strong> ยกระดับความลื่นไหลโดยการปรับปรุงค่า CSS Transitions จากเดิมที่ใช้กลไก <code>max-height: 2000px</code> ควบคู่กับแอนิเมชัน Ease-in-out ทั่วไปซึ่งก่อให้เกิดความเฉื่อยและจังหวะหน่วงสายตาตอนหดตัว (Collapse Lag) ให้มาใช้เส้นโค้งพลังแอนิเมชันระดับพรีเมียม <strong><code>cubic-bezier(0.16, 1, 0.3, 1)</code> (EaseOutExpo)</strong> ที่จะเร่งความเร็วในการหด/ขยายตัวอย่างฉับไวในตอนเริ่มต้นและค่อย ๆ ชะลอความเร็วลงอย่างละมุนละไมในจุดสุดท้าย พร้อมทั้งบีบขอบเขตความสูงของกล่องเนื้อหาจากเดิมลงมาเหลือสูงสุดเพียง <code>1000px</code> ส่งผลให้แอนิเมชันการพับปิดแท็บของภาคหลักและการคลี่ขยายแท็บของภาคผนวกมีความยืดหยุ่น ไหลลื่น และตอบสนองต่อทุกพฤติกรรมการสัญจรคู่มือของผู้ใช้งานอย่างสง่างามที่สุด</li>
 <li><strong>Non-blocking Hover Scroll Guard:</strong> เพิ่มเติมตรรกะระดับพรีเมียมตรวจสอบว่าหากเมาส์ของผู้ใช้กำลังลอยตัวเลือกสืบค้นอยู่บนพื้นที่ Sidebar (<code>!sidebar.matches(&#39;:hover&#39;)</code>) ระบบจะระงับกลไกบังคับการเลื่อนตำแหน่งอัตโนมัติชั่วคราว เพื่อเปิดสิทธิ์ให้ผู้ใช้สามารถเลื่อนเมาส์อ่านสารบัญบนแถบด้านซ้ายขึ้น-ลงดูเนื้อหาได้อย่างมีอิสระโดยที่หน้าไม่สั่นกระตุกหรือดีดกลับลงมาด้านล่างตามจุดที่เลื่อนอ่านหน้าหลัก</li>
 <li><strong>Advanced Search Integration (ระบบสืบค้นอัจฉริยะ):</strong> เมื่อผู้ประเมินทำการป้อนคำค้นหาในกล่องค้นหาเมนูด้านซ้าย ตัวกรองจะทำการประเมินและสืบค้นข้อความในลิงก์ย่อยทั้งหมด หากพบว่ามีข้อความที่ตรงกัน ระบบจะสั่งการขยายเมนูแม่ของลิงก์ที่เข้าเงื่อนไขนั้นออกมาแสดงผลโดยอัตโนมัติ พร้อมทั้งซ่อนหมวดหมู่หรือรายการอื่นที่ไม่เกี่ยวข้องออกจนหมดสิ้น และจะกลับคืนสู่สภาวะพับปิด/เปิดอย่างเหมาะสมทันทีที่กล่องค้นหาถูกล้างค่าออก เพื่อความสะดวกรวดเร็วและมีประสิทธิภาพของเครื่องมือสืบค้นสูงสุด</li>
 </ul>
@@ -15072,8 +15076,27 @@ RETURNING count, reset_time;
 
         // Toggle click handler
         headerDiv.addEventListener("click", () => {
-          subUl.classList.toggle("collapsed");
-          headerDiv.querySelector(".toc-group-arrow").classList.toggle("collapsed");
+          const isCollapsed = subUl.classList.contains("collapsed");
+          if (isCollapsed) {
+            // Collapse all other groups
+            document.querySelectorAll(".toc-group-list").forEach(list => {
+              if (list !== subUl) {
+                list.classList.add("collapsed");
+                const otherHeader = list.previousElementSibling;
+                if (otherHeader) {
+                  const arrow = otherHeader.querySelector(".toc-group-arrow");
+                  if (arrow) arrow.classList.add("collapsed");
+                }
+              }
+            });
+            // Expand this one
+            subUl.classList.remove("collapsed");
+            headerDiv.querySelector(".toc-group-arrow").classList.remove("collapsed");
+          } else {
+            // Collapse this one
+            subUl.classList.add("collapsed");
+            headerDiv.querySelector(".toc-group-arrow").classList.add("collapsed");
+          }
         });
 
         groupLi.appendChild(headerDiv);
@@ -15493,14 +15516,29 @@ RETURNING count, reset_time;
           if (link.id === "toc-link-" + activeId) {
             link.classList.add("active");
 
-            // Expand parent group dynamically if collapsed!
+            // Expand parent group dynamically and collapse all others!
             const parentUl = link.closest(".toc-group-list");
-            if (parentUl && parentUl.classList.contains("collapsed")) {
-              parentUl.classList.remove("collapsed");
-              const headerDiv = parentUl.previousElementSibling;
-              if (headerDiv) {
-                const arrow = headerDiv.querySelector(".toc-group-arrow");
-                if (arrow) arrow.classList.remove("collapsed");
+            if (parentUl) {
+              // Collapse all other groups
+              document.querySelectorAll(".toc-group-list").forEach(list => {
+                if (list !== parentUl) {
+                  list.classList.add("collapsed");
+                  const otherHeader = list.previousElementSibling;
+                  if (otherHeader) {
+                    const arrow = otherHeader.querySelector(".toc-group-arrow");
+                    if (arrow) arrow.classList.add("collapsed");
+                  }
+                }
+              });
+
+              // Expand parent group if collapsed
+              if (parentUl.classList.contains("collapsed")) {
+                parentUl.classList.remove("collapsed");
+                const headerDiv = parentUl.previousElementSibling;
+                if (headerDiv) {
+                  const arrow = headerDiv.querySelector(".toc-group-arrow");
+                  if (arrow) arrow.classList.remove("collapsed");
+                }
               }
             }
 

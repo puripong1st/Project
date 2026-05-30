@@ -262,9 +262,9 @@ const htmlTemplate = `<!DOCTYPE html>
       margin: 0;
       margin-top: 4px;
       padding-left: 4px;
-      max-height: 2000px;
+      max-height: 1000px;
       overflow: hidden;
-      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+      transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out;
       opacity: 1;
     }
 
@@ -276,7 +276,7 @@ const htmlTemplate = `<!DOCTYPE html>
 
     .toc-group-arrow {
       font-size: 10px;
-      transition: transform 0.3s;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       opacity: 0.7;
     }
 
@@ -1432,8 +1432,27 @@ const htmlTemplate = `<!DOCTYPE html>
 
         // Toggle click handler
         headerDiv.addEventListener("click", () => {
-          subUl.classList.toggle("collapsed");
-          headerDiv.querySelector(".toc-group-arrow").classList.toggle("collapsed");
+          const isCollapsed = subUl.classList.contains("collapsed");
+          if (isCollapsed) {
+            // Collapse all other groups
+            document.querySelectorAll(".toc-group-list").forEach(list => {
+              if (list !== subUl) {
+                list.classList.add("collapsed");
+                const otherHeader = list.previousElementSibling;
+                if (otherHeader) {
+                  const arrow = otherHeader.querySelector(".toc-group-arrow");
+                  if (arrow) arrow.classList.add("collapsed");
+                }
+              }
+            });
+            // Expand this one
+            subUl.classList.remove("collapsed");
+            headerDiv.querySelector(".toc-group-arrow").classList.remove("collapsed");
+          } else {
+            // Collapse this one
+            subUl.classList.add("collapsed");
+            headerDiv.querySelector(".toc-group-arrow").classList.add("collapsed");
+          }
         });
 
         groupLi.appendChild(headerDiv);
@@ -1853,14 +1872,29 @@ const htmlTemplate = `<!DOCTYPE html>
           if (link.id === "toc-link-" + activeId) {
             link.classList.add("active");
 
-            // Expand parent group dynamically if collapsed!
+            // Expand parent group dynamically and collapse all others!
             const parentUl = link.closest(".toc-group-list");
-            if (parentUl && parentUl.classList.contains("collapsed")) {
-              parentUl.classList.remove("collapsed");
-              const headerDiv = parentUl.previousElementSibling;
-              if (headerDiv) {
-                const arrow = headerDiv.querySelector(".toc-group-arrow");
-                if (arrow) arrow.classList.remove("collapsed");
+            if (parentUl) {
+              // Collapse all other groups
+              document.querySelectorAll(".toc-group-list").forEach(list => {
+                if (list !== parentUl) {
+                  list.classList.add("collapsed");
+                  const otherHeader = list.previousElementSibling;
+                  if (otherHeader) {
+                    const arrow = otherHeader.querySelector(".toc-group-arrow");
+                    if (arrow) arrow.classList.add("collapsed");
+                  }
+                }
+              });
+
+              // Expand parent group if collapsed
+              if (parentUl.classList.contains("collapsed")) {
+                parentUl.classList.remove("collapsed");
+                const headerDiv = parentUl.previousElementSibling;
+                if (headerDiv) {
+                  const arrow = headerDiv.querySelector(".toc-group-arrow");
+                  if (arrow) arrow.classList.remove("collapsed");
+                }
               }
             }
 
