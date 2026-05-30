@@ -835,6 +835,10 @@ const htmlTemplate = `<!DOCTYPE html>
         page-break-inside: avoid;
         page-break-after: auto;
       }
+      /* Disable content-visibility during print to prevent blank pages */
+      .mermaid, pre, .table-container, .alert-box {
+        content-visibility: visible !important;
+      }
     }
 
     /* ⚡ Performance Optimizations for Large Documents */
@@ -967,7 +971,7 @@ const htmlTemplate = `<!DOCTYPE html>
       btnPng.innerHTML = "🖼️ เซฟรูป PNG";
       styleMermaidBtn(btnPng);
       btnPng.addEventListener("click", function() {
-        saveSvgAsPng(svg, "smartaccess_diagram_" + index + ".png");
+        saveSvgAsPng(div, "smartaccess_diagram_" + index + ".png");
       });
 
       // Create SVG Button
@@ -978,6 +982,28 @@ const htmlTemplate = `<!DOCTYPE html>
         saveSvgAsSvg(svg, "smartaccess_diagram_" + index + ".svg");
       });
 
+      // Create Copy Code Button
+      const btnCopy = document.createElement("button");
+      btnCopy.innerHTML = "📋 คัดลอกโค้ด Mermaid";
+      styleMermaidBtn(btnCopy);
+      btnCopy.style.background = "linear-gradient(135deg, #10B981 0%, #059669 100%)"; // Beautiful emerald gradient
+      btnCopy.addEventListener("click", function() {
+        const rawCode = div.getAttribute("data-mermaid-code");
+        if (rawCode) {
+          navigator.clipboard.writeText(rawCode).then(() => {
+            const originalText = btnCopy.innerHTML;
+            btnCopy.innerHTML = "✅ คัดลอกสำเร็จ!";
+            setTimeout(() => {
+              btnCopy.innerHTML = originalText;
+            }, 2000);
+          }).catch(err => {
+            console.error("Clipboard copy failed", err);
+            alert("ไม่สามารถคัดลอกอัตโนมัติได้: " + err.message);
+          });
+        }
+      });
+
+      btnContainer.appendChild(btnCopy);
       btnContainer.appendChild(btnPng);
       btnContainer.appendChild(btnSvg);
       div.appendChild(btnContainer);
@@ -1058,7 +1084,7 @@ const htmlTemplate = `<!DOCTYPE html>
       });
     });
 
-    // 100% Bulletproof Direct SVG Vector Download
+    // 100% Bulletproof Direct SVG Vector Download with stylesheet inlining
     function saveSvgAsSvg(svgElement, fileName) {
       try {
         const svgClone = svgElement.cloneNode(true);
@@ -1068,6 +1094,30 @@ const htmlTemplate = `<!DOCTYPE html>
         
         svgClone.setAttribute("width", width);
         svgClone.setAttribute("height", height);
+
+        // Find and inline all styles matching mermaid
+        let mermaidStyles = "";
+        try {
+          const sheets = document.styleSheets;
+          for (let i = 0; i < sheets.length; i++) {
+            try {
+              const sheet = sheets[i];
+              if (sheet.ownerNode) {
+                const nodeText = sheet.ownerNode.textContent || "";
+                const nodeId = sheet.ownerNode.id || "";
+                if (nodeId.startsWith("mermaid") || nodeText.includes(".mermaid") || nodeId.includes("mermaid")) {
+                  mermaidStyles += nodeText + "\n";
+                }
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+
+        if (mermaidStyles) {
+          const styleEl = document.createElement("style");
+          styleEl.textContent = mermaidStyles;
+          svgClone.insertBefore(styleEl, svgClone.firstChild);
+        }
 
         const svgString = new XMLSerializer().serializeToString(svgClone);
         let correctedSvgString = svgString;
@@ -1092,8 +1142,71 @@ const htmlTemplate = `<!DOCTYPE html>
       }
     }
 
-    // High compatibility SVG to PNG using HTML5 canvas
-    function saveSvgAsPng(svgElement, fileName) {
+    // High compatibility PNG exporter utilizing html2canvas directly on the .mermaid container
+    function saveSvgAsPng(mermaidDiv, fileName) {
+      try {
+        const btnContainer = mermaidDiv.querySelector("div");
+        if (btnContainer) {
+          btnContainer.style.visibility = "hidden";
+        }
+        
+        html2canvas(mermaidDiv, {
+          scale: 3, // HD Quality
+          useCORS: true,
+          backgroundColor: "#FFFFFF",
+          logging: false,
+          onclone: function(clonedDoc) {
+            // Force light mode inside the clone to ensure high-contrast colors
+            clonedDoc.body.classList.remove("dark-mode");
+            
+            // Render all dynamic elements like mermaid SVG containers at 100% visibility
+            clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
+              el.style.contentVisibility = "visible";
+            });
+
+            // Hide download buttons completely in the clone
+            const clonedBtnContainer = clonedDoc.querySelector(".mermaid div");
+            if (clonedBtnContainer) {
+              clonedBtnContainer.style.display = "none";
+            }
+          }
+        }).then(canvas => {
+          if (btnContainer) {
+            btnContainer.style.visibility = "visible";
+          }
+          
+          const pngURL = canvas.toDataURL('image/png');
+          const downloadLink = document.createElement('a');
+          downloadLink.href = pngURL;
+          downloadLink.download = fileName;
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+        }).catch(err => {
+          console.error("html2canvas render failed, falling back to direct SVG draw", err);
+          if (btnContainer) {
+            btnContainer.style.visibility = "visible";
+          }
+          
+          const svgElement = mermaidDiv.querySelector("svg");
+          if (svgElement) {
+            fallbackSaveSvgAsPng(svgElement, fileName);
+          }
+        });
+      } catch (e) {
+        console.error("Error converting to PNG", e);
+        if (btnContainer) {
+          btnContainer.style.visibility = "visible";
+        }
+        const svgElement = mermaidDiv.querySelector("svg");
+        if (svgElement) {
+          fallbackSaveSvgAsPng(svgElement, fileName);
+        }
+      }
+    }
+
+    // Fallback using direct Image drawing if html2canvas fails
+    function fallbackSaveSvgAsPng(svgElement, fileName) {
       try {
         const svgClone = svgElement.cloneNode(true);
         const rect = svgElement.getBoundingClientRect();
@@ -1102,6 +1215,29 @@ const htmlTemplate = `<!DOCTYPE html>
         
         svgClone.setAttribute("width", width);
         svgClone.setAttribute("height", height);
+
+        let mermaidStyles = "";
+        try {
+          const sheets = document.styleSheets;
+          for (let i = 0; i < sheets.length; i++) {
+            try {
+              const sheet = sheets[i];
+              if (sheet.ownerNode) {
+                const nodeText = sheet.ownerNode.textContent || "";
+                const nodeId = sheet.ownerNode.id || "";
+                if (nodeId.startsWith("mermaid") || nodeText.includes(".mermaid") || nodeId.includes("mermaid")) {
+                  mermaidStyles += nodeText + "\n";
+                }
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+
+        if (mermaidStyles) {
+          const styleEl = document.createElement("style");
+          styleEl.textContent = mermaidStyles;
+          svgClone.insertBefore(styleEl, svgClone.firstChild);
+        }
 
         const svgString = new XMLSerializer().serializeToString(svgClone);
         let correctedSvgString = svgString;
@@ -1115,16 +1251,14 @@ const htmlTemplate = `<!DOCTYPE html>
         
         const image = new Image();
         image.onload = () => {
-          const scale = 2; // HD Quality
+          const scale = 2;
           const canvas = document.createElement('canvas');
           canvas.width = width * scale;
           canvas.height = height * scale;
           const context = canvas.getContext('2d');
           
-          // White background
           context.fillStyle = '#FFFFFF';
           context.fillRect(0, 0, canvas.width, canvas.height);
-          
           context.drawImage(image, 0, 0, canvas.width, canvas.height);
           
           const pngURL = canvas.toDataURL('image/png');
@@ -1139,15 +1273,14 @@ const htmlTemplate = `<!DOCTYPE html>
         };
         
         image.onerror = (err) => {
-          console.error("Failed canvas rendering, falling back to SVG download", err);
-          // If canvas fails due to security (e.g. foreignObjects on desktop Chrome), download SVG directly
+          console.error("Failed canvas rendering fallback", err);
           saveSvgAsSvg(svgElement, fileName.replace('.png', '.svg'));
-          alert("⚠️ เบราว์เซอร์คอมพิวเตอร์ของคุณจำกัดสิทธิ์ความปลอดภัยในเครื่อง ระบบจึงสลับไปดาวน์โหลดไฟล์เป็นฟอร์แมต Vector SVG คมชัดสูงให้แทน ซึ่งสามารถนำไปใช้วางในเล่มวิจัยได้ดีเยี่ยมเช่นกันครับ!");
+          alert("⚠️ เบราว์เซอร์ของคุณจำกัดสิทธิ์ความปลอดภัยในเครื่อง ระบบจึงสลับไปดาวน์โหลดไฟล์เป็นเวกเตอร์ SVG คมชัดสูงให้แทน ซึ่งนำไปใช้วางในเล่มวิจัยได้ดีเช่นกันครับ!");
         };
         
         image.src = blobURL;
       } catch (e) {
-        console.error("Error converting to PNG, falling back to SVG", e);
+        console.error("Fallback PNG failed", e);
         saveSvgAsSvg(svgElement, fileName.replace('.png', '.svg'));
       }
     }
@@ -1227,14 +1360,14 @@ const htmlTemplate = `<!DOCTYPE html>
         const tempContainer = document.createElement("div");
         tempContainer.className = "compiled-export-temp";
         
-        // Create a hidden wrapper container that has size 0 but layout active so html2pdf can render it 100% visible (fixes the blank PDF bug!)
+        // Create a hidden wrapper container that is placed off-screen but kept active so html2pdf and html2canvas can render it with full dimensions (fixes the blank PDF/PNG bugs!)
         const hiddenWrapper = document.createElement("div");
         hiddenWrapper.style.position = "absolute";
-        hiddenWrapper.style.top = "0";
-        hiddenWrapper.style.left = "0";
-        hiddenWrapper.style.width = "0";
-        hiddenWrapper.style.height = "0";
-        hiddenWrapper.style.overflow = "hidden";
+        hiddenWrapper.style.top = "-99999px"; // Render far off-screen
+        hiddenWrapper.style.left = "-99999px";
+        hiddenWrapper.style.width = "850px";  // Give it stable width matching tempContainer
+        hiddenWrapper.style.height = "auto";
+        hiddenWrapper.style.visibility = "visible";
         hiddenWrapper.style.zIndex = "-9999";
         document.body.appendChild(hiddenWrapper);
 
@@ -1299,7 +1432,16 @@ const htmlTemplate = `<!DOCTYPE html>
               scale: 2, 
               useCORS: true, 
               logging: false,
-              backgroundColor: "#FFFFFF"
+              backgroundColor: "#FFFFFF",
+              onclone: function(clonedDoc) {
+                // Strip dark-mode from the cloned document to prevent white text on white background!
+                clonedDoc.body.classList.remove("dark-mode");
+                
+                // Force content-visibility: visible for offscreen sections to prevent blank pages
+                clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
+                  el.style.contentVisibility = "visible";
+                });
+              }
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
           };
@@ -1316,7 +1458,16 @@ const htmlTemplate = `<!DOCTYPE html>
           html2canvas(tempContainer, {
             scale: 2,
             useCORS: true,
-            backgroundColor: "#FFFFFF"
+            backgroundColor: "#FFFFFF",
+            onclone: function(clonedDoc) {
+              // Strip dark-mode from the cloned document to prevent white text on white background!
+              clonedDoc.body.classList.remove("dark-mode");
+              
+              // Force content-visibility: visible for offscreen sections to prevent blank images
+              clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
+                el.style.contentVisibility = "visible";
+              });
+            }
           }).then(canvas => {
             const link = document.createElement("a");
             link.href = canvas.toDataURL("image/png");
