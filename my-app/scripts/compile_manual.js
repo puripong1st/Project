@@ -68,10 +68,12 @@ const htmlTemplate = `<!DOCTYPE html>
   <!-- Google Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
   
   <!-- Prism.js for code syntax highlighting -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"></noscript>
   
   <style>
     :root {
@@ -750,6 +752,12 @@ const htmlTemplate = `<!DOCTYPE html>
         page-break-after: auto;
       }
     }
+
+    /* ⚡ Performance Optimizations for Large Documents */
+    .mermaid, pre, .table-container, .alert-box {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 200px;
+    }
   </style>
 </head>
 <body>
@@ -808,16 +816,8 @@ const htmlTemplate = `<!DOCTYPE html>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js" defer></script>
 
-  <!-- Mermaid.js for Dynamic Diagrams (Loaded asynchronously) -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-  <script>
-    mermaid.initialize({
-      startOnLoad: false, // CRITICAL: Stop auto-rendering to prevent mobile CPU freezing!
-      theme: 'default',
-      securityLevel: 'loose',
-      htmlLabels: false, // Force native SVG text elements to calculate text dimensions properly
-      flowchart: { useWidth: true, htmlLabels: false }
-    });
+  <!-- Mermaid.js for Dynamic Diagrams (Deferred for instant page load) -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js" defer></script>
 
     // Reusable function to inject download triggers
     function injectDownloadButtons(div, svg, index) {
@@ -877,6 +877,15 @@ const htmlTemplate = `<!DOCTYPE html>
 
     // Lazy load and progressively render Mermaid diagrams using IntersectionObserver
     window.addEventListener("DOMContentLoaded", function() {
+      // Initialize Mermaid safely now that script is loaded with 'defer'
+      mermaid.initialize({
+        startOnLoad: false, // CRITICAL: Stop auto-rendering to prevent mobile CPU freezing!
+        theme: 'default',
+        securityLevel: 'loose',
+        htmlLabels: false, // Force native SVG text elements to calculate text dimensions properly
+        flowchart: { useWidth: true, htmlLabels: false }
+      });
+
       const mermaidDivs = document.querySelectorAll(".mermaid");
       
       // 1. Initialize beautiful loading skeletons and backup raw code
