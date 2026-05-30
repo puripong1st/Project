@@ -761,7 +761,7 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 12:10:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 12:19:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
@@ -1032,31 +1032,49 @@ npm install
 <p>หน้าจำลอง ESP32</p>
 <pre><code class="language-text">https://project-sigma-ivory-21.vercel.app/esp32-preview
 </code></pre>
-<div class="alert-box alert-note"><strong>NOTE:</strong> ลิงก์ด้านบนเป็นเว็บไซต์จำลองบนโปรดักชันหลัก (Production URL) สำหรับรันใช้งานจริง ส่วนกรณีที่รันระบบทดสอบภายในเครื่องนักพัฒนา (Local Development) สามารถเข้าใช้งานผ่าน `http://localhost:3000`, `http://localhost:3000/admin/login` และ `http://localhost:3000/esp32-preview` ตามลำดับ
-</div><h3>3.2 ตัวแปรสภาพแวดล้อมที่ควรตั้งค่า</h3>
+<div class="alert-box alert-note"><strong>NOTE:</strong> ลิงก์ด้านบนเป็นเว็บไซต์จำลองบนโปรดักชันหลัก (Production URL) สำหรับรันใช้งานจริง ส่วนกรณีที่รันระบบทดสอบภายในเครื่องนักพัฒนา (Local Development) สามารถเข้าใช้งานผ่าน `http://localhost:3000`, `http://localhost:3000/admin/login` และ `http://localhost:3000/esp32-preview` ตามลำดับ</div><h3>3.2 ตัวแปรสภาพแวดล้อมที่ควรตั้งค่า</h3>
 <p>สร้างไฟล์ <code>my-app/.env.local</code></p>
-<pre><code class="language-env">POSTGRES_HOST=your-db-host
+<pre><code class="language-env"># ── ฐานข้อมูล (PostgreSQL / Supabase Connection) ──
+# ใช้ Connection String หลัก (PgBouncer pooler พอร์ต 6543)
+POSTGRES_URL=&quot;postgres://postgres.&lt;ref&gt;:&lt;password&gt;@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&quot;
+# หรือใช้แบบแยกพารามิเตอร์ (db.ts จะอ่านแบบแยกนี้เป็น fallback หากไม่มี POSTGRES_URL)
+POSTGRES_HOST=db.supabase.co
 POSTGRES_PORT=5432
-POSTGRES_USER=your-db-user
+POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your-db-password
 POSTGRES_DATABASE=postgres
+# ขนาด pool สูงสุดที่เชื่อมต่อ (ค่าเริ่มต้นคือ 5)
+POSTGRES_POOL_MAX=5
+# PEM Certificate สำหรับการเชื่อมต่อแบบเข้ารหัส TLS (ทางเลือก)
+SUPABASE_CA_CERT=
 
+# ── ความปลอดภัย &amp; รหัสลับ (Secrets - บังคับตั้งค่า แอปจะ throw ทันทีถ้าไม่ใส่) ──
+# รหัสลับสำหรับ JWT Session (สุ่มใหม่ ≥ 32 ตัวอักษร)
 JWT_SECRET=change-this-to-a-long-random-secret
-
-NEXT_PUBLIC_APP_URL=https://project-sigma-ivory-21.vercel.app
-
+# รหัสลับในการถอด/ถอดสิทธิ์ผ่านคิวอาร์ (สุ่มใหม่ ≥ 32 ตัวอักษร บังคับตั้งเพื่อกันระบบ throw)
+QR_SIGNING_KEY=change-this-to-another-long-random-secret
+# กุญแจ API IoT ของบอร์ดประตู (ต้องตรงกับ api_key ใน config.h ของบอร์ด)
 ESP32_API_KEY=change-this-to-the-same-key-in-config-h
-ESP32_MOCK_MODE=false
-ESP32_WOKWI=false
+
+# ── บอร์ดประตูฮาร์ดแวร์ / IoT Config ──
 ESP32_IP=192.168.1.100
 ESP32_PORT=80
+ESP32_MOCK_MODE=false
+ESP32_WOKWI=false
 
-DISCORD_WEBHOOK_URL=
-
+# ── การล้าง/สร้างข้อมูลตั้งต้นระบบ (DB Init &amp; Seed) ──
+# true = ข้ามการสแกนสร้างตารางเพื่อความรวดเร็วในการเปิด Serverless Cold Start
+SKIP_DB_INIT=false
+# true = อนุญาตให้บันทึกบัญชีผู้ดูแลระบบเริ่มแรก (Seed) จาก env ด้านล่างนี้ (เฉพาะพัฒนา)
 ALLOW_DEV_SEED=true
 INITIAL_ADMIN_USERNAME=admin
 INITIAL_ADMIN_PASSWORD=admin123456
-INITIAL_ADMIN_FULL_NAME=System Administrator
+INITIAL_ADMIN_FULL_NAME=&quot;System Administrator&quot;
+
+# ── การแจ้งเตือน &amp; เผชิญเหตุ Ops (ทางเลือก) ──
+NEXT_PUBLIC_APP_URL=https://project-sigma-ivory-21.vercel.app
+DISCORD_WEBHOOK_URL=
+CRON_SECRET=some-random-cron-secret
 </code></pre>
 <p>หมายเหตุสำคัญ:</p>
 <ul>
@@ -7881,8 +7899,7 @@ voltage    ────┐                     ┌───┐
 <td><strong>381ms (ติดการยืนยันสิทธิ์)</strong></td>
 </tr>
 </tbody></table>
-<div class="alert-box alert-tip"><strong>TIP:</strong> **วิเคราะห์ผลทดสอบ:**
-</div>
+<div class="alert-box alert-tip"><strong>TIP:</strong> **วิเคราะห์ผลทดสอบ:**</div>
 > ค่าเฉลี่ยการดึงสถานะสำหรับ ESP32 (Hot Path Polling) อยู่ที่เพียง **97ms (P95)** ซึ่งถือว่ารวดเร็วกว่าข้อกำหนดการพัฒนาทั่วไปอย่างมาก ส่งผลให้วงรอบในการดึงข้อมูลของบอร์ด ESP32 ที่ทำงานทุก ๆ 2 วินาที ใช้ขีดความสามารถการรับส่งข้อมูลของเน็ตเวิร์กเพียง 5% เท่านั้น และป้องกันปัญหากลอนประตูตอบสนองล่าช้าเมื่อผู้ใช้งานได้รับอนุมัติได้อย่างเด็ดขาด<p><a id="sec-71-3"></a></p>
 <h3>71.3 สถาปัตยกรรมการสื่อสารแบบ &quot;Push-via-Poll&quot; ในระบบเครือข่ายองค์กร</h3>
 <p>การเชื่อมต่อและสื่อสารอุปกรณ์ IoT (ESP32) เข้ากับคลาวด์เซิร์ฟเวอร์ในสภาพแวดล้อมเครือข่ายของมหาวิทยาลัยหรือองค์กรขนาดใหญ่ เผชิญความท้าทายหลัก 3 ประการ:</p>
@@ -7910,8 +7927,7 @@ voltage    ────┐                     ┌───┐
 <li>บอร์ดรับค่าไปประมวลผลสั่งเปิดประตู</li>
 <li><code>UPDATE</code> ค่า <code>room_cmd</code> ให้กลายเป็น <code>&#39;consumed&#39;</code></li>
 </ol>
-<div class="alert-box alert-warning"><strong>WARNING:</strong> **ช่องโหว่ความมั่นคง:** ในระบบ Serverless หรือมีผู้ใช้ปริมาณมาก (High Concurrency) ระหว่างขั้นตอนที่ 1 และ 3 อาจมีอีก Request หนึ่งร้องขอเข้ามาสำเร็จและเห็นสถานะเป็น `'unlock'` เช่นเดียวกัน ส่งผลให้คำสั่งเปิดประตูทำงานสองรอบซ้อน หรือเปิดค้างโดยไม่มีผู้รับผิดชอบ
-</div><p><strong>แนวทางแก้ไขเชิงทฤษฎีในโครงงานวิจัย:</strong><br>ระบบได้ออกแบบให้ใช้ <strong>Single-step Atomic Update</strong> ในระดับ SQL Engine บนเครื่องยนต์ฐานข้อมูล Supabase PostgreSQL ผ่านประโยคคำสั่งเดียวที่เป็นอะตอมิก (ไม่สามารถแยกการประมวลผลย่อยได้):</p>
+<div class="alert-box alert-warning"><strong>WARNING:</strong> **ช่องโหว่ความมั่นคง:** ในระบบ Serverless หรือมีผู้ใช้ปริมาณมาก (High Concurrency) ระหว่างขั้นตอนที่ 1 และ 3 อาจมีอีก Request หนึ่งร้องขอเข้ามาสำเร็จและเห็นสถานะเป็น `'unlock'` เช่นเดียวกัน ส่งผลให้คำสั่งเปิดประตูทำงานสองรอบซ้อน หรือเปิดค้างโดยไม่มีผู้รับผิดชอบ</div><p><strong>แนวทางแก้ไขเชิงทฤษฎีในโครงงานวิจัย:</strong><br>ระบบได้ออกแบบให้ใช้ <strong>Single-step Atomic Update</strong> ในระดับ SQL Engine บนเครื่องยนต์ฐานข้อมูล Supabase PostgreSQL ผ่านประโยคคำสั่งเดียวที่เป็นอะตอมิก (ไม่สามารถแยกการประมวลผลย่อยได้):</p>
 <pre><code class="language-sql">UPDATE system_settings 
 SET setting_value = &#39;consumed&#39; 
 WHERE setting_key = &#39;room_cmd_CE-401&#39; AND setting_value = &#39;unlock&#39; 

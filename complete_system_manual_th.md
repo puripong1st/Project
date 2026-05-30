@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-30 12:10:00 (+07:00)  
+อัปเดตล่าสุด: 2026-05-30 12:19:00 (+07:00)  
 โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -315,28 +315,47 @@ https://project-sigma-ivory-21.vercel.app/esp32-preview
 สร้างไฟล์ `my-app/.env.local`
 
 ```env
-POSTGRES_HOST=your-db-host
+# ── ฐานข้อมูล (PostgreSQL / Supabase Connection) ──
+# ใช้ Connection String หลัก (PgBouncer pooler พอร์ต 6543)
+POSTGRES_URL="postgres://postgres.<ref>:<password>@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
+# หรือใช้แบบแยกพารามิเตอร์ (db.ts จะอ่านแบบแยกนี้เป็น fallback หากไม่มี POSTGRES_URL)
+POSTGRES_HOST=db.supabase.co
 POSTGRES_PORT=5432
-POSTGRES_USER=your-db-user
+POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your-db-password
 POSTGRES_DATABASE=postgres
+# ขนาด pool สูงสุดที่เชื่อมต่อ (ค่าเริ่มต้นคือ 5)
+POSTGRES_POOL_MAX=5
+# PEM Certificate สำหรับการเชื่อมต่อแบบเข้ารหัส TLS (ทางเลือก)
+SUPABASE_CA_CERT=
 
+# ── ความปลอดภัย & รหัสลับ (Secrets - บังคับตั้งค่า แอปจะ throw ทันทีถ้าไม่ใส่) ──
+# รหัสลับสำหรับ JWT Session (สุ่มใหม่ ≥ 32 ตัวอักษร)
 JWT_SECRET=change-this-to-a-long-random-secret
-
-NEXT_PUBLIC_APP_URL=https://project-sigma-ivory-21.vercel.app
-
+# รหัสลับในการถอด/ถอดสิทธิ์ผ่านคิวอาร์ (สุ่มใหม่ ≥ 32 ตัวอักษร บังคับตั้งเพื่อกันระบบ throw)
+QR_SIGNING_KEY=change-this-to-another-long-random-secret
+# กุญแจ API IoT ของบอร์ดประตู (ต้องตรงกับ api_key ใน config.h ของบอร์ด)
 ESP32_API_KEY=change-this-to-the-same-key-in-config-h
-ESP32_MOCK_MODE=false
-ESP32_WOKWI=false
+
+# ── บอร์ดประตูฮาร์ดแวร์ / IoT Config ──
 ESP32_IP=192.168.1.100
 ESP32_PORT=80
+ESP32_MOCK_MODE=false
+ESP32_WOKWI=false
 
-DISCORD_WEBHOOK_URL=
-
+# ── การล้าง/สร้างข้อมูลตั้งต้นระบบ (DB Init & Seed) ──
+# true = ข้ามการสแกนสร้างตารางเพื่อความรวดเร็วในการเปิด Serverless Cold Start
+SKIP_DB_INIT=false
+# true = อนุญาตให้บันทึกบัญชีผู้ดูแลระบบเริ่มแรก (Seed) จาก env ด้านล่างนี้ (เฉพาะพัฒนา)
 ALLOW_DEV_SEED=true
 INITIAL_ADMIN_USERNAME=admin
 INITIAL_ADMIN_PASSWORD=admin123456
-INITIAL_ADMIN_FULL_NAME=System Administrator
+INITIAL_ADMIN_FULL_NAME="System Administrator"
+
+# ── การแจ้งเตือน & เผชิญเหตุ Ops (ทางเลือก) ──
+NEXT_PUBLIC_APP_URL=https://project-sigma-ivory-21.vercel.app
+DISCORD_WEBHOOK_URL=
+CRON_SECRET=some-random-cron-secret
 ```
 
 หมายเหตุสำคัญ:
