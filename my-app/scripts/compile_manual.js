@@ -1254,14 +1254,17 @@ const htmlTemplate = `<!DOCTYPE html>
         });
 
         // Styles to make the export document look premium and academic
-        tempContainer.style.background = document.body.classList.contains("dark-mode") ? "#1E293B" : "#FFFFFF";
-        tempContainer.style.color = document.body.classList.contains("dark-mode") ? "#F1F5F9" : "#1E293B";
+        tempContainer.style.background = "#FFFFFF"; // Keep background clean white for printing
+        tempContainer.style.color = "#1E293B"; // Keep text dark for high readability print
         tempContainer.style.padding = "40px";
         tempContainer.style.fontFamily = "'Sarabun', sans-serif";
         tempContainer.style.borderRadius = "12px";
-        tempContainer.style.position = "absolute";
-        tempContainer.style.left = "-9999px";
-        tempContainer.style.width = "850px"; // Golden standard width for high quality prints
+        tempContainer.style.position = "fixed";
+        tempContainer.style.top = "0";
+        tempContainer.style.left = "0";
+        tempContainer.style.zIndex = "-9999"; // Hide beneath the body layer
+        tempContainer.style.opacity = "0.01"; // Keep rendering active but invisible
+        tempContainer.style.width = "800px"; // standard rendering width
         document.body.appendChild(tempContainer);
 
         // Extract clean filename from section title
@@ -1277,7 +1280,7 @@ const htmlTemplate = `<!DOCTYPE html>
               scale: 2, 
               useCORS: true, 
               logging: false,
-              backgroundColor: document.body.classList.contains("dark-mode") ? "#1E293B" : "#FFFFFF"
+              backgroundColor: "#FFFFFF"
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
           };
@@ -1294,7 +1297,7 @@ const htmlTemplate = `<!DOCTYPE html>
           html2canvas(tempContainer, {
             scale: 2,
             useCORS: true,
-            backgroundColor: document.body.classList.contains("dark-mode") ? "#1E293B" : "#FFFFFF"
+            backgroundColor: "#FFFFFF"
           }).then(canvas => {
             const link = document.createElement("a");
             link.href = canvas.toDataURL("image/png");
