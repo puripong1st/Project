@@ -280,22 +280,25 @@ const htmlTemplate = `<!DOCTYPE html>
       border-left-color: var(--primary);
     }
 
+    /* CSS Grid accordion trick: animates height:0 → height:auto without knowing scrollHeight */
+    .toc-group-list-wrapper {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out;
+      opacity: 1;
+    }
+    .toc-group-list-wrapper.collapsed {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      pointer-events: none;
+    }
     .toc-group-list {
       list-style: none;
       padding: 0;
       margin: 0;
       margin-top: 4px;
       padding-left: 4px;
-      max-height: 9999px;
-      overflow: hidden;
-      transition: max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease-out;
-      opacity: 1;
-    }
-
-    .toc-group-list.collapsed {
-      max-height: 0 !important;
-      opacity: 0;
-      pointer-events: none;
+      overflow: hidden; /* Required for grid trick: clip at 0fr */
     }
 
     .toc-group-arrow {
@@ -1429,34 +1432,21 @@ const htmlTemplate = `<!DOCTYPE html>
       const tocMenu = document.getElementById("tocMenu");
       const sidebar = document.getElementById("appSidebar");
 
-      // Unified Accordion Helper to expand one group and collapse all others
-      // Uses dynamic scrollHeight so every group shows all its items regardless of count
+      // Unified Accordion Helper using CSS Grid trick (no max-height, no scrollHeight needed)
+      // Toggles .collapsed on the .toc-group-list-wrapper div for smooth height:auto animation
       function expandGroup(groupId) {
-        document.querySelectorAll(".toc-group-list").forEach(list => {
-          const header = list.previousElementSibling;
-          if (list.id === groupId) {
-            // Measure full natural height before expanding
-            list.style.maxHeight = list.scrollHeight + "px";
-            list.classList.remove("collapsed");
+        document.querySelectorAll(".toc-group-list-wrapper").forEach(wrapper => {
+          const header = wrapper.previousElementSibling;
+          const ul = wrapper.querySelector(".toc-group-list");
+          const isTarget = ul && ul.id === groupId;
+          if (isTarget) {
+            wrapper.classList.remove("collapsed");
             if (header) {
               const arrow = header.querySelector(".toc-group-arrow");
               if (arrow) arrow.classList.remove("collapsed");
             }
-            // After transition, set to none so resize still works
-            list.addEventListener("transitionend", function onEnd() {
-              if (!list.classList.contains("collapsed")) {
-                list.style.maxHeight = "9999px";
-              }
-              list.removeEventListener("transitionend", onEnd);
-            });
           } else {
-            if (!list.classList.contains("collapsed")) {
-              // Pin current height before animating to 0
-              list.style.maxHeight = list.scrollHeight + "px";
-              list.getBoundingClientRect(); // force reflow
-            }
-            list.classList.add("collapsed");
-            list.style.maxHeight = "";
+            wrapper.classList.add("collapsed");
             if (header) {
               const arrow = header.querySelector(".toc-group-arrow");
               if (arrow) arrow.classList.add("collapsed");
@@ -1485,24 +1475,28 @@ const htmlTemplate = `<!DOCTYPE html>
         headerDiv.innerHTML = '<span>' + g.title + '</span><span class="toc-group-arrow collapsed">▼</span>';
         headerDiv.dataset.groupId = g.id;
 
-        // Group Sub-menu UL (Collapsed by default)
+        // Group Sub-menu UL (items live inside wrapper for grid trick)
+        const wrapper = document.createElement("div");
+        wrapper.className = "toc-group-list-wrapper collapsed";
+
         const subUl = document.createElement("ul");
-        subUl.className = "toc-group-list collapsed";
+        subUl.className = "toc-group-list";
         subUl.id = g.id;
+        wrapper.appendChild(subUl);
 
         // Toggle click handler using expandGroup accordion
         headerDiv.addEventListener("click", () => {
-          const isCollapsed = subUl.classList.contains("collapsed");
+          const isCollapsed = wrapper.classList.contains("collapsed");
           if (isCollapsed) {
             expandGroup(g.id);
           } else {
-            subUl.classList.add("collapsed");
+            wrapper.classList.add("collapsed");
             headerDiv.querySelector(".toc-group-arrow").classList.add("collapsed");
           }
         });
 
         groupLi.appendChild(headerDiv);
-        groupLi.appendChild(subUl);
+        groupLi.appendChild(wrapper);
         tocMenu.appendChild(groupLi);
 
         groupLists[g.id] = subUl;
@@ -1974,17 +1968,17 @@ const htmlTemplate = `<!DOCTYPE html>
       
       // If query is empty, collapse all groups except the one containing the active link
       if (query === "") {
-        document.querySelectorAll(".toc-group-list").forEach(list => {
-          if (list.querySelector("a.active")) {
-            list.classList.remove("collapsed");
-            const header = list.previousElementSibling;
+        document.querySelectorAll(".toc-group-list-wrapper").forEach(wrapper => {
+          const ul = wrapper.querySelector(".toc-group-list");
+          const header = wrapper.previousElementSibling;
+          if (ul && ul.querySelector("a.active")) {
+            wrapper.classList.remove("collapsed");
             if (header) {
               header.querySelector(".toc-group-arrow").classList.remove("collapsed");
               header.style.display = "flex";
             }
           } else {
-            list.classList.add("collapsed");
-            const header = list.previousElementSibling;
+            wrapper.classList.add("collapsed");
             if (header) {
               header.querySelector(".toc-group-arrow").classList.add("collapsed");
               header.style.display = "flex";
@@ -1997,7 +1991,9 @@ const htmlTemplate = `<!DOCTYPE html>
       }
 
       // If search query exists, match links and expand parents dynamically
-      document.querySelectorAll(".toc-group-list").forEach(list => {
+      document.querySelectorAll(".toc-group-list-wrapper").forEach(wrapper => {
+        const list = wrapper.querySelector(".toc-group-list");
+        if (!list) return;
         let hasMatch = false;
         list.querySelectorAll("li").forEach(li => {
           const text = li.textContent.toLowerCase();
@@ -2009,18 +2005,17 @@ const htmlTemplate = `<!DOCTYPE html>
           }
         });
 
-        const groupItem = list.closest(".toc-group-item");
+        const groupItem = wrapper.closest(".toc-group-item");
+        const header = wrapper.previousElementSibling;
         if (hasMatch) {
-          list.classList.remove("collapsed");
-          const header = list.previousElementSibling;
+          wrapper.classList.remove("collapsed");
           if (header) {
             header.querySelector(".toc-group-arrow").classList.remove("collapsed");
             header.style.display = "flex";
           }
           if (groupItem) groupItem.style.display = "block";
         } else {
-          list.classList.add("collapsed");
-          const header = list.previousElementSibling;
+          wrapper.classList.add("collapsed");
           if (header) {
             header.querySelector(".toc-group-arrow").classList.add("collapsed");
             header.style.display = "none";
