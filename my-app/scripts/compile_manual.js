@@ -1432,45 +1432,57 @@ const htmlTemplate = `<!DOCTYPE html>
         }
 
         if (format === 'pdf') {
-          // Configuration for premium quality PDF
-          const pdfOptions = {
-            margin: [15, 15, 15, 15],
-            filename: cleanTitle + ".pdf",
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-              scale: 2, 
-              useCORS: true, 
-              logging: false,
-              backgroundColor: "#FFFFFF",
-              onclone: function(clonedDoc) {
-                // Strip dark-mode from the cloned document
-                clonedDoc.body.classList.remove("dark-mode");
-                
-                // Force wrapper opacity and visibility to 1 inside the clone!
-                const clonedWrapper = clonedDoc.querySelector(".compiled-export-wrapper");
-                if (clonedWrapper) {
-                  clonedWrapper.style.opacity = "1";
-                  clonedWrapper.style.visibility = "visible";
-                  clonedWrapper.style.position = "relative";
-                  clonedWrapper.style.zIndex = "1";
-                }
-
-                // Force content-visibility: visible for offscreen sections
-                clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
-                  el.style.contentVisibility = "visible";
-                  
-                  // Hide any download button containers inside cloned mermaid blocks
-                  const btnGroup = el.querySelector("div");
-                  if (btnGroup) {
-                    btnGroup.style.display = "none";
-                  }
-                });
+          // Render isolated section container directly to canvas
+          html2canvas(tempContainer, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#FFFFFF",
+            logging: false,
+            onclone: function(clonedDoc) {
+              // Strip dark-mode from the cloned document
+              clonedDoc.body.classList.remove("dark-mode");
+              
+              // Force wrapper opacity and visibility to 1 inside the clone!
+              const clonedWrapper = clonedDoc.querySelector(".compiled-export-wrapper");
+              if (clonedWrapper) {
+                clonedWrapper.style.opacity = "1";
+                clonedWrapper.style.visibility = "visible";
+                clonedWrapper.style.position = "relative";
+                clonedWrapper.style.zIndex = "1";
               }
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-          };
-          
-          html2pdf().from(tempContainer).set(pdfOptions).save().then(() => {
+
+              const clonedTemp = clonedDoc.querySelector(".compiled-export-temp");
+              if (clonedTemp) {
+                clonedTemp.style.opacity = "1";
+                clonedTemp.style.visibility = "visible";
+              }
+
+              // Force content-visibility: visible for offscreen sections
+              clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
+                el.style.contentVisibility = "visible";
+                
+                // Hide any download button containers inside cloned mermaid blocks
+                const btnGroup = el.querySelector("div");
+                if (btnGroup) {
+                  btnGroup.style.display = "none";
+                }
+              });
+            }
+          }).then(canvas => {
+            // Convert canvas to PDF using jsPDF directly
+            const imgData = canvas.toDataURL('image/jpeg', 0.98);
+            
+            // Calculate A4 dimensions (210mm x 297mm)
+            const imgWidth = 190; // width inside margin in mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            const jsPDFConstructor = window.jspdf?.jsPDF || window.jsPDF;
+            const pdf = new jsPDFConstructor('p', 'mm', 'a4');
+            
+            const margin = 10; // 10mm margin
+            pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+            
+            pdf.save(cleanTitle + ".pdf");
             document.body.removeChild(hiddenWrapper);
           }).catch(err => {
             console.error("PDF export failed:", err);
@@ -1494,6 +1506,12 @@ const htmlTemplate = `<!DOCTYPE html>
                 clonedWrapper.style.visibility = "visible";
                 clonedWrapper.style.position = "relative";
                 clonedWrapper.style.zIndex = "1";
+              }
+
+              const clonedTemp = clonedDoc.querySelector(".compiled-export-temp");
+              if (clonedTemp) {
+                clonedTemp.style.opacity = "1";
+                clonedTemp.style.visibility = "visible";
               }
 
               // Force content-visibility: visible for offscreen sections
