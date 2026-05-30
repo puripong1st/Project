@@ -944,8 +944,8 @@
       </div>
 
       <article class="content-card" id="compiledContent">
-        <p>﻿# คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</p>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 21:15:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+        <p>﻿﻿# คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 21:52:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
@@ -956,21 +956,21 @@
 <hr>
 <h3>📗 บทที่ 1: บทนำ (Introduction)</h3>
 <blockquote>
-<p>ภาพรวมของระบบ สถาปัตยกรรม และวิเคราะห์ความคุ้มค่า</p>
+<p>หมวดนี้อธิบายภาพรวม สถาปัตยกรรม และวิเคราะห์ความคุ้มค่าระดับองค์กร</p>
 </blockquote>
 <ul>
 <li><a href="#sec-1">1. ภาพรวมระบบ</a></li>
 <li><a href="#sec-21">21. ภาพรวมสถาปัตยกรรมแบบ Layered (4 ชั้น)</a></li>
 <li><a href="#sec-34">34. สรุปแบบ &quot;1 นาที&quot;</a></li>
 <li><a href="#sec-57">57. NAT / Firewall — ทำไม ESP32 push ไม่ได้</a></li>
-<li><a href="#sec-63">63. Cost Analysis แบบเต็ม</a></li>
+<li><a href="#sec-63">63. Cost Analysis แบบเต็ม (การประเมินต้นทุน)</a></li>
 <li><a href="#sec-71-3">71.3 สถาปัตยกรรมการสื่อสารแบบ &quot;Push-via-Poll&quot; ในระบบเครือข่ายองค์กร</a></li>
 <li><a href="#sec-71-9">71.9 การประเมินความคุ้มค่าเชิงเศรษฐศาสตร์และต้นทุนคลาวด์เซิร์ฟเวอร์เลส</a></li>
 </ul>
 <hr>
 <h3>📘 บทที่ 2: ปริทัศน์วรรณกรรมและทฤษฎีที่เกี่ยวข้อง (Literature Review &amp; Theory)</h3>
 <blockquote>
-<p>ทฤษฎีเทคโนโลยี ฐานข้อมูล เครือข่าย กฎหมาย และงานวิจัยอื่น</p>
+<p>หมวดทฤษฎีเทคโนโลยี ฐานข้อมูล เครือข่าย กฎหมาย และงานวิจัยอื่น</p>
 </blockquote>
 <ul>
 <li><a href="#sec-27">27. Supabase ทำอะไรในระบบนี้ (เจาะลึก)</a></li>
@@ -981,22 +981,24 @@
 <li><a href="#sec-55">55. HTTP/TLS Packet Flow — ลึกถึง Wireshark</a></li>
 <li><a href="#sec-56">56. DNS / CDN Routing</a></li>
 <li><a href="#sec-64">64. ทำไมเลือก Tailwind CSS v4</a></li>
-<li><a href="#sec-65">65. Color Theory &amp; Accessibility (WCAG)</a></li>
+<li><a href="#sec-65">65. Color Theory &amp; Accessibility (WCAG) ทฤษฎีสีและการเข้าถึง</a></li>
 <li><a href="#sec-66">66. Thai Font Rendering</a></li>
 <li><a href="#sec-67">67. พ.ร.บ. คอมพิวเตอร์ มาตรา 26 — รายละเอียดและการปฏิบัติตาม</a></li>
 <li><a href="#sec-68">68. PDPA — Personal Data Protection Act</a></li>
-<li><a href="#sec-71-19">71.19 การปฏิบัติตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล (PDPA Compliance)</a></li>
+<li><a href="#sec-71-6">71.6 การปฏิบัติตาม พ.ร.บ. คอมพิวเตอร์ และหลักการคุ้มครองข้อมูลส่วนบุคคล (PDPA)</a></li>
+<li><a href="#sec-71-19">71.19 การปฏิบัติตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล (PDPA Compliance &amp; Implementation)</a></li>
 <li><a href="#sec-71-20">71.20 สถาปัตยกรรมการรักษาความปลอดภัยข้อมูล (Information Security Framework)</a></li>
-<li><a href="#sec-71-21">71.21 พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์</a></li>
+<li><a href="#sec-71-21">71.21 พระราชบัญญัติว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ (Computer Crime Act)</a></li>
 <li><a href="#sec-71-24">71.24 Threat Model แบบ STRIDE และการประเมิน DREAD</a></li>
 <li><a href="#sec-71-25">71.25 Data Flow Diagram (DFD) ระดับ 0/1/2 — สำหรับ PDPA DPIA</a></li>
 <li><a href="#sec-71-26">71.26 กฎหมายอื่นที่ต้องปฏิบัติตาม (Cybersecurity Act, ก.พ.อ., License Audit)</a></li>
 <li><a href="#sec-71-35">71.35 Literature Review — เปรียบเทียบกับงานวิจัยอื่น</a></li>
+<li><a href="#sec-73-10">73.10 การปฏิบัติตาม พ.ร.บ.คอมพิวเตอร์ฯ — การล้าง Log (Retention Policy)</a></li>
 </ul>
 <hr>
 <h3>📙 บทที่ 3: วิธีการดำเนินงาน (Methodology &amp; System Design)</h3>
 <blockquote>
-<p>การต่อวงจร การออกแบบฐานข้อมูล และการเขียนโค้ดระบบ</p>
+<p>หมวดแกนหลักทางวิศวกรรม การต่อวงจร ออกแบบฐานข้อมูล และโค้ดระบบเชิงลึก</p>
 </blockquote>
 <ul>
 <li><a href="#sec-2">2. โครงสร้างไฟล์สำคัญ</a></li>
@@ -1021,13 +1023,13 @@
 <li><a href="#sec-47">47. Admin Dashboard ทีละ Tab แบบเจาะลึก</a></li>
 <li><a href="#sec-48">48. React Hydration &amp; SSR Lifecycle</a></li>
 <li><a href="#sec-52">52. วงจรไฟฟ้าระดับ Schematic</a></li>
-<li><a href="#sec-53">53. Power Budget Calculation</a></li>
+<li><a href="#sec-53">53. Power Budget Calculation (การคำนวณกำลังไฟฟ้า)</a></li>
 <li><a href="#sec-54">54. PCB Layout / Wiring Best Practices</a></li>
 <li><a href="#sec-59">59. Connection Pooling เจาะลึก</a></li>
 <li><a href="#sec-60">60. Transaction Isolation</a></li>
 <li><a href="#sec-71-4">71.4 กลไกป้องกันการเปิดประตูซ้ำด้วย Atomic Transaction</a></li>
 <li><a href="#sec-71-5">71.5 สถาปัตยกรรมความปลอดภัยแบบหลายชั้น (Defense-in-Depth)</a></li>
-<li><a href="#sec-71-7">71.7 การวิเคราะห์การจัดสรรพลังงานและการออกแบบกลไกเผชิญเหตุฉุกเฉิน</a></li>
+<li><a href="#sec-71-7">71.7 การวิเคราะห์การจัดสรรพลังงานและการออกแบบกลไกเผชิญเหตุฉุกเฉิน (Fail-Safe)</a></li>
 <li><a href="#sec-71-12">71.12 แผนการทำระบบอัปเดตเฟิร์มแวร์ไร้สายความปลอดภัยสูง (Secure OTA)</a></li>
 <li><a href="#sec-71-16">71.16 โครงสร้างสถานะและการทำงานแบบมัลติคอร์บนเฟิร์มแวร์ ESP32</a></li>
 <li><a href="#sec-71-17">71.17 วงจรชีวิตและการไหลของข้อมูลโทเคนคิวอาร์ไดนามิก</a></li>
@@ -1041,20 +1043,35 @@
 <li><a href="#sec-71-46">71.46 ระบบล้างคำขอค้างรออนุมัติอัตโนมัติ</a></li>
 <li><a href="#sec-71-47">71.47 ระบบรักษาความปลอดภัย API ของบอร์ด IoT แบบ Zero-Trust</a></li>
 <li><a href="#sec-71-48">71.48 ระบบกรองสิทธิ์ดูแลห้องเรียนรายบุคคลและการจัดการแบบกลุ่ม</a></li>
-<li><a href="#sec-71-50">71.50 ระบบกล้องคิวอาร์เบราว์เซอร์และการประมวลผลวิดีโอ</a></li>
+<li><a href="#sec-71-50">71.50 ระบบกล้องคิวอาร์เบราว์เซอร์และการประมวลผลวิดีโอ (In-App Camera)</a></li>
 <li><a href="#sec-71-51">71.51 ระบบแจ้งเตือน 3 ทิศทางเชิงลึกพร้อมกลไก Correlated Activity Logs</a></li>
 <li><a href="#sec-71-52">71.52 ระบบดักจับการหมดอายุของสิทธิ์เข้าถึงและล็อกเอาต์อัตโนมัติ</a></li>
 <li><a href="#sec-72">72. การยกระดับไอคอน UI เป็นเวกเตอร์พรีเมียม</a></li>
+<li><a href="#sec-73-1">73.1 สถาปัตยกรรมภาพรวมและการไหลของคำขอ (System-wide Request Flow)</a></li>
+<li><a href="#sec-73-2">73.2 โครงสร้างฐานข้อมูลครบทุกตาราง (Complete Database Schema)</a></li>
+<li><a href="#sec-73-3">73.3 ความปลอดภัยการตรวจสอบสิทธิ์แอดมิน (JWT + bcrypt + Active-check Cache)</a></li>
+<li><a href="#sec-73-4">73.4 ตัวจำกัดอัตราแบบ Atomic บน PostgreSQL (Serverless Rate Limiting)</a></li>
+<li><a href="#sec-73-5">73.5 วงจรชีวิตของ Dynamic QR Token</a></li>
+<li><a href="#sec-73-6">73.6 เส้นทาง Edge /api/esp32/display — หัวใจการสื่อสาร IoT</a></li>
+<li><a href="#sec-73-7">73.7 State Machine และ Main Loop ของเฟิร์มแวร์ ESP32</a></li>
+<li><a href="#sec-73-8">73.8 ESP32 Zero-Trust API Security (4 ชั้น)</a></li>
+<li><a href="#sec-73-9">73.9 Bypass 5 นาที (Re-entry without Re-registration)</a></li>
+<li><a href="#sec-73-11">73.11 ระบบล้างคำขอค้างอนุมัติอัตโนมัติ (Auto-Reject Sweep)</a></li>
+<li><a href="#sec-73-12">73.12 สถาปัตยกรรมการแจ้งเตือนหลายช่องทาง (Discord + Telegram + LINE)</a></li>
+<li><a href="#sec-73-13">73.13 ระบบ OTA Firmware ผ่านคลาวด์ (HTTPS Over-The-Air)</a></li>
+<li><a href="#sec-73-15">73.15 การพัฒนาระบบธีมและโหมดมืดพรีเมียม (Harmony Palette)</a></li>
+<li><a href="#sec-73-17">73.17 การออกแบบโครงสร้างความก้าวหน้าและการแสดงสถานะแบบอะซิงโครนัส</a></li>
+<li><a href="#sec-73-19">73.19 โครงสร้างแถบควบคุมสารบัญนำทางพลวัตแบบประสานสัญจรร่วมกัน</a></li>
 </ul>
 <hr>
 <h3>📕 บทที่ 4: ผลการดำเนินงานและการทดสอบระบบ (Results &amp; Evaluation)</h3>
 <blockquote>
-<p>ผลการทดสอบ ประสิทธิภาพ บันทึกการอัพเดต และการตรวจสอบด้านกฎหมาย</p>
+<p>หมวดผลการทดสอบ ประสิทธิภาพ การตั้งค่าบนโปรดักชัน และตรวจสอบทางกฎหมาย</p>
 </blockquote>
 <ul>
 <li><a href="#sec-39">39. Monitoring &amp; Observability</a></li>
 <li><a href="#sec-41">41. Performance Profiling แบบลงรายละเอียด</a></li>
-<li><a href="#sec-58">58. Database Query Plan Analysis</a></li>
+<li><a href="#sec-58">58. Database Query Plan Analysis (การวิเคราะห์คิวรี)</a></li>
 <li><a href="#sec-61">61. Manual Test Plan — ครบทุก Flow</a></li>
 <li><a href="#sec-69">69. Chrome DevTools Profiling ของหน้าเว็บ</a></li>
 <li><a href="#sec-70">70. ESP32 Oscilloscope Traces</a></li>
@@ -1063,35 +1080,42 @@
 <li><a href="#sec-71-36">71.36 Hardware Reliability — MTBF, IP Rating, สภาพแวดล้อม</a></li>
 <li><a href="#sec-71-39">71.39 ตรวจสอบความถูกต้องทางกฎหมาย: Cookie Consent, Terms, Privacy Policy</a></li>
 <li><a href="#sec-71-41">71.41 การตรวจสอบความสมบูรณ์และระบบอัพเดตแดชบอร์ดระดับพรีเมียม</a></li>
+<li><a href="#sec-71-44">71.44 การปรับแต่งประสิทธิภาพเพื่อลดภาระ Vercel/Supabase (Performance Tuning)</a></li>
 <li><a href="#sec-71-49">71.49 กลไกการตรวจวัดสุขภาพระบบและการกู้คืนภัยพิบัติเชิงรุก</a></li>
-<li><a href="#sec-71-54">71.54 ชุดทดสอบความปลอดภัยและการทำงานแบบอัตโนมัติ</a></li>
+<li><a href="#sec-71-54">71.54 ชุดทดสอบความปลอดภัยและการทำงานแบบอัตโนมัติ (Vitest)</a></li>
 <li><a href="#sec-71-55">71.55 รายงานสรุปผลการทดสอบเจาะระบบและตรวจประเมินความมั่นคงปลอดภัยอัตโนมัติ</a></li>
 <li><a href="#sec-71-56">71.56 คู่มือและโครงสร้างระบบจำลองบอร์ดควบคุมและทดสอบสัญจรประตูปิดอัตโนมัติ</a></li>
-<li><a href="#sec-71-57">71.57 รายงานการทดลองและประเมินประสิทธิภาพระบบรับโหลดหนาแน่นเชิงตัวเลข</a></li>
+<li><a href="#sec-71-57">71.57 รายงานการทดลองและประเมินประสิทธิภาพระบบรับโหลดหนาแน่นเชิงตัวเลข (Load Testing)</a></li>
+<li><a href="#sec-73-16">73.16 การออกแบบระบบรายงานและสถิติวินิจฉัยเชิงลึกด้วยกราฟวิเคราะห์ Recharts</a></li>
+<li><a href="#sec-73-18">73.18 แก้ไขปัญหาจุดบกพร่องของโหมดมืดและการแสดงผลกราฟในรอบการเข้าถึงครั้งแรก</a></li>
+<li><a href="#sec-73-20">73.20 การแก้ไขปัญหาแถบสารบัญด้านซ้ายตัดรายการและ Scroll ไม่ตรงเป้า</a></li>
 </ul>
 <hr>
 <h3>📓 บทที่ 5: สรุปผล อภิปรายผล และข้อเสนอแนะ (Conclusion, Discussion &amp; Recommendation)</h3>
 <blockquote>
-<p>อภิปรายจุดเด่น-จุดด้อยเชิงวิศวกรรม เหตุผลที่เลือกระบบ สรุปช่องโหว่ และแผนพัฒนาต่อยอด</p>
+<p>หมวดการอภิปรายจุดแข็ง จุดอ่อน เหตุผลที่ตัดสินใจเชิงสถาปัตยกรรม และแผนอนาคต</p>
 </blockquote>
 <ul>
 <li><a href="#sec-19">19. สรุปหน้าที่แต่ละชั้นของระบบ</a></li>
 <li><a href="#sec-29">29. เปรียบเทียบ: ทำไมบางส่วนเร็ว / บางส่วนช้า</a></li>
 <li><a href="#sec-40">40. การ Migrate / เพิ่มฟีเจอร์ใหม่ (Future-proofing)</a></li>
 <li><a href="#sec-42">42. Code Smells ที่ควร refactor (Tech Debt)</a></li>
-<li><a href="#sec-44">44. ทำไมหน้าจอ TFT บน ESP32 จึงเปลี่ยนสถานะ &quot;ช้า&quot; ไม่เรียลไทม์</a></li>
+<li><a href="#sec-44">44. ทำไมหน้าจอ TFT บน ESP32 จึงเปลี่ยนสถานะ &quot;ช้า&quot; ไม่เรียลไทม์ (เจาะลึก 8 เหตุผล)</a></li>
 <li><a href="#sec-45">45. ทำไมเลือก PostgreSQL + ทำไมย้ายจาก MySQL กลางทาง</a></li>
 <li><a href="#sec-71-1">71.1 สรุปการแก้ไขช่องโหว่ความมั่นคงปลอดภัย</a></li>
 <li><a href="#sec-71-8">71.8 กลไกการกู้คืนระบบและการทำงานแบบยืดหยุ่นในสภาวะออฟไลน์</a></li>
 <li><a href="#sec-71-10">71.10 ตารางวิเคราะห์และแก้ไขปัญหาขัดข้องทางเทคนิค</a></li>
 <li><a href="#sec-71-11">71.11 คู่มือการบำรุงรักษาเชิงป้องกันและการลดสัญญาณรบกวนในระบบวงจรจริง</a></li>
+<li><a href="#sec-71-43">71.43 การลบฟีเจอร์ Room Schedules ออกจากระบบ (Engineering Trade-offs)</a></li>
 <li><a href="#sec-71-53">71.53 บันทึกการปรับปรุงระบบรอบล่าสุด (Engineering Changelog &amp; Deep-Dive)</a></li>
 </ul>
 <hr>
-<h3>📎 ส่วนของภาคผนวก (Appendix)</h3>
+<h3>📎 ส่วนอ้างอิงและภาคผนวก (References &amp; Appendices)</h3>
 <blockquote>
-<p>คู่มือและเอกสารเสริม อภิธานศัพท์ นโยบาย รายการตัวแปร และ API Spec</p>
+<p>จัดทำตามระเบียบมหาวิทยาลัย</p>
 </blockquote>
+<p><strong>บรรณานุกรม (Bibliography / เอกสารอ้างอิง)</strong></p>
+<p><strong>ภาคผนวก ก: คู่มือและเอกสารเสริมระบบ SmartAccess</strong></p>
 <ul>
 <li><a href="#sec-3">3. การติดตั้งและรันเว็บ</a></li>
 <li><a href="#sec-4">4. วิธีใช้งานเว็บสำหรับนักศึกษา</a></li>
@@ -1108,9 +1132,6 @@
 <li><a href="#sec-38">38. Deployment Runbook (ไป Production)</a></li>
 <li><a href="#sec-43">43. Glossary (ภาคผนวกศัพท์เทคนิคเพิ่มเติม)</a></li>
 <li><a href="#sec-62">62. Disaster Recovery Playbook</a></li>
-<li><a href="#sec-71-13">71.13 ตารางแผนผัง API และสเปกการรับส่งข้อมูล (E2E API Data Contract)</a></li>
-<li><a href="#sec-71-14">71.14 ตารางเปรียบเทียบสถาปัตยกรรมระบบกับกรอบมาตรฐานความปลอดภัยระดับโลก (OWASP &amp; ISO 27001)</a></li>
-<li><a href="#sec-71-15">71.15 แผนการกู้คืนภัยพิบัติระบบฐานข้อมูลและเซิร์ฟเวอร์เลสคลาวด์แบบ Failsafe</a></li>
 <li><a href="#sec-71-22">71.22 ข้อตกลงและเงื่อนไขการใช้บริการ (Terms and Conditions)</a></li>
 <li><a href="#sec-71-23">71.23 นโยบายความเป็นส่วนตัว (Privacy Policy)</a></li>
 <li><a href="#sec-71-27">71.27 ROC (Record of Processing Activities) ตาม PDPA มาตรา 39</a></li>
@@ -1119,7 +1140,7 @@
 <li><a href="#sec-71-32">71.32 Incident Response Plan (NIST 800-61) + แบบฟอร์มแจ้ง สคส.</a></li>
 <li><a href="#sec-71-33">71.33 Accessibility (a11y) — เกินกว่า WCAG Color</a></li>
 <li><a href="#sec-71-38">71.38 คู่มือผู้ใช้แยกเล่ม (Student / Operator / Owner Quick Guides)</a></li>
-<li><a href="#sec-73">73.1–73.20 ภาคผนวกวิศวกรรมเชิงลึกฉบับปรับปรุงจากซอร์สโค้ดจริง</a></li>
+<li><a href="#sec-73-14">73.14 สรุปตาราง API Endpoints ครบทุกเส้นทาง</a></li>
 </ul>
 <hr>
 <p><a id="sec-1"></a></p>
