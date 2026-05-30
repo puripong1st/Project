@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-29 14:00:00 (+07:00)  
+อัปเดตล่าสุด: 2026-05-30 09:45:33 (+07:00)  
 โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -9111,34 +9111,62 @@ flowchart TD
 - การแก้: ย้าย key `smartaccess_user_session` ทั้งหมด (get/set/remove) ไปใช้ `localStorage` ใน `app/page.tsx`
 - คงนโยบายเดิม: อายุสิทธิ์ **5 นาที** (`diffSeconds <= 300`) + room-isolated (สแกนได้เฉพาะห้องที่ลงทะเบียน) ทำงานภายใต้ functional cookie consent
 
-### 71.53.4 ระบบ Logs v2 — ละเอียดและครอบคลุม
+### 71.53.4 ระบบ Logs v2 — ละเอียดและครอบคลุมเชิงสืบสวนและนิติวิทยาศาสตร์ (Security Logging Engine v2)
 
-**คอลัมน์ใหม่ใน `access_logs`** (ดู DDL §35): `severity` (info/warning/critical) และ `user_agent`; พร้อม backfill `room_code` จากคอลัมน์ `room` เดิม และ index `idx_logs_severity`
+ระบบจัดเก็บประวัติสัญจรคอมพิวเตอร์และพฤติกรรมความปลอดภัยได้รับการปรับปรุงสู่เวอร์ชัน 2 เพื่อให้ตรงตาม พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ พ.ศ. 2550 มาตรา 26 โดยเพิ่มมิติด้านความมั่นคงปลอดภัยแบบครบวงจร:
 
-**Helper รวมศูนย์ `lib/access-log.ts`:**
-| ฟังก์ชัน | หน้าที่ |
-|----------|---------|
-| `logEvent(opts)` | INSERT log ครบทุกมิติ (student/admin/room_code/ip/user_agent/severity/method) — ออกแบบให้ "ไม่ throw" การบันทึก log ห้ามทำให้ flow หลักล้ม |
-| `logEventFromRequest(req, opts)` | เหมือน `logEvent` แต่ดึง IP + User-Agent จาก request ให้อัตโนมัติ |
-| `getRequestContext(req)` | ดึง `{ ip, userAgent }` (รองรับ `x-forwarded-for` ของ Vercel) |
-| `parseDevice(ua)` | แปลง UA → `{ device, browser }` |
-| `severityForAction(action)` | จับคู่ระดับความสำคัญเริ่มต้นต่อ action |
+1. **การปรับเปลี่ยนโครงสร้างฐานข้อมูล (Access Logs DDL Expansion):**
+   - เพิ่มคอลัมน์ `severity` (สถานะระดับความรุนแรง) ประเภท `VARCHAR(10)` ที่สามารถระบุค่าเป็น `info`, `warning`, หรือ `critical` เพื่อช่วยให้ทีมไอทีกรองลำดับความสำคัญของเหตุการณ์ได้อย่างรวดเร็ว
+   - เพิ่มคอลัมน์ `user_agent` ประเภท `TEXT` เพื่อเก็บลายเซ็นของอุปกรณ์ เบราว์เซอร์ และระบุความสัญจรของฝั่งไคลเอนต์/บอร์ด IoT ปลายทาง
+   - เพิ่มคอลัมน์ `room_code` ประเภท `VARCHAR(50)` ที่ทำดัชนี (Index) ครอบคลุมสำหรับการค้นหาย้อนหลัง
+   - สร้างดัชนีประสิทธิภาพเชิงรุก `idx_logs_severity` ครอบคลุมคอลัมน์ `severity` เพื่อเพิ่มความเร็วในการกรองข้อมูลบน Admin Dashboard ในโหมดค้นหาเหตุผิดปกติ
 
-**เส้นทางที่เก็บ IP/อุปกรณ์/severity ครบแล้ว:** เปิดประตู (`approve`, `door`, `bypass`), ปฏิเสธ (`reject`), ล็อกอิน (สำเร็จ/ล้มเหลว/โดน rate-limit)
+2. **เกณฑ์การแบ่งระดับความรุนแรงของบันทึกระบบ (Log Severity Matrix):**
 
-**Action ใหม่ที่เริ่มบันทึก:** `bypass_rate_limited`, `login_rate_limited` (และเตรียม mapping ไว้สำหรับ `qr_expired`, `qr_invalid`, `hmac_invalid`, `esp32_offline`, `unauthorized_access`)
+| ระดับความรุนแรง (Severity) | ขอบเขตการทำงาน (Event Scope) | ตัวอย่างเหตุการณ์และคำสั่งระบบ (Actions) | ผลกระทบและการตอบสนอง (Response Action) |
+| :--- | :--- | :--- | :--- |
+| **🟢 info** | กิจกรรมปกติในระบบที่เกิดขึ้นประจำวัน ไม่มีนัยสำคัญความปลอดภัยเชิงลบ | `registered`, `approved`, `door_opened`, `admin_login`, `admin_logout` | บันทึกประวัติและส่งการแจ้งเตือนแบบธรรมดาไปยังหมวดหมู่ Register หรือ Approve |
+| **🟡 warning** | พฤติกรรมที่อาจผิดปกติหรือมีความเสี่ยงต่ำ-ปานกลาง ควรรับทราบแต่ไม่ต้องสืบสวนด่วน | `admin_login_failed` (กรอกรหัสผิด), `door_failed` (บอร์ดตอบสนองช้า/Timeout), `student_deleted` (ลบนักศึกษาทีละราย), `maintenance_cleanup` (ล้างล็อกเก่าเกิน 90 วัน) | บันทึกประวัติพร้อมแสดง Badge สีเหลืองเตือนเด่นชัดบน UI และยิงเข้า Discord/Telegram/LINE ในช่อง Logs |
+| **🔴 critical** | เหตุการณ์ร้ายแรงระดับระบบหรือมีความเสี่ยงต่อการแฮก/ทำลายระบบอย่างเห็นได้ชัด | `login_rate_limited` (เดารหัส Brute-force), `bypass_rate_limited` (ยิงปลดล็อกซ้ำถี่จัด), `maintenance_purge` (ล้างประวัติจราจรทั้งหมด), `unauthorized_access` | บันทึกประวัติระดับสูง ห้ามลบเด็ดขาด ยิงการเตือนภัยประเภท `security_alert` สั่นหน้าจอมือถือแอดมินทันทีผ่านบอท 3 ช่องทาง |
 
-**หน้า Logs (`/admin/dashboard/all`):** เพิ่ม badge **⚠️ WARNING / 🚨 CRITICAL**, แสดงแถว **🌐 IP + 💻 อุปกรณ์·เบราว์เซอร์** ต่อรายการ, และ label ภาษาไทยของ action ใหม่ครบ (`ACTION_METADATA` ใน `DashboardHelpers.tsx`)
+3. **กลไกการทำงานของ Core Helper `lib/access-log.ts`:**
+   ระบบย้ายตรรกะการเขียนประวัติมาที่ฟังก์ชันรวมศูนย์ โดยการเขียน log ถูกหุ้มด้วยบล็อก `try-catch` พิเศษ (Non-blocking & Fault-tolerant Logger) เพื่อรับประกัน 100% ว่าหากระบบบันทึกประวัติล้มเหลว (เช่น ฐานข้อมูลตอบสนองช้าชั่วคราว) จะไม่มีการดีด HTTP 500 หรือขัดจังหวะการเปิดประตูของผู้ใช้งานเป็นอันขาด:
+   - `logEvent(opts)`: ฟังก์ชันสร้าง Query Parameterized ยิงเข้าตาราง `access_logs` อัตโนมัติ โดยระบุดัชนีผู้กระทำ (`performed_by`), ห้องเรียน (`room_code`), ข้อมูลเครือข่าย (`ip`), และลายเซ็นไคลเอนต์ (`user_agent`)
+   - `logEventFromRequest(req, opts)`: หุ้ม API Response ดึงที่อยู่ IP และ User-Agent จาก HTTP Request Header (`x-forwarded-for` หรือ `request.headers`) เข้าสู่ฟังก์ชันล็อกทันทีแบบปลอดภัย
+   - `getRequestContext(req)`: ฟังก์ชันดึง `{ ip, userAgent }` ออกมาอย่างปลอดภัย รองรับ Cloudflare/Vercel Reverse Proxy `x-forwarded-for`
+   - `parseDevice(ua)`: ฟังก์ชันแปลง User-Agent String ออกมาเป็น `{ device, browser }` เพื่อแสดงผลเข้าใจง่าย
+   - `severityForAction(action)`: แผนผังกำหนดระดับความรุนแรงเริ่มต้นสำหรับพฤติกรรมแต่ละประเภทโดยอัตโนมัติ
 
-### 71.53.5 ระบบแจ้งเตือน — เนื้อหาแน่นขึ้น + ความปลอดภัย + สรุปอัตโนมัติ
+4. **การแสดงผลทางหน้าจอประวัติเข้าออก (All Logs Dashboard Integration):**
+   - แท็บประวัติเข้าออกได้รับการปรับปรุงให้มี UI ที่สามารถแสดงผลความรุนแรงเป็นป้ายสีสวยงาม (Badge): **⚠️ WARNING (สีส้ม-เหลือง)** และ **🚨 CRITICAL (สีแดงกระพริบเรืองแสง)**
+   - แสดงที่อยู่เครือข่าย **🌐 IP Address** และรายละเอียดอุปกรณ์ **💻 อุปกรณ์·เบราว์เซอร์** (เช่น iOS Device, Google Chrome) ต่อแถวประวัติทันทีเพื่อความสะดวกในการวิเคราะห์เหตุการณ์และสืบสวน
 
-- **เนื้อหาละเอียดขึ้น:** embed ของ `door_opened` / `door_failed` เพิ่ม 💻 อุปกรณ์ + 🌍 Browser; เส้นทาง approve/door/reject/bypass ส่ง `ip` + `userAgent` เข้าระบบแจ้งเตือนแล้ว
-- **event ใหม่ `security_alert`:** ยิงเตือนเมื่อตรวจพบล็อกอินถี่ผิดปกติ (กัน brute-force) ผ่านช่องหมวด logs/admin_audit ทั้ง Discord/Telegram/LINE
-- **event ใหม่ `system_summary`:** รายงานสรุปการใช้งาน (เปิดประตูสำเร็จ/ล้มเหลว, ลงทะเบียน, อนุมัติ, ปฏิเสธ, bypass ถี่เกิน, ล็อกอินล้มเหลว, เหตุ critical, ห้องที่ใช้งานมากสุด)
-- **Endpoint `/api/system/summary?period=day|week`:** ป้องกันด้วย `CRON_SECRET` (Vercel Cron แนบ `Authorization: Bearer` ให้อัตโนมัติ) หรือ owner เรียกทดสอบเองผ่านคุกกี้
-- **Vercel Cron (`vercel.json`):** สรุปรายวัน `0 16 * * *` (23:00 ICT) และรายสัปดาห์ `0 16 * * 0` (อาทิตย์ 23:00 ICT)
+### 71.53.5 ระบบแจ้งเตือน Logs ใหม่ — การเตือนภัย 3 ทิศทางพร้อมความปลอดภัยระดับวิศวกรรม (Security-driven Multi-channel Dispatcher)
 
-> 🔑 ต้องตั้ง env `CRON_SECRET` (สุ่ม ≥ 32 chars) บน Vercel ให้ Cron ทำงาน — ดู §37
+เพื่อให้การรายงาน Logs มีเสถียรภาพและมองเห็นจากทุกมุมโลก ระบบได้รับการอัปเกรด Discord, Telegram, และ LINE Webhook ให้มีความอัจฉริยะเชิงนิติวิทยาศาสตร์มากขึ้น:
+
+1. **การแจ้งเตือนความมั่นคงปลอดภัยแบบ Correlated (`security_alert`):**
+   - **พฤติกรรม brute-force บัญชีแอดมิน**: เมื่อระบบตรวจพบว่า IP ใดพยายามล็อกอินล้มเหลวติดต่อกันเกิน 5 ครั้งใน 1 นาที ระบบจะระงับการเข้าถึงชั่วคราว (Rate Limit HTTP 429) บันทึก log ด้วย action `login_rate_limited` ระดับความรุนแรง `warning` และกระจายเหตุภัยคุกคาม `security_alert` ไปยัง Discord/Telegram/LINE ทันที แอดมินสามารถนำข้อมูล IP และ User-Agent ไปกรองบล็อกที่ Firewall หรือ Cloudflare ได้ทันที
+   - **การลบประวัติจราจรเชิงล้างบาง (`maintenance_purge`)**: เมื่อแอดมิน Owner มีการยืนยันสิทธิ์สูงสุดด้วยรหัสผ่านเพื่อล้างประวัติล็อกทั้งหมด ระบบจะยิงสัญญาณแจ้งเตือนระดับวิกฤต `🚨 ลบประวัติทั้งหมดในระบบ (ถาวร)` ขนาน 3 ช่องทางทันที โดยระบุรหัสประจำตัวแอดมิน, IP, และจำนวนประวัติที่สูญหาย เพื่อให้แน่ใจว่าไม่ได้เป็นการก่อวินาศกรรมข้อมูลจากแฮกเกอร์ที่สวมรอย
+   - **การลบประวัตินักศึกษาออกจากทำเนียบ (`student_deleted`)**: แจ้งเตือนภัยความปลอดภัยระดับ `security_alert` พร้อมรายละเอียดชื่อนักศึกษา รหัส และผู้ลบเพื่อป้องกันการล้างประวัติสัญจรโดยมิชอบ
+
+2. **ระบบการรายงานสรุปกิจกรรมอัตโนมัติรายวัน/รายสัปดาห์ (`system_summary`):**
+   - ออกแบบ API ปิดเส้นทางปลอดภัยสูงที่ `/api/system/summary` ซึ่งตรวจสอบยืนยันสิทธิ์ด้วย **`CRON_SECRET`** ผ่าน HTTP Bearer Token
+   - ตั้งเวลาประมวลผลเชิงกำหนดเวลา (Vercel Cron) ผ่าน `vercel.json` โดยกวาดต้อนประวัติทุกรอบเวลา 23:00 น. เพื่อส่งรายงานสถิติกิจกรรมรวม เช่น อัตราส่วนความสำเร็จในการเปิดประตู, ปริมาณการลงทะเบียนใหม่, สถิติการเดารหัสผ่านล้มเหลว, เหตุการณ์ Critical, และระบุอันดับ "ห้องเรียนยอดนิยมสูงสุด" ประจำคาบเวลา
+   - รายงานสรุปนี้จะถูกส่งในรูปแบบ Rich Embed ที่อ่านเข้าใจง่าย พร้อมแยกส่วนด้วย Emoji และสีสัน เพื่อลดภาระการตรวจสอบตารางดิบของผู้ดูแลระบบ
+   - การทำงานผ่าน Vercel Cron กำหนดให้ทำรายงานสรุปรายวัน (`0 16 * * *` หรือเวลา 23:00 น. ตามเวลาประเทศไทย ICT) และสรุปรายสัปดาห์ในทุกคืนวันอาทิตย์ (`0 16 * * 0` หรือเวลา 23:00 น. ICT)
+
+3. **ตารางโครงสร้าง API Payload สำหรับการส่งข้อมูลแจ้งเตือน (Event-Notification Schema Contract):**
+
+| ประเภท Event (DiscordEventType) | ข้อมูลที่นำส่ง (NotifyData) | สีแสดงผล (Colors) | แหล่งข่าวสารหลัก (Webhook Channel Target) | ลายเซ็น / บันทึกประวัติ (Severity in Logs) |
+| :--- | :--- | :--- | :--- | :--- |
+| `security_alert` | `alertTitle`, `alertDetail`, `ip`, `userAgent`, `reason` | 🔴 Red (0xe74c3c) | `logs_webhook` & `admin_audit` | `critical` |
+| `system_summary` | `summary` (total, opened, failed, critical, topRoom) | 🔵 Blue (0x3498db) | `logs_webhook` & `admin_audit` | `info` (ระบบบันทึกความเคลื่อนไหว) |
+| `admin_login_failed` | `adminUsername`, `ip`, `userAgent`, `reason` | 🟡 Orange (0xf39c12) | `admin_audit` | `warning` |
+| `pdf_exported` | `adminName`, `adminRole`, `ip`, `reason` | 🟢 Green (0x2ecc71) | `admin_audit` | `info` |
+| `settings_updated` | `adminName`, `ip`, `reason` | 🟡 Orange (0xf39c12) | `admin_audit` | `warning` |
+
+> 🔑 หมายเหตุทางปฏิบัติ: ต้องตั้งค่าตัวแปรสภาพแวดล้อม `CRON_SECRET` (ความยาวมากกว่า 32 ตัวอักษร) บนคอนโซล Vercel เพื่อความปลอดภัยสูงสุดในการทริกเกอร์ Cron API ในแต่ละวัน
 
 ### 71.53.6 สรุปไฟล์ที่เปลี่ยน (อ้างอิงเร็ว)
 

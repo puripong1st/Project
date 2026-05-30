@@ -731,7 +731,7 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-29 14:00:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 09:45:33 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> กับ <code>esp32C1/</code></p>
 </blockquote>
@@ -13175,50 +13175,134 @@ if (decoded.role === &quot;door_operator&quot;) {
 <li>การแก้: ย้าย key <code>smartaccess_user_session</code> ทั้งหมด (get/set/remove) ไปใช้ <code>localStorage</code> ใน <code>app/page.tsx</code></li>
 <li>คงนโยบายเดิม: อายุสิทธิ์ <strong>5 นาที</strong> (<code>diffSeconds &lt;= 300</code>) + room-isolated (สแกนได้เฉพาะห้องที่ลงทะเบียน) ทำงานภายใต้ functional cookie consent</li>
 </ul>
-<h3>71.53.4 ระบบ Logs v2 — ละเอียดและครอบคลุม</h3>
-<p><strong>คอลัมน์ใหม่ใน <code>access_logs</code></strong> (ดู DDL §35): <code>severity</code> (info/warning/critical) และ <code>user_agent</code>; พร้อม backfill <code>room_code</code> จากคอลัมน์ <code>room</code> เดิม และ index <code>idx_logs_severity</code></p>
-<p><strong>Helper รวมศูนย์ <code>lib/access-log.ts</code>:</strong></p>
+<h3>71.53.4 ระบบ Logs v2 — ละเอียดและครอบคลุมเชิงสืบสวนและนิติวิทยาศาสตร์ (Security Logging Engine v2)</h3>
+<p>ระบบจัดเก็บประวัติสัญจรคอมพิวเตอร์และพฤติกรรมความปลอดภัยได้รับการปรับปรุงสู่เวอร์ชัน 2 เพื่อให้ตรงตาม พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ พ.ศ. 2550 มาตรา 26 โดยเพิ่มมิติด้านความมั่นคงปลอดภัยแบบครบวงจร:</p>
+<ol>
+<li><p><strong>การปรับเปลี่ยนโครงสร้างฐานข้อมูล (Access Logs DDL Expansion):</strong></p>
+<ul>
+<li>เพิ่มคอลัมน์ <code>severity</code> (สถานะระดับความรุนแรง) ประเภท <code>VARCHAR(10)</code> ที่สามารถระบุค่าเป็น <code>info</code>, <code>warning</code>, หรือ <code>critical</code> เพื่อช่วยให้ทีมไอทีกรองลำดับความสำคัญของเหตุการณ์ได้อย่างรวดเร็ว</li>
+<li>เพิ่มคอลัมน์ <code>user_agent</code> ประเภท <code>TEXT</code> เพื่อเก็บลายเซ็นของอุปกรณ์ เบราว์เซอร์ และระบุความสัญจรของฝั่งไคลเอนต์/บอร์ด IoT ปลายทาง</li>
+<li>เพิ่มคอลัมน์ <code>room_code</code> ประเภท <code>VARCHAR(50)</code> ที่ทำดัชนี (Index) ครอบคลุมสำหรับการค้นหาย้อนหลัง</li>
+<li>สร้างดัชนีประสิทธิภาพเชิงรุก <code>idx_logs_severity</code> ครอบคลุมคอลัมน์ <code>severity</code> เพื่อเพิ่มความเร็วในการกรองข้อมูลบน Admin Dashboard ในโหมดค้นหาเหตุผิดปกติ</li>
+</ul>
+</li>
+<li><p><strong>เกณฑ์การแบ่งระดับความรุนแรงของบันทึกระบบ (Log Severity Matrix):</strong></p>
+</li>
+</ol>
 <table>
 <thead>
 <tr>
-<th>ฟังก์ชัน</th>
-<th>หน้าที่</th>
+<th align="left">ระดับความรุนแรง (Severity)</th>
+<th align="left">ขอบเขตการทำงาน (Event Scope)</th>
+<th align="left">ตัวอย่างเหตุการณ์และคำสั่งระบบ (Actions)</th>
+<th align="left">ผลกระทบและการตอบสนอง (Response Action)</th>
 </tr>
 </thead>
 <tbody><tr>
-<td><code>logEvent(opts)</code></td>
-<td>INSERT log ครบทุกมิติ (student/admin/room_code/ip/user_agent/severity/method) — ออกแบบให้ &quot;ไม่ throw&quot; การบันทึก log ห้ามทำให้ flow หลักล้ม</td>
+<td align="left"><strong>🟢 info</strong></td>
+<td align="left">กิจกรรมปกติในระบบที่เกิดขึ้นประจำวัน ไม่มีนัยสำคัญความปลอดภัยเชิงลบ</td>
+<td align="left"><code>registered</code>, <code>approved</code>, <code>door_opened</code>, <code>admin_login</code>, <code>admin_logout</code></td>
+<td align="left">บันทึกประวัติและส่งการแจ้งเตือนแบบธรรมดาไปยังหมวดหมู่ Register หรือ Approve</td>
 </tr>
 <tr>
-<td><code>logEventFromRequest(req, opts)</code></td>
-<td>เหมือน <code>logEvent</code> แต่ดึง IP + User-Agent จาก request ให้อัตโนมัติ</td>
+<td align="left"><strong>🟡 warning</strong></td>
+<td align="left">พฤติกรรมที่อาจผิดปกติหรือมีความเสี่ยงต่ำ-ปานกลาง ควรรับทราบแต่ไม่ต้องสืบสวนด่วน</td>
+<td align="left"><code>admin_login_failed</code> (กรอกรหัสผิด), <code>door_failed</code> (บอร์ดตอบสนองช้า/Timeout), <code>student_deleted</code> (ลบนักศึกษาทีละราย), <code>maintenance_cleanup</code> (ล้างล็อกเก่าเกิน 90 วัน)</td>
+<td align="left">บันทึกประวัติพร้อมแสดง Badge สีเหลืองเตือนเด่นชัดบน UI และยิงเข้า Discord/Telegram/LINE ในช่อง Logs</td>
 </tr>
 <tr>
-<td><code>getRequestContext(req)</code></td>
-<td>ดึง <code>{ ip, userAgent }</code> (รองรับ <code>x-forwarded-for</code> ของ Vercel)</td>
-</tr>
-<tr>
-<td><code>parseDevice(ua)</code></td>
-<td>แปลง UA → <code>{ device, browser }</code></td>
-</tr>
-<tr>
-<td><code>severityForAction(action)</code></td>
-<td>จับคู่ระดับความสำคัญเริ่มต้นต่อ action</td>
+<td align="left"><strong>🔴 critical</strong></td>
+<td align="left">เหตุการณ์ร้ายแรงระดับระบบหรือมีความเสี่ยงต่อการแฮก/ทำลายระบบอย่างเห็นได้ชัด</td>
+<td align="left"><code>login_rate_limited</code> (เดารหัส Brute-force), <code>bypass_rate_limited</code> (ยิงปลดล็อกซ้ำถี่จัด), <code>maintenance_purge</code> (ล้างประวัติจราจรทั้งหมด), <code>unauthorized_access</code></td>
+<td align="left">บันทึกประวัติระดับสูง ห้ามลบเด็ดขาด ยิงการเตือนภัยประเภท <code>security_alert</code> สั่นหน้าจอมือถือแอดมินทันทีผ่านบอท 3 ช่องทาง</td>
 </tr>
 </tbody></table>
-<p><strong>เส้นทางที่เก็บ IP/อุปกรณ์/severity ครบแล้ว:</strong> เปิดประตู (<code>approve</code>, <code>door</code>, <code>bypass</code>), ปฏิเสธ (<code>reject</code>), ล็อกอิน (สำเร็จ/ล้มเหลว/โดน rate-limit)</p>
-<p><strong>Action ใหม่ที่เริ่มบันทึก:</strong> <code>bypass_rate_limited</code>, <code>login_rate_limited</code> (และเตรียม mapping ไว้สำหรับ <code>qr_expired</code>, <code>qr_invalid</code>, <code>hmac_invalid</code>, <code>esp32_offline</code>, <code>unauthorized_access</code>)</p>
-<p><strong>หน้า Logs (<code>/admin/dashboard/all</code>):</strong> เพิ่ม badge <strong>⚠️ WARNING / 🚨 CRITICAL</strong>, แสดงแถว <strong>🌐 IP + 💻 อุปกรณ์·เบราว์เซอร์</strong> ต่อรายการ, และ label ภาษาไทยของ action ใหม่ครบ (<code>ACTION_METADATA</code> ใน <code>DashboardHelpers.tsx</code>)</p>
-<h3>71.53.5 ระบบแจ้งเตือน — เนื้อหาแน่นขึ้น + ความปลอดภัย + สรุปอัตโนมัติ</h3>
+<ol start="3">
+<li><p><strong>กลไกการทำงานของ Core Helper <code>lib/access-log.ts</code>:</strong><br>ระบบย้ายตรรกะการเขียนประวัติมาที่ฟังก์ชันรวมศูนย์ โดยการเขียน log ถูกหุ้มด้วยบล็อก <code>try-catch</code> พิเศษ (Non-blocking &amp; Fault-tolerant Logger) เพื่อรับประกัน 100% ว่าหากระบบบันทึกประวัติล้มเหลว (เช่น ฐานข้อมูลตอบสนองช้าชั่วคราว) จะไม่มีการดีด HTTP 500 หรือขัดจังหวะการเปิดประตูของผู้ใช้งานเป็นอันขาด:</p>
 <ul>
-<li><strong>เนื้อหาละเอียดขึ้น:</strong> embed ของ <code>door_opened</code> / <code>door_failed</code> เพิ่ม 💻 อุปกรณ์ + 🌍 Browser; เส้นทาง approve/door/reject/bypass ส่ง <code>ip</code> + <code>userAgent</code> เข้าระบบแจ้งเตือนแล้ว</li>
-<li><strong>event ใหม่ <code>security_alert</code>:</strong> ยิงเตือนเมื่อตรวจพบล็อกอินถี่ผิดปกติ (กัน brute-force) ผ่านช่องหมวด logs/admin_audit ทั้ง Discord/Telegram/LINE</li>
-<li><strong>event ใหม่ <code>system_summary</code>:</strong> รายงานสรุปการใช้งาน (เปิดประตูสำเร็จ/ล้มเหลว, ลงทะเบียน, อนุมัติ, ปฏิเสธ, bypass ถี่เกิน, ล็อกอินล้มเหลว, เหตุ critical, ห้องที่ใช้งานมากสุด)</li>
-<li><strong>Endpoint <code>/api/system/summary?period=day|week</code>:</strong> ป้องกันด้วย <code>CRON_SECRET</code> (Vercel Cron แนบ <code>Authorization: Bearer</code> ให้อัตโนมัติ) หรือ owner เรียกทดสอบเองผ่านคุกกี้</li>
-<li><strong>Vercel Cron (<code>vercel.json</code>):</strong> สรุปรายวัน <code>0 16 * * *</code> (23:00 ICT) และรายสัปดาห์ <code>0 16 * * 0</code> (อาทิตย์ 23:00 ICT)</li>
+<li><code>logEvent(opts)</code>: ฟังก์ชันสร้าง Query Parameterized ยิงเข้าตาราง <code>access_logs</code> อัตโนมัติ โดยระบุดัชนีผู้กระทำ (<code>performed_by</code>), ห้องเรียน (<code>room_code</code>), ข้อมูลเครือข่าย (<code>ip</code>), และลายเซ็นไคลเอนต์ (<code>user_agent</code>)</li>
+<li><code>logEventFromRequest(req, opts)</code>: หุ้ม API Response ดึงที่อยู่ IP และ User-Agent จาก HTTP Request Header (<code>x-forwarded-for</code> หรือ <code>request.headers</code>) เข้าสู่ฟังก์ชันล็อกทันทีแบบปลอดภัย</li>
+<li><code>getRequestContext(req)</code>: ฟังก์ชันดึง <code>{ ip, userAgent }</code> ออกมาอย่างปลอดภัย รองรับ Cloudflare/Vercel Reverse Proxy <code>x-forwarded-for</code></li>
+<li><code>parseDevice(ua)</code>: ฟังก์ชันแปลง User-Agent String ออกมาเป็น <code>{ device, browser }</code> เพื่อแสดงผลเข้าใจง่าย</li>
+<li><code>severityForAction(action)</code>: แผนผังกำหนดระดับความรุนแรงเริ่มต้นสำหรับพฤติกรรมแต่ละประเภทโดยอัตโนมัติ</li>
 </ul>
+</li>
+<li><p><strong>การแสดงผลทางหน้าจอประวัติเข้าออก (All Logs Dashboard Integration):</strong></p>
+<ul>
+<li>แท็บประวัติเข้าออกได้รับการปรับปรุงให้มี UI ที่สามารถแสดงผลความรุนแรงเป็นป้ายสีสวยงาม (Badge): <strong>⚠️ WARNING (สีส้ม-เหลือง)</strong> และ <strong>🚨 CRITICAL (สีแดงกระพริบเรืองแสง)</strong></li>
+<li>แสดงที่อยู่เครือข่าย <strong>🌐 IP Address</strong> และรายละเอียดอุปกรณ์ <strong>💻 อุปกรณ์·เบราว์เซอร์</strong> (เช่น iOS Device, Google Chrome) ต่อแถวประวัติทันทีเพื่อความสะดวกในการวิเคราะห์เหตุการณ์และสืบสวน</li>
+</ul>
+</li>
+</ol>
+<h3>71.53.5 ระบบแจ้งเตือน Logs ใหม่ — การเตือนภัย 3 ทิศทางพร้อมความปลอดภัยระดับวิศวกรรม (Security-driven Multi-channel Dispatcher)</h3>
+<p>เพื่อให้การรายงาน Logs มีเสถียรภาพและมองเห็นจากทุกมุมโลก ระบบได้รับการอัปเกรด Discord, Telegram, และ LINE Webhook ให้มีความอัจฉริยะเชิงนิติวิทยาศาสตร์มากขึ้น:</p>
+<ol>
+<li><p><strong>การแจ้งเตือนความมั่นคงปลอดภัยแบบ Correlated (<code>security_alert</code>):</strong></p>
+<ul>
+<li><strong>พฤติกรรม brute-force บัญชีแอดมิน</strong>: เมื่อระบบตรวจพบว่า IP ใดพยายามล็อกอินล้มเหลวติดต่อกันเกิน 5 ครั้งใน 1 นาที ระบบจะระงับการเข้าถึงชั่วคราว (Rate Limit HTTP 429) บันทึก log ด้วย action <code>login_rate_limited</code> ระดับความรุนแรง <code>warning</code> และกระจายเหตุภัยคุกคาม <code>security_alert</code> ไปยัง Discord/Telegram/LINE ทันที แอดมินสามารถนำข้อมูล IP และ User-Agent ไปกรองบล็อกที่ Firewall หรือ Cloudflare ได้ทันที</li>
+<li><strong>การลบประวัติจราจรเชิงล้างบาง (<code>maintenance_purge</code>)</strong>: เมื่อแอดมิน Owner มีการยืนยันสิทธิ์สูงสุดด้วยรหัสผ่านเพื่อล้างประวัติล็อกทั้งหมด ระบบจะยิงสัญญาณแจ้งเตือนระดับวิกฤต <code>🚨 ลบประวัติทั้งหมดในระบบ (ถาวร)</code> ขนาน 3 ช่องทางทันที โดยระบุรหัสประจำตัวแอดมิน, IP, และจำนวนประวัติที่สูญหาย เพื่อให้แน่ใจว่าไม่ได้เป็นการก่อวินาศกรรมข้อมูลจากแฮกเกอร์ที่สวมรอย</li>
+<li><strong>การลบประวัตินักศึกษาออกจากทำเนียบ (<code>student_deleted</code>)</strong>: แจ้งเตือนภัยความปลอดภัยระดับ <code>security_alert</code> พร้อมรายละเอียดชื่อนักศึกษา รหัส และผู้ลบเพื่อป้องกันการล้างประวัติสัญจรโดยมิชอบ</li>
+</ul>
+</li>
+<li><p><strong>ระบบการรายงานสรุปกิจกรรมอัตโนมัติรายวัน/รายสัปดาห์ (<code>system_summary</code>):</strong></p>
+<ul>
+<li>ออกแบบ API ปิดเส้นทางปลอดภัยสูงที่ <code>/api/system/summary</code> ซึ่งตรวจสอบยืนยันสิทธิ์ด้วย <strong><code>CRON_SECRET</code></strong> ผ่าน HTTP Bearer Token</li>
+<li>ตั้งเวลาประมวลผลเชิงกำหนดเวลา (Vercel Cron) ผ่าน <code>vercel.json</code> โดยกวาดต้อนประวัติทุกรอบเวลา 23:00 น. เพื่อส่งรายงานสถิติกิจกรรมรวม เช่น อัตราส่วนความสำเร็จในการเปิดประตู, ปริมาณการลงทะเบียนใหม่, สถิติการเดารหัสผ่านล้มเหลว, เหตุการณ์ Critical, และระบุอันดับ &quot;ห้องเรียนยอดนิยมสูงสุด&quot; ประจำคาบเวลา</li>
+<li>รายงานสรุปนี้จะถูกส่งในรูปแบบ Rich Embed ที่อ่านเข้าใจง่าย พร้อมแยกส่วนด้วย Emoji และสีสัน เพื่อลดภาระการตรวจสอบตารางดิบของผู้ดูแลระบบ</li>
+<li>การทำงานผ่าน Vercel Cron กำหนดให้ทำรายงานสรุปรายวัน (<code>0 16 * * *</code> หรือเวลา 23:00 น. ตามเวลาประเทศไทย ICT) และสรุปรายสัปดาห์ในทุกคืนวันอาทิตย์ (<code>0 16 * * 0</code> หรือเวลา 23:00 น. ICT)</li>
+</ul>
+</li>
+<li><p><strong>ตารางโครงสร้าง API Payload สำหรับการส่งข้อมูลแจ้งเตือน (Event-Notification Schema Contract):</strong></p>
+</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th align="left">ประเภท Event (DiscordEventType)</th>
+<th align="left">ข้อมูลที่นำส่ง (NotifyData)</th>
+<th align="left">สีแสดงผล (Colors)</th>
+<th align="left">แหล่งข่าวสารหลัก (Webhook Channel Target)</th>
+<th align="left">ลายเซ็น / บันทึกประวัติ (Severity in Logs)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>security_alert</code></td>
+<td align="left"><code>alertTitle</code>, <code>alertDetail</code>, <code>ip</code>, <code>userAgent</code>, <code>reason</code></td>
+<td align="left">🔴 Red (0xe74c3c)</td>
+<td align="left"><code>logs_webhook</code> &amp; <code>admin_audit</code></td>
+<td align="left"><code>critical</code></td>
+</tr>
+<tr>
+<td align="left"><code>system_summary</code></td>
+<td align="left"><code>summary</code> (total, opened, failed, critical, topRoom)</td>
+<td align="left">🔵 Blue (0x3498db)</td>
+<td align="left"><code>logs_webhook</code> &amp; <code>admin_audit</code></td>
+<td align="left"><code>info</code> (ระบบบันทึกความเคลื่อนไหว)</td>
+</tr>
+<tr>
+<td align="left"><code>admin_login_failed</code></td>
+<td align="left"><code>adminUsername</code>, <code>ip</code>, <code>userAgent</code>, <code>reason</code></td>
+<td align="left">🟡 Orange (0xf39c12)</td>
+<td align="left"><code>admin_audit</code></td>
+<td align="left"><code>warning</code></td>
+</tr>
+<tr>
+<td align="left"><code>pdf_exported</code></td>
+<td align="left"><code>adminName</code>, <code>adminRole</code>, <code>ip</code>, <code>reason</code></td>
+<td align="left">🟢 Green (0x2ecc71)</td>
+<td align="left"><code>admin_audit</code></td>
+<td align="left"><code>info</code></td>
+</tr>
+<tr>
+<td align="left"><code>settings_updated</code></td>
+<td align="left"><code>adminName</code>, <code>ip</code>, <code>reason</code></td>
+<td align="left">🟡 Orange (0xf39c12)</td>
+<td align="left"><code>admin_audit</code></td>
+<td align="left"><code>warning</code></td>
+</tr>
+</tbody></table>
 <blockquote>
-<p>🔑 ต้องตั้ง env <code>CRON_SECRET</code> (สุ่ม ≥ 32 chars) บน Vercel ให้ Cron ทำงาน — ดู §37</p>
+<p>🔑 หมายเหตุทางปฏิบัติ: ต้องตั้งค่าตัวแปรสภาพแวดล้อม <code>CRON_SECRET</code> (ความยาวมากกว่า 32 ตัวอักษร) บนคอนโซล Vercel เพื่อความปลอดภัยสูงสุดในการทริกเกอร์ Cron API ในแต่ละวัน</p>
 </blockquote>
 <h3>71.53.6 สรุปไฟล์ที่เปลี่ยน (อ้างอิงเร็ว)</h3>
 <table>

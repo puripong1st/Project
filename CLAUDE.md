@@ -26,6 +26,7 @@ npm run dev:turbo    # Start with Turbopack
 npm run build        # Production build
 npm run lint         # ESLint 9 flat config
 npm run clean        # Delete .next cache (PowerShell)
+node scripts/compile_manual.js # Compile the system manual (runs from my-app/)
 ```
 
 No test suite exists in this project.
@@ -107,3 +108,9 @@ These hardened behaviors must not be removed:
 ## Styling
 
 Brand colors: `#7C3AED` (SmartAccess purple) and `#DB2777` (Faculty of Education pink). Defined in `app/globals.css`. UI language is Thai (`<html lang="th">`).
+
+## System Manual Maintenance
+Always keep the comprehensive system manual `complete_system_manual_th.md` up-to-date and compile it after any changes. Follow the rules defined in `GEMINI.md` (§6):
+1. Document Next.js APIs, database queries, libraries, UI, or firmware changes in Thai at the end of the manual.
+2. Update the "อัปเดตล่าสุด" timestamp at line 4 of `complete_system_manual_th.md`.
+3. Run the compiler from root: `node my-app/scripts/compile_manual.js` to re-generate the pre-rendered HTML manual files.

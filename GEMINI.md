@@ -75,3 +75,19 @@ The frontend will be available at `http://localhost:3000` and the admin panel at
 - **Styling:** Follow the existing minimalistic glassmorphism design system using Tailwind CSS and Vanilla CSS. Use the university colors: Purple (`#7C3AED`) and Pink (`#DB2777`).
 - **Database:** Utilize Supabase features securely. Use `lib/db.ts` for established connection patterns. Note that the project recently migrated from postgreSQL to Supabase PostgreSQL for better serverless connection pooling.
 - **Legal Compliance:** When touching logging or authentication features, ensure they respect the established Thai PDPA and Computer Crime Act requirements implemented in the system (e.g., 90-day retention policies, restricted deletion permissions).
+
+## 6. System Manual Maintenance & AI Prompt (CRITICAL)
+Whenever any system development, API addition, database schema change, UI change, or firmware improvement is implemented:
+1. The developer/agent **MUST** immediately update the comprehensive documentation in `complete_system_manual_th.md` under the appropriate sections (primarily in section 71 onwards) in highly detailed, professional Thai.
+2. The "อัปเดตล่าสุด" date and time metadata at the top of `complete_system_manual_th.md` **MUST** be updated to the exact current local time.
+3. The compiler script **MUST** be executed from the project root: `node my-app/scripts/compile_manual.js` to automatically re-generate the pre-rendered `complete_system_manual_th.html` manuals in both locations.
+
+**AI Developer Prompt to Reference:**
+> [!NOTE]
+> **AI Instruction for System Manual Updates:**
+> "You are required to maintain the project manual `complete_system_manual_th.md` as the single source of truth for the thesis documentation. After completing any development task or feature implementation:
+> 1. Carefully inspect the code changes you made across Next.js APIs, database queries, libraries, UI pages, or ESP32 firmware.
+> 2. Locate the relevant sections at the end of `complete_system_manual_th.md` (e.g., §71.53, §71.51, §71.45, etc.) or create a new section at the end if none exists.
+> 3. Document the changes exhaustively in professional academic Thai. Detail all new files, database tables/columns, query filters, API endpoints (payload, parameters, responses), event notifications, security measures, and firmware settings.
+> 4. Go to line 4 of `complete_system_manual_th.md` and update `อัปเดตล่าสุด: YYYY-MM-DD HH:MM:SS (+07:00)` to the current date and time in Bangkok timezone.
+> 5. Run the compile script from the workspace root: `node my-app/scripts/compile_manual.js` to propagate the changes to the HTML manual files. Verify that the build succeeds with no errors."

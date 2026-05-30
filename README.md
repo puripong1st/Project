@@ -26,17 +26,17 @@
 ### 📊 2. แดชบอร์ดตรวจสอบสถานะเรียลไทม์ (Enterprise Status Grid)
 * **Supabase PostgreSQL Table Status**: แสดงสถานะการเชื่อมต่อ และการทำงานของฐานข้อมูล Supabase
 * **ESP32 Controller Status**: ตรวจสอบบอร์ดฮาร์ดแวร์หน้าห้องเรียนแบบเรียลไทม์ ทราบเลขไอพี โหมดการทำงาน (จำลอง/จริง) และสถานะกลอนล็อกแม่เหล็กไฟฟ้ารีเลย์ (🔒 Lock / 🔓 Open)
-* **Discord Notification Broker**: ยืนยันความพร้อมของบอทส่งข้อความแจ้งเตือนสถานะความปลอดภัย
+* **3-Channel Notification Dispatcher**: ยืนยันความพร้อมของบอทส่งข้อความแจ้งเตือนสถานะความปลอดภัยใน 3 แพลตฟอร์มพร้อมกัน (Discord, Telegram, LINE)
 
 ### ⚖️ 3. ระบบจัดการประวัติสอดคล้องกับ พ.ร.บ. คอมพิวเตอร์ & PDPA
-* จัดเก็บบันทึกประวัติจราจรทางคอมพิวเตอร์เข้าออกประตูห้องเรียนอย่างเคร่งครัดตาม **พ.ร.บ. คอมพิวเตอร์ ม.26 (ไม่น้อยกว่า 90 วัน)**
+* จัดเก็บบันทึกประวัติจราจรทางคอมพิวเตอร์เข้าออกประตูห้องเรียนอย่างเคร่งครัดตาม **พ.ร.บ. คอมพิวเตอร์ ม.26 (ไม่น้อยกว่า 90 วัน)** โดยแยกประวัติแบบมีลำดับความสำคัญชัดเจน (**info, warning, critical**)
 * **ระบบความปลอดภัยสองชั้น (Double Failsafe Settings)**: ลบ Log หมดอายุ (>90 วัน) ได้ฟรีในคลิกเดียว ส่วนประวัติที่ยังไม่หมดอายุ (<90 วัน) ระบบจะบังคับให้แอดมินระดับสูงสุดกรอกรหัสยืนยันตัวตน (`bcryptjs`) ป้องกันแฮกเกอร์ทำลายร่องรอย
 * **Consent Manager UI (PDPA)**: หน้าต่างขอความยินยอม Cookies แบบคัดสรรประเภทการเก็บข้อมูล มีหน้า Privacy Policy และข้อสัญญาการใช้งาน (Terms of Services) ครบถ้วนตามกฎหมาย PDPA ของไทย
 
 ### 🚀 4. ระบบอัปเดตเฟิร์มแวร์ไร้สายแบบประหยัดพลังงานคลาวด์ (Cloud HTTPS OTA Center)
 * **Vercel Ephemeral Failsafe**: ออกแบบระบบจัดเก็บไฟล์ `.bin` บนคลาวด์ **Supabase Storage (โควตาฟรี 1GB)** เพื่อเลี่ยงข้อจำกัดไฟล์สูญหายของระบบตู้คอนเทนเนอร์ Vercel Free Plan
 * **HTTP 302 Direct CDN Redirection**: ตัว API Next.js ทำหน้าที่ตรวจจับสิทธิ์ความปลอดภัยแล้วส่ง Redirect ให้บอร์ด ESP32 วิ่งไปโหลดไฟล์ตรงผ่าน Supabase Storage CDN ช่วยประหยัดซีพียูของเซิร์ฟเวอร์ Next.js เหลือ 0%
-* **Local LAN ElegantOTA**: บอร์ด ESP32 รองรับการปล่อยอัปโหลดผ่านเครือข่ายวงแลนเดียวกันได้ที่พอร์ต `http://<IP_ADDRESS>/update` โดยมีระบบรหัสผ่านแอดมินสูงสุดควบคุม
+* **Edge-Trigger Door Prevention**: ระบบตรวจจับจังหวะเปิดประตู (Edge-Triggered Command Status) ช่วยแก้ปัญหาคำสั่งเปิดประตูค้างและ ESP32 ทำการเปิดประตูวนซ้ำ
 
 ### 📄 5. รายงาน PDF ระดับอุตสาหกรรม (Landscape Server-Side PDF)
 * ประมวลผลเอกสาร PDF บนเซิร์ฟเวอร์ด้วย `pdfkit` ออกแบบตารางในแนวแนวนอน (Landscape) เพื่อความชัดเจน อ่านง่าย เป็นทางการ
@@ -48,22 +48,23 @@
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│             💻 NEXT.JS 15+ & REACT 19 WEB APP          │
+│             💻 NEXT.JS 16+ & REACT 19 WEB APP          │
+│                    (Vercel Serverless)                 │
 ├────────────────────────────────────────────────────────┤
 │ Styling: Vanilla CSS + Tailwind CSS v4 Harmony Palette │
 │ Databases: Supabase PostgreSQL & Connection Pool (6543)│
-│ Storage: Supabase Object Storage (1GB Free bucket)     │
+│ Notifications: 3-Way Dispatcher (Discord, Telegram, LINE)│
 │ Auth: JWT Sessions + bcryptjs secure hashing           │
 │ Reporting: Server-side landscape pdfkit generator     │
 └───────────────────────────┬────────────────────────────┘
-                            │ (HTTPS Client Polling / WebServer Push)
+                            │ (HTTPS Client Polling / Edge CMDs)
 ┌───────────────────────────▼────────────────────────────┐
 │                    📡 ESP32 Microcontroller            │
 ├────────────────────────────────────────────────────────┤
 │ Output Pinouts: GPIO 12 Relay · GPIO 27 Active Buzzer  │
 │ Indicators: GPIO 14 WiFi LED · GPIO 26 Reject LED      │
 │ Display Panel: ILI9341 SPI TFT LCD (3.2 inch)          │
-│ Local Features: LAN Webserver ElegantOTA Update        │
+│ Local Features: WiFiServer direct commands            │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -72,30 +73,38 @@
 ## 📂 โครงสร้างโฟลเดอร์หลัก (Project Structure)
 
 ```
-my-app/
-├── app/
-│   ├── globals.css           # โครงสร้างดีไซน์และโทนสีของทั้งระบบ (Harmony Palette)
-│   ├── page.tsx              # หน้าจอลงทะเบียนขอเข้าใช้งานของนักศึกษา + Countdown Timer
-│   ├── admin/
-│   │   ├── login/page.tsx    # หน้าลงชื่อเข้าใช้งานของแอดมิน
-│   │   └── dashboard/page.tsx# หน้าบอร์ดควบคุมความปลอดภัยและ OTA Firmware Upload Center
-│   └── api/
-│       ├── system/
-│       │   ├── status/route.ts   # ดึงสถานะ live ตู้ Supabase, ESP32, Discord
-│       │   ├── settings/route.ts # ดึงและบันทึกค่าระบบความปลอดภัย / Webhooks แยกห้อง
-│       │   ├── logs/cleanup/route# ระบบทำความสะอาดลบประวัติความปลอดภัยตามกฎหมาย
-│       │   └── firmware/upload/ro# ระบบอัปโหลดและออกคีย์ไฟล์เฟิร์มแวร์ .bin ไร้สาย
-│       ├── esp32/
-│       │   ├── display/route.ts  # จ่ายข้อมูลหน้าจอ TFT + สั่งการ OTA อัปเกรด
-│       │   └── firmware-ota/route# จัดการส่งบอร์ดอัปเดตแบบ 302 Supabase Redirect
-│       └── export/pdf/route.ts   # เขียนประวัติ PDF ส่งออกแนวนอน
+Project/
+├── my-app/
+│   ├── app/
+│   │   ├── globals.css           # โครงสร้างดีไซน์และโทนสีของทั้งระบบ (Harmony Palette)
+│   │   ├── page.tsx              # หน้าจอลงทะเบียนขอเข้าใช้งานของนักศึกษา + Countdown Timer
+│   │   ├── admin/
+│   │   │   ├── login/page.tsx    # หน้าลงชื่อเข้าใช้งานของแอดมิน
+│   │   │   └── dashboard/page.tsx# หน้าบอร์ดควบคุมความปลอดภัยและ OTA Firmware Upload Center
+│   │   └── api/
+│   │       ├── system/
+│   │       │   ├── status/route.ts   # ดึงสถานะ live ตู้ Supabase, ESP32, Discord
+│   │       │   ├── settings/route.ts # ดึงและบันทึกค่าระบบความปลอดภัย / Webhooks แยกห้อง
+│   │       │   ├── logs/cleanup/route# ระบบทำความสะอาดลบประวัติความปลอดภัยตามกฎหมาย
+│   │       │   ├── summary/route.ts  # สรุปเหตุการณ์รายวัน/สัปดาห์ ส่งผ่าน Vercel Cron
+│   │       │   └── test-webhook/route# ลิงก์ทดสอบ Webhook แยกช่องทาง (Owner Only)
+│   │       ├── esp32/
+│   │       │   ├── display/route.ts  # จ่ายข้อมูลหน้าจอ TFT + สั่งการ OTA อัปเกรด
+│   │       │   └── firmware-ota/route# จัดการส่งบอร์ดอัปเดตแบบ 302 Supabase Redirect
+│   │       └── export/pdf/route.ts   # เขียนประวัติ PDF ส่งออกแนวนอน
+│   ├── lib/
+│   │   ├── db.ts                 # ตัวเชื่อมต่อ Supabase PostgreSQL และสร้างตารางอัตโนมัติ
+│   │   ├── auth.ts               # ระบบถอนสิทธิ์/ตรวจสอบ JWT และแอดมินเซสชัน
+│   │   ├── esp32.ts              # ตัวจัดการ HTTP Call สั่งปลดล็อกไปฮาร์ดแวร์จริง
+│   │   ├── access-log.ts         # ตัวบันทึกประวัติจราจรครบทุกมิติ (IP, User-Agent, Severity)
+│   │   ├── notify.ts             # ตัวกระจายการแจ้งเตือนรวมศูนย์ขนาน (Discord, Telegram, LINE)
+│   │   └── discord.ts            # ตัวจัดการโครงสร้าง Embed Message แยกช่องทาง
+│   └── vercel.json               # คอนฟิก Vercel Serverless & Crons
 ├── esp32/
-│   └── esp32.ino                 # ซอร์สโค้ดอัปโหลดชิปของ ESP32 จริงและ Wokwi Simulator
-├── lib/
-│   ├── db.ts                 # ตัวเชื่อมต่อ Supabase PostgreSQL และสร้างตารางอัตโนมัติ
-│   ├── esp32.ts              # ตัวจัดการ HTTP Call สั่งปลดล็อกไปฮาร์ดแวร์จริง
-│   └── discord.ts            # ตัวยิง Webhook แจ้งเตือนบอทห้องแชทแยกตามห้องเรียน
-└── .env.local                # ไฟล์เก็บค่า Config และความลับระบบคลาวด์
+│   └── esp32.ino                 # ซอร์สโค้ดอัปโหลดชิปของ ESP32 บอร์ดหลักห้อง CE-402
+├── esp32C1/
+│   └── esp32C1.ino               # ซอร์สโค้ดอัปโหลดชิปของ ESP32 บอร์ดตัวเลือกห้อง CE-401
+└── complete_system_manual_th.md  # คู่มือระบบควบคุมประตูและซอร์สโค้ดฉบับละเอียด (Thesis Manual)
 ```
 
 ---
