@@ -739,9 +739,9 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 11:40:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 12:05:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
-<p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> กับ <code>esp32C1/</code></p>
+<p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
 <hr>
 <p><a id="%E0%B8%AA%E0%B8%B2%E0%B8%A3%E0%B8%9A%E0%B8%B1%E0%B8%8D"></a><br><a id="toc"></a></p>
@@ -985,13 +985,10 @@
     proxy.ts                           ป้องกันเส้นทาง /admin/dashboard
     next.config.ts                     security headers และ Next config
   esp32/
-    esp32.ino                          เฟิร์มแวร์บอร์ดห้อง CE-402
-    config.h.template                  template ตั้งค่า Wi-Fi/server/API key
+    esp32.ino                          เฟิร์มแวร์บอร์ด (ใช้ตัวเดียวทุกห้อง — กำหนดห้องผ่าน config.h)
+    config.h.template                  template ตั้งค่า Wi-Fi/server/API key/room_code
     diagram.json                       วงจร Wokwi
     wokwi.toml                         ตั้งค่า Wokwi simulator
-  esp32C1/
-    esp32C1.ino                        เฟิร์มแวร์บอร์ดห้อง CE-401
-    config.h.template                  template ตั้งค่าห้อง CE-401
 </code></pre>
 <hr>
 <p align="right"><a href="#toc">⬆ กลับสารบัญ</a></p><p><a id="sec-3"></a></p>
@@ -1255,7 +1252,7 @@ const char *server_url = &quot;https://your-domain.vercel.app/api/esp32/display?
 const char *room_code = &quot;CE-402&quot;;
 const char *api_key = &quot;ค่าเดียวกับ ESP32_API_KEY บน server&quot;;
 </code></pre>
-<p>ถ้าใช้ <code>esp32C1/</code> ให้ตั้ง room เป็น <code>CE-401</code></p>
+<p>สำหรับบอร์ดห้องอื่น ให้แก้ <code>room_code</code> (และ <code>server_url</code> ?room=) เป็นห้องนั้น เช่น <code>CE-401</code></p>
 <h3>6.3 ติดตั้ง library ใน Arduino IDE</h3>
 <p>ต้องมี library ต่อไปนี้</p>
 <ul>
@@ -1773,10 +1770,9 @@ Buck 5V GND ----------- ESP32 GND
 <h2>12. อธิบายโค้ดฝั่ง ESP32 รายฟังก์ชัน</h2>
 <p>ไฟล์หลัก:</p>
 <ul>
-<li><code>esp32/esp32.ino</code>: ใช้กับห้อง CE-402 ตาม template</li>
-<li><code>esp32C1/esp32C1.ino</code>: ใช้กับห้อง CE-401</li>
+<li><code>esp32/esp32.ino</code>: เฟิร์มแวร์ตัวเดียว ใช้ได้ทุกห้อง</li>
 </ul>
-<p>โครงสร้างทั้งสองไฟล์เหมือนกัน ต่างที่ <code>config.h</code> และ room target</p>
+<p>แต่ละบอร์ดใช้ไฟล์ <code>.ino</code> เดียวกัน ต่างกันที่ค่าใน <code>config.h</code> (<code>room_code</code> เช่น <code>CE-401</code> / <code>CE-402</code>, Wi-Fi, API key)</p>
 <h3>12.1 ตัวแปรและ pin</h3>
 <table>
 <thead>

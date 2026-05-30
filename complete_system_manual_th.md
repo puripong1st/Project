@@ -1,11 +1,11 @@
 # คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-30 11:40:00 (+07:00)  
+อัปเดตล่าสุด: 2026-05-30 12:05:00 (+07:00)  
 โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
-> คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน `my-app/` และเฟิร์มแวร์บอร์ดอยู่ใน `esp32/` กับ `esp32C1/`
+> คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน `my-app/` และเฟิร์มแวร์บอร์ดอยู่ใน `esp32/` (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน `config.h`)
 
 ---
 
@@ -260,13 +260,10 @@ Project/
     proxy.ts                           ป้องกันเส้นทาง /admin/dashboard
     next.config.ts                     security headers และ Next config
   esp32/
-    esp32.ino                          เฟิร์มแวร์บอร์ดห้อง CE-402
-    config.h.template                  template ตั้งค่า Wi-Fi/server/API key
+    esp32.ino                          เฟิร์มแวร์บอร์ด (ใช้ตัวเดียวทุกห้อง — กำหนดห้องผ่าน config.h)
+    config.h.template                  template ตั้งค่า Wi-Fi/server/API key/room_code
     diagram.json                       วงจร Wokwi
     wokwi.toml                         ตั้งค่า Wokwi simulator
-  esp32C1/
-    esp32C1.ino                        เฟิร์มแวร์บอร์ดห้อง CE-401
-    config.h.template                  template ตั้งค่าห้อง CE-401
 ```
 
 ---
@@ -555,7 +552,7 @@ const char *room_code = "CE-402";
 const char *api_key = "ค่าเดียวกับ ESP32_API_KEY บน server";
 ```
 
-ถ้าใช้ `esp32C1/` ให้ตั้ง room เป็น `CE-401`
+สำหรับบอร์ดห้องอื่น ให้แก้ `room_code` (และ `server_url` ?room=) เป็นห้องนั้น เช่น `CE-401`
 
 ### 6.3 ติดตั้ง library ใน Arduino IDE
 
@@ -948,10 +945,9 @@ erDiagram
 
 ไฟล์หลัก:
 
-- `esp32/esp32.ino`: ใช้กับห้อง CE-402 ตาม template
-- `esp32C1/esp32C1.ino`: ใช้กับห้อง CE-401
+- `esp32/esp32.ino`: เฟิร์มแวร์ตัวเดียว ใช้ได้ทุกห้อง
 
-โครงสร้างทั้งสองไฟล์เหมือนกัน ต่างที่ `config.h` และ room target
+แต่ละบอร์ดใช้ไฟล์ `.ino` เดียวกัน ต่างกันที่ค่าใน `config.h` (`room_code` เช่น `CE-401` / `CE-402`, Wi-Fi, API key)
 
 ### 12.1 ตัวแปรและ pin
 

@@ -101,9 +101,8 @@ Project/
 │   │   └── discord.ts            # ตัวจัดการโครงสร้าง Embed Message แยกช่องทาง
 │   └── vercel.json               # คอนฟิก Vercel Serverless & Crons
 ├── esp32/
-│   └── esp32.ino                 # ซอร์สโค้ดอัปโหลดชิปของ ESP32 บอร์ดหลักห้อง CE-402
-├── esp32C1/
-│   └── esp32C1.ino               # ซอร์สโค้ดอัปโหลดชิปของ ESP32 บอร์ดตัวเลือกห้อง CE-401
+│   ├── esp32.ino                 # เฟิร์มแวร์ ESP32 (ใช้ตัวเดียวทุกห้อง — กำหนดห้องผ่าน config.h)
+│   └── config.h.template         # template ตั้งค่า Wi-Fi / server_url / api_key / room_code
 └── complete_system_manual_th.md  # คู่มือระบบควบคุมประตูและซอร์สโค้ดฉบับละเอียด (Thesis Manual)
 ```
 
