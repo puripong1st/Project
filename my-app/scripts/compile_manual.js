@@ -233,6 +233,57 @@ const htmlTemplate = `<!DOCTYPE html>
       margin: 0;
     }
 
+    .toc-group-header {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--primary);
+      padding: 10px 12px;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      background-color: var(--bg-primary);
+      border-radius: 8px;
+      transition: all 0.2s;
+      border-left: 2px solid transparent;
+    }
+
+    .toc-group-header:hover {
+      background-color: var(--primary-pale);
+      border-left-color: var(--primary);
+    }
+
+    .toc-group-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      margin-top: 4px;
+      padding-left: 4px;
+      max-height: 2000px;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+      opacity: 1;
+    }
+
+    .toc-group-list.collapsed {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .toc-group-arrow {
+      font-size: 10px;
+      transition: transform 0.3s;
+      opacity: 0.7;
+    }
+
+    .toc-group-arrow.collapsed {
+      transform: rotate(-90deg);
+    }
+
     .toc-menu li {
       margin-bottom: 4px;
     }
@@ -1353,47 +1404,132 @@ const htmlTemplate = `<!DOCTYPE html>
       const headers = document.querySelectorAll("#compiledContent h2, #compiledContent h3");
       const tocMenu = document.getElementById("tocMenu");
       const sidebar = document.getElementById("appSidebar");
-      
+
+      // Define standard groups
+      const groups = [
+        { id: "group-1", title: "📘 ภาคหลัก (1-19)", range: [1, 19] },
+        { id: "group-2", title: "🔬 ภาคผนวกเชิงลึก (20-34)", range: [20, 34] },
+        { id: "group-3", title: "⚙️ ภาคผนวกระดับวิศวกร (35-44)", range: [35, 44] },
+        { id: "group-4", title: "🎯 ภาคเจาะลึกขั้นสูง (45-999)", range: [45, 999] }
+      ];
+
+      // Create group HTML containers inside tocMenu
+      const groupLists = {};
+      groups.forEach(g => {
+        const groupLi = document.createElement("li");
+        groupLi.className = "toc-group-item";
+
+        // Group Header (Collapsible)
+        const headerDiv = document.createElement("div");
+        headerDiv.className = "toc-group-header";
+        headerDiv.innerHTML = '<span>' + g.title + '</span><span class="toc-group-arrow collapsed">▼</span>';
+        headerDiv.dataset.groupId = g.id;
+
+        // Group Sub-menu UL (Collapsed by default)
+        const subUl = document.createElement("ul");
+        subUl.className = "toc-group-list collapsed";
+        subUl.id = g.id;
+
+        // Toggle click handler
+        headerDiv.addEventListener("click", () => {
+          subUl.classList.toggle("collapsed");
+          headerDiv.querySelector(".toc-group-arrow").classList.toggle("collapsed");
+        });
+
+        groupLi.appendChild(headerDiv);
+        groupLi.appendChild(subUl);
+        tocMenu.appendChild(groupLi);
+
+        groupLists[g.id] = subUl;
+      });
+
+      // Helper to parse section number
+      function getSectionNumber(text) {
+        const cleanText = text.replace(/^§/, "").trim();
+        const match = cleanText.match(/^(\d+)/);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+        return null;
+      }
+
+      let currentGroupId = null;
+
       headers.forEach((h, index) => {
+        const text = h.textContent.trim();
+
+        // 1. Skip Table of Contents section headings to prevent duplication
+        if (text === "สารบัญ" || 
+            text.includes("ภาคหลัก (1-19)") || 
+            text.includes("ภาคผนวกเชิงลึก (20-34)") || 
+            text.includes("ภาคผนวกระดับวิศวกร (35-44)") || 
+            text.includes("ภาคเจาะลึกขั้นสูง")) {
+          return;
+        }
+
         if (!h.id) {
           h.id = "sec-auto-" + index;
         }
-        
+
+        // 2. Identify the group for H2 headings
+        if (h.tagName === "H2" || h.tagName === "h2") {
+          const sectionNum = getSectionNumber(text);
+          if (sectionNum !== null) {
+            const foundGroup = groups.find(g => sectionNum >= g.range[0] && sectionNum <= g.range[1]);
+            if (foundGroup) {
+              currentGroupId = foundGroup.id;
+            } else {
+              currentGroupId = null;
+            }
+          } else {
+            currentGroupId = null;
+          }
+        }
+
+        const targetList = currentGroupId ? groupLists[currentGroupId] : null;
+        if (!targetList && h.tagName !== "H2") {
+          return;
+        }
+
         const li = document.createElement("li");
         const a = document.createElement("a");
         a.href = "#" + h.id;
         a.id = "toc-link-" + h.id;
-        a.title = h.textContent;
-        a.textContent = h.textContent;
-        
+        a.title = text;
+        a.textContent = text;
+
         if (h.tagName === "H3" || h.tagName === "h3") {
           a.classList.add("toc-h3");
         }
-        
+
         a.addEventListener("click", (e) => {
           e.preventDefault();
-          
+
           // Smooth scroll to target header
           const target = document.getElementById(h.id);
           if (target) {
             target.scrollIntoView({ behavior: 'smooth' });
           }
-          
+
           // Update URL hash directly on click without jumping
           history.pushState(null, null, "#" + h.id);
-          
+
           // Highlight active link immediately
           document.querySelectorAll("#tocMenu a").forEach(link => link.classList.remove("active"));
           a.classList.add("active");
-          
+
           // On mobile, close the sidebar after clicking
           if (window.innerWidth <= 1024) {
             toggleSidebar();
           }
         });
-        
+
         li.appendChild(a);
-        tocMenu.appendChild(li);
+        if (targetList) {
+          targetList.appendChild(li);
+        } else {
+          tocMenu.appendChild(li);
+        }
       });
 
       // Create action buttons for exporting specific sections (Attached to both h2 headings AND "กลับสารบัญ" paragraph blocks)
@@ -1716,6 +1852,18 @@ const htmlTemplate = `<!DOCTYPE html>
         tocLinks.forEach(link => {
           if (link.id === "toc-link-" + activeId) {
             link.classList.add("active");
+
+            // Expand parent group dynamically if collapsed!
+            const parentUl = link.closest(".toc-group-list");
+            if (parentUl && parentUl.classList.contains("collapsed")) {
+              parentUl.classList.remove("collapsed");
+              const headerDiv = parentUl.previousElementSibling;
+              if (headerDiv) {
+                const arrow = headerDiv.querySelector(".toc-group-arrow");
+                if (arrow) arrow.classList.remove("collapsed");
+              }
+            }
+
             // Auto-scroll sidebar if active item is out of view
             const linkRect = link.getBoundingClientRect();
             const sidebarRect = sidebar.getBoundingClientRect();
@@ -1742,17 +1890,65 @@ const htmlTemplate = `<!DOCTYPE html>
       overlay.classList.toggle("active");
     }
 
-    // Simple search inside Sidebar
+    // Advanced search inside Sidebar with collapsible group support
     const searchInput = document.getElementById("searchInput");
     searchInput.addEventListener("input", function(e) {
-      const query = e.target.value.toLowerCase();
-      const links = document.querySelectorAll("#tocMenu li");
-      links.forEach(link => {
-        const text = link.textContent.toLowerCase();
-        if (text.includes(query)) {
-          link.style.display = "block";
+      const query = e.target.value.toLowerCase().trim();
+      
+      // If query is empty, collapse all groups except the one containing the active link
+      if (query === "") {
+        document.querySelectorAll(".toc-group-list").forEach(list => {
+          if (list.querySelector("a.active")) {
+            list.classList.remove("collapsed");
+            const header = list.previousElementSibling;
+            if (header) {
+              header.querySelector(".toc-group-arrow").classList.remove("collapsed");
+              header.style.display = "flex";
+            }
+          } else {
+            list.classList.add("collapsed");
+            const header = list.previousElementSibling;
+            if (header) {
+              header.querySelector(".toc-group-arrow").classList.add("collapsed");
+              header.style.display = "flex";
+            }
+          }
+        });
+        document.querySelectorAll(".toc-group-list li").forEach(li => li.style.display = "");
+        document.querySelectorAll(".toc-group-item").forEach(item => item.style.display = "");
+        return;
+      }
+
+      // If search query exists, match links and expand parents dynamically
+      document.querySelectorAll(".toc-group-list").forEach(list => {
+        let hasMatch = false;
+        list.querySelectorAll("li").forEach(li => {
+          const text = li.textContent.toLowerCase();
+          if (text.includes(query)) {
+            li.style.display = "block";
+            hasMatch = true;
+          } else {
+            li.style.display = "none";
+          }
+        });
+
+        const groupItem = list.closest(".toc-group-item");
+        if (hasMatch) {
+          list.classList.remove("collapsed");
+          const header = list.previousElementSibling;
+          if (header) {
+            header.querySelector(".toc-group-arrow").classList.remove("collapsed");
+            header.style.display = "flex";
+          }
+          if (groupItem) groupItem.style.display = "block";
         } else {
-          link.style.display = "none";
+          list.classList.add("collapsed");
+          const header = list.previousElementSibling;
+          if (header) {
+            header.querySelector(".toc-group-arrow").classList.add("collapsed");
+            header.style.display = "none";
+          }
+          if (groupItem) groupItem.style.display = "none";
         }
       });
     });
