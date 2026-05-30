@@ -297,7 +297,7 @@ interface DashboardContextType {
   handleAddRoom: (e?: React.FormEvent | React.MouseEvent) => Promise<void>;
   handleRemoveRoom: (roomCode: string) => Promise<void>;
   fetchSystemStatus: () => Promise<void>;
-  fetchHealthData: () => Promise<void>;
+  fetchHealthData: (runProbes?: boolean) => Promise<void>;
   fetchFirmwares: () => Promise<void>;
   fetchFirmwareLogs: () => Promise<void>;
   saveSingleRoomSettings: (roomCode: string, ipAddress: string) => Promise<void>;
@@ -835,9 +835,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const fetchHealthData = useCallback(async () => {
+  const fetchHealthData = useCallback(async (runProbes = false) => {
     try {
-      const r = await fetch("/api/system/health");
+      const url = runProbes ? "/api/system/health?probe=1" : "/api/system/health";
+      const r = await fetch(url);
       if (r.ok) {
         setHealthData(await r.json());
       }

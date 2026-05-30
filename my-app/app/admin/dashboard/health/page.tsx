@@ -110,17 +110,17 @@ export default function HealthPage() {
 
   const handleRefresh = useCallback(async () => {
     setLoading(true);
-    await fetchHealthData();
+    await fetchHealthData(true);
     setLoading(false);
   }, [fetchHealthData]);
 
   useEffect(() => {
-    fetchHealthData();
+    fetchHealthData(activeSection === "api");
     const interval = setInterval(() => {
-      fetchHealthData();
+      fetchHealthData(activeSection === "api");
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchHealthData]);
+  }, [fetchHealthData, activeSection]);
 
   if (!healthData) {
     return (
