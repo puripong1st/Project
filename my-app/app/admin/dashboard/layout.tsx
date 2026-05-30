@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardProvider, useDashboard } from "./DashboardContext";
 import { useRouter, usePathname } from "next/navigation";
+import { useTheme } from "../../components/ThemeProvider";
+import DashboardCharts from "../../components/DashboardCharts";
+import { AnimatedCounter } from "../../components/AnimatedCounter";
 
 // formatDateTime function copy
 function formatDateTimeLocal(dt: string | null | undefined): string {
@@ -279,9 +282,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
+const MetricCardSkeleton = () => (
+  <div className="premium-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16, animation: "pulse-soft 2s infinite" }}>
+    <div style={{ width: 48, height: 48, borderRadius: 14, background: "var(--border-medium)" }} />
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ height: 24, width: "60%", background: "var(--border-medium)", borderRadius: 6 }} />
+      <div style={{ height: 14, width: "40%", background: "var(--border)", borderRadius: 4 }} />
+    </div>
+  </div>
+);
+
+const ChartsSkeleton = () => (
+  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginBottom: 24 }} className="animate-fade-in">
+    {[1, 2, 3].map(i => (
+      <div key={i} className="premium-card" style={{ padding: 20, background: "var(--bg-secondary)", height: 320, display: "flex", flexDirection: "column", gap: 16, animation: "pulse-soft 2s infinite" }}>
+        <div style={{ height: 20, width: "50%", background: "var(--border-medium)", borderRadius: 6 }} />
+        <div style={{ flex: 1, background: "var(--border)", borderRadius: 12 }} />
+      </div>
+    ))}
+  </div>
+);
+
 function InnerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
   const {
     tab, setTab,
     user,
@@ -338,7 +363,10 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
     setMobileMenuOpen,
     showToast,
     rawSettings,
-    setEditingAdmin
+    setEditingAdmin,
+    analyticsData,
+    analyticsLoading,
+    exportSummary
   } = useDashboard();
 
   const [showWarning, setShowWarning] = useState(false);
@@ -1230,6 +1258,14 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div style={{ padding: "16px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="btn-secondary"
+              style={{ padding: "10px", borderRadius: 12, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" }}
+            >
+              {theme === "light" ? "🌙 โหมดมืด (Dark Mode)" : "☀️ โหมดสว่าง (Light Mode)"}
+            </button>
             <a
               href="/esp32-preview"
               target="_blank"
@@ -1347,79 +1383,107 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
 
             {/* ── Premium Metric Summary Cards Grid ── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }} className="animate-fade-in">
-              {/* Card 1: Pending Queue */}
-              <div className="premium-card hover-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(245, 158, 11, 0.1)", border: "1.5px solid rgba(245, 158, 11, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#F59E0B" }}>
-                  <ClockIcon className="w-6 h-6" />
-                </div>
-                <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{pendingCount} คน</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2 }}>กำลังรออนุมัติสิทธิ์</div>
-                </div>
-              </div>
+              {!systemStatus ? (
+                <>
+                  <MetricCardSkeleton />
+                  <MetricCardSkeleton />
+                  <MetricCardSkeleton />
+                  <MetricCardSkeleton />
+                </>
+              ) : (
+                <>
+                  {/* Card 1: Pending Queue */}
+                  <div className="premium-card hover-card hover-spin" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(245, 158, 11, 0.1)", border: "1.5px solid rgba(245, 158, 11, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#F59E0B" }}>
+                      <ClockIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+                        <AnimatedCounter value={pendingCount} suffix=" คน" />
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2 }}>กำลังรออนุมัติสิทธิ์</div>
+                    </div>
+                  </div>
 
-              {/* Card 2: Door Opens Today */}
-              <div className="premium-card hover-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(16, 185, 129, 0.1)", border: "1.5px solid rgba(16, 185, 129, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#10B981" }}>
-                  <UnlockIcon />
-                </div>
-                <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{stats.doorOpensToday} ครั้ง</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2 }}>
-                    ผ่านประตูวันนี้ (Bypass: {stats.bypassToday})
+                  {/* Card 2: Door Opens Today */}
+                  <div className="premium-card hover-card hover-spin" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(16, 185, 129, 0.1)", border: "1.5px solid rgba(16, 185, 129, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#10B981" }}>
+                      <UnlockIcon />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+                        <AnimatedCounter value={stats.doorOpensToday} suffix=" ครั้ง" />
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2 }}>
+                        ผ่านประตูวันนี้ (Bypass: <AnimatedCounter value={stats.bypassToday} />)
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Card 3: ESP32 Hardware Status */}
-              <div
-                className="premium-card hover-card"
-                onClick={() => {
-                  setTab("rooms");
-                  router.push("/admin/dashboard/rooms");
-                }}
-                style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
-              >
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(124, 58, 237, 0.1)", border: "1.5px solid rgba(124, 58, 237, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--smartaccess-purple)" }}>
-                  <TVIcon />
-                </div>
-                <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
-                    {stats.onlineBoards} / {stats.totalBoards} บอร์ด
+                  {/* Card 3: ESP32 Hardware Status */}
+                  <div
+                    className="premium-card hover-card hover-spin"
+                    onClick={() => {
+                      setTab("rooms");
+                      router.push("/admin/dashboard/rooms");
+                    }}
+                    style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
+                  >
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(124, 58, 237, 0.1)", border: "1.5px solid rgba(124, 58, 237, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--smartaccess-purple)" }}>
+                      <TVIcon />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+                        <AnimatedCounter value={stats.onlineBoards} /> / <AnimatedCounter value={stats.totalBoards} suffix=" บอร์ด" />
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: stats.onlineBoards > 0 ? "#10B981" : "#EF4444" }} />
+                        <span>บอร์ดเชื่อมต่อออนไลน์อยู่</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: stats.onlineBoards > 0 ? "#10B981" : "#EF4444" }} />
-                    <span>บอร์ดเชื่อมต่อออนไลน์อยู่</span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Card 4: Discord Webhook Status */}
-              <div
-                className="premium-card hover-card"
-                onClick={() => {
-                  setTab("settings");
-                  router.push("/admin/dashboard/settings");
-                }}
-                style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
-              >
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(219, 39, 119, 0.1)", border: "1.5px solid rgba(219, 39, 119, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--edu-pink)" }}>
-                  <SettingsIcon />
-                </div>
-                <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)" }}>
-                    {systemStatus?.discord?.configured ? "เชื่อมต่อ" : "ไม่ได้ใส่"}
+                  {/* Card 4: Discord Webhook Status */}
+                  <div
+                    className="premium-card hover-card hover-spin"
+                    onClick={() => {
+                      setTab("settings");
+                      router.push("/admin/dashboard/settings");
+                    }}
+                    style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
+                  >
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(219, 39, 119, 0.1)", border: "1.5px solid rgba(219, 39, 119, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--edu-pink)" }}>
+                      <SettingsIcon />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)" }}>
+                        {systemStatus?.discord?.configured ? "เชื่อมต่อ" : "ไม่ได้ใส่"}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: systemStatus?.discord?.configured ? "#10B981" : "#F59E0B" }} />
+                        <span>ช่องทางแจ้งเตือน</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", fontWeight: 700, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: systemStatus?.discord?.configured ? "#10B981" : "#F59E0B" }} />
-                    <span>ช่องทางแจ้งเตือน</span>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
 
-            {/* Render children sub-routes pages */}
-            {children}
+            {/* ── Recharts Analytics Section (Shown only in the landing pending requests view) ── */}
+            {tab === "pending" && (
+              <>
+                {(analyticsLoading || !analyticsData) ? (
+                  <ChartsSkeleton />
+                ) : (
+                  <DashboardCharts analyticsData={analyticsData} exportSummary={exportSummary} />
+                )}
+              </>
+            )}
+
+            {/* Render children sub-routes pages with active fadeInUp animation on tab change */}
+            <div key={tab} className="animate-fade-in">
+              {children}
+            </div>
 
           </div>
         </main>

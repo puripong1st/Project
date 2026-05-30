@@ -48,6 +48,7 @@ export default function SettingsPage() {
   } = useDashboard();
 
   const [provider, setProvider] = useState<Provider>("discord");
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   if (!user || !isOwner) return null;
 
@@ -91,6 +92,17 @@ export default function SettingsPage() {
   };
 
   const configuredCount = (["discord", "telegram", "line"] as Provider[]).filter(isConfigured).length;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await handleSaveSettings(e);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch {
+      // handled globally
+    }
+  };
 
   return (
     <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20, maxWidth: 780 }}>
@@ -150,7 +162,7 @@ export default function SettingsPage() {
               </span>
             </div>
 
-            <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 16, padding: 18 }}>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16, padding: 18 }}>
               {/* คำอธิบายเฉพาะช่อง */}
               {provider === "telegram" && (
                 <p style={{ color: "var(--text-secondary)", fontSize: 12, margin: 0, lineHeight: 1.55, background: active.tint, padding: "10px 14px", borderRadius: 10 }}>
@@ -165,11 +177,23 @@ export default function SettingsPage() {
 
               {/* Token (Telegram/LINE) */}
               {tokenField && (
-                <div style={{ background: active.tint, padding: "12px 14px", borderRadius: 10, border: `1px solid ${active.color}22` }}>
-                  <label style={labelStyle}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Key size={13} /> {tokenField.label} *</span></label>
-                  <input className="smartaccess-input" type="text" placeholder={tokenField.ph} value={raw(tokenField.key)} onChange={e => setRaw(tokenField.key, e.target.value)} style={{ width: "100%", padding: "10px 14px", fontSize: 12.5 }} />
-                </div>
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0 2px 0" }}>
+                    <span style={{ fontSize: 11, fontWeight: 900, color: "var(--smartaccess-purple)", letterSpacing: "1px", textTransform: "uppercase" }}>🔑 Credentials & Access Keys</span>
+                    <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                  </div>
+                  <div style={{ background: active.tint, padding: "12px 14px", borderRadius: 10, border: `1px solid ${active.color}22` }}>
+                    <label style={labelStyle}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Key size={13} /> {tokenField.label} *</span></label>
+                    <input className="smartaccess-input" type="text" placeholder={tokenField.ph} value={raw(tokenField.key)} onChange={e => setRaw(tokenField.key, e.target.value)} style={{ width: "100%", padding: "10px 14px", fontSize: 12.5 }} />
+                  </div>
+                </>
               )}
+
+              {/* Event destinations header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0 2px 0" }}>
+                <span style={{ fontSize: 11, fontWeight: 900, color: "var(--smartaccess-purple)", letterSpacing: "1px", textTransform: "uppercase" }}>🔔 Webhook & Message Routing</span>
+                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+              </div>
 
               {/* 4 ช่องแจ้งเตือน */}
               {CHANNEL_ROWS.map((row) => {
@@ -193,8 +217,36 @@ export default function SettingsPage() {
                 );
               })}
 
-              <button type="submit" disabled={settingsLoading} className="btn-success" style={{ padding: "12px 22px", borderRadius: 10, fontSize: 13, fontWeight: 800, alignSelf: "flex-start", background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", color: "#fff", border: "none", cursor: "pointer", boxShadow: "0 6px 16px rgba(124,58,237,0.25)", marginTop: 4, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                {settingsLoading ? <><Loader2 size={14} className="animate-spin" /> กำลังบันทึก...</> : <><Save size={14} /> บันทึกการตั้งค่า {active.name}</>}
+              <button
+                type="submit"
+                disabled={settingsLoading}
+                className="btn-success"
+                style={{
+                  padding: "12px 22px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  alignSelf: "flex-start",
+                  background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow: "0 6px 16px rgba(124,58,237,0.25)",
+                  marginTop: 4,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                {settingsLoading ? (
+                  <><Loader2 size={14} className="animate-spin" /> กำลังบันทึก...</>
+                ) : saveSuccess ? (
+                  <span className="animate-scale-in" style={{ color: "#FFF", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <CheckCircle2 size={14} /> บันทึกการตั้งค่าสำเร็จ!
+                  </span>
+                ) : (
+                  <><Save size={14} /> บันทึกการตั้งค่า {active.name}</>
+                )}
               </button>
             </form>
           </div>

@@ -461,8 +461,21 @@ const htmlTemplate = `<!DOCTYPE html>
     /* Mermaid text readability and spacing fixes */
     .mermaid svg {
       font-family: var(--font-th) !important;
+      max-width: 100%;
+      height: auto;
     }
-    
+
+    /* CRITICAL FIX: ป้องกันตัวอักษรไทย (สระบน/ล่าง วรรณยุกต์) ถูกตัดขอบกล่อง
+       foreignObject ของ Mermaid ตั้ง overflow:hidden เป็นค่าเริ่มต้น ทำให้ส่วนหางอักษรหาย */
+    .mermaid svg foreignObject {
+      overflow: visible !important;
+    }
+    .mermaid svg .nodeLabel,
+    .mermaid svg .edgeLabel,
+    .mermaid svg .label foreignObject > div {
+      overflow: visible !important;
+    }
+
     /* Support for beautiful HTML labels inside Mermaid nodes (v10+ foreignObject) */
     .mermaid div,
     .mermaid span,
@@ -470,10 +483,16 @@ const htmlTemplate = `<!DOCTYPE html>
     .mermaid span.label,
     .mermaid p {
       font-family: var(--font-th) !important;
-      line-height: 1.45 !important;
+      line-height: 1.6 !important;     /* เพิ่ม line-height กันสระบน/ล่างชนกันและถูกตัด */
       font-size: 13.5px !important;
       color: #1E293B !important;
       font-weight: 500 !important;
+      white-space: nowrap;             /* ให้ Mermaid วัดความกว้างเต็มบรรทัด ไม่หักบรรทัดมั่ว */
+      overflow: visible !important;
+    }
+    /* ป้าย node ใน flowchart — เผื่อพื้นที่แนวตั้งเล็กน้อย */
+    .mermaid svg .node .label {
+      overflow: visible !important;
     }
     
     body.dark-mode .mermaid div,
@@ -919,18 +938,24 @@ const htmlTemplate = `<!DOCTYPE html>
       theme: 'default',
       securityLevel: 'loose',
       htmlLabels: true, // Render text via HTML foreignObject for perfect Thai font wrap and zero overlap!
+      // CRITICAL FIX: บังคับให้ Mermaid วัดความกว้างข้อความด้วยฟอนต์ Sarabun ตัวจริง
+      // (เดิม Mermaid วัดด้วยฟอนต์ fallback ก่อนฟอนต์ไทยโหลดเสร็จ ทำให้กล่องเล็กเกินจนตัวอักษรไทยถูกตัด)
+      fontFamily: "'Sarabun', sans-serif",
       flowchart: {
-        useWidth: true,
+        useMaxWidth: true,
         htmlLabels: true,
-        nodeSpacing: 75, // Significantly increase horizontal space between nodes (default is 40)
-        rankSpacing: 75, // Significantly increase vertical space between ranks (default is 50)
+        nodeSpacing: 80, // Significantly increase horizontal space between nodes (default is 40)
+        rankSpacing: 85, // Significantly increase vertical space between ranks (default is 50)
+        padding: 18, // เพิ่มระยะขอบในกล่อง node ให้ตัวอักษรไทยมีที่หายใจ ไม่ถูกตัด
         curve: 'basis'  // Make lines smooth and curved, avoiding sharp overlapping zigzags!
       },
       sequence: {
-        actorMargin: 75, // Increase horizontal gap between actors
-        messageMargin: 45, // Increase vertical space between messages
-        boxMargin: 15,
-        noteMargin: 15
+        actorMargin: 90, // Increase horizontal gap between actors
+        messageMargin: 50, // Increase vertical space between messages
+        boxMargin: 18,
+        noteMargin: 16,
+        wrap: true,
+        width: 175 // กว้างขึ้นต่อกล่องข้อความ กันตัวอักษรไทยล้น
       }
     });
     window.mermaid = mermaid;
@@ -1019,7 +1044,21 @@ const htmlTemplate = `<!DOCTYPE html>
     // Lazy load and progressively render Mermaid diagrams using IntersectionObserver
     window.addEventListener("DOMContentLoaded", function() {
       const mermaidDivs = document.querySelectorAll(".mermaid");
-      
+
+      // ─── CRITICAL: รอให้ฟอนต์ Sarabun (ไทย) โหลดครบทุกน้ำหนักก่อน render ───
+      // มิฉะนั้น Mermaid จะวัดความกว้างข้อความด้วยฟอนต์ fallback แล้วสร้างกล่องเล็กเกินไป
+      // ทำให้ตัวอักษรไทยถูกตัด/ตกหล่นเมื่อฟอนต์จริงโหลดเสร็จภายหลัง
+      const fontsReady = (function() {
+        if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+        const loads = [
+          document.fonts.load("400 14px Sarabun"),
+          document.fonts.load("500 14px Sarabun"),
+          document.fonts.load("600 14px Sarabun"),
+          document.fonts.load("700 14px Sarabun")
+        ];
+        return Promise.all([document.fonts.ready, Promise.all(loads).catch(function(){})]);
+      })();
+
       // 1. Initialize beautiful loading skeletons and backup raw code
       mermaidDivs.forEach((div, index) => {
         const diagramNum = index + 1;
@@ -1052,11 +1091,11 @@ const htmlTemplate = `<!DOCTYPE html>
             
             // Restore diagram raw code for rendering
             div.textContent = rawCode;
-            
-            // Render this specific diagram asynchronously
-            window.mermaid.run({
+
+            // Render this specific diagram asynchronously — รอฟอนต์ไทยก่อนเสมอ
+            fontsReady.then(() => window.mermaid.run({
               nodes: [div]
-            }).then(() => {
+            })).then(() => {
               // Clean up the skeleton
               if (skeleton && skeleton.parentNode === div) {
                 div.removeChild(skeleton);

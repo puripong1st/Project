@@ -23,6 +23,7 @@ import {
   Scale,
 } from "lucide-react";
 import { useDashboard } from "../DashboardContext";
+import EmptyState from "../../../components/EmptyState";
 import {
   formatDateTime,
   IdCardIcon,
@@ -34,6 +35,65 @@ import {
   renderLogNotes,
   formatDeviceFromUA
 } from "../DashboardHelpers";
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightSearchText(text: string, search: string) {
+  if (!search || !search.trim()) return <span>{text}</span>;
+  const regex = new RegExp(`(${escapeRegExp(search)})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <span>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark
+            key={i}
+            style={{
+              background: "rgba(124, 58, 237, 0.2)",
+              color: "var(--smartaccess-purple-dark)",
+              borderRadius: 4,
+              padding: "0px 2px",
+              fontWeight: 800
+            }}
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+}
+
+const TableSkeleton = () => (
+  <div className="smartaccess-table-container animate-fade-in" style={{ animation: "pulse-soft 2s infinite" }}>
+    <table className="smartaccess-table">
+      <thead>
+        <tr>
+          <th style={{ height: 40 }}>ชื่อ - นามสกุล / รหัส</th>
+          <th style={{ height: 40 }}>ระดับชั้นปี</th>
+          <th style={{ height: 40 }}>สิทธิ์ห้อง / วันที่</th>
+          <th style={{ height: 40 }}>สถานะอนุมัติ</th>
+          <th style={{ height: 40, textAlign: "right" }}>การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[1, 2, 3, 4, 5].map(i => (
+          <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+            <td style={{ padding: 20 }}><div style={{ height: 16, width: "70%", background: "var(--border-medium)", borderRadius: 4 }} /></td>
+            <td style={{ padding: 20 }}><div style={{ height: 16, width: "50%", background: "var(--border-medium)", borderRadius: 4 }} /></td>
+            <td style={{ padding: 20 }}><div style={{ height: 16, width: "30%", background: "var(--border-medium)", borderRadius: 4 }} /></td>
+            <td style={{ padding: 20 }}><div style={{ height: 16, width: "40%", background: "var(--border-medium)", borderRadius: 4 }} /></td>
+            <td style={{ padding: 20 }}><div style={{ height: 16, width: "20%", background: "var(--border-medium)", borderRadius: 4 }} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
 export default function AllPage() {
   const {
@@ -72,6 +132,12 @@ export default function AllPage() {
     fetchAll,
     fetchLogs
   } = useDashboard();
+
+  const [pageLoading, setPageLoading] = React.useState(true);
+  React.useEffect(() => {
+    const t = setTimeout(() => setPageLoading(false), 450);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!user) return null;
 
@@ -213,12 +279,14 @@ export default function AllPage() {
           </div>
         </div>
 
-        {filteredStudents.length === 0 ? (
-          <div style={{ padding: "40px 20px", textShadow: "none", textAlign: "center" }}>
-            <div style={{ marginBottom: 12, color: "var(--text-muted)" }}><Users size={40} /></div>
-            <h4 style={{ fontSize: 14, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ไม่พบรายชื่อนักศึกษาตรงตามเงื่อนไขค้นหา</h4>
-            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>กรุณาลองเปลี่ยนคำค้นหา หรือเปลี่ยนสถานะที่กรอง</p>
-          </div>
+        {pageLoading ? (
+          <TableSkeleton />
+        ) : filteredStudents.length === 0 ? (
+          <EmptyState
+            title="ไม่พบรายชื่อนักศึกษาตรงตามเงื่อนไขค้นหา"
+            description="กรุณาลองเปลี่ยนคำค้นหา คีย์เวิร์ด หรือเปลี่ยนตัวกรองสถานะสิทธิ์ผ่านประตู"
+            illustration="search"
+          />
         ) : (
           <div className="smartaccess-table-container">
             <table className="smartaccess-table">
@@ -236,11 +304,11 @@ export default function AllPage() {
                   <tr key={student.id} style={{ borderBottom: "1px solid var(--border)", fontSize: 13, background: "rgba(255,255,255,0.01)" }}>
                     <td style={{ padding: "14px" }}>
                       <div style={{ fontWeight: 800, color: "var(--text-primary)" }}>
-                        {student.title}{student.first_name} {student.last_name}
+                        {student.title}{highlightSearchText(student.first_name + " " + student.last_name, searchQ)}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
                         <IdCardIcon />
-                        <span>รหัสประจำตัว: {student.student_id}</span>
+                        <span>รหัสประจำตัว: {highlightSearchText(student.student_id, searchQ)}</span>
                       </div>
                     </td>
                     <td style={{ padding: "14px" }}>
@@ -379,12 +447,14 @@ export default function AllPage() {
             </div>
           </div>
 
-          {displayedLogs.length === 0 ? (
-            <div style={{ padding: "40px 20px", textShadow: "none", textAlign: "center" }}>
-              <div style={{ marginBottom: 12, color: "var(--text-muted)" }}><ScrollText size={40} /></div>
-              <h4 style={{ fontSize: 14, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ไม่พบบันทึกการเข้าใช้งานระบบในหมวดหมู่นี้</h4>
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>ข้อมูลจะเก็บบันทึกอัตโนมัติเมื่อนักศึกษาสแกนหรือแอดมินปลดล็อกประตู</p>
-            </div>
+          {pageLoading ? (
+            <TableSkeleton />
+          ) : displayedLogs.length === 0 ? (
+            <EmptyState
+              title="ไม่พบบันทึกการเข้าใช้งานระบบในหมวดหมู่นี้"
+              description="ระบบยังไม่เก็บบันทึกจราจรในเซกเมนต์ที่เลือก ข้อมูลจะถูกบันทึกเมื่อนักศึกษาสแกนหรือแอดมินเปิดประตู"
+              illustration="search"
+            />
           ) : (
             <div className="smartaccess-table-container">
               <table className="smartaccess-table">

@@ -104,6 +104,7 @@ export async function GET(req: NextRequest) {
           DATE(timestamp AT TIME ZONE 'Asia/Bangkok') AS date,
           COUNT(*) FILTER (WHERE action = 'registered') AS registrations,
           COUNT(*) FILTER (WHERE action = 'approved')   AS approvals,
+          COUNT(*) FILTER (WHERE action = 'rejected')   AS rejections,
           COUNT(*) FILTER (WHERE action = 'door_opened') AS door_opens
         FROM access_logs
         WHERE timestamp >= NOW() - INTERVAL '14 days'

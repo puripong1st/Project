@@ -2,6 +2,7 @@
 import React from "react";
 import { DoorClosed, Volume2, VolumeX, Inbox, Zap, XCircle, CheckCircle2, Eye } from "lucide-react";
 import { useDashboard } from "../DashboardContext";
+import EmptyState from "../../../components/EmptyState";
 import {
   formatDateTime,
   PendingCountdown,
@@ -12,6 +13,30 @@ import {
   CrossIcon,
   CheckIcon
 } from "../DashboardHelpers";
+
+const PendingSkeleton = () => (
+  <div style={{ display: "flex", flexDirection: "column", gap: 12 }} className="animate-fade-in">
+    {[1, 2, 3].map(i => (
+      <div key={i} className="premium-card" style={{ padding: 20, background: "var(--bg-secondary)", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, animation: "pulse-soft 2s infinite" }}>
+        <div style={{ flex: "1.1 1 160px" }}>
+          <div style={{ height: 18, width: "60%", background: "var(--border-medium)", borderRadius: 4, marginBottom: 8 }} />
+          <div style={{ height: 12, width: "40%", background: "var(--border)", borderRadius: 3 }} />
+        </div>
+        <div style={{ flex: "1.1 1 180px" }}>
+          <div style={{ height: 14, width: "50%", background: "var(--border-medium)", borderRadius: 4, marginBottom: 8 }} />
+          <div style={{ height: 12, width: "70%", background: "var(--border)", borderRadius: 3 }} />
+        </div>
+        <div style={{ flex: "1 1 150px" }}>
+          <div style={{ height: 20, width: 80, background: "var(--border-medium)", borderRadius: 6 }} />
+        </div>
+        <div style={{ flex: "0.8 1 150px", display: "flex", gap: 8, justifyContent: "flex-end", marginLeft: "auto" }}>
+          <div style={{ height: 32, width: 64, background: "var(--border-medium)", borderRadius: 8 }} />
+          <div style={{ height: 32, width: 64, background: "var(--border-medium)", borderRadius: 8 }} />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export default function PendingPage() {
   const {
@@ -38,6 +63,12 @@ export default function PendingPage() {
     playSoftChime,
     user
   } = useDashboard();
+
+  const [pageLoading, setPageLoading] = React.useState(true);
+  React.useEffect(() => {
+    const t = setTimeout(() => setPageLoading(false), 450);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div className="animate-fade-in" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
@@ -150,12 +181,14 @@ export default function PendingPage() {
           )}
         </div>
 
-        {filteredPending.length === 0 ? (
-          <div style={{ padding: "60px 20px", textShadow: "none", textAlign: "center" }}>
-            <div style={{ marginBottom: 12, color: "var(--text-muted)" }}><Inbox size={44} /></div>
-            <h4 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", margin: 0 }}>ไม่มีคำขอลงทะเบียนใหม่รอยืนยันสิทธิ์</h4>
-            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>เมื่อนักศึกษาสแกนขอใช้ห้องเรียนสำเร็จ คำขอจะเด้งขึ้นที่แผงควบคุมนี้แบบเรียลไทม์ทันที</p>
-          </div>
+        {pageLoading ? (
+          <PendingSkeleton />
+        ) : filteredPending.length === 0 ? (
+          <EmptyState
+            title="ไม่มีคำขอที่รอดำเนินการ"
+            description="เมื่อนักศึกษาสแกนขอใช้ห้องเรียนสำเร็จ คำขอลงทะเบียนเข้าเรียนจะเด้งขึ้นที่นี่แบบเรียลไทม์ทันที"
+            illustration="inbox"
+          />
         ) : (
           <div className="smartaccess-table-container">
             <table className="smartaccess-table">

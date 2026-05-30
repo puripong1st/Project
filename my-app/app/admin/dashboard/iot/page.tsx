@@ -31,7 +31,10 @@ export default function IotPage() {
                 fontSize: 13, fontWeight: 900, display: "inline-flex", alignItems: "center", gap: 5, marginTop: 4,
                 color: healthData.status === "healthy" ? "#10B981" : healthData.status === "degraded" ? "#F59E0B" : "#EF4444"
               }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: healthData.status === "healthy" ? "#10B981" : "#EF4444" }} />
+                <span
+                  style={{ width: 8, height: 8, borderRadius: "50%", background: healthData.status === "healthy" ? "#10B981" : "#EF4444" }}
+                  className={healthData.status === "healthy" ? "pulse-green" : "pulse-red"}
+                />
                 {healthData.status === "healthy" ? "ระบบปกติ (HEALTHY)" : "มีปัญหาบางส่วน (DEGRADED)"}
               </span>
             </div>
@@ -99,11 +102,14 @@ export default function IotPage() {
                     {/* Online status badge */}
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 8, fontSize: 10.5, fontWeight: 900,
-                      background: device.online ? "#ECFDF5" : "#FEF2F2",
-                      color: device.online ? "#059669" : "#DC2626",
-                      border: device.online ? "1px solid rgba(16,185,129,0.25)" : "1px solid rgba(220,38,38,0.2)"
+                      background: device.online ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)",
+                      color: device.online ? "#10B981" : "#EF4444",
+                      border: device.online ? "1px solid rgba(16, 185, 129, 0.25)" : "1px solid rgba(239, 68, 68, 0.2)"
                     }}>
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: device.online ? "#10B981" : "#EF4444" }} />
+                      <span
+                        style={{ width: 8, height: 8, borderRadius: "50%", background: device.online ? "#10B981" : "#EF4444" }}
+                        className={device.online ? "pulse-green" : "pulse-red"}
+                      />
                       {device.online ? "ONLINE" : "OFFLINE"}
                     </span>
                   </div>

@@ -83,19 +83,28 @@ function LatencyBar({ ms, max = 1000 }: { ms: number; max?: number }) {
 }
 
 // ── Metric Card Component ──
-function MetricCard({ title, children, icon }: { title: string; children: React.ReactNode; icon?: ReactNode }) {
+function MetricCard({ title, children, icon, status }: { title: string; children: React.ReactNode; icon?: ReactNode; status?: string }) {
+  let borderColor = "var(--border)";
+  if (status === "up" || status === "healthy" || status === "READY") {
+    borderColor = "rgba(16, 185, 129, 0.25)";
+  } else if (status === "slow" || status === "degraded" || status === "BUILDING") {
+    borderColor = "rgba(245, 158, 11, 0.3)";
+  } else if (status === "down" || status === "error") {
+    borderColor = "rgba(239, 68, 68, 0.3)";
+  }
   return (
     <div style={{
-      background: "var(--bg-primary)",
-      border: "1.5px solid var(--border)",
+      background: "var(--bg-secondary)",
+      border: `1.5px solid ${borderColor}`,
       borderRadius: 16,
       padding: "20px 22px",
-      transition: "transform 0.2s, box-shadow 0.2s",
+      transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+      boxShadow: "var(--shadow-sm)"
     }}
-    className="hover-lift"
+    className="hover-card"
     >
       <span style={{ fontSize: 11, fontWeight: 900, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-        {icon && <span style={{ display: "inline-flex" }}>{icon}</span>}
+        {icon && <span style={{ display: "inline-flex", color: "var(--smartaccess-purple)" }}>{icon}</span>}
         {title}
       </span>
       {children}
@@ -207,7 +216,7 @@ export default function HealthPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
 
             {/* Database */}
-            <MetricCard title="DATABASE" icon={<Database size={18} />}>
+            <MetricCard title="DATABASE" icon={<Database size={18} />} status={healthData.components.database.status}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(healthData.components.database.status) }} />
                 <span style={{ fontSize: 15, fontWeight: 800, color: healthData.components.database.status === "up" ? "#059669" : "#DC2626" }}>
@@ -225,7 +234,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Rate Limiter */}
-            <MetricCard title="RATE LIMITER" icon={<ShieldCheck size={18} />}>
+            <MetricCard title="RATE LIMITER" icon={<ShieldCheck size={18} />} status={healthData.components.rate_limiter.status}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(healthData.components.rate_limiter.status) }} />
                 <span style={{ fontSize: 15, fontWeight: 800, color: healthData.components.rate_limiter.status === "up" ? "#059669" : "#DC2626" }}>
@@ -237,7 +246,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Memory */}
-            <MetricCard title="MEMORY" icon={<MemoryStick size={18} />}>
+            <MetricCard title="MEMORY" icon={<MemoryStick size={18} />} status={healthData.components.memory.heap_total_mb && (healthData.components.memory.heap_used_mb / healthData.components.memory.heap_total_mb > 0.85) ? "slow" : "up"}>
               <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums", marginBottom: 4 }}>
                 {healthData.components.memory.rss_mb} MB
               </div>
@@ -255,7 +264,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Server Time */}
-            <MetricCard title="เวลาเซิร์ฟเวอร์" icon={<Clock size={18} />}>
+            <MetricCard title="เวลาเซิร์ฟเวอร์" icon={<Clock size={18} />} status="up">
               <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-primary)", marginBottom: 4 }}>
                 {healthData.server_time}
               </div>
@@ -263,7 +272,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Last QR Scan */}
-            <MetricCard title="LAST QR SCAN" icon={<Smartphone size={18} />}>
+            <MetricCard title="LAST QR SCAN" icon={<Smartphone size={18} />} status="up">
               <div style={{ fontSize: 13.5, fontWeight: 900, color: "var(--text-primary)", lineHeight: 1.4 }}>
                 {healthData.last_qr_scan
                   ? new Date(healthData.last_qr_scan).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
@@ -273,7 +282,7 @@ export default function HealthPage() {
             </MetricCard>
 
             {/* Environment */}
-            <MetricCard title="ENVIRONMENT" icon={<Globe size={18} />}>
+            <MetricCard title="ENVIRONMENT" icon={<Globe size={18} />} status="up">
               <div style={{ fontSize: 15, fontWeight: 800, color: "var(--smartaccess-purple)" }}>
                 {healthData.vercel_runtime?.environment || "unknown"}
               </div>
@@ -296,7 +305,7 @@ export default function HealthPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
 
             {/* Vercel Runtime */}
-            <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px", boxShadow: "var(--shadow-sm)" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Cloud size={16} /> Vercel Runtime Information</span>
               </h3>
@@ -317,7 +326,7 @@ export default function HealthPage() {
             </div>
 
             {/* Vercel Deployment */}
-            <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px", boxShadow: "var(--shadow-sm)" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Rocket size={15} /> Latest Deployment</span>
               </h3>
@@ -388,7 +397,7 @@ export default function HealthPage() {
         {/* ══════════════════════════════════════════════════ */}
         {activeSection === "api" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-            <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px", boxShadow: "var(--shadow-sm)" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Plug size={16} /> API Endpoint Status & Latency</span>
               </h3>
@@ -460,7 +469,7 @@ export default function HealthPage() {
         {/* ══════════════════════════════════════════════════ */}
         {activeSection === "runtime" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-            <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px", boxShadow: "var(--shadow-sm)" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                 ⚙️ Node.js Runtime & Server Info
               </h3>
@@ -490,7 +499,7 @@ export default function HealthPage() {
             </div>
 
             {/* Memory Usage Visual */}
-            <div style={{ background: "var(--bg-primary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px" }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1.5px solid var(--border)", borderRadius: 16, padding: "24px 26px", boxShadow: "var(--shadow-sm)" }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--smartaccess-purple-dark)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><BarChart3 size={15} /> Memory Breakdown</span>
               </h3>

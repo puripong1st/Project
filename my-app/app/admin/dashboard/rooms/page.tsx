@@ -24,6 +24,24 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { useDashboard, defaultRoomConfig } from "../DashboardContext";
+import EmptyState from "../../../components/EmptyState";
+
+const GridSkeleton = () => (
+  <div className="room-card-grid animate-fade-in" style={{ marginTop: 24 }}>
+    {[1, 2, 3].map(i => (
+      <div key={i} className="room-config-card" style={{ height: 180, display: "flex", flexDirection: "column", gap: 16, animation: "pulse-soft 2s infinite" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ width: 42, height: 42, borderRadius: 8, background: "var(--border-medium)" }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ height: 18, width: "60%", background: "var(--border-medium)", borderRadius: 4 }} />
+            <div style={{ height: 12, width: "40%", background: "var(--border)", borderRadius: 3 }} />
+          </div>
+        </div>
+        <div style={{ flex: 1, background: "var(--border)", borderRadius: 8 }} />
+      </div>
+    ))}
+  </div>
+);
 
 const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -82,6 +100,12 @@ export default function RoomsPage() {
     settingsLoading,
     handleUploadFirmware
   } = useDashboard();
+
+  const [pageLoading, setPageLoading] = React.useState(true);
+  React.useEffect(() => {
+    const t = setTimeout(() => setPageLoading(false), 450);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!user || !isOwner) return null;
 
@@ -348,20 +372,24 @@ export default function RoomsPage() {
       </section>
 
       {/* Grid room configs */}
-      <section className="room-card-grid" style={{ marginTop: 24 }}>
-        {roomsList.length === 0 ? (
-          <div className="room-config-card" style={{ gridColumn: "1 / -1", textAlign: "center", padding: 42 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text-primary)", marginBottom: 8 }}>ยังไม่มีห้องเรียนในระบบ</h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: 0 }}>เพิ่มรหัสห้องและ IP บอร์ดด้านล่าง แล้วกดบันทึกห้องทั้งหมด</p>
-          </div>
+      <section style={{ marginTop: 24 }}>
+        {pageLoading ? (
+          <GridSkeleton />
+        ) : roomsList.length === 0 ? (
+          <EmptyState
+            title="ยังไม่มีห้องเรียนในระบบ"
+            description="เพิ่มรหัสห้องเรียนและที่อยู่ IP หรือที่อยู่บอร์ดโฮสต์ใหม่ด้านล่าง เพื่อเริ่มต้นการเชื่อมต่อระบบ"
+            illustration="rooms"
+          />
         ) : (
-          roomsList.map((roomItem, idx) => {
-            const liveDev = systemStatus?.esp32Devices?.find((d: any) => d.room === roomItem.room);
-            const testRes = testResults[roomItem.room];
-            const isOnline = liveDev ? liveDev.online : testRes?.online || false;
+          <div className="room-card-grid">
+            {roomsList.map((roomItem, idx) => {
+              const liveDev = systemStatus?.esp32Devices?.find((d: any) => d.room === roomItem.room);
+              const testRes = testResults[roomItem.room];
+              const isOnline = liveDev ? liveDev.online : testRes?.online || false;
 
-            return (
-              <article className="room-config-card" key={`room-tab-${idx}`}>
+              return (
+                <article className="room-config-card" key={`room-tab-${idx}`}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                     <span style={{ width: 42, height: 42, borderRadius: 8, background: "var(--smartaccess-purple-pale)", color: "var(--smartaccess-purple-dark)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>
@@ -548,7 +576,8 @@ export default function RoomsPage() {
                 </div>
               </article>
             );
-          })
+          })}
+          </div>
         )}
       </section>
 

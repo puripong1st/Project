@@ -401,8 +401,21 @@
     /* Mermaid text readability and spacing fixes */
     .mermaid svg {
       font-family: var(--font-th) !important;
+      max-width: 100%;
+      height: auto;
     }
-    
+
+    /* CRITICAL FIX: ป้องกันตัวอักษรไทย (สระบน/ล่าง วรรณยุกต์) ถูกตัดขอบกล่อง
+       foreignObject ของ Mermaid ตั้ง overflow:hidden เป็นค่าเริ่มต้น ทำให้ส่วนหางอักษรหาย */
+    .mermaid svg foreignObject {
+      overflow: visible !important;
+    }
+    .mermaid svg .nodeLabel,
+    .mermaid svg .edgeLabel,
+    .mermaid svg .label foreignObject > div {
+      overflow: visible !important;
+    }
+
     /* Support for beautiful HTML labels inside Mermaid nodes (v10+ foreignObject) */
     .mermaid div,
     .mermaid span,
@@ -410,10 +423,16 @@
     .mermaid span.label,
     .mermaid p {
       font-family: var(--font-th) !important;
-      line-height: 1.45 !important;
+      line-height: 1.6 !important;     /* เพิ่ม line-height กันสระบน/ล่างชนกันและถูกตัด */
       font-size: 13.5px !important;
       color: #1E293B !important;
       font-weight: 500 !important;
+      white-space: nowrap;             /* ให้ Mermaid วัดความกว้างเต็มบรรทัด ไม่หักบรรทัดมั่ว */
+      overflow: visible !important;
+    }
+    /* ป้าย node ใน flowchart — เผื่อพื้นที่แนวตั้งเล็กน้อย */
+    .mermaid svg .node .label {
+      overflow: visible !important;
     }
     
     body.dark-mode .mermaid div,
@@ -834,7 +853,7 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 18:39:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 18:49:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
@@ -14327,8 +14346,82 @@ RETURNING count, reset_time;
 </tr>
 </tbody></table>
 <hr>
+<h3>73.15 การพัฒนาระบบธีมและโหมดมืดพรีเมียม (Premium Dark Mode &amp; Harmony Palette Design System)</h3>
+<p>เพื่อยกระดับความพึงพอใจและสอดคล้องกับมาตรฐานการออกแบบเว็บสมัยใหม่ ระบบได้รับการอัปเกรดให้รองรับ <strong>ระบบตรวจจับและสลับโหมดมืด (Dark Mode)</strong> ที่ประณีตและลื่นไหล โดยใช้หลักการแยกองค์ประกอบดังนี้:</p>
+<ol>
+<li><strong>ระบบบริบทและการจัดเก็บสถานะ (ThemeProvider Client Context):</strong><ul>
+<li>พัฒนาโมดูล <a href="my-app/app/components/ThemeProvider.tsx">ThemeProvider.tsx</a> เพื่อทำหน้าที่จัดเก็บสถานะธีม (<code>light</code> หรือ <code>dark</code>) </li>
+<li>รองรับการดึงค่าธีมเริ่มต้นจากเบราว์เซอร์ผ่านฟังก์ชัน <code>window.matchMedia(&#39;(prefers-color-scheme: dark)&#39;)</code> และจดจำค่าสลับธีมของผู้ใช้ไว้ใน <code>localStorage</code></li>
+<li>ป้องกันสภาวะ Hydration Mismatch (ความไม่ตรงกันระหว่าง HTML ฝั่งเซิร์ฟเวอร์และไคลเอนต์ตอนเริ่มต้นเรนเดอร์) โดยการหน่วงการอัปเดตสเตตัสจนกว่าจะทำการเรนต์โครงสร้าง Component แรกเสร็จสมบูรณ์ (<code>mounted === true</code>)</li>
+</ul>
+</li>
+<li><strong>การแทนที่ตัวแปรสไตล์ชีต (CSS Variables [data-theme=&quot;dark&quot;]):</strong><ul>
+<li>ใน <a href="my-app/app/globals.css">globals.css</a> ได้มีการประกาศตัวแปรสภาพแวดล้อมสไตล์เฉพาะของโหมดมืดผ่านแอตทริบิวต์ <code>[data-theme=&quot;dark&quot;]</code> ซึ่งจะเข้าแทนค่าตัวแปรเดิมของโหมดสว่างโดยอัตโนมัติ:<ul>
+<li><code>--bg-primary</code> คืนค่าสีพื้นหลังหลักแบบม่วงเข้มลึกมาก (<code>#0F0D1A</code>) ช่วยผ่อนคลายสายตา</li>
+<li><code>--bg-secondary</code> กำหนดสีพื้นหลังการ์ดหรือแผงข้อมูลเป็นสีม่วงเข้มสว่างขึ้นเล็กน้อย (<code>#1A1625</code>)</li>
+<li><code>--bg-sidebar</code> กำหนดสีพื้นหลังของแถบควบคุมด้านข้างเป็นสีม่วงดำลุ่มลึก (<code>#13101F</code>)</li>
+<li><code>--text-primary</code> กำหนดสีตัวอักษรหลักเป็นสีม่วงซีดอ่อนชัดเจน (<code>#F1EEFF</code>)</li>
+<li><code>--text-secondary</code> และ <code>--text-muted</code> ใช้สีม่วงเทาอ่อนไล่ระดับเพื่อแยกโครงสร้างหัวข้อย่อย</li>
+<li><code>--border</code> และ <code>--border-medium</code> ใช้สีม่วงแบรนด์โปร่งแสง (<code>rgba(124, 58, 237, 0.15)</code>) เพิ่มความงามหรูหราแบบแก้ว (Glassmorphism Effect)</li>
+</ul>
+</li>
+<li>คงความสม่ำเสมอของสีหลักประจำระบบ ได้แก่ สีม่วงแบรนด์มหาลัย (<code>--smartaccess-purple</code>: <code>#7C3AED</code>) และสีชมพูคณะครุศาสตร์ (<code>--edu-pink</code>: <code>#DB2777</code>) ให้โดดเด่นสะท้อนเอกลักษณ์องค์กร</li>
+</ul>
+</li>
+<li><strong>การเข้าสลับธีมบนหน้าจอควบคุม (Layout Navigation Elements):</strong><ul>
+<li>ติดตั้งปุ่มดึงค่าและสลับธีมแบบ Soft-transition ในแถบเมนูด้านข้างของหน้าแดชบอร์ดแอดมิน และในส่วนแถบนำทางส่วนบนของหน้าลงทะเบียนนักศึกษา เพื่อความสะดวกและง่ายต่อการใช้งาน</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3>73.16 การออกแบบระบบรายงานและสถิติวินิจฉัยเชิงลึกด้วยกราฟวิเคราะห์ Recharts (Recharts Interactive Analytics Engine)</h3>
+<p>ระบบได้รับการพัฒนาเพิ่มความสามารถในการวิเคราะห์แนวโน้มและจัดทำรายงานสถิติขั้นสูง เพื่อช่วยให้อาจารย์ผู้ควบคุมห้องปฏิบัติการเห็นภาพรวมของอัตราการใช้งานระบบ โดยนำเข้าเฟรมเวิร์กวิเคราะห์เชิงสถิติยอดนิยม <strong>Recharts</strong> เข้ามาร่วมจัดรูปแบบการแสดงผล:</p>
+<ol>
+<li><strong>การดึงข้อมูลและกรองฝั่งเซิร์ฟเวอร์ (API Statistics Optimization):</strong><ul>
+<li>อัปเดต API <code>/api/system/analytics</code> ให้รองรับการนับและกรองคำขอที่ถูกปฏิเสธรายวันผ่านคำสั่ง PostgreSQL: <code>COUNT(*) FILTER (WHERE action = &#39;rejected&#39;) AS rejections</code> </li>
+<li>ข้อมูลจะถูกจัดกลุ่มและส่งกลับไปเป็นอนุกรมเวลา (Daily Time-Series) ตลอดระยะเวลา 30 วันล่าสุด</li>
+</ul>
+</li>
+<li><strong>องค์ประกอบของแผงกราฟวิเคราะห์ (Dashboard Charts Module):</strong><ul>
+<li>พัฒนาคอมโพเนนต์ <a href="my-app/app/components/DashboardCharts.tsx">DashboardCharts.tsx</a> ประกอบไปด้วย 3 แผนผังหลัก:<ul>
+<li><strong>Bar Chart (กราฟแท่งเปรียบเทียบ):</strong> แสดงจำนวนคำขอใหม่ (Requests) เทียบกับจำนวนคำขอที่ได้รับอนุมัติ (Approved) ตลอดช่วงเวลา 7 วันล่าสุด</li>
+<li><strong>Line Chart (กราฟเส้นประเมินแนวโน้ม):</strong> วิเคราะห์สัดส่วนคำขอเปิดประตูที่ได้รับการอนุมัติ (Approved) เทียบกับคำขอที่ถูกปฏิเสธ (Rejected) รายวัน ตลอด 10 วันล่าสุด เพื่อประเมินสัดส่วนของเหตุการณ์ที่อาจมีความเสี่ยงในระบบความปลอดภัย</li>
+<li><strong>Donut Chart (กราฟสัดส่วนสถานะ):</strong> แสดงอัตราส่วนรวมของนักศึกษาในระบบที่อยู่ในสถานะรออนุมัติ (Pending), ได้รับสิทธิ์ (Approved), และถูกปฏิเสธ (Rejected) โดยฝังตัวเลขผลรวมผู้ใช้ทั้งหมดไว้ที่จุดศูนย์กลางของแผนผังอย่างประณีต</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>การออกแบบเพื่อการตอบสนองที่ยืดหยุ่น (Responsive Constraints &amp; Fallback):</strong><ul>
+<li>แผนผัง Recharts ทั้งหมดได้รับการห่อหุ้มด้วยคอมโพเนนต์ <code>&lt;ResponsiveContainer width=&quot;100%&quot; height=&quot;100%&quot;&gt;</code> เพื่อควบคุมการปรับขนาดความกว้างตามขนาดหน้าจอมือถือและแท็บเล็ตโดยอัตโนมัติ ป้องกันการแสดงผลล้นหรือบิดเบี้ยว</li>
+<li>เพิ่มตรรกะตรวจเช็คความผิดพลาดของข้อมูล (Fallback Guard): หากไม่มีข้อมูลสถิติที่จำเป็น แผนผังโดนัทจะแปลงผลเข้าสู่สถานะสถิติเปล่าแบบนุ่มนวล พร้อมหลีกเลี่ยงข้อผิดพลาดหน้าจอขาวล้มเหลว (Zero Division Crash)</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3>73.17 การออกแบบโครงสร้างความก้าวหน้าและการแสดงสถานะแบบอะซิงโครนัส (Asynchronous Loading States, Table Skeletons, and Micro-interactions)</h3>
+<p>เพื่อให้ประสบการณ์ผู้ใช้งานในแดชบอร์ดควบคุมระบบมีความราบรื่นและลดสภาวะการรอคอยที่อึดอัด (System Latency) ระบบได้รับการปรับปรุงกลไกการโหลดข้อมูลและการตอบสนองตอบผ่านการปฏิสัมพันธ์ขนาดเล็ก (Micro-interactions) ดังนี้:</p>
+<ol>
+<li><strong>การแสดงแถบโครงสร้างจำลอง (Table and Grid Skeleton Loaders):</strong><ul>
+<li>ออกแบบชุดจำลองแถบแถวเนื้อหาเด่น (Pulsing Skeleton) เช่น <code>MetricCardSkeleton</code>, <code>ChartsSkeleton</code>, <code>TableSkeleton</code>, <code>PendingSkeleton</code>, และ <code>GridSkeleton</code> </li>
+<li>ชุดจำลองนี้จะแสดงแผงสีเทาโปร่งแสงเรืองแสงที่วูบวาบเบา ๆ (<code>animate-pulse-soft</code>) ในช่วงเวลาที่ตัวตรวจจับไคลเอนต์กำลังดึงข้อมูล API </li>
+<li>การหน่วงเวลาด้วย React Effect ที่เหมาะสม (~450ms) ป้องกันปัญหาการกระตุกสลายตัวของ UI (Layout Shifting) และช่วยให้ผู้ใช้รับรู้ว่าข้อมูลกำลังมาถึงอย่างมั่นใจ</li>
+</ul>
+</li>
+<li><strong>ระบบแสดงข้อมูลว่างเปล่าแบบสื่อสารทางอ้อม (Modular Empty States):</strong><ul>
+<li>พัฒนา Component <a href="my-app/app/components/EmptyState.tsx">EmptyState.tsx</a> ที่ฝังภาพเวกเตอร์ SVG คุณภาพพรีเมียมตามบริบทห้องเรียนที่ว่างเปล่า, ค้นหาไม่พบข้อมูลผู้ใช้, หรือกล่องคิวงานที่ประมวลผลเสร็จสิ้นแล้ว ช่วยให้การทำงานร่วมกับ UI ดูเป็นมืออาชีพและลดความสับสนของผู้ดูแลระบบ</li>
+</ul>
+</li>
+<li><strong>การปฏิสัมพันธ์ขนาดเล็กและแอนิเมชันความลื่นไหล (Premium Micro-interactions):</strong><ul>
+<li><strong>Active Touch Scale:</strong> ปุ่มกดหลักทั้งหมดได้รับการฝังคุณสมบัติการหดตัวเบา ๆ เมื่อมีปฏิสัมพันธ์หรือแตะคลิก ด้วย CSS <code>transform: translateY(0) scale(0.97)</code> และขยายตัวเล็กน้อยเมื่อลอยเมาส์ผ่าน (<code>scale(1.02)</code>) ให้ความรู้สึกดั่งหน้าจอแอปพลิเคชันมือถือระดับพรีเมียม</li>
+<li><strong>Stat Count-up:</strong> การ์ดสถิติในแดชบอร์ดหลักแสดงตัวเลขนับแบบวิ่งขึ้น (Quadratic Counter Count-up) ที่สลายความกระด้างของตัวเลขด้วยความเร็วที่ลดลงเมื่อเข้าสู่ค่าจริง (EaseOutQuad curve)</li>
+<li><strong>Indicator Pulse &amp; Spin:</strong> การ์ด IoT แสดงสถานะออนไลน์ของ ESP32 ด้วยจุดสัญญาณไฟกระพริบแบบวงรัศมีสีเขียวเคลื่อนตัว (<code>pulse-green-ring</code> / <code>pulse-red-ring</code>) และปุ่มรีเฟรชหรือไอคอนระบบวิเคราะห์จะหมุนตัวอ่อนโยนเมื่อผู้ใช้ลอยหัวเมาส์ผ่านเพื่อความมีชีวิตชีวาของระบบ</li>
+<li><strong>Tab Page Transition:</strong> ทุกครั้งที่แอดมินหรือผู้ควบคุมกดสลับแท็บเมนูหลักในแดชบอร์ด คอนเทนเนอร์เนื้อหาจะค่อย ๆ ลอยตัวขึ้นพร้อมโปร่งแสงแบบนุ่มนวลจากด้านล่าง (<code>fadeInUp</code> animation) ช่วยกระชับประสบการณ์ความต่อเนื่องของสมาธิในการควบคุมดูแลระบบ</li>
+</ul>
+</li>
+</ol>
+<hr>
 <blockquote>
-<p><strong>บทสรุปภาค §73:</strong> ภาคผนวกนี้ได้ตรวจสอบและบันทึกรายละเอียดทางวิศวกรรมจากซอร์สโค้ดจริงทุกชั้น ตั้งแต่ฐานข้อมูล 12 ตาราง, อัลกอริทึม JWT/bcrypt/HMAC/rate-limit, วงจรชีวิต QR token, state machine ของเฟิร์มแวร์ ไปจนถึงสถาปัตยกรรมแจ้งเตือน 3 ช่องทาง เพื่อให้คู่มือสะท้อนสถานะปัจจุบันของระบบ SmartAccess อย่างถูกต้องครบถ้วน เหมาะแก่การใช้อ้างอิงในเล่มปริญญานิพนธ์และการตรวจประเมินทางวิชาการ</p>
+<p><strong>บทสรุปภาค §73:</strong> ภาคผนวกนี้ได้ตรวจสอบและบันทึกรายละเอียดทางวิศวกรรมจากซอร์สโค้ดจริงทุกชั้น ตั้งแต่ฐานข้อมูล 12 ตาราง, อัลกอริทึม JWT/bcrypt/HMAC/rate-limit, วงจรชีวิต QR token, state machine ของเฟิร์มแวร์ ไปจนถึงสถาปัตยกรรมแจ้งเตือน 3 ช่องทาง ตลอดจนระบบธีมโหมดมืดพรีเมียมและระบบกราฟสถิติวิเคราะห์เชิงตอบสนอง เพื่อให้คู่มือสะท้อนสถานะปัจจุบันของระบบ SmartAccess อย่างถูกต้องครบถ้วน เหมาะแก่การใช้อ้างอิงในเล่มปริญญานิพนธ์และการตรวจประเมินทางวิชาการอย่างสมบูรณ์แบบที่สุด</p>
 </blockquote>
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>
 
@@ -14357,18 +14450,24 @@ RETURNING count, reset_time;
       theme: 'default',
       securityLevel: 'loose',
       htmlLabels: true, // Render text via HTML foreignObject for perfect Thai font wrap and zero overlap!
+      // CRITICAL FIX: บังคับให้ Mermaid วัดความกว้างข้อความด้วยฟอนต์ Sarabun ตัวจริง
+      // (เดิม Mermaid วัดด้วยฟอนต์ fallback ก่อนฟอนต์ไทยโหลดเสร็จ ทำให้กล่องเล็กเกินจนตัวอักษรไทยถูกตัด)
+      fontFamily: "'Sarabun', sans-serif",
       flowchart: {
-        useWidth: true,
+        useMaxWidth: true,
         htmlLabels: true,
-        nodeSpacing: 75, // Significantly increase horizontal space between nodes (default is 40)
-        rankSpacing: 75, // Significantly increase vertical space between ranks (default is 50)
+        nodeSpacing: 80, // Significantly increase horizontal space between nodes (default is 40)
+        rankSpacing: 85, // Significantly increase vertical space between ranks (default is 50)
+        padding: 18, // เพิ่มระยะขอบในกล่อง node ให้ตัวอักษรไทยมีที่หายใจ ไม่ถูกตัด
         curve: 'basis'  // Make lines smooth and curved, avoiding sharp overlapping zigzags!
       },
       sequence: {
-        actorMargin: 75, // Increase horizontal gap between actors
-        messageMargin: 45, // Increase vertical space between messages
-        boxMargin: 15,
-        noteMargin: 15
+        actorMargin: 90, // Increase horizontal gap between actors
+        messageMargin: 50, // Increase vertical space between messages
+        boxMargin: 18,
+        noteMargin: 16,
+        wrap: true,
+        width: 175 // กว้างขึ้นต่อกล่องข้อความ กันตัวอักษรไทยล้น
       }
     });
     window.mermaid = mermaid;
@@ -14457,7 +14556,21 @@ RETURNING count, reset_time;
     // Lazy load and progressively render Mermaid diagrams using IntersectionObserver
     window.addEventListener("DOMContentLoaded", function() {
       const mermaidDivs = document.querySelectorAll(".mermaid");
-      
+
+      // ─── CRITICAL: รอให้ฟอนต์ Sarabun (ไทย) โหลดครบทุกน้ำหนักก่อน render ───
+      // มิฉะนั้น Mermaid จะวัดความกว้างข้อความด้วยฟอนต์ fallback แล้วสร้างกล่องเล็กเกินไป
+      // ทำให้ตัวอักษรไทยถูกตัด/ตกหล่นเมื่อฟอนต์จริงโหลดเสร็จภายหลัง
+      const fontsReady = (function() {
+        if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+        const loads = [
+          document.fonts.load("400 14px Sarabun"),
+          document.fonts.load("500 14px Sarabun"),
+          document.fonts.load("600 14px Sarabun"),
+          document.fonts.load("700 14px Sarabun")
+        ];
+        return Promise.all([document.fonts.ready, Promise.all(loads).catch(function(){})]);
+      })();
+
       // 1. Initialize beautiful loading skeletons and backup raw code
       mermaidDivs.forEach((div, index) => {
         const diagramNum = index + 1;
@@ -14490,11 +14603,11 @@ RETURNING count, reset_time;
             
             // Restore diagram raw code for rendering
             div.textContent = rawCode;
-            
-            // Render this specific diagram asynchronously
-            window.mermaid.run({
+
+            // Render this specific diagram asynchronously — รอฟอนต์ไทยก่อนเสมอ
+            fontsReady.then(() => window.mermaid.run({
               nodes: [div]
-            }).then(() => {
+            })).then(() => {
               // Clean up the skeleton
               if (skeleton && skeleton.parentNode === div) {
                 div.removeChild(skeleton);

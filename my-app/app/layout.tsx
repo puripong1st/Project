@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_Thai, Inter } from "next/font/google";
 import "./globals.css";
 import CookieConsent from "./components/CookieConsent";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 // Self-hosted via next/font — ตัด render-blocking @import จาก Google Fonts CDN
 // และ preload อัตโนมัติ (เร็วกว่า + ลด external request)
@@ -29,8 +30,10 @@ export default function RootLayout({
   return (
     <html lang="th" className={`${notoSansThai.variable} ${inter.variable}`} suppressHydrationWarning>
       <body style={{ minHeight: "100vh" }}>
-        {children}
-        <CookieConsent />
+        <ThemeProvider>
+          {children}
+          <CookieConsent />
+        </ThemeProvider>
       </body>
     </html>
   );

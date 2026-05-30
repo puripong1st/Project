@@ -14,6 +14,7 @@
   --bg-primary: #FAF9FF;         /* Ultra-light lilac/white background */
   --bg-secondary: #FFFFFF;       /* Card background */
   --bg-accent: #EEF2F6;
+  --bg-sidebar: #FFFFFF;         /* Sidebar background */
   
   --text-primary: #1E1B4B;       /* Deep purple-navy for premium typography */
   --text-secondary: #6B7280;     /* Neutral slate gray */
@@ -24,6 +25,27 @@
   --shadow-sm: 0 2px 8px -1px rgba(124, 58, 237, 0.04);
   --shadow-md: 0 10px 25px -5px rgba(124, 58, 237, 0.06), 0 8px 16px -6px rgba(124, 58, 237, 0.04);
   --shadow-lg: 0 20px 40px -10px rgba(124, 58, 237, 0.1), 0 10px 20px -8px rgba(124, 58, 237, 0.05);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0F0D1A;         /* Deep purple-black background */
+  --bg-secondary: #1A1625;       /* Card background */
+  --bg-sidebar: #13101F;         /* Sidebar background */
+  --bg-accent: #13101F;
+  
+  --text-primary: #F1EEFF;       /* Dark text: primary */
+  --text-secondary: #A89EC0;     /* Dark text: secondary */
+  --text-muted: #6C5D8B;
+  
+  --border: rgba(124, 58, 237, 0.15); /* Dark borders */
+  --border-medium: rgba(124, 58, 237, 0.25);
+  
+  --shadow-sm: 0 2px 8px -1px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 16px -6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 10px 20px -8px rgba(0, 0, 0, 0.6);
+  
+  --smartaccess-purple-pale: rgba(124, 58, 237, 0.12);
+  --edu-pink-pale: rgba(219, 39, 119, 0.12);
 }
 
 * {
@@ -534,7 +556,7 @@ body {
   bottom: 0;
   left: 0;
   width: 260px;
-  background: var(--bg-secondary) !important;
+  background: var(--bg-sidebar) !important;
   border-right: 1px solid var(--border) !important;
   display: flex !important;
   flex-direction: column !important;
@@ -608,3 +630,98 @@ body {
   50% { transform: translate(30px, -20px) scale(1.05); }
   100% { transform: translate(-20px, 15px) scale(0.95); }
 }
+
+/* ── Icon Hover Spin and Button Easing Micro-animations ── */
+.hover-spin:hover svg, .hover-spin:hover {
+  transform: rotate(8deg) scale(1.04);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hover-spin svg, .hover-spin {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Premium Button Interactions */
+.btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.btn-primary:hover:not(:disabled), .btn-secondary:hover:not(:disabled), .btn-danger:hover:not(:disabled), .btn-ghost:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.04);
+}
+
+.btn-primary:active:not(:disabled), .btn-secondary:active:not(:disabled), .btn-danger:active:not(:disabled), .btn-ghost:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ── Room Card Grid & Config Cards ── */
+.room-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.room-config-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  border-radius: 20px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.room-config-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%);
+  opacity: 0.8;
+}
+
+.room-config-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(124, 58, 237, 0.25);
+}
+
+/* Premium Pulsing Status Dot */
+.pulse-green {
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse-green-ring 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-green-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.pulse-red {
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: pulse-red-ring 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-red-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+
+

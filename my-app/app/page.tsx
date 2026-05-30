@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTheme } from "./components/ThemeProvider";
 import Link from "next/link";
 import { SmartAccess_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
 import { IconDoor, IconAlert, IconHourglass } from "./components/Icons";
@@ -490,6 +491,7 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
 }
 
 function RegistrationPageInner() {
+  const { theme, toggleTheme } = useTheme();
   // ─── QR Access Authorization ─────────────────────────
   const searchParams = useSearchParams();
   const room = searchParams.get("room") || "default";
@@ -1612,7 +1614,49 @@ function RegistrationPageInner() {
 
   // ─── Registration Form ─────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 24px 24px 24px" }}>
+
+      {/* Top Navbar */}
+      <nav style={{
+        position: "absolute",
+        top: 0, left: 0, right: 0,
+        height: 64,
+        padding: "0 24px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        borderBottom: "1px solid var(--border)",
+        background: "rgba(255, 255, 255, 0.02)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        zIndex: 50
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, var(--smartaccess-purple) 0%, var(--edu-pink) 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#FFF", fontSize: 13, fontWeight: "bold" }}>S</div>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>SmartAccess</span>
+        </div>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          style={{
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-medium)",
+            borderRadius: "50%",
+            width: 38,
+            height: 38,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "var(--smartaccess-purple)",
+            transition: "all 0.2s",
+            boxShadow: "var(--shadow-sm)"
+          }}
+          title={theme === "light" ? "โหมดมืด" : "โหมดสว่าง"}
+        >
+          {theme === "light" ? "🌙" : "☀️"}
+        </button>
+      </nav>
 
       {/* Dynamic Drifting Background Blobs to elevate UI */}
       <div className="floating-blob blob-1" />

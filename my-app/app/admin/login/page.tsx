@@ -104,11 +104,12 @@ function AdminLoginPageInner() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #F5F3FF 0%, #FAF9FF 50%, #FDF2F8 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
-      {/* Background soft glow */}
-      <div style={{ position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
+      {/* Dynamic Drifting Background Blobs to elevate UI */}
+      <div className="floating-blob blob-1" />
+      <div className="floating-blob blob-2" />
 
-      <div style={{ maxWidth: 420, width: "100%", position: "relative" }}>
+      <div style={{ maxWidth: 420, width: "100%", position: "relative", zIndex: 10 }}>
         {/* Logo and Titles */}
         <div className="animate-fade-in" style={{ textAlign: "center", marginBottom: 32 }}>
           <div
@@ -130,7 +131,18 @@ function AdminLoginPageInner() {
         </div>
 
         {/* Login Card */}
-        <div className="premium-card animate-fade-in-delay-1" style={{ padding: 36 }}>
+        <div 
+          className="premium-card animate-fade-in-delay-1" 
+          style={{ 
+            padding: "36px 30px", 
+            background: "var(--bg-secondary)",
+            opacity: 0.98,
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid var(--border-medium)",
+            boxShadow: "var(--shadow-lg)"
+          }}
+        >
           <form onSubmit={handleLogin}>
             {isIdle && (
               <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "12px 16px", color: "#D97706", fontSize: 13.5, fontWeight: 600, marginBottom: 20, display: "flex", gap: 8, alignItems: "center" }}>
