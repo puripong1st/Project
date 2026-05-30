@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SmartAccess_FACULTIES, FACULTY_NAMES } from "@/lib/faculties";
 import { IconDoor, IconAlert, IconHourglass } from "./components/Icons";
+import { Camera, Zap, Loader2 } from "lucide-react";
 import jsQR from "jsqr";
 
 interface OfflineEntry {
@@ -374,8 +375,8 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
                 onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
                 onMouseOut={(e) => e.currentTarget.style.transform = "none"}
               >
-                <QRIcon />
-                <span>📷 เปิดกล้องสแกน QR หน้าห้องปฏิบัติการ</span>
+                <Camera size={18} />
+                <span>เปิดกล้องสแกน QR หน้าห้องปฏิบัติการ</span>
               </button>
             </div>
           </>
@@ -463,7 +464,10 @@ function QRAccessBlockedScreen({ message }: { message?: string }) {
                   transition: "all 0.2s",
                 }}
               >
-                {scanResult ? "⌛ กำลังนำข้อมูลเข้าห้องเรียน..." : "⚡ สแกนสำเร็จทันที (โหมดสแกนเร็วเพื่อทดสอบ)"}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  {scanResult ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                  {scanResult ? "กำลังนำข้อมูลเข้าห้องเรียน..." : "สแกนสำเร็จทันที (โหมดสแกนเร็วเพื่อทดสอบ)"}
+                </span>
               </button>
             </div>
           </div>
@@ -753,7 +757,7 @@ function RegistrationPageInner() {
               setBranches(SmartAccess_FACULTIES[data.faculty] || []);
               
               // Show modern transient checkmark Toast
-              setAutoFillToast("✓ ดึงข้อมูลประวัติการเรียนเดิมสำเร็จอัตโนมัติ");
+              setAutoFillToast("ดึงข้อมูลประวัติการเรียนเดิมสำเร็จอัตโนมัติ");
               setTimeout(() => setAutoFillToast(null), 3000);
             }
           } else {
@@ -780,7 +784,7 @@ function RegistrationPageInner() {
       setBranches(SmartAccess_FACULTIES[matchedHistory.faculty] || []);
       setShowAutoFillPrompt(false);
       
-      setAutoFillToast("✓ ดึงข้อมูลประวัติการเรียนเดิมเรียบร้อยแล้ว");
+      setAutoFillToast("ดึงข้อมูลประวัติการเรียนเดิมเรียบร้อยแล้ว");
       setTimeout(() => setAutoFillToast(null), 3000);
     }
   }
