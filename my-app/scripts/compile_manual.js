@@ -75,6 +75,10 @@ const htmlTemplate = `<!DOCTYPE html>
   <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"></noscript>
   
+  <!-- html2pdf.js & html2canvas for single section exports -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
   <style>
     :root {
       --primary: #7C3AED;      /* Purple */
@@ -249,6 +253,15 @@ const htmlTemplate = `<!DOCTYPE html>
     .toc-menu a:hover {
       background-color: var(--bg-primary);
       color: var(--primary);
+      padding-left: 16px;
+    }
+
+    .toc-menu a.active {
+      background-color: var(--primary-pale);
+      color: var(--primary);
+      font-weight: 700;
+      border-left: 3px solid var(--primary);
+      border-radius: 0 8px 8px 0;
       padding-left: 16px;
     }
 
@@ -592,6 +605,55 @@ const htmlTemplate = `<!DOCTYPE html>
     .alert-caution {
       border-left-color: #EF4444;
       background-color: rgba(239, 68, 68, 0.04);
+    }
+
+    /* Section Actions wrapper and button styles */
+    .section-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: 16px;
+      vertical-align: middle;
+    }
+
+    .btn-section-export {
+      background: rgba(124, 58, 237, 0.06);
+      border: 1px solid rgba(124, 58, 237, 0.15);
+      color: var(--primary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-th);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-section-export:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(124, 58, 237, 0.15);
+    }
+    
+    body.dark-mode .btn-section-export {
+      background: rgba(167, 139, 250, 0.1);
+      border-color: rgba(167, 139, 250, 0.25);
+      color: #A78BFA;
+    }
+    body.dark-mode .btn-section-export:hover {
+      background: #7C3AED;
+      color: white;
+    }
+
+    /* Print optimization to hide section action buttons */
+    @media print {
+      .section-actions, .btn-section-export {
+        display: none !important;
+      }
     }
 
     /* Header Panel with utilities */
@@ -1093,10 +1155,11 @@ const htmlTemplate = `<!DOCTYPE html>
   </script>
 
   <script>
-    // Build floating TOC sidebar dynamically from h2 elements
+    // Build floating TOC sidebar dynamically from h2 elements and keep them synchronized
     document.addEventListener("DOMContentLoaded", function() {
       const headers = document.querySelectorAll("#compiledContent h2");
       const tocMenu = document.getElementById("tocMenu");
+      const sidebar = document.getElementById("appSidebar");
       
       headers.forEach((h, index) => {
         if (!h.id) {
@@ -1106,25 +1169,257 @@ const htmlTemplate = `<!DOCTYPE html>
         const li = document.createElement("li");
         const a = document.createElement("a");
         a.href = "#" + h.id;
+        a.id = "toc-link-" + h.id;
         a.title = h.textContent;
         a.textContent = h.textContent;
-        a.addEventListener("click", () => {
+        
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          
+          // Smooth scroll to target header
+          const target = document.getElementById(h.id);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+          }
+          
+          // Update URL hash directly on click without jumping
+          history.pushState(null, null, "#" + h.id);
+          
+          // Highlight active link immediately
+          document.querySelectorAll("#tocMenu a").forEach(link => link.classList.remove("active"));
+          a.classList.add("active");
+          
+          // On mobile, close the sidebar after clicking
           if (window.innerWidth <= 1024) {
             toggleSidebar();
           }
         });
+        
         li.appendChild(a);
         tocMenu.appendChild(li);
       });
 
-      // Wrap tables in responsive wrapper div
-      const tables = document.querySelectorAll("#compiledContent table");
-      tables.forEach(table => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "table-container";
-        table.parentNode.insertBefore(wrapper, table);
-        wrapper.appendChild(table);
+      // Create action buttons for exporting specific sections (Attached to both h2 headings AND "กลับสารบัญ" paragraph blocks)
+      
+      // 1. Helper to gather all sibling elements belonging to a specific h2 section
+      function getSectionElements(h2Element) {
+        const elements = [];
+        let next = h2Element.nextElementSibling;
+        
+        // Loop and collect until we hit the next h2 or a horizontal rule that finishes the section
+        while (next && next.tagName !== "H2") {
+          // If we hit a horizontal rule or กลับสารบัญ, we can include it but stop after if it marks the end
+          elements.push(next);
+          if (next.tagName === "HR") {
+            break;
+          }
+          next = next.nextElementSibling;
+        }
+        return elements;
+      }
+
+      // 2. Main export logic for a section
+      window.exportSection = function(headerId, format) {
+        const header = document.getElementById(headerId);
+        if (!header) return;
+
+        // Create a temporary container to style and isolate the section beautifully
+        const tempContainer = document.createElement("div");
+        tempContainer.className = "compiled-export-temp";
+        
+        // Copy the header (without the action button panel)
+        const headerClone = header.cloneNode(true);
+        const actionsPanel = headerClone.querySelector(".section-actions");
+        if (actionsPanel) {
+          headerClone.removeChild(actionsPanel);
+        }
+        tempContainer.appendChild(headerClone);
+
+        // Copy all elements belonging to this section
+        const sectionElements = getSectionElements(header);
+        sectionElements.forEach(el => {
+          // Skip export buttons and กลับสารบัญ links to keep the export completely clean
+          if (el.classList.contains("section-actions") || el.innerHTML.includes("กลับสารบัญ")) {
+            return;
+          }
+          
+          // Clone element and ensure lazy-loaded mermaid blocks have their rendered SVG ready
+          const clone = el.cloneNode(true);
+          const mermaidDiv = el.querySelector(".mermaid svg");
+          if (mermaidDiv && clone.querySelector(".mermaid")) {
+            clone.querySelector(".mermaid").innerHTML = mermaidDiv.outerHTML;
+          }
+          
+          tempContainer.appendChild(clone);
+        });
+
+        // Styles to make the export document look premium and academic
+        tempContainer.style.background = document.body.classList.contains("dark-mode") ? "#1E293B" : "#FFFFFF";
+        tempContainer.style.color = document.body.classList.contains("dark-mode") ? "#F1F5F9" : "#1E293B";
+        tempContainer.style.padding = "40px";
+        tempContainer.style.fontFamily = "'Sarabun', sans-serif";
+        tempContainer.style.borderRadius = "12px";
+        tempContainer.style.position = "absolute";
+        tempContainer.style.left = "-9999px";
+        tempContainer.style.width = "850px"; // Golden standard width for high quality prints
+        document.body.appendChild(tempContainer);
+
+        // Extract clean filename from section title
+        const cleanTitle = header.textContent.replace(/[\/\\?%*:|"<>\s]/g, "_").substring(0, 50);
+
+        if (format === 'pdf') {
+          // Configuration for premium quality PDF
+          const pdfOptions = {
+            margin: [15, 15, 15, 15],
+            filename: cleanTitle + ".pdf",
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+              scale: 2, 
+              useCORS: true, 
+              logging: false,
+              backgroundColor: document.body.classList.contains("dark-mode") ? "#1E293B" : "#FFFFFF"
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          };
+          
+          html2pdf().from(tempContainer).set(pdfOptions).save().then(() => {
+            document.body.removeChild(tempContainer);
+          }).catch(err => {
+            console.error("PDF export failed:", err);
+            document.body.removeChild(tempContainer);
+          });
+          
+        } else if (format === 'png') {
+          // Render isolated section container directly to high definition PNG
+          html2canvas(tempContainer, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: document.body.classList.contains("dark-mode") ? "#1E293B" : "#FFFFFF"
+          }).then(canvas => {
+            const link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = cleanTitle + ".png";
+            link.click();
+            document.body.removeChild(tempContainer);
+          }).catch(err => {
+            console.error("PNG export failed:", err);
+            document.body.removeChild(tempContainer);
+          });
+        }
+      };
+
+      // 3. Append export button panel next to each h2 header
+      headers.forEach(h => {
+        const actionSpan = document.createElement("span");
+        actionSpan.className = "section-actions";
+        
+        const btnPdf = document.createElement("button");
+        btnPdf.className = "btn-section-export";
+        btnPdf.innerHTML = "📄 เซฟเฉพาะส่วนนี้ (PDF)";
+        btnPdf.onclick = () => window.exportSection(h.id, 'pdf');
+        
+        const btnPng = document.createElement("button");
+        btnPng.className = "btn-section-export";
+        btnPng.innerHTML = "🖼️ เซฟเฉพาะส่วนนี้ (PNG)";
+        btnPng.onclick = () => window.exportSection(h.id, 'png');
+        
+        actionSpan.appendChild(btnPdf);
+        actionSpan.appendChild(btnPng);
+        h.appendChild(actionSpan);
       });
+
+      // 4. Find all "กลับสารบัญ" links and prepend premium export buttons next to them!
+      const paragraphs = document.querySelectorAll("#compiledContent p");
+      paragraphs.forEach(p => {
+        if (p.innerHTML.includes("กลับสารบัญ")) {
+          // Find the active h2 section this paragraph belongs to by searching upwards
+          let prev = p.previousElementSibling;
+          let parentHeaderId = null;
+          while (prev) {
+            if (prev.tagName === "H2") {
+              parentHeaderId = prev.id;
+              break;
+            }
+            prev = prev.previousElementSibling;
+          }
+
+          if (parentHeaderId) {
+            // Style the paragraph block to be beautifully aligned
+            p.style.display = "flex";
+            p.style.alignItems = "center";
+            p.style.justifyContent = "flex-end";
+            p.style.gap = "12px";
+            p.style.margin = "20px 0";
+
+            // Create buttons container
+            const inlineActions = document.createElement("span");
+            inlineActions.style.display = "inline-flex";
+            inlineActions.style.gap = "8px";
+
+            const btnPdf = document.createElement("button");
+            btnPdf.className = "btn-section-export";
+            btnPdf.innerHTML = "📄 เซฟเฉพาะส่วนนี้ (PDF)";
+            btnPdf.onclick = () => window.exportSection(parentHeaderId, 'pdf');
+
+            const btnPng = document.createElement("button");
+            btnPng.className = "btn-section-export";
+            btnPng.innerHTML = "🖼️ เซฟเฉพาะส่วนนี้ (PNG)";
+            btnPng.onclick = () => window.exportSection(parentHeaderId, 'png');
+
+            inlineActions.appendChild(btnPdf);
+            inlineActions.appendChild(btnPng);
+
+            // Prepend actions before the actual กลับสารบัญ link
+            p.insertBefore(inlineActions, p.firstChild);
+          }
+        }
+      });
+
+      // Synchronize Sidebar scroll with content scroll (Active Section Highlighting)
+      let activeHeaderId = "";
+      const observerOptions = {
+        root: null,
+        rootMargin: "-80px 0px -60% 0px", // Trigger when header passes upper-middle of viewport
+        threshold: 0
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            if (id) {
+              activeHeaderId = id;
+              updateActiveState(id);
+            }
+          }
+        });
+      }, observerOptions);
+
+      headers.forEach(header => observer.observe(header));
+
+      // Handle custom update logic for highlights, auto scroll sidebar, and URL push
+      function updateActiveState(activeId) {
+        // 1. Highlight in sidebar
+        const tocLinks = document.querySelectorAll("#tocMenu a");
+        tocLinks.forEach(link => {
+          if (link.id === "toc-link-" + activeId) {
+            link.classList.add("active");
+            // Auto-scroll sidebar if active item is out of view
+            const linkRect = link.getBoundingClientRect();
+            const sidebarRect = sidebar.getBoundingClientRect();
+            if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+              link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          } else {
+            link.classList.remove("active");
+          }
+        });
+
+        // 2. Change URL dynamically
+        if (history.pushState && window.location.hash !== "#" + activeId) {
+          history.pushState(null, null, "#" + activeId);
+        }
+      }
     });
 
     // Mobile Sidebar toggle function
@@ -1169,6 +1464,14 @@ const htmlTemplate = `<!DOCTYPE html>
 
     function scrollToTop() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Clear hash on back to top click
+      if (history.pushState) {
+        history.pushState(null, null, ' ');
+      } else {
+        window.location.hash = '';
+      }
+      // Remove active states in sidebar
+      document.querySelectorAll("#tocMenu a").forEach(link => link.classList.remove("active"));
     }
   </script>
 </body>
