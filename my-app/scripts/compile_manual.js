@@ -443,14 +443,36 @@ const htmlTemplate = `<!DOCTYPE html>
       font-family: var(--font-th) !important;
     }
     
+    /* Support for beautiful HTML labels inside Mermaid nodes (v10+ foreignObject) */
+    .mermaid div,
+    .mermaid span,
+    .mermaid div.label,
+    .mermaid span.label,
+    .mermaid p {
+      font-family: var(--font-th) !important;
+      line-height: 1.45 !important;
+      font-size: 13.5px !important;
+      color: #1E293B !important;
+      font-weight: 500 !important;
+    }
+    
+    body.dark-mode .mermaid div,
+    body.dark-mode .mermaid span,
+    body.dark-mode .mermaid div.label,
+    body.dark-mode .mermaid span.label,
+    body.dark-mode .mermaid p {
+      color: #F8FAFC !important;
+    }
+    
     .mermaid .edgeLabel rect {
       fill: #FFFFFF !important;
       opacity: 0.95 !important;
+      rx: 4px; /* Rounded corners for label boxes */
     }
     
     .mermaid .edgeLabel text {
       fill: #1E293B !important;
-      font-size: 11.5px !important;
+      font-size: 12px !important;
       font-weight: 600 !important;
     }
 
@@ -816,18 +838,32 @@ const htmlTemplate = `<!DOCTYPE html>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js" defer></script>
 
-  <!-- Mermaid.js for Dynamic Diagrams -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-
-  <script>
-    // Initialize Mermaid synchronously to prevent automatic rendering on DOMContentLoaded
+  <!-- Mermaid.js for Dynamic Diagrams (ESM) -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
     mermaid.initialize({
       startOnLoad: false, // CRITICAL: Stop auto-rendering to prevent mobile CPU freezing!
       theme: 'default',
       securityLevel: 'loose',
-      htmlLabels: false, // Force native SVG text elements to calculate text dimensions properly
-      flowchart: { useWidth: true, htmlLabels: false }
+      htmlLabels: true, // Render text via HTML foreignObject for perfect Thai font wrap and zero overlap!
+      flowchart: {
+        useWidth: true,
+        htmlLabels: true,
+        nodeSpacing: 75, // Significantly increase horizontal space between nodes (default is 40)
+        rankSpacing: 75, // Significantly increase vertical space between ranks (default is 50)
+        curve: 'basis'  // Make lines smooth and curved, avoiding sharp overlapping zigzags!
+      },
+      sequence: {
+        actorMargin: 75, // Increase horizontal gap between actors
+        messageMargin: 45, // Increase vertical space between messages
+        boxMargin: 15,
+        noteMargin: 15
+      }
     });
+    window.mermaid = mermaid;
+  </script>
+
+  <script>
 
     // Reusable function to inject download triggers
     function injectDownloadButtons(div, svg, index) {
@@ -923,7 +959,7 @@ const htmlTemplate = `<!DOCTYPE html>
             div.textContent = rawCode;
             
             // Render this specific diagram asynchronously
-            mermaid.run({
+            window.mermaid.run({
               nodes: [div]
             }).then(() => {
               // Clean up the skeleton
