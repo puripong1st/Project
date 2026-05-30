@@ -1,7 +1,7 @@
 # คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด
 
 วันที่จัดทำ: 26 พฤษภาคม 2026
-อัปเดตล่าสุด: 2026-05-30 20:05:00 (+07:00)
+อัปเดตล่าสุด: 2026-05-30 20:19:00 (+07:00)
 โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network  
 ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน
 
@@ -9808,5 +9808,108 @@ flowchart LR
 ---
 
 > **บทสรุปภาค §73:** ภาคผนวกนี้ได้ตรวจสอบและบันทึกรายละเอียดทางวิศวกรรมจากซอร์สโค้ดจริงทุกชั้น ตั้งแต่ฐานข้อมูล 12 ตาราง, อัลกอริทึม JWT/bcrypt/HMAC/rate-limit, วงจรชีวิต QR token, state machine ของเฟิร์มแวร์ ไปจนถึงสถาปัตยกรรมแจ้งเตือน 3 ช่องทาง ตลอดจนระบบธีมโหมดมืดพรีเมียม, ระบบกราฟสถิติวิเคราะห์เชิงตอบสนอง, การแก้ไขจุดบกพร่องสลับธีมสีขาวรั่วไหล, สภาวะแข่งขันของการแสดงแผนภูมิ และสถาปัตยกรรมบูรณาการแจ้งเตือนรวมศูนย์การดูแลรักษาระบบ เพื่อให้คู่มือสะท้อนสถานะปัจจุบันของระบบ SmartAccess อย่างถูกต้องครบถ้วน เหมาะแก่การใช้อ้างอิงในเล่มปริญญานิพนธ์และการตรวจประเมินทางวิชาการอย่างสมบูรณ์แบบที่สุด
+
+<p align="right"><a href="#toc">กลับสารบัญ</a></p>
+
+---
+
+## §73.20 การแก้ไขปัญหาแถบสารบัญด้านซ้ายตัดรายการและ Scroll ไม่ตรงเป้า (Sidebar Accordion Overflow & Scroll Fix)
+
+วันที่บันทึก: 30 พฤษภาคม 2026
+
+### 73.20.1 บริบทและปัญหาที่พบ
+
+ภายหลังการนำระบบบานพับอัตโนมัติ (Accordion Model) เข้ามาใช้งานในแถบสารบัญด้านซ้าย พบข้อบกพร่องสำคัญ 2 ประการ:
+
+1. **ปัญหาการตัดรายการ (Max-Height Overflow Bug):** กลุ่มเมนู **"🔬 ภาคผนวกเชิงลึก (20-34)"** ซึ่งมีหัวข้อระดับ H2 และ H3 รวมกันมากกว่า 15 รายการ ไม่สามารถแสดงรายการหัวข้อ §31, §32, §33, §34 ได้ เนื่องจากการกำหนดค่า `max-height: 1000px` แบบตายตัวในไฟล์ CSS ไม่เพียงพอต่อความสูงเนื้อหาจริงของกลุ่มเมนูนั้น รายการที่เกินขีดจำกัดจะถูกซ่อนตัดทิ้งโดย `overflow: hidden` ทำให้ผู้ใช้ไม่สามารถนำทางไปยังหัวข้อดังกล่าวผ่านแถบด้านซ้ายได้
+
+2. **ปัญหา Auto-Scroll ไม่ถูกต้อง (Scroll Target Bug):** เมื่อระบบ Scroll Spy ตรวจพบว่าลิงก์ที่ใช้งานอยู่ (Active Link) อยู่นอกพื้นที่มองเห็นของแถบสารบัญ การเรียก `link.scrollIntoView()` จะสั่งให้ **หน้าหลัก (window)** เลื่อนตาม แทนที่จะเป็นการเลื่อนเฉพาะภายในกล่องเมนู `.toc-menu` ซึ่งส่งผลให้เนื้อหาหลักกระโดดขึ้นลงโดยไม่คาดหมาย
+
+### 73.20.2 การวิเคราะห์สาเหตุหลัก (Root Cause Analysis)
+
+**ปัญหาที่ 1 — Max-Height คงที่:** ค่า `max-height: 1000px` ถูกกำหนดในชุดรูปแบบ CSS ของไฟล์ `my-app/scripts/compile_manual.js` เพื่อใช้เป็นฐานสำหรับ Transition Animation ของบานพับ (Accordion) เมื่อเปิด/ปิด กลุ่มเมนู แต่เมื่อเนื้อหาจริงของกลุ่มใดมีความสูง (scrollHeight) เกิน 1000px เช่น กลุ่มภาคผนวกเชิงลึกที่มีหัวข้อย่อยมาก เนื้อหาส่วนเกินจะถูกตัดทิ้งทันทีโดย `overflow: hidden` แม้ว่าบานพับจะอยู่ในสถานะ **เปิดเต็มที่**
+
+**ปัญหาที่ 2 — scrollIntoView ไม่ระบุ Container:** การเรียก `element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })` จะสั่งการให้ **ทั้งหน้า (Viewport)** เลื่อนเพื่อนำองค์ประกอบนั้นเข้ามาอยู่ในพื้นที่มองเห็น ไม่ใช่การเลื่อนภายในกล่อง `.toc-menu` ที่มี `overflow-y: auto` อิสระ ทำให้เนื้อหาบทความหลักเลื่อนขึ้นลงตามโดยไม่ตั้งใจ
+
+### 73.20.3 การแก้ไขที่ดำเนินการ
+
+**แก้ปัญหา 1 — ยกเลิกข้อจำกัด max-height คงที่ และเปลี่ยนเป็นค่าพลวัต:**
+
+ปรับปรุงค่า CSS ในชุด `.toc-group-list` ให้ใช้ค่าเริ่มต้น `max-height: 9999px` (ใหญ่พอสมควรสำหรับทุกกรณีในสถานะเปิด) และกำหนดให้สถานะ `.collapsed` ใช้ `max-height: 0 !important` เพื่อให้ CSS Override แน่นอน:
+
+```css
+.toc-group-list {
+  max-height: 9999px;
+  overflow: hidden;
+  transition: max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease-out;
+  opacity: 1;
+}
+.toc-group-list.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+```
+
+นอกจากนี้ ได้ยกระดับฟังก์ชัน `expandGroup()` ใน JavaScript ให้ใช้ค่า **`scrollHeight` จริง** ก่อนเปิดและปิดบานพับ เพื่อให้ Transition Animation แม่นยำและราบรื่น:
+
+```javascript
+function expandGroup(groupId) {
+  document.querySelectorAll(".toc-group-list").forEach(list => {
+    if (list.id === groupId) {
+      // วัดความสูงจริงก่อน expand
+      list.style.maxHeight = list.scrollHeight + "px";
+      list.classList.remove("collapsed");
+      // หลัง transition เสร็จ ปลดล็อก max-height
+      list.addEventListener("transitionend", function onEnd() {
+        if (!list.classList.contains("collapsed")) {
+          list.style.maxHeight = "9999px";
+        }
+        list.removeEventListener("transitionend", onEnd);
+      });
+    } else {
+      if (!list.classList.contains("collapsed")) {
+        list.style.maxHeight = list.scrollHeight + "px"; // pin current
+        list.getBoundingClientRect(); // force reflow
+      }
+      list.classList.add("collapsed");
+      list.style.maxHeight = "";
+    }
+  });
+}
+```
+
+**แก้ปัญหา 2 — เปลี่ยนเป้าหมาย Scroll จาก window เป็น tocMenu:**
+
+แทนที่การเรียก `link.scrollIntoView()` ด้วยการคำนวณ `offsetTop` ของลิงก์เทียบกับ `.toc-menu` แล้วเรียก `tocMenu.scrollTo()` โดยตรง พร้อม `requestAnimationFrame` เพื่อรอให้ Animation บานพับเสร็จสิ้นก่อนเลื่อน:
+
+```javascript
+if (!sidebar.matches(':hover')) {
+  requestAnimationFrame(() => {
+    const linkRect = link.getBoundingClientRect();
+    const menuRect = tocMenu.getBoundingClientRect();
+    if (linkRect.top < menuRect.top || linkRect.bottom > menuRect.bottom) {
+      const linkOffsetInMenu = link.offsetTop - tocMenu.offsetTop;
+      const targetScroll = linkOffsetInMenu - (tocMenu.clientHeight / 2) + (link.clientHeight / 2);
+      tocMenu.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+    }
+  });
+}
+```
+
+### 73.20.4 ผลลัพธ์ที่ได้รับ
+
+- **แก้ไขแล้ว:** หัวข้อ §31, §32, §33, §34 และรายการอื่นที่เคยถูกตัดทิ้งแสดงขึ้นอย่างสมบูรณ์ครบถ้วนทุกกลุ่มเมนู โดยไม่มีข้อจำกัดด้านจำนวนหัวข้ออีกต่อไป
+- **แก้ไขแล้ว:** การ Auto-Scroll ลิงก์ที่ Active จะเกิดขึ้นภายในกล่องสารบัญเท่านั้น ไม่รบกวนตำแหน่งการเลื่อนอ่านเนื้อหาหลักของผู้ใช้
+- **คงไว้:** แอนิเมชัน EaseOutExpo ยังคงทำงานอย่างราบรื่น เนื่องจากใช้ `scrollHeight` จริงและ `transitionend` event เพื่อปลดล็อก max-height อย่างถูกขั้นตอน
+- **คงไว้:** ระบบ Non-blocking Hover Guard และ 60fps Scroll Spy ยังทำงานอย่างสมบูรณ์ไม่ถูกกระทบ
+
+### 73.20.5 ไฟล์ที่แก้ไข
+
+| ไฟล์ | การเปลี่ยนแปลง |
+|------|----------------|
+| `my-app/scripts/compile_manual.js` | แก้ CSS `.toc-group-list` max-height, อัปเดต `expandGroup()` ให้ใช้ scrollHeight, แก้ Auto-Scroll ให้เรียก `tocMenu.scrollTo()` แทน `link.scrollIntoView()` |
+| `complete_system_manual_th.html` | Re-generated อัตโนมัติจากสคริปต์ compile |
+| `my-app/public/complete_system_manual_th.html` | Re-generated อัตโนมัติจากสคริปต์ compile |
 
 <p align="right"><a href="#toc">กลับสารบัญ</a></p>

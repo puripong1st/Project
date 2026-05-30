@@ -286,14 +286,14 @@ const htmlTemplate = `<!DOCTYPE html>
       margin: 0;
       margin-top: 4px;
       padding-left: 4px;
-      max-height: 1000px;
+      max-height: 9999px;
       overflow: hidden;
-      transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out;
+      transition: max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease-out;
       opacity: 1;
     }
 
     .toc-group-list.collapsed {
-      max-height: 0;
+      max-height: 0 !important;
       opacity: 0;
       pointer-events: none;
     }
@@ -1430,17 +1430,33 @@ const htmlTemplate = `<!DOCTYPE html>
       const sidebar = document.getElementById("appSidebar");
 
       // Unified Accordion Helper to expand one group and collapse all others
+      // Uses dynamic scrollHeight so every group shows all its items regardless of count
       function expandGroup(groupId) {
         document.querySelectorAll(".toc-group-list").forEach(list => {
           const header = list.previousElementSibling;
           if (list.id === groupId) {
+            // Measure full natural height before expanding
+            list.style.maxHeight = list.scrollHeight + "px";
             list.classList.remove("collapsed");
             if (header) {
               const arrow = header.querySelector(".toc-group-arrow");
               if (arrow) arrow.classList.remove("collapsed");
             }
+            // After transition, set to none so resize still works
+            list.addEventListener("transitionend", function onEnd() {
+              if (!list.classList.contains("collapsed")) {
+                list.style.maxHeight = "9999px";
+              }
+              list.removeEventListener("transitionend", onEnd);
+            });
           } else {
+            if (!list.classList.contains("collapsed")) {
+              // Pin current height before animating to 0
+              list.style.maxHeight = list.scrollHeight + "px";
+              list.getBoundingClientRect(); // force reflow
+            }
             list.classList.add("collapsed");
+            list.style.maxHeight = "";
             if (header) {
               const arrow = header.querySelector(".toc-group-arrow");
               if (arrow) arrow.classList.add("collapsed");
@@ -1890,11 +1906,17 @@ const htmlTemplate = `<!DOCTYPE html>
 
             // Auto-scroll sidebar if active item is out of view, but only if the user is not hovering/interacting with it
             if (!sidebar.matches(':hover')) {
-              const linkRect = link.getBoundingClientRect();
-              const menuRect = tocMenu.getBoundingClientRect();
-              if (linkRect.top < menuRect.top || linkRect.bottom > menuRect.bottom) {
-                link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }
+              // Use requestAnimationFrame to wait for accordion expand animation before scrolling
+              requestAnimationFrame(() => {
+                const linkRect = link.getBoundingClientRect();
+                const menuRect = tocMenu.getBoundingClientRect();
+                if (linkRect.top < menuRect.top || linkRect.bottom > menuRect.bottom) {
+                  // Scroll within tocMenu itself (not the page)
+                  const linkOffsetInMenu = link.offsetTop - tocMenu.offsetTop;
+                  const targetScroll = linkOffsetInMenu - (tocMenu.clientHeight / 2) + (link.clientHeight / 2);
+                  tocMenu.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+                }
+              });
             }
           } else {
             link.classList.remove("active");
