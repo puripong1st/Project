@@ -941,7 +941,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         fetchSettings();
       }, 0);
     }
-    if (tab === "rooms") {
+    if ((tab === "rooms" || tab === "pending") && user) {
       fetchAnalytics();
     }
   }, [tab, user, fetchAll, fetchLogs, fetchAdmins, fetchSettings, fetchAnalytics]);

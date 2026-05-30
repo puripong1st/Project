@@ -80,7 +80,7 @@ export default function IotPage() {
                   className="room-config-card"
                   style={{
                     padding: 22,
-                    background: recentUnlock ? "linear-gradient(135deg, #FAF5FF 0%, rgba(219,39,119,0.01) 100%)" : "#fff",
+                    background: recentUnlock ? "linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(219,39,119,0.02) 100%)" : "var(--bg-secondary)",
                     borderColor: recentUnlock ? "rgba(124,58,237,0.35)" : "var(--border)",
                     borderWidth: recentUnlock ? 2 : 1,
                     boxShadow: recentUnlock ? "0 10px 20px -5px rgba(124,58,237,0.15)" : "var(--shadow-sm)",

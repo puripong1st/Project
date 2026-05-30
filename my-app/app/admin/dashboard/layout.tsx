@@ -478,7 +478,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
         .settings-map-item {
           border: 1px solid var(--border);
           border-radius: 8px;
-          background: #fff;
+          background: var(--bg-secondary);
           padding: 12px 14px;
           display: flex;
           gap: 10px;
@@ -539,7 +539,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
           gap: 12px;
         }
         .room-stat-card {
-          background: #fff;
+          background: var(--bg-secondary);
           border: 1px solid var(--border);
           border-radius: 8px;
           padding: 16px;
@@ -551,7 +551,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
           gap: 14px;
         }
         .room-config-card {
-          background: #fff;
+          background: var(--bg-secondary);
           border: 1px solid var(--border);
           border-radius: 8px;
           padding: 18px;
@@ -576,12 +576,12 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
       {/* Rejection Reason Modal */}
       {rejectModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(30, 27, 75, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center", zIndex: 9999, padding: 24 }}>
-          <div className="premium-card animate-fade-in" style={{ maxWidth: 440, width: "100%", padding: 28, background: "#fff" }}>
+          <div className="premium-card animate-fade-in" style={{ maxWidth: 440, width: "100%", padding: 28, background: "var(--bg-secondary)" }}>
             <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
               <CrossIcon /> ปฏิเสธคำขอการลงทะเบียน
             </h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginBottom: 16 }}>
-              นักศึกษา: <strong style={{ color: "var(--smartaccess-purple-dark)" }}>{rejectModal.name}</strong>
+              นักศึกษา: <strong style={{ color: "var(--smartaccess-purple)" }}>{rejectModal.name}</strong>
             </p>
             <textarea
               className="smartaccess-input"
@@ -624,7 +624,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             <div style={{ padding: "24px 28px 18px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, rgba(124,58,237,0.06), rgba(219,39,119,0.04))" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "#fff", border: "1px solid var(--border)", color: "var(--smartaccess-purple-dark)", fontSize: 12, fontWeight: 900, marginBottom: 10 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border)", color: "var(--smartaccess-purple)", fontSize: 12, fontWeight: 900, marginBottom: 10 }}>
                 ESP32 Room Setup
               </div>
               <h3 style={{ fontSize: 22, fontWeight: 900, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>

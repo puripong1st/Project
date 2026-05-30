@@ -330,41 +330,41 @@ export default function AllPage() {
                       </div>
                     </td>
                     <td style={{ padding: "14px" }}>
-                      {/* Access status rendering */}
-                      {student.status === "approved" && (
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 900,
-                          background: "#ECFDF5", color: "#059669", border: "1px solid rgba(16,185,129,0.25)"
-                        }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981" }} />
-                          ได้สิทธิ์ผ่านประตู
-                        </span>
-                      )}
-                      {student.status === "rejected" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
-                          <span style={{
-                            display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 900,
-                            background: "#FEF2F2", color: "#DC2626", border: "1px solid rgba(220,38,38,0.2)"
-                          }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444" }} />
-                            ถูกปฏิเสธสิทธิ์
-                          </span>
-                          {student.rejection_reason && (
-                            <span style={{ fontSize: 10.5, color: "var(--text-secondary)", fontStyle: "italic", marginLeft: 2 }}>
-                              เหตุผล: {student.rejection_reason}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {student.status === "pending" && (
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 900,
-                          background: "#FFFBEB", color: "#D97706", border: "1px solid rgba(245,158,11,0.25)"
-                        }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B" }} />
-                          รอยืนยันสิทธิ์
-                        </span>
-                      )}
+                       {/* Access status rendering */}
+                       {student.status === "approved" && (
+                         <span style={{
+                           display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                           background: "rgba(16,185,129,0.12)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)"
+                         }}>
+                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981" }} />
+                           ได้สิทธิ์ผ่านประตู
+                         </span>
+                       )}
+                       {student.status === "rejected" && (
+                         <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                           <span style={{
+                             display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                             background: "rgba(239,68,68,0.12)", color: "#F87171", border: "1px solid rgba(239,68,68,0.2)"
+                           }}>
+                             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444" }} />
+                             ถูกปฏิเสธสิทธิ์
+                           </span>
+                           {student.rejection_reason && (
+                             <span style={{ fontSize: 10.5, color: "var(--text-secondary)", fontStyle: "italic", marginLeft: 2 }}>
+                               เหตุผล: {student.rejection_reason}
+                             </span>
+                           )}
+                         </div>
+                       )}
+                       {student.status === "pending" && (
+                         <span style={{
+                           display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 900,
+                           background: "rgba(245,158,11,0.12)", color: "#FBBF24", border: "1px solid rgba(245,158,11,0.2)"
+                         }}>
+                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B" }} />
+                           รอยืนยันสิทธิ์
+                         </span>
+                       )}
                     </td>
                     <td style={{ padding: "14px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

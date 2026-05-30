@@ -402,7 +402,7 @@ export default function RoomsPage() {
                       </div>
                     </div>
                   </div>
-                  <span style={{ borderRadius: 99, padding: "5px 10px", fontSize: 11.5, fontWeight: 900, background: isOnline ? "#ECFDF5" : "#FEF2F2", color: isOnline ? "#059669" : "#DC2626", border: `1px solid ${isOnline ? "rgba(5,150,105,0.24)" : "rgba(220,38,38,0.24)"}` }}>
+                  <span style={{ borderRadius: 99, padding: "5px 10px", fontSize: 11.5, fontWeight: 900, background: isOnline ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)", color: isOnline ? "#10B981" : "#F87171", border: `1px solid ${isOnline ? "rgba(16,185,129,0.24)" : "rgba(239,68,68,0.24)"}` }}>
                     {isOnline ? "ONLINE" : "OFFLINE"}
                   </span>
                 </div>

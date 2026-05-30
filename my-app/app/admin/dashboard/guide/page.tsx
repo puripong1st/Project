@@ -57,8 +57,8 @@ export default function GuidePage() {
               ))}
             </div>
 
-            <div style={{ padding: 16, border: "1px solid rgba(16,185,129,0.24)", background: "#ECFDF5", borderRadius: 8 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 900, color: "#047857", marginBottom: 8 }}>เริ่มใช้งานประจำวัน</h3>
+            <div style={{ padding: 16, border: "1px solid rgba(16,185,129,0.25)", background: "rgba(16,185,129,0.08)", borderRadius: 8 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 900, color: "#10B981", marginBottom: 8 }}>เริ่มใช้งานประจำวัน</h3>
               <ol style={{ margin: 0, paddingLeft: 20, color: "var(--text-primary)", fontSize: 13, lineHeight: 1.8 }}>
                 <li>เข้าแผงผู้ดูแล แล้วดูการ์ดด้านบนก่อนว่ามีคิวรอตรวจสอบกี่คน และบอร์ดออนไลน์กี่บอร์ด</li>
                 <li>เปิดแท็บ <strong>สถานะบอร์ด IoT ทั้งหมด</strong> เพื่อตรวจว่าแต่ละห้องมีรายการแสดงขึ้นมา เช่น CE-401 หรือ CE-402</li>
@@ -68,7 +68,7 @@ export default function GuidePage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18, background: "var(--bg-secondary)", boxShadow: "var(--shadow-sm)" }}>
                 <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>1. รับคำขอและอนุมัติสิทธิ์</h3>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
                   <li>นักศึกษาสแกน QR หน้าห้อง แล้วกรอกข้อมูลในฟอร์ม</li>
@@ -79,7 +79,7 @@ export default function GuidePage() {
                 </ul>
               </section>
 
-              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18, background: "var(--bg-secondary)", boxShadow: "var(--shadow-sm)" }}>
                 <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>2. ปลดล็อกประตู</h3>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
                   <li>ถ้าต้องเปิดให้รายบุคคล ให้ไปที่แท็บ <strong>ทำเนียบ & ประวัติเข้าออก</strong> แล้วกด <strong>เปิด</strong> ในแถวนักศึกษาที่อนุมัติแล้ว</li>
@@ -89,7 +89,7 @@ export default function GuidePage() {
                 </ul>
               </section>
 
-              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18, background: "var(--bg-secondary)", boxShadow: "var(--shadow-sm)" }}>
                 <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>3. เพิ่มหรือแก้ไขห้อง IoT</h3>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
                   <li>เปิดแท็บ <strong>ห้องเรียน & ESP32</strong></li>
@@ -100,7 +100,7 @@ export default function GuidePage() {
                 </ul>
               </section>
 
-              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+              <section style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 18, background: "var(--bg-secondary)", boxShadow: "var(--shadow-sm)" }}>
                 <h3 style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 10 }}>4. Export PDF และค้นหาประวัติ</h3>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
                   <li>ไปที่แท็บ <strong>ทำเนียบ & ประวัติเข้าออก</strong></li>
@@ -112,8 +112,8 @@ export default function GuidePage() {
               </section>
             </div>
 
-            <div style={{ border: "1px solid rgba(217,119,6,0.24)", background: "#FFFBEB", borderRadius: 8, padding: 16 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 900, color: "#B45309", marginBottom: 10 }}>แก้ปัญหาที่พบบ่อย</h3>
+            <div style={{ border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.08)", borderRadius: 8, padding: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 900, color: "#F59E0B", marginBottom: 10 }}>แก้ปัญหาที่พบบ่อย</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
                 {[
                   { q: "เข้าเว็บแล้วไม่เห็นห้อง IoT", a: "ไปที่ตั้งค่าระบบ ตรวจว่ามีห้องอยู่ในรายการ แล้วกดบันทึกทั้งหมดอีกครั้ง" },
@@ -121,7 +121,7 @@ export default function GuidePage() {
                   { q: "Discord ไม่แจ้งเตือน", a: "ตรวจ Webhook ส่วนกลางหรือ Webhook เฉพาะห้อง แล้วกดทดสอบส่ง" },
                   { q: "PDF ไม่มีข้อมูล", a: "ตรวจช่วงวันที่และสถานะที่เลือก ถ้ากรองแคบเกินไปให้เลือกทุกสถานะหรือขยายช่วงวันที่" },
                 ].map(item => (
-                  <div key={item.q} style={{ background: "#FFFFFF", border: "1px solid rgba(217,119,6,0.18)", borderRadius: 8, padding: 12 }}>
+                  <div key={item.q} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, boxShadow: "var(--shadow-sm)" }}>
                     <div style={{ fontSize: 12.5, fontWeight: 900, color: "var(--text-primary)", marginBottom: 4 }}>{item.q}</div>
                     <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>{item.a}</div>
                   </div>
