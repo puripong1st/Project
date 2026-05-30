@@ -115,15 +115,18 @@
     .sidebar {
       width: 320px;
       height: 100vh;
+      max-height: 100vh;
       position: sticky;
       top: 0;
       border-right: 1px solid var(--border);
       background-color: var(--bg-card);
-      padding: 24px;
-      overflow-y: auto;
+      padding: 24px 12px 24px 24px;
       z-index: 99;
       flex-shrink: 0;
       transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Pin header and search input, scroll toc-menu only */
     }
 
     .sidebar-header {
@@ -131,6 +134,7 @@
       padding-bottom: 16px;
       border-bottom: 2px dashed var(--border);
       text-align: center;
+      flex-shrink: 0;
     }
 
     .sidebar-logo {
@@ -161,6 +165,7 @@
       margin-bottom: 20px;
       outline: none;
       transition: border-color 0.2s;
+      flex-shrink: 0;
     }
 
     .sidebar-search:focus {
@@ -171,6 +176,25 @@
       list-style: none;
       padding: 0;
       margin: 0;
+      overflow-y: auto;
+      flex-grow: 1;
+      padding-right: 6px;
+    }
+
+    /* Slick Premium Scrollbar for TOC Menu */
+    .toc-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+    .toc-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .toc-menu::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+      transition: background 0.2s;
+    }
+    .toc-menu::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
     }
 
     .toc-group-header {
@@ -918,7 +942,7 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 19:50:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 20:05:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
@@ -14610,6 +14634,7 @@ RETURNING count, reset_time;
 <li><p><strong>ประสบการณ์โต้ตอบระดับพรีเมียมและการประสานงานแบบสลับบานพับอัตโนมัติ (Premium Accordion Model &amp; Fluid Transitions):</strong></p>
 <ul>
 <li><strong>ระบบนำทางแบบสลับบานพับ (Strict Accordion Behavior):</strong> ปรับปรุงระบบควบคุมเมนูด้านซ้ายใหม่ทั้งหมดให้ทำตัวเป็น &quot;บานพับสลับเดี่ยว (Strict Accordion Model)&quot; เพื่อแก้ไขปัญหาการเปิดแท็บทิ้งค้างไว้จนรกร้างและเบียดบังเนื้อหาอื่น โดยกำหนดสถาปัตยกรรมทางคำสั่งร่วมกับกลไก <strong>Bulletproof Scroll Spy</strong> (ประเมินตำแหน่งความสูงสัมพัทธ์ที่ยอดเยี่ยม <code>rect.top &lt;= 150</code> จากขอบบนหน้าจอร่วมกับคำสั่ง <code>getBoundingClientRect()</code> และควบคุมเฟรมเรตสัญจรที่ 60fps ด้วยคำสั่งสเกลเฟรมเรตเบราว์เซอร์ <code>requestAnimationFrame()</code>) เมื่อผู้ใช้เลื่อนข้ามเขตพื้นที่ (เช่น เลื่อนจากภาคหลักข้อ 19 เลยลงมายังภาคผนวกข้อ 20, 21) ระบบจะทำการดึงข้อมูลตำแหน่งที่แท้จริงและสั่งพับเก็บแท็บเดิมที่หมดความสำคัญไปพร้อมคลี่ขยายแท็บของภาคใหม่ขึ้นมาแทนที่ในเสี้ยววินาทีโดยสมบูรณ์</li>
+<li><strong>โครงสร้างสถาปัตยกรรมแถบด้านข้างแบบปักหมุดตรึงแน่น (Pinned Header &amp; Independent Sidebar Scroll):</strong> ปรับปรุงโครงสร้างสถาปัตยกรรม CSS ของ Sidebar ซ้ายใหม่ทั้งหมด โดยจัดแบ่งแผงเลย์เอาต์ออกเป็นแบบ Flexbox ขนานสองทิศทาง กำหนดให้พื้นที่ด้านบนสุด (หัวข้อเรื่อง, โลโก้, ป้าย Thesis, และกล่องค้นหาอัจฉริยะ) ถูกปักหมุดตรึงแน่นอยู่กับที่ตลอดเวลาไม่มีการสัญจรรวมไปตามการเลื่อนอ่าน (<code>flex-shrink: 0</code>) และกำหนดให้เฉพาะส่วนกล่องลิงก์นำทาง (<code>.toc-menu</code>) เท่านั้นที่เป็นตัวเก็บสถานะและคลี่ขยายแผงสไลด์ขึ้นลงสลับสับเปลี่ยนอยู่ภายใต้ระบบเลื่อนอิสระ (<code>overflow-y: auto; flex-grow: 1; max-height: 100vh</code>) พร้อมฝังแถบเลื่อนสั่งงานแบบพรีเมียม (Slick Custom Scrollbar) สีหม่นระนาบพิเศษ ส่งผลแก้ปัญหากล่องนำทางห้อยตกล้นขอบ หรือเมนูปุ่มค้นหายุบตัวหายไปด้านบนจนสุดสายตาระหว่างเลื่อนอ่านเนื้อหาตอนล่างสุด (ข้อ 71+) ช่วยให้คงทรรศนะในการสลับหน้า การสืบค้นคู่มือ และการใช้งานแถบควบคุมทุกฟังก์ชันได้อย่างสมบูรณ์แบบไม่ว่าผู้ใช้จะกำลังอ่านเนื้อหาในส่วนใดก็ตาม</li>
 <li><strong>เส้นโค้งแอนิเมชันความหน่วงพลวัต (Dynamic Transition Optimization):</strong> ยกระดับความลื่นไหลโดยการปรับปรุงค่า CSS Transitions จากเดิมที่ใช้กลไก <code>max-height: 2000px</code> ควบคู่กับแอนิเมชัน Ease-in-out ทั่วไปซึ่งก่อให้เกิดความเฉื่อยและจังหวะหน่วงสายตาตอนหดตัว (Collapse Lag) ให้มาใช้เส้นโค้งพลังแอนิเมชันระดับพรีเมียม <strong><code>cubic-bezier(0.16, 1, 0.3, 1)</code> (EaseOutExpo)</strong> ที่จะเร่งความเร็วในการหด/ขยายตัวอย่างฉับไวในตอนเริ่มต้นและค่อย ๆ ชะลอความเร็วลงอย่างละมุนละไมในจุดสุดท้าย พร้อมทั้งบีบขอบเขตความสูงของกล่องเนื้อหาจากเดิมลงมาเหลือสูงสุดเพียง <code>1000px</code> ส่งผลให้แอนิเมชันการพับปิดแท็บของภาคหลักและการคลี่ขยายแท็บของภาคผนวกมีความยืดหยุ่น ไหลลื่น และตอบสนองต่อทุกพฤติกรรมการสัญจรคู่มือของผู้ใช้งานอย่างสง่างามที่สุด</li>
 <li><strong>Non-blocking Hover Scroll Guard:</strong> เพิ่มเติมตรรกะระดับพรีเมียมตรวจสอบว่าหากเมาส์ของผู้ใช้กำลังลอยตัวเลือกสืบค้นอยู่บนพื้นที่ Sidebar (<code>!sidebar.matches(&#39;:hover&#39;)</code>) ระบบจะระงับกลไกบังคับการเลื่อนตำแหน่งอัตโนมัติชั่วคราว เพื่อเปิดสิทธิ์ให้ผู้ใช้สามารถเลื่อนเมาส์อ่านสารบัญบนแถบด้านซ้ายขึ้น-ลงดูเนื้อหาได้อย่างมีอิสระโดยที่หน้าไม่สั่นกระตุกหรือดีดกลับลงมาด้านล่างตามจุดที่เลื่อนอ่านหน้าหลัก</li>
 <li><strong>Advanced Search Integration (ระบบสืบค้นอัจฉริยะ):</strong> เมื่อผู้ประเมินทำการป้อนคำค้นหาในกล่องค้นหาเมนูด้านซ้าย ตัวกรองจะทำการประเมินและสืบค้นข้อความในลิงก์ย่อยทั้งหมด หากพบว่ามีข้อความที่ตรงกัน ระบบจะสั่งการขยายเมนูแม่ของลิงก์ที่เข้าเงื่อนไขนั้นออกมาแสดงผลโดยอัตโนมัติ พร้อมทั้งซ่อนหมวดหมู่หรือรายการอื่นที่ไม่เกี่ยวข้องออกจนหมดสิ้น และจะกลับคืนสู่สภาวะพับปิด/เปิดอย่างเหมาะสมทันทีที่กล่องค้นหาถูกล้างค่าออก เพื่อความสะดวกรวดเร็วและมีประสิทธิภาพของเครื่องมือสืบค้นสูงสุด</li>
@@ -15511,8 +15536,8 @@ RETURNING count, reset_time;
             // Auto-scroll sidebar if active item is out of view, but only if the user is not hovering/interacting with it
             if (!sidebar.matches(':hover')) {
               const linkRect = link.getBoundingClientRect();
-              const sidebarRect = sidebar.getBoundingClientRect();
-              if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+              const menuRect = tocMenu.getBoundingClientRect();
+              if (linkRect.top < menuRect.top || linkRect.bottom > menuRect.bottom) {
                 link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
               }
             }

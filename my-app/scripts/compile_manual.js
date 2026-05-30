@@ -175,15 +175,18 @@ const htmlTemplate = `<!DOCTYPE html>
     .sidebar {
       width: 320px;
       height: 100vh;
+      max-height: 100vh;
       position: sticky;
       top: 0;
       border-right: 1px solid var(--border);
       background-color: var(--bg-card);
-      padding: 24px;
-      overflow-y: auto;
+      padding: 24px 12px 24px 24px;
       z-index: 99;
       flex-shrink: 0;
       transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Pin header and search input, scroll toc-menu only */
     }
 
     .sidebar-header {
@@ -191,6 +194,7 @@ const htmlTemplate = `<!DOCTYPE html>
       padding-bottom: 16px;
       border-bottom: 2px dashed var(--border);
       text-align: center;
+      flex-shrink: 0;
     }
 
     .sidebar-logo {
@@ -221,6 +225,7 @@ const htmlTemplate = `<!DOCTYPE html>
       margin-bottom: 20px;
       outline: none;
       transition: border-color 0.2s;
+      flex-shrink: 0;
     }
 
     .sidebar-search:focus {
@@ -231,6 +236,25 @@ const htmlTemplate = `<!DOCTYPE html>
       list-style: none;
       padding: 0;
       margin: 0;
+      overflow-y: auto;
+      flex-grow: 1;
+      padding-right: 6px;
+    }
+
+    /* Slick Premium Scrollbar for TOC Menu */
+    .toc-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+    .toc-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .toc-menu::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+      transition: background 0.2s;
+    }
+    .toc-menu::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
     }
 
     .toc-group-header {
@@ -1867,8 +1891,8 @@ const htmlTemplate = `<!DOCTYPE html>
             // Auto-scroll sidebar if active item is out of view, but only if the user is not hovering/interacting with it
             if (!sidebar.matches(':hover')) {
               const linkRect = link.getBoundingClientRect();
-              const sidebarRect = sidebar.getBoundingClientRect();
-              if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+              const menuRect = tocMenu.getBoundingClientRect();
+              if (linkRect.top < menuRect.top || linkRect.bottom > menuRect.bottom) {
                 link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
               }
             }
