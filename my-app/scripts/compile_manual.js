@@ -392,7 +392,14 @@ const htmlTemplate = `<!DOCTYPE html>
       color: var(--primary-dark);
       padding: 2px 6px;
       border-radius: 6px;
-      word-break: break-word;
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+
+    /* Prevent ugly code text wrapping inside tables */
+    table code {
+      white-space: nowrap;
+      word-break: normal;
     }
 
     body.dark-mode code {
