@@ -75,9 +75,9 @@ const htmlTemplate = `<!DOCTYPE html>
   <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"></noscript>
   
-  <!-- html2pdf.js & html2canvas for single section exports -->
+  <!-- Modern HTML2Canvas & jsPDF for high-fidelity single section exports -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <style>
     :root {
@@ -1360,17 +1360,18 @@ const htmlTemplate = `<!DOCTYPE html>
         const tempContainer = document.createElement("div");
         tempContainer.className = "compiled-export-temp";
         
-        // Create an off-screen wrapper container that is kept active in layout but hidden from user via opacity (prevents coordinates offsets & collapsing)
+        // Create a wrapper container that is placed behind the page content (z-index -99999) with opacity 1 so html2canvas can capture it with full contrast and no clipping bugs!
         const hiddenWrapper = document.createElement("div");
         hiddenWrapper.className = "compiled-export-wrapper";
-        hiddenWrapper.style.position = "fixed";
+        hiddenWrapper.style.position = "absolute";
         hiddenWrapper.style.top = "0";
         hiddenWrapper.style.left = "0";
         hiddenWrapper.style.width = "850px";
         hiddenWrapper.style.height = "auto";
-        hiddenWrapper.style.opacity = "0.01"; // Tiny opacity to keep browser rendering active but invisible to user
+        hiddenWrapper.style.opacity = "1"; // Solid opacity for perfect capture!
+        hiddenWrapper.style.visibility = "visible"; // Fully visible for rendering engine
         hiddenWrapper.style.pointerEvents = "none";
-        hiddenWrapper.style.zIndex = "-9999";
+        hiddenWrapper.style.zIndex = "-99999"; // Sent underneath the solid body background
         document.body.appendChild(hiddenWrapper);
 
         // Copy the header (without the action button panel)
@@ -1431,103 +1432,126 @@ const htmlTemplate = `<!DOCTYPE html>
           cleanTitle = "Section_" + headerId;
         }
 
-        if (format === 'pdf') {
-          // Configuration for premium quality PDF
-          const pdfOptions = {
-            margin: [15, 15, 15, 15],
-            filename: cleanTitle + ".pdf",
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-              scale: 2, 
-              useCORS: true, 
-              logging: false,
-              backgroundColor: "#FFFFFF",
-              onclone: function(clonedDoc) {
-                // Strip dark-mode from the cloned document
-                clonedDoc.body.classList.remove("dark-mode");
-                
-                // Force wrapper opacity and visibility to 1 inside the clone!
-                const clonedWrapper = clonedDoc.querySelector(".compiled-export-wrapper");
-                if (clonedWrapper) {
-                  clonedWrapper.style.opacity = "1";
-                  clonedWrapper.style.visibility = "visible";
-                  clonedWrapper.style.position = "relative";
-                  clonedWrapper.style.zIndex = "1";
-                }
+        // Common html2canvas rendering options
+        const canvasOptions = {
+          scale: 2, // HD Quality
+          useCORS: true,
+          backgroundColor: "#FFFFFF",
+          logging: false,
+          onclone: function(clonedDoc) {
+            // Strip dark-mode from the cloned document to guarantee a clean print look
+            clonedDoc.body.classList.remove("dark-mode");
+            
+            // Force wrapper opacity and visibility to 1 inside the clone!
+            const clonedWrapper = clonedDoc.querySelector(".compiled-export-wrapper");
+            if (clonedWrapper) {
+              clonedWrapper.style.opacity = "1";
+              clonedWrapper.style.visibility = "visible";
+              clonedWrapper.style.position = "absolute";
+              clonedWrapper.style.top = "0";
+              clonedWrapper.style.left = "0";
+              clonedWrapper.style.zIndex = "1";
+            }
 
-                const clonedTemp = clonedDoc.querySelector(".compiled-export-temp");
-                if (clonedTemp) {
-                  clonedTemp.style.opacity = "1";
-                  clonedTemp.style.visibility = "visible";
-                }
+            const clonedTemp = clonedDoc.querySelector(".compiled-export-temp");
+            if (clonedTemp) {
+              clonedTemp.style.opacity = "1";
+              clonedTemp.style.visibility = "visible";
+            }
 
-                // Force content-visibility: visible for offscreen sections
-                clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
-                  el.style.contentVisibility = "visible";
-                  
-                  // Hide any download button containers inside cloned mermaid blocks
-                  const btnGroup = el.querySelector("div");
-                  if (btnGroup) {
-                    btnGroup.style.display = "none";
-                  }
-                });
+            // Force content-visibility: visible for offscreen sections
+            clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
+              el.style.contentVisibility = "visible";
+              
+              // Hide any download button containers inside cloned mermaid blocks
+              const btnGroup = el.querySelector("div");
+              if (btnGroup) {
+                btnGroup.style.display = "none";
               }
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-          };
-          
-          html2pdf().from(tempContainer).set(pdfOptions).save().then(() => {
-            document.body.removeChild(hiddenWrapper);
+            });
+          }
+        };
+
+        if (format === 'pdf') {
+          html2canvas(tempContainer, canvasOptions).then(canvas => {
+            try {
+              let jsPDFClass = null;
+              if (window.jspdf && window.jspdf.jsPDF) {
+                jsPDFClass = window.jspdf.jsPDF;
+              } else if (window.jsPDF) {
+                jsPDFClass = window.jsPDF;
+              }
+              
+              if (!jsPDFClass) {
+                throw new Error("jsPDF library not loaded");
+              }
+
+              // Create PDF document
+              const pdf = new jsPDFClass('p', 'mm', 'a4');
+              const margin = 15; // 15mm margin
+              const pageWidth = 210;
+              const pageHeight = 297;
+              const printableWidth = pageWidth - (2 * margin); // 180mm
+              const printableHeight = pageHeight - (2 * margin); // 267mm
+
+              // Calculate PDF image dimensions
+              const imgWidth = printableWidth;
+              const imgHeight = (canvas.height * imgWidth) / canvas.width;
+              
+              const imgData = canvas.toDataURL('image/jpeg', 1.0);
+              
+              let heightLeft = imgHeight;
+              let position = margin;
+
+              // Add first page
+              pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+              heightLeft -= printableHeight;
+
+              // Add subsequent pages if content exceeds A4 page height
+              while (heightLeft > 0) {
+                position = heightLeft - imgHeight + margin;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+                heightLeft -= printableHeight;
+              }
+
+              pdf.save(cleanTitle + ".pdf");
+            } catch (err) {
+              console.error("PDF generation error:", err);
+              alert("เกิดข้อผิดพลาดในการสร้าง PDF: " + err.message);
+            } finally {
+              if (hiddenWrapper && hiddenWrapper.parentNode) {
+                hiddenWrapper.parentNode.removeChild(hiddenWrapper);
+              }
+            }
           }).catch(err => {
-            console.error("PDF export failed:", err);
-            document.body.removeChild(hiddenWrapper);
+            console.error("html2canvas error during PDF capture:", err);
+            alert("ไม่สามารถสร้างรูปภาพสำหรับการบันทึก PDF ได้");
+            if (hiddenWrapper && hiddenWrapper.parentNode) {
+              hiddenWrapper.parentNode.removeChild(hiddenWrapper);
+            }
           });
           
         } else if (format === 'png') {
-          // Render isolated section container directly to high definition PNG
-          html2canvas(tempContainer, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#FFFFFF",
-            onclone: function(clonedDoc) {
-              // Strip dark-mode from the cloned document
-              clonedDoc.body.classList.remove("dark-mode");
-              
-              // Force wrapper opacity and visibility to 1 inside the clone!
-              const clonedWrapper = clonedDoc.querySelector(".compiled-export-wrapper");
-              if (clonedWrapper) {
-                clonedWrapper.style.opacity = "1";
-                clonedWrapper.style.visibility = "visible";
-                clonedWrapper.style.position = "relative";
-                clonedWrapper.style.zIndex = "1";
+          html2canvas(tempContainer, canvasOptions).then(canvas => {
+            try {
+              const link = document.createElement("a");
+              link.href = canvas.toDataURL("image/png");
+              link.download = cleanTitle + ".png";
+              link.click();
+            } catch (err) {
+              console.error("PNG export download error:", err);
+            } finally {
+              if (hiddenWrapper && hiddenWrapper.parentNode) {
+                hiddenWrapper.parentNode.removeChild(hiddenWrapper);
               }
-
-              const clonedTemp = clonedDoc.querySelector(".compiled-export-temp");
-              if (clonedTemp) {
-                clonedTemp.style.opacity = "1";
-                clonedTemp.style.visibility = "visible";
-              }
-
-              // Force content-visibility: visible for offscreen sections
-              clonedDoc.querySelectorAll(".mermaid, pre, .table-container, .alert-box").forEach(el => {
-                el.style.contentVisibility = "visible";
-                
-                // Hide any download button containers inside cloned mermaid blocks
-                const btnGroup = el.querySelector("div");
-                if (btnGroup) {
-                  btnGroup.style.display = "none";
-                }
-              });
             }
-          }).then(canvas => {
-            const link = document.createElement("a");
-            link.href = canvas.toDataURL("image/png");
-            link.download = cleanTitle + ".png";
-            link.click();
-            document.body.removeChild(hiddenWrapper);
           }).catch(err => {
             console.error("PNG export failed:", err);
-            document.body.removeChild(hiddenWrapper);
+            alert("ไม่สามารถบันทึกไฟล์รูปภาพ PNG ได้");
+            if (hiddenWrapper && hiddenWrapper.parentNode) {
+              hiddenWrapper.parentNode.removeChild(hiddenWrapper);
+            }
           });
         }
       };

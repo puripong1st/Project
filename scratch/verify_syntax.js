@@ -22,8 +22,8 @@ while ((match = scriptRegex.exec(html)) !== null) {
   const scriptContent = match[1].trim();
   const tagHeader = match[0].split('>')[0] + '>';
   
-  if (tagHeader.includes('src=')) {
-    console.log(`Script tag ${scriptIndex}: External script, skipping...`);
+  if (tagHeader.includes('src=') || tagHeader.includes('type="module"')) {
+    console.log(`Script tag ${scriptIndex}: Module or external script, skipping...`);
     scriptIndex++;
     continue;
   }
