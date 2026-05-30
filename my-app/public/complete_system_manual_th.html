@@ -918,7 +918,7 @@
 
       <article class="content-card" id="compiledContent">
         <h1>คู่มือระบบควบคุมประตูโครงการ Innovative system for managing access rights and controlling classroom access via wireless network ฉบับละเอียด</h1>
-<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 19:35:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
+<p>วันที่จัดทำ: 26 พฤษภาคม 2026<br>อัปเดตล่าสุด: 2026-05-30 19:42:00 (+07:00)<br>โปรเจกต์อ้างอิง: Innovative system for managing access rights and controlling classroom access via wireless network<br>ขอบเขตคู่มือ: วิธีใช้งานเว็บ, วิธีใช้งานบอร์ด ESP32, วิธีต่อวงจร, วิธีทำชุดจำลองประตู, และคำอธิบายโค้ดรายฟังก์ชัน</p>
 <blockquote>
 <p>คู่มือนี้อธิบายจากโค้ดจริงในโปรเจกต์ปัจจุบัน โดยระบบเว็บอยู่ใน <code>my-app/</code> และเฟิร์มแวร์บอร์ดอยู่ใน <code>esp32/</code> (ใช้เฟิร์มแวร์ตัวเดียวทุกห้อง กำหนดห้องผ่าน <code>config.h</code>)</p>
 </blockquote>
@@ -1083,7 +1083,9 @@
 <li><a href="#sec-71-55">71.55 รายงานสรุปผลการทดสอบเจาะระบบและตรวจประเมินความมั่นคงปลอดภัยอัตโนมัติ (Automated Security Audit &amp; Penetration Testing Report)</a></li>
 <li><a href="#sec-71-56">71.56 คู่มือและโครงสร้างระบบจำลองบอร์ดควบคุมและทดสอบสัญจรประตูปิดอัตโนมัติ (E2E Integration &amp; Simulated ESP32 Mock Sandbox)</a></li>
 <li><a href="#sec-71-57">71.57 รายงานการทดลองและประเมินประสิทธิภาพระบบรับโหลดหนาแน่นเชิงตัวเลข (High-Throughput Load Testing &amp; DB Index Telemetry Report)</a></li>
-<li><a href="#sec-72">72. การยกระดับไอคอน UI เป็นเวกเตอร์พรีเมียม (Emoji → Lucide Vector Icons)</a></li>
+</ul>
+</li>
+<li><a href="#sec-72">72. การยกระดับไอคอน UI เป็นเวกเตอร์พรีเมียม (Emoji → Lucide Vector Icons)</a><ul>
 <li><a href="#sec-72-1">72.1 รายการที่ปรับปรุงแล้ว (ผ่าน tsc --noEmit ไม่มี error)</a></li>
 </ul>
 </li>
@@ -14604,7 +14606,8 @@ RETURNING count, reset_time;
 </li>
 <li><p><strong>ประสบการณ์โต้ตอบระดับพรีเมียม (Premium Navigation &amp; Collapsible Transitions):</strong></p>
 <ul>
-<li><strong>Collapsible Menu &amp; Smart Scroll Sync:</strong> แถบหัวข้อหมวดหมู่เมนูทั้ง 4 กลุ่มถูกกำหนดให้อยู่ในสถานะปิดพับไว้เป็นค่าเริ่มต้น (Collapsed by default) เพื่อความโล่งและเรียบง่ายสบายตาของแถบควบคุมด้านข้าง และเมื่อผู้ใช้ทำงานเลื่อนอ่านหน้าเอกสาร (Scroll) กลไกของระบบสืบหาความใกล้เคียง (<code>IntersectionObserver</code>) จะทำการตรวจจับและไฮไลต์ลิงก์นำทางปัจจุบัน พร้อมเร่งส่งคำสั่งขยายขอบเขตหมวดหมู่แม่ของหัวข้อนั้นออกโดยอัตโนมัติแบบนุ่มนวลผ่าน CSS Transitions (<code>max-height: 2000px; opacity: 1;</code>) และทำการพับปิดหมวดหมู่ที่ไม่ได้ใช้งานอื่นลงเพื่อให้สมาธิของผู้ใช้งานอยู่กับเนื้อหาปัจจุบัน</li>
+<li><strong>Collapsible Menu &amp; Smart Scroll Sync:</strong> แถบหัวข้อหมวดหมู่เมนูทั้ง 4 กลุ่มถูกกำหนดให้อยู่ในสถานะปิดพับไว้เป็นค่าเริ่มต้น (Collapsed by default) เพื่อความโล่งและเรียบง่ายสบายตาของแถบควบคุมด้านข้าง และเมื่อผู้ใช้ทำงานเลื่อนอ่านหน้าเอกสาร (Scroll) กลไกของระบบสืบหาความใกล้เคียง (<code>IntersectionObserver</code>) จะทำการตรวจจับและไฮไลต์ลิงก์นำทางปัจจุบัน พร้อมเร่งส่งคำสั่งขยายขอบเขตหมวดหมู่แม่ของหัวข้อนั้นออกโดยอัตโนมัติแบบนุ่มนวลผ่าน CSS Transitions และทำการพับปิดหมวดหมู่ที่ไม่ได้ใช้งานอื่นลงเพื่อให้สมาธิของผู้ใช้งานอยู่กับเนื้อหาปัจจุบัน</li>
+<li><strong>Non-blocking Hover Scroll Guard:</strong> เพิ่มเติมตรรกะระดับพรีเมียมตรวจสอบว่าหากเมาส์ของผู้ใช้กำลังลอยตัวเลือกสืบค้นอยู่บนพื้นที่ Sidebar (<code>!sidebar.matches(&#39;:hover&#39;)</code>) ระบบจะระงับกลไกบังคับการเลื่อนตำแหน่งอัตโนมัติชั่วคราว เพื่อเปิดสิทธิ์ให้ผู้ใช้สามารถเลื่อนเมาส์อ่านสารบัญบนแถบด้านซ้ายขึ้น-ลงดูเนื้อหาได้อย่างมีอิสระโดยที่หน้าไม่สั่นกระตุกหรือดีดกลับลงมาด้านล่างตามจุดที่เลื่อนอ่านหน้าหลัก</li>
 <li><strong>Advanced Search Integration (ระบบสืบค้นอัจฉริยะ):</strong> เมื่อผู้ประเมินทำการป้อนคำค้นหาในกล่องค้นหาเมนูด้านซ้าย ตัวกรองจะทำการประเมินและสืบค้นข้อความในลิงก์ย่อยทั้งหมด หากพบว่ามีข้อความที่ตรงกัน ระบบจะสั่งการขยายเมนูแม่ของลิงก์ที่เข้าเงื่อนไขนั้นออกมาแสดงผลโดยอัตโนมัติ พร้อมทั้งซ่อนหมวดหมู่หรือรายการอื่นที่ไม่เกี่ยวข้องออกจนหมดสิ้น และจะกลับคืนสู่สภาวะพับปิด/เปิดอย่างเหมาะสมทันทีที่กล่องค้นหาถูกล้างค่าออก เพื่อความสะดวกรวดเร็วและมีประสิทธิภาพของเครื่องมือสืบค้นสูงสุด</li>
 </ul>
 </li>
@@ -15047,7 +15050,7 @@ RETURNING count, reset_time;
         { id: "group-1", title: "📘 ภาคหลัก (1-19)", range: [1, 19] },
         { id: "group-2", title: "🔬 ภาคผนวกเชิงลึก (20-34)", range: [20, 34] },
         { id: "group-3", title: "⚙️ ภาคผนวกระดับวิศวกร (35-44)", range: [35, 44] },
-        { id: "group-4", title: "🎯 ภาคเจาะลึกขั้นสูง (45-999)", range: [45, 999] }
+        { id: "group-4", title: "🎯 ภาคเจาะลึกขั้นสูง (45-73)", range: [45, 999] }
       ];
 
       // Create group HTML containers inside tocMenu
@@ -15501,11 +15504,13 @@ RETURNING count, reset_time;
               }
             }
 
-            // Auto-scroll sidebar if active item is out of view
-            const linkRect = link.getBoundingClientRect();
-            const sidebarRect = sidebar.getBoundingClientRect();
-            if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
-              link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Auto-scroll sidebar if active item is out of view, but only if the user is not hovering/interacting with it
+            if (!sidebar.matches(':hover')) {
+              const linkRect = link.getBoundingClientRect();
+              const sidebarRect = sidebar.getBoundingClientRect();
+              if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+                link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
             }
           } else {
             link.classList.remove("active");

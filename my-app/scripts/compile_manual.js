@@ -1410,7 +1410,7 @@ const htmlTemplate = `<!DOCTYPE html>
         { id: "group-1", title: "📘 ภาคหลัก (1-19)", range: [1, 19] },
         { id: "group-2", title: "🔬 ภาคผนวกเชิงลึก (20-34)", range: [20, 34] },
         { id: "group-3", title: "⚙️ ภาคผนวกระดับวิศวกร (35-44)", range: [35, 44] },
-        { id: "group-4", title: "🎯 ภาคเจาะลึกขั้นสูง (45-999)", range: [45, 999] }
+        { id: "group-4", title: "🎯 ภาคเจาะลึกขั้นสูง (45-73)", range: [45, 999] }
       ];
 
       // Create group HTML containers inside tocMenu
@@ -1864,11 +1864,13 @@ const htmlTemplate = `<!DOCTYPE html>
               }
             }
 
-            // Auto-scroll sidebar if active item is out of view
-            const linkRect = link.getBoundingClientRect();
-            const sidebarRect = sidebar.getBoundingClientRect();
-            if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
-              link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Auto-scroll sidebar if active item is out of view, but only if the user is not hovering/interacting with it
+            if (!sidebar.matches(':hover')) {
+              const linkRect = link.getBoundingClientRect();
+              const sidebarRect = sidebar.getBoundingClientRect();
+              if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+                link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
             }
           } else {
             link.classList.remove("active");
