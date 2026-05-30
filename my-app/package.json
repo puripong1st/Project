@@ -8,6 +8,8 @@
     "build": "node scripts/compile_manual.js && node --max-old-space-size=4096 node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "powershell -Command \"Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; Write-Host 'Cache cleaned successfully'\""
   },
   "dependencies": {
@@ -38,6 +40,7 @@
     "marked": "^18.0.4",
     "postcss": "8.5.15",
     "tailwindcss": "4.3.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

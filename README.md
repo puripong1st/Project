@@ -7,7 +7,7 @@
 ---
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-15+-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-Ready-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase PostgreSQL" />
@@ -57,14 +57,14 @@
 │ Auth: JWT Sessions + bcryptjs secure hashing           │
 │ Reporting: Server-side landscape pdfkit generator     │
 └───────────────────────────┬────────────────────────────┘
-                            │ (HTTPS Client Polling / Edge CMDs)
+                            │ (HTTPS Cloud Polling — ESP32 ดึงคำสั่งเองทุก ~2 วิ)
 ┌───────────────────────────▼────────────────────────────┐
 │                    📡 ESP32 Microcontroller            │
 ├────────────────────────────────────────────────────────┤
 │ Output Pinouts: GPIO 12 Relay · GPIO 27 Active Buzzer  │
 │ Indicators: GPIO 14 WiFi LED · GPIO 26 Reject LED      │
 │ Display Panel: ILI9341 SPI TFT LCD (3.2 inch)          │
-│ Local Features: WiFiServer direct commands            │
+│ Comms: Outbound Cloud Polling เท่านั้น (ไม่เปิด port ขาเข้า)│
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -95,7 +95,7 @@ Project/
 │   ├── lib/
 │   │   ├── db.ts                 # ตัวเชื่อมต่อ Supabase PostgreSQL และสร้างตารางอัตโนมัติ
 │   │   ├── auth.ts               # ระบบถอนสิทธิ์/ตรวจสอบ JWT และแอดมินเซสชัน
-│   │   ├── esp32.ts              # ตัวจัดการ HTTP Call สั่งปลดล็อกไปฮาร์ดแวร์จริง
+│   │   ├── esp32.ts              # เขียนคำสั่งปลดล็อกเข้าคิว DB (Cloud-Only) — ESP32 มาดึงเอง
 │   │   ├── access-log.ts         # ตัวบันทึกประวัติจราจรครบทุกมิติ (IP, User-Agent, Severity)
 │   │   ├── notify.ts             # ตัวกระจายการแจ้งเตือนรวมศูนย์ขนาน (Discord, Telegram, LINE)
 │   │   └── discord.ts            # ตัวจัดการโครงสร้าง Embed Message แยกช่องทาง
@@ -123,17 +123,37 @@ npm install
 # ฐานข้อมูล Supabase PostgreSQL (ใช้พอร์ต PgBouncer 6543)
 DATABASE_URL="postgres://postgres.xxxx:password@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
-# ความปลอดภัยเซสชัน JWT
+# ความปลอดภัยเซสชัน JWT (บังคับ — แอปจะ throw ทันทีถ้าไม่ตั้งค่า)
 JWT_SECRET="สุ่มข้อความยาวๆความปลอดภัยของคุณ"
 
-# ตัวกำหนดค่าฮาร์ดแวร์บอร์ด
-ESP32_IP="192.168.1.100"
-ESP32_PORT="80"
-ESP32_MOCK_MODE="false"
+# กุญแจลงนาม QR offline grant (บังคับ — lib/qr.ts จะ throw ถ้าไม่ตั้งค่า; ต้องแยกจาก JWT_SECRET)
+QR_SIGNING_KEY="สุ่มข้อความยาวๆอีกชุดสำหรับ QR"
 
-# ลิงก์แจ้งเตือนบอท Discord หลัก
+# Pre-shared key ระหว่าง server ↔ ESP32 (ต้องตรงกับ api_key ใน config.h ของบอร์ด)
+ESP32_API_KEY="สุ่มข้อความยาวๆสำหรับ ESP32"
+
+# ตัวกำหนดค่าฮาร์ดแวร์บอร์ด
+ESP32_IP="192.168.1.100"   # ใช้สำหรับ ping ตรวจสถานะเท่านั้น (การเปิดประตูใช้ Cloud Polling)
+ESP32_PORT="80"
+ESP32_MOCK_MODE="false"    # =true เปิดโหมดจำลองไม่ต้องมีฮาร์ดแวร์
+ESP32_WOKWI="false"        # =true เมื่อใช้ Wokwi Simulator
+
+# ลิงก์แจ้งเตือนบอท Discord หลัก (ทางเลือก — รองรับ Telegram/LINE เพิ่มผ่านหน้า Settings)
 DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+
+# Cron / Vercel Ops (ทางเลือก)
+CRON_SECRET="สุ่มข้อความยาวๆ ≥ 32 ตัว ป้องกัน endpoint สรุปรายวัน/สัปดาห์"
+VERCEL_TOKEN=""        # ดึงสถานะ deployment จาก Vercel API
+VERCEL_PROJECT_ID=""   # รหัสโปรเจกต์ Vercel
+
+# Vercel KV (Redis) cache (ทางเลือก — ถ้าเว้นว่าง fallback เป็น in-memory)
+KV_URL=""
+KV_REST_API_URL=""
+KV_REST_API_TOKEN=""
+KV_REST_API_READ_ONLY_TOKEN=""
 ```
+
+> ดูตัวแปรครบทุกตัวพร้อมคำอธิบายได้ใน [`my-app/.env.example`](my-app/.env.example) — **ห้ามใส่ค่าจริงในไฟล์ตัวอย่าง ใส่เฉพาะใน `.env.local` (ถูก gitignore ไว้)**
 
 ### 3. รันระบบเซิร์ฟเวอร์สำหรับการพัฒนา
 ```bash
@@ -142,6 +162,13 @@ npm run dev
 * หน้าจอลงทะเบียนของนักศึกษา: [http://localhost:3000](http://localhost:3000)
 * แดชบอร์ดแอดมิน: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
   - **บัญชีเริ่มต้น**: Username: `admin` | Password: `admin123` *(ระบบจะบังคับให้เปลี่ยนเพื่อความปลอดภัยสูงสุดในการรันโปรดักชัน)*
+
+### 4. รันชุดทดสอบอัตโนมัติ (Unit Tests)
+ทดสอบตรรกะความปลอดภัยหลัก (สิทธิ์ควบคุมห้อง, JWT, validation, กันการปลอม IP) ด้วย **Vitest**:
+```bash
+npm test          # รันครั้งเดียว
+npm run test:watch # โหมดเฝ้าดูไฟล์
+```
 
 ---
 
@@ -165,3 +192,6 @@ npm run dev
 ---
 *นวัตกรรมระบบควบคุมการเข้าออกห้องปฏิบัติการอัจฉริยะ คณะครุศาสตร์อุตสาหกรรม มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร*
 *(SmartAccess Faculty of Technical Education, RMUTP)*
+
+---
+<sub>อัปเดตล่าสุด: 2026-05-30 (เปลี่ยนเป็นสถาปัตยกรรม Cloud-Only Polling — ถอด LAN direct push ออก, เพิ่มชุดทดสอบ Vitest)</sub>
