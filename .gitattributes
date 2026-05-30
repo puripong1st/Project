@@ -1,0 +1,7 @@
+# บอกให้ GitHub Linguist ทราบว่าไฟล์ HTML เหล่านี้เป็นเอกสารคู่มือ (Documentation) หรือไฟล์ที่สร้างขึ้นอัตโนมัติ (Generated)
+# ซึ่งจะช่วยไม่ให้แสดงผลสัดส่วนภาษา HTML สูงเกินจริงในหน้าสถิติภาษาของ GitHub
+
+complete_system_manual_th.html linguist-documentation
+my-app/public/complete_system_manual_th.html linguist-documentation
+*.html linguist-documentation
+*.pdf linguist-documentation
